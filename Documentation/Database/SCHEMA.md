@@ -2,7 +2,80 @@
 
 ## Overview
 
-The database is PostgreSQL, managed via Prisma ORM. All IDs are UUIDs. Timestamps are UTC.
+The database is PostgreSQL 16, managed via Prisma ORM. All IDs are UUIDs generated with `uuid()`. Timestamps are UTC. The schema is defined in `backend/prisma/schema.prisma`.
+
+## Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    User {
+        String id PK
+        String email UK
+        String phoneNumber
+        String username UK
+        String password
+        String profileImage
+        String coverImage
+        String twoFactorSecret
+        Boolean twoFactorEnabled
+        Boolean emailVerified
+        Boolean phoneVerified
+        DateTime lastSeen
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
+    Message {
+        String id PK
+        String senderId FK
+        String recipientId FK
+        String content
+        String type
+        String status
+        Boolean isRead
+        DateTime readAt
+        String fileUrl
+        String fileName
+        Int fileSize
+        String fileType
+        Json audioWaveform
+        Float audioDuration
+        DateTime createdAt
+    }
+
+    Group {
+        String id PK
+        String name
+        String description
+        String ownerId FK
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
+    GroupMember {
+        String id PK
+        String userId FK
+        String groupId FK
+        DateTime joinedAt
+    }
+
+    GroupMessage {
+        String id PK
+        String groupId FK
+        String senderId FK
+        String content
+        String type
+        DateTime createdAt
+    }
+
+    User ||--o{ Message : "sends (Sender)"
+    User ||--o{ Message : "receives (Recipient)"
+    User ||--o{ GroupMember : "belongs to"
+    User ||--o{ Group : "owns"
+    User ||--o{ GroupMessage : "sends"
+    Group ||--o{ GroupMember : "has"
+    Group ||--o{ GroupMessage : "contains"
+```
 
 ## Models
 

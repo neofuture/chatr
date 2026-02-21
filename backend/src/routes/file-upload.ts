@@ -6,6 +6,46 @@ import { PrismaClient } from '@prisma/client';
 import { Server } from 'socket.io';
 import fs from 'fs';
 import { generatePlaceholderWaveform, generateWaveformFromFile } from '../services/waveform';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+
+// ── S3 client (only used in production) ──────────────────────────────────────
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const S3_BUCKET = process.env.S3_BUCKET || '';
+const AWS_REGION = process.env.AWS_REGION || 'eu-west-2';
+
+const s3 = IS_PRODUCTION ? new S3Client({
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+}) : null;
+
+/**
+ * Upload a file buffer to S3 and return the public HTTPS URL.
+ */
+async function uploadToS3(
+  buffer: Buffer,
+  key: string,
+  mimeType: string
+): Promise<string> {
+  if (!s3) throw new Error('S3 not configured');
+  await s3.send(new PutObjectCommand({
+    Bucket: S3_BUCKET,
+    Key: key,
+    Body: buffer,
+    ContentType: mimeType,
+  }));
+  return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
+}
+
+/**
+ * Delete an object from S3 by its key.
+ */
+export async function deleteFromS3(key: string): Promise<void> {
+  if (!s3) return;
+  await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+}
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -26,32 +66,31 @@ interface AuthenticatedRequest extends Request {
 }
 
 
-// Ensure uploads directories exist
+// Ensure local upload directories exist (dev only)
 const messagesDir = path.join(__dirname, '../../uploads/messages');
 const audioDir = path.join(__dirname, '../../uploads/audio');
 
-if (!fs.existsSync(messagesDir)) {
-  fs.mkdirSync(messagesDir, { recursive: true });
-}
-if (!fs.existsSync(audioDir)) {
-  fs.mkdirSync(audioDir, { recursive: true });
+if (!IS_PRODUCTION) {
+  if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
+  if (!fs.existsSync(audioDir))    fs.mkdirSync(audioDir,    { recursive: true });
 }
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Route audio files to audio subfolder, everything else to messages
-    const isAudio = file.mimetype.startsWith('audio/');
-    const destination = isAudio ? audioDir : messagesDir;
-    cb(null, destination);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const nameWithoutExt = path.basename(file.originalname, ext);
-    cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
-  }
-});
+// In production use memory storage (buffer goes straight to S3).
+// In development use disk storage.
+const storage = IS_PRODUCTION
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (req, file, cb) => {
+        const isAudio = file.mimetype.startsWith('audio/');
+        cb(null, isAudio ? audioDir : messagesDir);
+      },
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        const nameWithoutExt = path.basename(file.originalname, ext);
+        cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
+      },
+    });
 
 const upload = multer({
   storage,
@@ -155,19 +194,37 @@ router.post('/upload',
     const { recipientId, type, waveform } = req.body;
 
     if (!recipientId) {
-      fs.unlinkSync(req.file.path);
+      if (!IS_PRODUCTION && req.file.path) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'Recipient ID required' });
     }
 
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-    const isAudio = req.file.mimetype.startsWith('audio/');
-    const subfolder = isAudio ? 'audio' : 'messages';
-    const fileUrl = `${backendUrl}/uploads/${subfolder}/${req.file.filename}`;
-
     const userId = req.user?.userId;
     if (!userId) {
-      fs.unlinkSync(req.file.path);
+      if (!IS_PRODUCTION && req.file.path) fs.unlinkSync(req.file.path);
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const isAudio = req.file.mimetype.startsWith('audio/');
+    const subfolder = isAudio ? 'audio' : 'messages';
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(req.file.originalname);
+    const nameWithoutExt = path.basename(req.file.originalname, ext);
+    const filename = `${nameWithoutExt}-${uniqueSuffix}${ext}`;
+
+    let fileUrl: string;
+    let localFilePath: string | null = null;
+
+    if (IS_PRODUCTION) {
+      // Upload buffer directly to S3
+      const s3Key = `uploads/${subfolder}/${filename}`;
+      console.log(`☁️  Uploading to S3: ${s3Key}`);
+      fileUrl = await uploadToS3(req.file.buffer, s3Key, req.file.mimetype);
+      console.log(`✅ S3 upload complete: ${fileUrl}`);
+    } else {
+      // Local dev — file already on disk via diskStorage
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+      localFilePath = req.file.path;
+      fileUrl = `${backendUrl}/uploads/${subfolder}/${req.file.filename}`;
     }
 
     // Use provided waveform (voice recorder) or placeholder (MP3 upload)
@@ -218,8 +275,8 @@ router.post('/upload',
     });
 
     // Async: generate real waveform from file and push update via socket
-    if (needsWaveformGeneration && _io) {
-      const filePath = req.file.path;
+    if (needsWaveformGeneration && _io && localFilePath) {
+      const filePath = localFilePath;
       const messageId = message.id;
       const io = _io;
 
@@ -260,8 +317,8 @@ router.post('/upload',
 
   } catch (error) {
     console.error('File upload error:', error);
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    if (!IS_PRODUCTION && req.file && (req.file as any).path && fs.existsSync((req.file as any).path)) {
+      fs.unlinkSync((req.file as any).path);
     }
     res.status(500).json({ error: 'File upload failed' });
   }

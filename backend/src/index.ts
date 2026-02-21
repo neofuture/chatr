@@ -38,8 +38,22 @@ app.use(helmet({
   frameguard: false, // Disabled to allow email preview in iframe
   crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resource loading
 }));
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  ...(process.env.FRONTEND_URL ? [
+    process.env.FRONTEND_URL.replace('https://', 'https://www.'),
+  ] : []),
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -49,7 +63,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Swagger API Documentation
+// Swagger API Documentation — basic auth in production
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/docs', (req, res, next) => {
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith('Basic ')) {
+      const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
+      const [user, pass] = decoded.split(':');
+      const expectedUser = process.env.SWAGGER_USER || 'admin';
+      const expectedPass = process.env.SWAGGER_PASS || process.env.DB_PASSWORD || 'chatr';
+      if (user === expectedUser && pass === expectedPass) return next();
+    }
+    res.setHeader('WWW-Authenticate', 'Basic realm="Chatr API Docs"');
+    res.status(401).send('Unauthorized');
+  });
+}
 app.use('/api/docs', swaggerUi.serve);
 app.get('/api/docs', swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',

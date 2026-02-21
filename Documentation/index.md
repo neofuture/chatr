@@ -6,23 +6,29 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 
 | Section | Description |
 |---------|-------------|
-| [Architecture](./Architecture/OVERVIEW.md) | System design, component diagram, data flow |
+| [Architecture](./Architecture/index.md) | System design, component diagram, data flow |
+| [AWS Infrastructure](./Architecture/AWS.md) | EC2, RDS, Redis, S3, Nginx — ports and config |
 | [API Reference](./API/REST_API.md) | All REST endpoints, request/response schemas |
 | [WebSocket](./WebSocket/EVENTS.md) | Socket.io events, payloads, connection lifecycle |
 | [Database](./Database/SCHEMA.md) | Prisma schema, models, indexes, migrations |
-| [Frontend](./Frontend/OVERVIEW.md) | Next.js structure, contexts, components |
+| [Frontend](./Frontend/index.md) | Next.js structure, contexts, components |
 | [Features](./Features/MESSAGING.md) | Messaging, voice, file upload, presence |
+| [Backend](./Backend/index.md) | Backend overview, middleware, env vars |
 | [Authentication](./Backend/AUTHENTICATION.md) | JWT, SMS/email verification, 2FA |
+| [Services](./Backend/SERVICES.md) | Email (Mailtrap), SMS (SMS Works), Waveform |
+| [File Upload](./Backend/FILE_UPLOAD.md) | Multer config, upload flow, waveform strategy |
+| [Middleware](./Backend/MIDDLEWARE.md) | JWT auth middleware detail |
 | [Deployment](./Getting-Started/DEPLOYMENT.md) | AWS infrastructure, deploy script |
 | [Getting Started](./Getting-Started/LOCAL_SETUP.md) | Local development setup |
-| [Testing](./Testing/OVERVIEW.md) | Test suite, Jest config, coverage |
+| [Testing](./Testing/index.md) | Test suite, Jest config, coverage |
 
 ## Quick Reference
 
 - **Frontend**: `http://localhost:3000`
 - **Backend API**: `http://localhost:3001`
 - **WebSocket**: `ws://localhost:3001`
+- **Swagger UI**: `http://localhost:3001/api/docs`
+- **Health Check**: `http://localhost:3001/api/health`
 - **Database**: PostgreSQL via Prisma ORM
 - **Cache/Presence**: Redis
 - **File Storage**: Local (`/uploads`) → S3 in production
-

@@ -97,19 +97,73 @@ module.exports = {
 }
 ```
 
+## Coverage
+
+Coverage reports are generated in `coverage/lcov-report/`. To view:
+
+```bash
+# Frontend
+cd frontend && npm run test:coverage
+open coverage/lcov-report/index.html
+
+# Backend
+cd backend && npm run test:coverage
+open coverage/lcov-report/index.html
+```
+
+Target coverage thresholds (configured in Jest):
+
+| Metric | Target |
+|--------|--------|
+| Statements | 70% |
+| Branches | 60% |
+| Functions | 70% |
+| Lines | 70% |
+
+## Export Test Results
+
+Both frontend and backend have an export script that writes Jest results to a JSON file for CI/reporting use:
+
+```bash
+cd frontend && npm run test:export
+cd backend && npm run test:export
+# or from root:
+npm run test:export
+```
+
+Output: `frontend/test-results.json`, `backend/test-results.json`
+
 ## Test Lab (Developer Tool)
 
-The `/app/test` page in the frontend is a live developer tool for manually testing the full messaging stack without needing two separate browser sessions. It provides:
+The `/app/test` page is a full WebSocket playground for manually testing the messaging stack without needing two browser sessions.
 
-- WebSocket connection status and API configuration display
-- User selector (loads all registered users)
-- Message send/receive with real Socket.io events
-- File and audio upload testing
-- Voice recording test
-- Typing indicator simulation (ghost typing mode)
-- Presence toggle (manual offline)
-- Scrollable system log with event payloads
-- Message bubble rendering preview
+```mermaid
+graph LR
+    subgraph TestLab["/app/test — Developer Test Lab"]
+        Config["Config Panel<br/>API URL · WS URL · User"]
+        Controls["Controls<br/>Send text · File · Audio · Voice"]
+        Indicators["Indicators<br/>Typing · Recording · Ghost text · Presence"]
+        Logs["System Logs<br/>All socket events + payloads"]
+        Messages["Message Preview<br/>Renders MessageBubble component"]
+    end
+    Config --> WS[Socket.io Server]
+    Controls --> WS
+    WS --> Logs
+    WS --> Messages
+```
 
-This page is only accessible to authenticated users and is not linked from the main UI.
+**Features:**
+- WebSocket connection status + config display (API URL, WS URL, Node env)
+- User selector (loads all registered users from `GET /api/users`)
+- Send text, file, image, audio, and voice messages
+- Typing indicator buttons (start/stop)
+- Ghost typing mode — real-time keystroke broadcast
+- Presence toggle (go online/offline manually)
+- Scrollable system log with full event name + payload for every socket event
+- Message bubble preview using the production `MessageBubble` component
+- Audio waveform visualisation testing
+- Lightbox image viewer testing
+
+This page is only accessible to authenticated users and is not linked from the main navigation.
+
 

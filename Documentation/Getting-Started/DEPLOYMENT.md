@@ -12,6 +12,16 @@
 | Process manager | PM2 | on EC2 |
 | SSL | Let's Encrypt | via Certbot |
 
+## URLs
+
+| Service | URL |
+|---------|-----|
+| Frontend | https://chatr-app.online |
+| Backend API | https://api.chatr-app.online |
+| Swagger UI | https://api.chatr-app.online/api/docs |
+| Prisma Studio | https://db.chatr-app.online |
+| Health check | https://api.chatr-app.online/api/health |
+
 ## Architecture
 
 ```
@@ -56,27 +66,35 @@ Route 53 / DNS
 
 ## Deployment Script
 
-The deploy script (`deployAWS.sh` — gitignored) automates the full deployment:
+The deploy script (`deployAWS.sh` — gitignored) automates the full deployment across 7 steps:
 
-1. Installs system packages (Node 20, Nginx, PM2, Certbot)
-2. Clones / pulls latest code from GitHub
-3. Writes `.env` files from script variables
-4. Installs dependencies and builds both apps
-5. Runs Prisma migrations
-6. Configures PM2 process manager
-7. Configures Nginx reverse proxy
-8. Obtains SSL certificates via Certbot
+1. **System packages** — Node 20, Nginx, PM2, Certbot, PostgreSQL client
+2. **Clone repository** — fresh clone from GitHub, disables husky, root `npm install`
+3. **Backend** — writes `.env`, installs deps, generates Prisma client, compiles TypeScript, runs migrations
+4. **Frontend** — writes `.env.production`, installs deps, runs `next build`
+5. **PM2** — starts `chatr-backend`, `chatr-frontend`, `chatr-prisma` (Prisma Studio), saves process list
+6. **Nginx + SSL** — writes proxy config, enables site, obtains Let's Encrypt certificates via Certbot
+7. **Health checks** — verifies all three services respond, prints final summary
 
 ```bash
-# Copy to server (run on local Mac)
-scp -i ~/.ssh/chatr-key.pem deployAWS.sh ubuntu@<EC2_IP>:~/
-
-# SSH in and run
-ssh -i ~/.ssh/chatr-key.pem ubuntu@<EC2_IP>
-chmod +x ~/deployAWS.sh && ~/deployAWS.sh
+# One-command deploy from your local Mac (uses aws.sh helper)
+bash aws.sh
 ```
 
-> ⚠️ `deployAWS.sh` contains secrets and is listed in `.gitignore`. Never commit it.
+`aws.sh` handles both steps automatically:
+1. Copies `deployAWS.sh` to the server via SCP
+2. SSH's in and executes it
+
+Manual equivalent:
+```bash
+# 1. Copy to server
+scp -i ~/.ssh/chatr-key.pem deployAWS.sh ubuntu@16.60.35.172:~/
+
+# 2. SSH in and run
+ssh -i ~/.ssh/chatr-key.pem ubuntu@16.60.35.172 "chmod +x ~/deployAWS.sh && ~/deployAWS.sh"
+```
+
+> ⚠️ Both `deployAWS.sh` and `aws.sh` contain secrets and are listed in `.gitignore`. Never commit them.
 
 ## Nginx Configuration
 

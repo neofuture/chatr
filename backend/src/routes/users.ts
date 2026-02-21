@@ -4,9 +4,49 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { authenticateToken } from '../middleware/auth';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// ── S3 (production only) ─────────────────────────────────────────────────────
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const S3_BUCKET = process.env.S3_BUCKET || '';
+const AWS_REGION = process.env.AWS_REGION || 'eu-west-2';
+
+const s3 = IS_PRODUCTION ? new S3Client({
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+}) : null;
+
+async function uploadImageToS3(buffer: Buffer, key: string, mimeType: string): Promise<string> {
+  if (!s3) throw new Error('S3 not configured');
+  await s3.send(new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, Body: buffer, ContentType: mimeType }));
+  return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
+}
+
+async function deleteImageFromS3(url: string): Promise<void> {
+  if (!s3 || !url) return;
+  try {
+    // Extract S3 key from full URL
+    const key = url.replace(`https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/`, '');
+    await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+    console.log('🗑️  Deleted from S3:', key);
+  } catch (err) {
+    console.error('⚠️  Failed to delete from S3:', err);
+  }
+}
+
+function deleteLocalFile(filePath: string): void {
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch (err) {
+    console.error('⚠️  Failed to delete local file:', err);
+  }
+}
 
 /**
  * @swagger
@@ -400,76 +440,53 @@ router.post('/profile-image', authenticateToken as any, upload.single('profileIm
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Generate filename with correct userId
+    // Generate filename
     const ext = path.extname(file.originalname);
     const filename = `${userId}-${Date.now()}${ext}`;
-    const filepath = path.join(uploadsDir, filename);
 
-    // Write file from memory buffer to disk
-    fs.writeFileSync(filepath, file.buffer);
-    console.log('💾 File saved:', filename);
+    let fileUrl: string;
 
-    // Construct the URL for the uploaded file
-    const fileUrl = `/uploads/profiles/${filename}`;
+    if (IS_PRODUCTION) {
+      const s3Key = `uploads/profiles/${filename}`;
+      console.log(`☁️  Uploading profile image to S3: ${s3Key}`);
+      fileUrl = await uploadImageToS3(file.buffer, s3Key, file.mimetype);
+      console.log(`✅ S3 profile upload complete: ${fileUrl}`);
+    } else {
+      const filepath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filepath, file.buffer);
+      console.log('💾 File saved:', filename);
+      fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/profiles/${filename}`;
+    }
 
     // Update user's profile image in database
     try {
-      // Get old profile image path to delete it BEFORE updating
       const existingUser = await prisma.user.findUnique({
         where: { id: userId },
         select: { profileImage: true },
       });
 
-      console.log('📋 Existing profile image:', existingUser?.profileImage);
-
-      // Update database with new image
       await prisma.user.update({
         where: { id: userId },
         data: { profileImage: fileUrl },
       });
       console.log('✅ Profile image saved to database for user:', userId);
 
-      // Delete old profile image file if it exists
+      // Delete old image
       if (existingUser?.profileImage) {
-        // Remove API_URL prefix if present (in case of full URLs stored)
-        let oldPath = existingUser.profileImage;
-
-        // Handle both relative paths and full URLs
-        if (oldPath.startsWith('http://') || oldPath.startsWith('https://')) {
-          // Extract path from full URL
-          const urlObj = new URL(oldPath);
-          oldPath = urlObj.pathname;
-        }
-
-        const oldFilePath = path.join(__dirname, '../..', oldPath);
-        console.log('🔍 Checking for old file at:', oldFilePath);
-
-        if (fs.existsSync(oldFilePath)) {
-          try {
-            fs.unlinkSync(oldFilePath);
-            console.log('🗑️  Deleted old profile image:', oldFilePath);
-          } catch (deleteError) {
-            console.error('⚠️  Failed to delete old profile image:', deleteError);
-            // Don't fail the request if deletion fails
-          }
+        if (IS_PRODUCTION) {
+          await deleteImageFromS3(existingUser.profileImage);
         } else {
-          console.log('ℹ️  Old profile image file not found:', oldFilePath);
+          let oldPath = existingUser.profileImage;
+          if (oldPath.startsWith('http')) oldPath = new URL(oldPath).pathname;
+          deleteLocalFile(path.join(__dirname, '../..', oldPath));
         }
-      } else {
-        console.log('ℹ️  No existing profile image to delete');
       }
     } catch (dbError) {
       console.error('❌ Database update failed:', dbError);
-      // Delete the file if database update fails
-      fs.unlinkSync(filepath);
       return res.status(500).json({ error: 'Failed to update database' });
     }
 
-    // Return success response
-    res.json({
-      url: `${process.env.API_URL || 'http://localhost:3001'}${fileUrl}`,
-    });
-
+    res.json({ url: fileUrl });
     console.log('✅ Profile image upload successful');
   } catch (error) {
     console.error('❌ Profile image upload error:', error);
@@ -532,76 +549,53 @@ router.post('/cover-image', authenticateToken as any, coverUpload.single('coverI
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Generate filename with correct userId
+    // Generate filename
     const ext = path.extname(file.originalname);
     const filename = `${userId}-${Date.now()}${ext}`;
-    const filepath = path.join(coversDir, filename);
 
-    // Write file from memory buffer to disk
-    fs.writeFileSync(filepath, file.buffer);
-    console.log('💾 File saved:', filename);
+    let fileUrl: string;
 
-    // Construct the URL for the uploaded file
-    const fileUrl = `/uploads/covers/${filename}`;
+    if (IS_PRODUCTION) {
+      const s3Key = `uploads/covers/${filename}`;
+      console.log(`☁️  Uploading cover image to S3: ${s3Key}`);
+      fileUrl = await uploadImageToS3(file.buffer, s3Key, file.mimetype);
+      console.log(`✅ S3 cover upload complete: ${fileUrl}`);
+    } else {
+      const filepath = path.join(coversDir, filename);
+      fs.writeFileSync(filepath, file.buffer);
+      console.log('💾 File saved:', filename);
+      fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/covers/${filename}`;
+    }
 
     // Update user's cover image in database
     try {
-      // Get old cover image path to delete it BEFORE updating
       const existingUser = await prisma.user.findUnique({
         where: { id: userId },
         select: { coverImage: true },
       });
 
-      console.log('📋 Existing cover image:', existingUser?.coverImage);
-
-      // Update database with new image
       await prisma.user.update({
         where: { id: userId },
         data: { coverImage: fileUrl },
       });
       console.log('✅ Cover image saved to database for user:', userId);
 
-      // Delete old cover image file if it exists
+      // Delete old image
       if (existingUser?.coverImage) {
-        // Remove API_URL prefix if present (in case of full URLs stored)
-        let oldPath = existingUser.coverImage;
-
-        // Handle both relative paths and full URLs
-        if (oldPath.startsWith('http://') || oldPath.startsWith('https://')) {
-          // Extract path from full URL
-          const urlObj = new URL(oldPath);
-          oldPath = urlObj.pathname;
-        }
-
-        const oldFilePath = path.join(__dirname, '../..', oldPath);
-        console.log('🔍 Checking for old file at:', oldFilePath);
-
-        if (fs.existsSync(oldFilePath)) {
-          try {
-            fs.unlinkSync(oldFilePath);
-            console.log('🗑️  Deleted old cover image:', oldFilePath);
-          } catch (deleteError) {
-            console.error('⚠️  Failed to delete old cover image:', deleteError);
-            // Don't fail the request if deletion fails
-          }
+        if (IS_PRODUCTION) {
+          await deleteImageFromS3(existingUser.coverImage);
         } else {
-          console.log('ℹ️  Old cover image file not found:', oldFilePath);
+          let oldPath = existingUser.coverImage;
+          if (oldPath.startsWith('http')) oldPath = new URL(oldPath).pathname;
+          deleteLocalFile(path.join(__dirname, '../..', oldPath));
         }
-      } else {
-        console.log('ℹ️  No existing cover image to delete');
       }
     } catch (dbError) {
       console.error('❌ Database update failed:', dbError);
-      // Delete the file if database update fails
-      fs.unlinkSync(filepath);
       return res.status(500).json({ error: 'Failed to update database' });
     }
 
-    // Return success response
-    res.json({
-      url: `${process.env.API_URL || 'http://localhost:3001'}${fileUrl}`,
-    });
-
+    res.json({ url: fileUrl });
     console.log('✅ Cover image upload successful');
   } catch (error) {
     console.error('❌ Cover image upload error:', error);
@@ -649,27 +643,13 @@ router.delete('/profile-image', authenticateToken, async (req, res) => {
       return res.json({ message: 'No profile image to delete' });
     }
 
-    // Delete file from filesystem
-    const profileImagePath = user.profileImage;
-    if (profileImagePath) {
-      // Remove API_URL prefix if present
-      let filePath = profileImagePath;
-      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        const urlObj = new URL(filePath);
-        filePath = urlObj.pathname;
-      }
-
-      const absolutePath = path.join(__dirname, '../..', filePath);
-
-      if (fs.existsSync(absolutePath)) {
-        try {
-          fs.unlinkSync(absolutePath);
-          console.log('🗑️  Deleted profile image file:', absolutePath);
-        } catch (err) {
-          console.error('⚠️  Failed to delete file:', err);
-          // Continue even if file delete fails
-        }
-      }
+    // Delete image from storage
+    if (IS_PRODUCTION) {
+      await deleteImageFromS3(user.profileImage);
+    } else {
+      let filePath = user.profileImage;
+      if (filePath.startsWith('http')) filePath = new URL(filePath).pathname;
+      deleteLocalFile(path.join(__dirname, '../..', filePath));
     }
 
     // Update database
@@ -727,27 +707,13 @@ router.delete('/cover-image', authenticateToken, async (req, res) => {
       return res.json({ message: 'No cover image to delete' });
     }
 
-    // Delete file from filesystem
-    const coverImagePath = user.coverImage;
-    if (coverImagePath) {
-      // Remove API_URL prefix if present
-      let filePath = coverImagePath;
-      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        const urlObj = new URL(filePath);
-        filePath = urlObj.pathname;
-      }
-
-      const absolutePath = path.join(__dirname, '../..', filePath);
-
-      if (fs.existsSync(absolutePath)) {
-        try {
-          fs.unlinkSync(absolutePath);
-          console.log('🗑️  Deleted cover image file:', absolutePath);
-        } catch (err) {
-          console.error('⚠️  Failed to delete file:', err);
-          // Continue even if file delete fails
-        }
-      }
+    // Delete image from storage
+    if (IS_PRODUCTION) {
+      await deleteImageFromS3(user.coverImage);
+    } else {
+      let filePath = user.coverImage;
+      if (filePath.startsWith('http')) filePath = new URL(filePath).pathname;
+      deleteLocalFile(path.join(__dirname, '../..', filePath));
     }
 
     // Update database

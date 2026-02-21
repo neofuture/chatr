@@ -105,10 +105,28 @@ DEV_PHONE=+447700000000
 
 Any account using this phone number will have SMS OTPs logged to the console instead of sent via SMS.
 
+## Git Hooks
+
+The project uses a `post-commit` hook to auto-increment the frontend version (`frontend/src/version.ts`) after every commit. The hook is installed automatically via `npm install` (triggered by the `prepare` script).
+
+If hooks stop working (e.g. after re-initialising git), run:
+
+```bash
+bash setup-hooks.sh
+```
+
+Or simply:
+
+```bash
+npm install
+```
+
 ## Resetting the database
 
 ```bash
 cd backend
 npx prisma migrate reset    # Drops all data and re-runs migrations
 ```
+
+
 

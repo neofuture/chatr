@@ -4,52 +4,66 @@ All reusable UI components are located in `frontend/src/components/`. Each compo
 
 ## Structure
 
-```
-components/
-├── messaging/
-│   ├── MessageBubble/
-│   ├── MessageAudioPlayer/
-│   ├── VoiceRecorder/
-│   ├── ChatInput/
-│   └── ChatMessageList/
-├── form-controls/
-│   ├── Button/
-│   ├── Input/
-│   ├── Select/
-│   ├── Textarea/
-│   ├── Checkbox/
-│   ├── Radio/
-│   ├── RangeSlider/
-│   ├── DualRangeSlider/
-│   ├── DatePicker/
-│   └── Calendar/
-├── dialogs/
-│   ├── BottomSheet/
-│   ├── ConfirmationDialog/
-│   └── Lightbox/
-├── image-manip/
-│   ├── ProfileImageUploader/
-│   ├── ProfileImageCropper/
-│   ├── CoverImageUploader/
-│   └── CoverImageCropper/
-├── forms/
-│   ├── LoginForm/
-│   ├── LoginVerification/
-│   ├── EmailVerification/
-│   └── ForgotPassword/
-├── panels/
-│   ├── PanelContainer/
-│   └── AuthPanel/
-├── layout/
-│   ├── MobileLayout/
-│   └── BackgroundBlobs/
-└── utility/
-    ├── Logo/
-    ├── ThemeToggle/
-    ├── ToastContainer/
-    ├── ConnectionIndicator/
-    ├── WebSocketStatusBadge/
-    ├── BurgerMenu/
-    └── RoutePreloader/
-```
+```mermaid
+graph LR
+    subgraph messaging
+        MessageBubble
+        MessageAudioPlayer
+        VoiceRecorder
+        ChatInput
+        ChatMessageList
+    end
 
+    subgraph form-controls
+        Button
+        Input
+        Select
+        Textarea
+        Checkbox
+        Radio
+        RangeSlider
+        DualRangeSlider
+        DatePicker
+        Calendar
+    end
+
+    subgraph dialogs
+        BottomSheet
+        ConfirmationDialog
+        Lightbox
+    end
+
+    subgraph image-manip
+        ProfileImageUploader
+        ProfileImageCropper
+        CoverImageUploader
+        CoverImageCropper
+    end
+
+    subgraph forms
+        LoginForm
+        LoginVerification
+        EmailVerification
+        ForgotPassword
+    end
+
+    subgraph panels
+        PanelContainer
+        AuthPanel
+    end
+
+    subgraph layout
+        MobileLayout
+        BackgroundBlobs
+    end
+
+    subgraph utility
+        Logo
+        ThemeToggle
+        ToastContainer
+        ConnectionIndicator
+        WebSocketStatusBadge
+        BurgerMenu
+        RoutePreloader
+    end
+```
