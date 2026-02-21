@@ -19,23 +19,23 @@ graph TD
     end
 
     subgraph EC2["EC2 t3.small — Ubuntu 24.04 — 16.60.35.172"]
-        Nginx["Nginx\nSSL termination\n:80 → :443"]
+        Nginx["Nginx<br/>SSL termination<br/>:80 → :443"]
 
         subgraph PM2["PM2"]
-            FE["chatr-frontend\nNext.js — :3000"]
-            BE["chatr-backend\nExpress + Socket.io — :3001"]
-            PS["chatr-prisma\nPrisma Studio — :5555"]
+            FE["chatr-frontend<br/>Next.js — :3000"]
+            BE["chatr-backend<br/>Express + Socket.io — :3001"]
+            PS["chatr-prisma<br/>Prisma Studio — :5555"]
         end
 
-        SSL["Let's Encrypt\nCertbot"]
+        SSL["Let's Encrypt<br/>Certbot"]
     end
 
     subgraph VPC["VPC Private Subnet — eu-west-2"]
-        RDS["RDS PostgreSQL 16\ndb.t3.micro — :5432"]
-        Redis["ElastiCache Redis\ncache.t3.micro — :6379"]
+        RDS["RDS PostgreSQL 16<br/>db.t3.micro — :5432"]
+        Redis["ElastiCache Redis<br/>cache.t3.micro — :6379"]
     end
 
-    S3["S3\nchatr-uploads"]
+    S3["S3<br/>chatr-uploads"]
 
     Internet --> DNS
     DNS --> Nginx

@@ -121,10 +121,10 @@ Unrecognised MIME types are rejected with `400`.
 
 ```mermaid
 flowchart TD
-    A{Was waveform\nprovided in request?} -- Yes --> B[Use provided waveform\nfrom VoiceRecorder]
+    A{Was waveform<br/>provided in request?} -- Yes --> B[Use provided waveform<br/>from VoiceRecorder]
     A -- No --> C{Is it audio?}
     C -- No --> D[No waveform needed]
-    C -- Yes --> E[generatePlaceholderWaveform\ninstant response]
+    C -- Yes --> E[generatePlaceholderWaveform<br/>instant response]
     E --> F[needsWaveformGeneration = true]
     F --> G[Client receives placeholder]
     G --> H[Client: OfflineAudioContext.decodeAudioData]

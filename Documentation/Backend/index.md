@@ -12,27 +12,27 @@ The backend is an Express 4 application written in TypeScript, running on Node.j
 graph TD
     backend --> src
 
-    src --> index["index.ts\nExpress app + Socket.io"]
-    src --> swagger["swagger.ts\nAPI spec"]
+    src --> index["index.ts<br/>Express app + Socket.io"]
+    src --> swagger["swagger.ts<br/>API spec"]
     src --> middleware
     src --> routes
     src --> socket
     src --> services
 
-    middleware --> mauth["auth.ts\nJWT middleware"]
+    middleware --> mauth["auth.ts<br/>JWT middleware"]
 
-    routes --> rauth["auth.ts\n/api/auth/*"]
-    routes --> rusers["users.ts\n/api/users/*"]
-    routes --> rmessages["messages.ts\n/api/messages/*"]
-    routes --> rgroups["groups.ts\n/api/groups/*"]
-    routes --> rupload["file-upload.ts\n/api/messages/upload"]
-    routes --> remail["email-templates.ts\n/api/email-preview"]
+    routes --> rauth["auth.ts<br/>/api/auth/*"]
+    routes --> rusers["users.ts<br/>/api/users/*"]
+    routes --> rmessages["messages.ts<br/>/api/messages/*"]
+    routes --> rgroups["groups.ts<br/>/api/groups/*"]
+    routes --> rupload["file-upload.ts<br/>/api/messages/upload"]
+    routes --> remail["email-templates.ts<br/>/api/email-preview"]
 
-    socket --> handlers["handlers.ts\nSocket.io events + presence"]
+    socket --> handlers["handlers.ts<br/>Socket.io events + presence"]
 
-    services --> semail["email.ts\nMailtrap"]
-    services --> ssms["sms.ts\nSMS Works"]
-    services --> swaveform["waveform.ts\nWaveform + duration"]
+    services --> semail["email.ts<br/>Mailtrap"]
+    services --> ssms["sms.ts<br/>SMS Works"]
+    services --> swaveform["waveform.ts<br/>Waveform + duration"]
 ```
 
 ---
@@ -43,12 +43,12 @@ Requests pass through the following layers in order:
 
 ```mermaid
 flowchart LR
-    A[Incoming Request] --> B[Helmet\nSecurity headers]
-    B --> C[CORS\nOrigin whitelist]
-    C --> D[express.json\nBody parsing]
+    A[Incoming Request] --> B[Helmet<br/>Security headers]
+    B --> C[CORS<br/>Origin whitelist]
+    C --> D[express.json<br/>Body parsing]
     D --> E{Route}
     E -->|Public route| F[Handler]
-    E -->|Protected route| G[authenticateToken\nJWT validation]
+    E -->|Protected route| G[authenticateToken<br/>JWT validation]
     G -->|Valid| F
     G -->|Invalid| H[401 / 403]
 ```

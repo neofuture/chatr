@@ -8,35 +8,35 @@ Chatr is a three-tier real-time messaging platform: a Next.js 15 client, an Expr
 
 ```mermaid
 graph TB
-    subgraph Client["Browser (Next.js 15)"]
-        Pages["Pages<br/>/app/* /login /register"]
-        Contexts["Contexts<br/>WebSocket · Theme · Toast · Panel · Confirmation"]
-        Components["Components<br/>MessageBubble · AudioPlayer · VoiceRecorder · Forms"]
-        IDB["IndexedDB (Dexie)<br/>Offline message queue"]
+    subgraph CLIENT
+        direction LR
+        CT["Next.js 15 · React 19 · TypeScript"]
+        Pages["Pages<br/>/app/*"]
+        Contexts["Contexts<br/>WS · Theme · Toast · Panel"]
+        Components["Components<br/>UI Layer"]
+        IDB["IndexedDB<br/>Offline Queue"]
     end
 
-    subgraph Server["EC2 — Express API (Node.js 20)"]
-        REST["REST Routes<br/>/api/auth /api/users /api/messages /api/groups"]
-        WS["Socket.io Handlers<br/>handlers.ts"]
-        MW["Middleware<br/>JWT auth · Helmet · CORS · Multer"]
-        Swagger["Swagger UI<br/>/api/docs"]
+    subgraph SERVER
+        direction LR
+        ST["Express.js · Node.js 20 · TypeScript"]
+        REST["REST<br/>/api/*"]
+        WS["Socket.io<br/>Handlers"]
+        JWT["JWT<br/>Auth"]
+        Multer["Multer<br/>Uploads"]
     end
 
-    subgraph Data["Data Layer (AWS)"]
-        PG["RDS PostgreSQL<br/>Users · Messages · Groups"]
-        Redis["ElastiCache Redis<br/>Presence · Online users"]
-        S3["S3<br/>Uploads · Audio · Images"]
+    subgraph DATA["DATA LAYER — AWS"]
+        direction LR
+        PG["PostgreSQL<br/>Users · Messages · Groups"]
+        Redis["Redis<br/>Presence · Online Users"]
+        S3["S3<br/>Files · Audio · Images"]
     end
 
-    Pages -->|HTTP REST| REST
-    Pages -->|WebSocket| WS
-    Contexts -->|useWebSocket| WS
-    IDB -->|sync on reconnect| REST
-    REST --> MW
-    WS --> MW
-    MW -->|Prisma ORM| PG
-    WS -->|ioredis| Redis
-    REST -->|Multer + AWS SDK| S3
+    CLIENT -->|"HTTP REST + WebSocket"| SERVER
+    SERVER -->|"Prisma ORM"| PG
+    SERVER -->|"ioredis"| Redis
+    SERVER -->|"AWS SDK"| S3
 ```
 
 ## Technology Stack
@@ -150,7 +150,7 @@ sequenceDiagram
     C->>API: POST /api/messages/upload (multipart)
     API->>API: Multer saves file to disk/S3
     API->>DB: prisma.message.create (fileUrl, type)
-    API-->>C: { messageId, fileUrl, needsWaveformGeneration }
+    API-->>C: "{ messageId, fileUrl, needsWaveformGeneration }"
     C->>SV: message:send { messageId, recipientId }
     SV-->>R: message:received (with fileUrl)
     Note over C: Audio/Voice only
@@ -168,32 +168,32 @@ graph TD
     chatr --> backend
     chatr --> prisma
 
-    frontend --> fapp["app/\npages + layouts"]
-    frontend --> fcomponents["components/\nUI library"]
-    frontend --> fcontexts["contexts/\nWS · Theme · Toast · Panel · Confirmation"]
-    frontend --> fhooks["hooks/\nuseAuth · useOfflineSync"]
-    frontend --> flib["lib/\napi · auth · db · offline · imageServices"]
-    frontend --> ftypes["types/\nUser · Message · Group"]
-    frontend --> futils["utils/\nextractWaveform"]
+    frontend --> fapp["app/<br/>pages + layouts"]
+    frontend --> fcomponents["components/<br/>UI library"]
+    frontend --> fcontexts["contexts/<br/>WS · Theme · Toast · Panel · Confirmation"]
+    frontend --> fhooks["hooks/<br/>useAuth · useOfflineSync"]
+    frontend --> flib["lib/<br/>api · auth · db · offline · imageServices"]
+    frontend --> ftypes["types/<br/>User · Message · Group"]
+    frontend --> futils["utils/<br/>extractWaveform"]
 
-    fapp --> apppages["login · register · setup-2fa\ndemo · docs · email-preview"]
-    fapp --> appauth["app/ authenticated\nchat · settings · groups · updates · test"]
+    fapp --> apppages["login · register · setup-2fa<br/>demo · docs · email-preview"]
+    fapp --> appauth["app/ authenticated<br/>chat · settings · groups · updates · test"]
 
-    fcomponents --> messaging["messaging/\nMessageBubble · AudioPlayer\nVoiceRecorder · ChatInput · ChatMessageList"]
-    fcomponents --> formcontrols["form-controls/\nButton · Input · Select · Textarea\nCheckbox · Radio · DatePicker · Calendar\nRangeSlider · DualRangeSlider"]
-    fcomponents --> dialogs["dialogs/\nBottomSheet · ConfirmationDialog · Lightbox"]
-    fcomponents --> imagemanip["image-manip/\nProfileImage · CoverImage\nUploader + Cropper"]
-    fcomponents --> formcomps["forms/\nLoginForm · LoginVerification\nEmailVerification · ForgotPassword"]
-    fcomponents --> panels["panels/\nPanelContainer · AuthPanel"]
-    fcomponents --> layout["layout/\nMobileLayout · BackgroundBlobs"]
-    fcomponents --> utility["utility/\nLogo · ThemeToggle · ToastContainer\nConnectionIndicator · BurgerMenu\nWebSocketStatusBadge · RoutePreloader"]
+    fcomponents --> messaging["messaging/<br/>MessageBubble · AudioPlayer<br/>VoiceRecorder · ChatInput · ChatMessageList"]
+    fcomponents --> formcontrols["form-controls/<br/>Button · Input · Select · Textarea<br/>Checkbox · Radio · DatePicker · Calendar<br/>RangeSlider · DualRangeSlider"]
+    fcomponents --> dialogs["dialogs/<br/>BottomSheet · ConfirmationDialog · Lightbox"]
+    fcomponents --> imagemanip["image-manip/<br/>ProfileImage · CoverImage<br/>Uploader + Cropper"]
+    fcomponents --> formcomps["forms/<br/>LoginForm · LoginVerification<br/>EmailVerification · ForgotPassword"]
+    fcomponents --> panels["panels/<br/>PanelContainer · AuthPanel"]
+    fcomponents --> layout["layout/<br/>MobileLayout · BackgroundBlobs"]
+    fcomponents --> utility["utility/<br/>Logo · ThemeToggle · ToastContainer<br/>ConnectionIndicator · BurgerMenu<br/>WebSocketStatusBadge · RoutePreloader"]
 
     backend --> bsrc["src/"]
-    bsrc --> bindexts["index.ts\nExpress + Socket.io entry"]
-    bsrc --> bmiddleware["middleware/\nauth.ts — JWT"]
-    bsrc --> broutes["routes/\nauth · users · messages\ngroups · file-upload · email-templates"]
-    bsrc --> bsocket["socket/\nhandlers.ts — all events + presence"]
-    bsrc --> bservices["services/\nemail · sms · waveform"]
+    bsrc --> bindexts["index.ts<br/>Express + Socket.io entry"]
+    bsrc --> bmiddleware["middleware/<br/>auth.ts — JWT"]
+    bsrc --> broutes["routes/<br/>auth · users · messages<br/>groups · file-upload · email-templates"]
+    bsrc --> bsocket["socket/<br/>handlers.ts — all events + presence"]
+    bsrc --> bservices["services/<br/>email · sms · waveform"]
 
     prisma --> schema["schema.prisma"]
     prisma --> migrations["migrations/"]
@@ -224,10 +224,10 @@ flowchart TD
     F -- Yes --> H[socket.userId assigned]
     H --> I["socket joins user:userId room"]
     I --> J[presence:update sent to client]
+```
 
 ---
 
 ## See Also
 
 - [AWS Infrastructure](./AWS.md) — EC2, RDS, Redis, S3, Nginx ports and config
-```

@@ -13,16 +13,16 @@ graph TD
     root["/"] --> login["/login"]
     root --> register["/register"]
     root --> setup2fa["/setup-2fa"]
-    root --> demo["/demo\nComponent showcase"]
-    root --> docs["/docs\nDocumentation viewer"]
+    root --> demo["/demo<br/>Component showcase"]
+    root --> docs["/docs<br/>Documentation viewer"]
     root --> emailpreview["/email-preview"]
     root --> app["/app — requires auth"]
 
-    app --> apphome["/app\nMain chat"]
-    app --> settings["/app/settings\nProfile · Cover · 2FA"]
-    app --> groups["/app/groups\nGroup chat"]
-    app --> updates["/app/updates\nChangelog"]
-    app --> test["/app/test\nDev test lab"]
+    app --> apphome["/app<br/>Main chat"]
+    app --> settings["/app/settings<br/>Profile · Cover · 2FA"]
+    app --> groups["/app/groups<br/>Group chat"]
+    app --> updates["/app/updates<br/>Changelog"]
+    app --> test["/app/test<br/>Dev test lab"]
 ```
 
 ---

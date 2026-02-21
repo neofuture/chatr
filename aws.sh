@@ -1,11 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # Chatr — Deploy to AWS
-# Run this locally to copy deployAWS.sh to the server and execute it.
-# Usage: bash aws.sh
+# Run this locally: bash aws.sh
 # =============================================================================
-
-set -e
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -19,18 +16,20 @@ SCRIPT="./deployAWS.sh"
 
 # ── Checks ────────────────────────────────────────────────────────────────────
 [ ! -f "$KEY" ]    && error "SSH key not found at $KEY"
-[ ! -f "$SCRIPT" ] && error "Deploy script not found at $SCRIPT"
+[ ! -f "$SCRIPT" ] && error "Deploy script not found: $SCRIPT"
 
 # ── Copy ──────────────────────────────────────────────────────────────────────
 info "Copying deployAWS.sh to server..."
-scp -i "$KEY" "$SCRIPT" "$SERVER:~/deployAWS.sh"
+scp -i "$KEY" -o StrictHostKeyChecking=no "$SCRIPT" "$SERVER:~/deployAWS.sh" \
+  || error "SCP failed — check your key and server IP"
 success "Script copied"
 
 # ── Run ───────────────────────────────────────────────────────────────────────
-info "Running deploy on server..."
+info "Running deploy on server (streaming output)..."
 echo ""
-ssh -i "$KEY" "$SERVER" "chmod +x ~/deployAWS.sh && ~/deployAWS.sh 2>&1"
+ssh -i "$KEY" -o StrictHostKeyChecking=no -tt "$SERVER" \
+  "bash ~/deployAWS.sh" \
+  || error "Deploy script exited with an error — check output above"
 
 echo ""
 success "Deploy complete!"
-

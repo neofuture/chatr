@@ -25,7 +25,7 @@ flowchart LR
     A -->|sendPasswordResetEmail| B
     B --> C{MAILTRAP_API_KEY set?}
     C -- Yes --> D[MailtrapClient.send]
-    C -- No --> E[console.log only\ndev fallback]
+    C -- No --> E[console.log only<br/>dev fallback]
     D --> F[Recipient inbox]
 ```
 
@@ -124,7 +124,7 @@ Handles audio waveform generation for uploaded audio messages.
 ```mermaid
 flowchart TD
     A[POST /api/messages/upload audio file] --> B[generateWaveformFromFile]
-    B --> C[music-metadata parseFile\nget duration only]
+    B --> C[music-metadata parseFile<br/>get duration only]
     C --> D[generatePlaceholderWaveform]
     D --> E[Return placeholder + duration to client immediately]
     E --> F[Client decodes audio with OfflineAudioContext]
