@@ -1,0 +1,2686 @@
+'use client';
+
+import { useEffect, useState, useRef } from 'react';
+import { useWebSocket } from '@/contexts/WebSocketContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
+import Select from '@/components/form-controls/Select/Select';
+import Input from '@/components/form-controls/Input/Input';
+import Button from '@/components/form-controls/Button/Button';
+import Lightbox from '@/components/Lightbox/Lightbox';
+import VoiceRecorder from '@/components/VoiceRecorder/VoiceRecorder';
+import MessageAudioPlayer from '@/components/MessageAudioPlayer/MessageAudioPlayer';
+
+interface LogEntry {
+  id: string;
+  type: 'sent' | 'received' | 'info' | 'error';
+  event: string;
+  data: any;
+  timestamp: Date;
+}
+
+interface Message {
+  id: string;
+  content: string;
+  senderId: string;
+  recipientId: string;
+  direction: 'sent' | 'received';
+  status: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'listening' | 'failed';
+  timestamp: Date;
+  type?: 'text' | 'image' | 'file' | 'voice' | 'audio';
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileType?: string;
+  duration?: number;
+  waveformData?: number[];
+}
+
+interface Conversation {
+  id: string;
+  type: 'direct' | 'group';
+  name: string;
+  participants: Array<{
+    id: string;
+    username: string;
+    profileImage?: string;
+  }>;
+  lastMessage?: {
+    content: string;
+    createdAt: Date;
+  };
+  lastMessageAt?: Date;
+  unreadCount: number;
+}
+
+export default function TestPage() {
+  const { socket, connected, connecting } = useWebSocket();
+  const { theme } = useTheme();
+  const { showToast } = useToast();
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messageQueue, setMessageQueue] = useState<Message[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [testRecipientId, setTestRecipientId] = useState('');
+  const [testMessage, setTestMessage] = useState('');
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [manualOffline, setManualOffline] = useState(false); // Manual override
+  const [availableUsers, setAvailableUsers] = useState<Array<{ id: string; username: string; email: string }>>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [isRecipientTyping, setIsRecipientTyping] = useState(false);
+  const [isUserTyping, setIsUserTyping] = useState(false); // Track if current user is typing
+  const [ghostTypingEnabled, setGhostTypingEnabled] = useState(false); // Ghost typing mode toggle
+  const [recipientGhostText, setRecipientGhostText] = useState(''); // What recipient is typing
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // File to upload
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null); // Preview URL for images
+  const [uploadingFile, setUploadingFile] = useState(false); // Upload in progress
+  const [lightboxOpen, setLightboxOpen] = useState(false); // Lightbox state
+  const [lightboxImageUrl, setLightboxImageUrl] = useState(''); // Image URL for lightbox
+  const [lightboxImageName, setLightboxImageName] = useState(''); // Image name for lightbox
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false); // Voice recording state
+  const [uploadingVoice, setUploadingVoice] = useState(false); // Voice upload in progress
+  const fileInputRef = useRef<HTMLInputElement>(null); // File input ref
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const userTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Auto-stop typing after 3s
+  const ghostTypingThrottleRef = useRef<NodeJS.Timeout | null>(null); // Throttle ghost typing updates
+  const logsEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isDark = theme === 'dark';
+
+  // Effective connection status (real connection AND manual override)
+  const effectivelyOnline = connected && !manualOffline;
+
+  // Watch for connection changes and update manual offline accordingly
+  useEffect(() => {
+    // If we're connected and manual offline is still true, it means socket reconnected
+    // but we manually disconnected it, so disconnect again
+    if (connected && manualOffline && socket) {
+      console.log('🔴 Socket reconnected but manual offline is active - disconnecting again');
+      socket.disconnect();
+    }
+  }, [connected, manualOffline, socket]);
+
+  // DEBUG: Log whenever messages state changes
+  useEffect(() => {
+    console.log('🔄 Messages state changed:', messages.map(m => ({
+      id: m.id.substring(0, 8),
+      direction: m.direction,
+      type: m.type,
+      status: m.status
+    })));
+  }, [messages]);
+
+  // Get current user
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData && userData !== 'undefined') {
+      try {
+        const user = JSON.parse(userData);
+        setCurrentUserId(user.id);
+        addLog('info', 'user:loaded', { userId: user.id, username: user.username });
+      } catch (e) {
+        addLog('error', 'user:parse-failed', { error: e });
+      }
+    }
+  }, []);
+
+  // Fetch available users for recipient dropdown
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const token = localStorage.getItem('token');
+      if (!token || !currentUserId) return;
+
+      setLoadingUsers(true);
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Filter out current user and only show verified users
+          const otherUsers = data.users
+            .filter((u: any) => u.id !== currentUserId && u.emailVerified)
+            .map((u: any) => ({
+              id: u.id,
+              username: u.username,
+              email: u.email || 'No email',
+            }));
+
+          setAvailableUsers(otherUsers);
+
+          // Auto-select first user if available and no user selected yet
+          if (otherUsers.length > 0 && !testRecipientId) {
+            setTestRecipientId(otherUsers[0].id);
+            addLog('info', 'recipient:auto-selected', {
+              userId: otherUsers[0].id,
+              username: otherUsers[0].username
+            });
+          }
+
+          addLog('info', 'users:loaded', { count: otherUsers.length });
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
+  }, [currentUserId]);
+
+  // Fetch conversations
+  useEffect(() => {
+    const fetchConversations = async () => {
+      const token = localStorage.getItem('token');
+      if (!token || !currentUserId) return;
+
+      setLoadingConversations(true);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/conversations`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setConversations(data.conversations || []);
+          addLog('info', 'conversations:loaded', { count: data.conversations?.length || 0 });
+
+          // Auto-select first conversation if available
+          if (data.conversations && data.conversations.length > 0 && !selectedConversation) {
+            const firstConv = data.conversations[0];
+            setSelectedConversation(firstConv);
+
+            // Set recipient ID for the selected conversation
+            const otherParticipant = firstConv.participants.find((p: any) => p.id !== currentUserId);
+            if (otherParticipant) {
+              setTestRecipientId(otherParticipant.id);
+            }
+
+            // Load messages for this conversation
+            loadConversationMessages(firstConv.id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch conversations:', error);
+      } finally {
+        setLoadingConversations(false);
+      }
+    };
+
+    fetchConversations();
+  }, [currentUserId]);
+
+  // Load messages for a conversation
+  const loadConversationMessages = async (conversationId: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/conversations/${conversationId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const conversation = data.conversation;
+
+        // Convert messages to our Message format
+        const formattedMessages = conversation.messages.map((msg: any) => ({
+          id: msg.id,
+          content: msg.content,
+          senderId: msg.senderId,
+          recipientId: msg.recipientId,
+          direction: msg.senderId === currentUserId ? 'sent' : 'received',
+          type: msg.type || 'text',
+          status: msg.status || 'delivered',
+          timestamp: new Date(msg.createdAt),
+          fileUrl: msg.fileUrl,
+          fileName: msg.fileName,
+          fileSize: msg.fileSize,
+          fileType: msg.fileType,
+          duration: msg.duration,
+          waveformData: msg.waveformData ? JSON.parse(msg.waveformData) : undefined,
+        }));
+
+        setMessages(formattedMessages);
+        addLog('info', 'conversation:loaded', {
+          conversationId,
+          messageCount: formattedMessages.length
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load conversation:', error);
+    }
+  };
+
+  // Fetch available users for recipient dropdown
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const token = localStorage.getItem('token');
+      if (!token || !currentUserId) return;
+
+      setLoadingUsers(true);
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Filter out current user and only show verified users
+          const otherUsers = data.users
+            .filter((u: any) => u.id !== currentUserId && u.emailVerified)
+            .map((u: any) => ({
+              id: u.id,
+              username: u.username,
+              email: u.email || 'No email',
+            }));
+
+          setAvailableUsers(otherUsers);
+
+          // Don't auto-select if we already have a conversation selected
+          if (otherUsers.length > 0 && !testRecipientId && !selectedConversation) {
+            setTestRecipientId(otherUsers[0].id);
+            addLog('info', 'recipient:auto-selected', {
+              userId: otherUsers[0].id,
+              username: otherUsers[0].username
+            });
+          }
+
+          addLog('info', 'users:loaded', { count: otherUsers.length });
+        } else {
+          addLog('error', 'users:load-failed', { status: response.status });
+        }
+      } catch (error) {
+        addLog('error', 'users:fetch-error', { error });
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    if (currentUserId) {
+      fetchUsers();
+    }
+  }, [currentUserId]);
+
+  // Process message queue when going online
+  useEffect(() => {
+    if (effectivelyOnline && messageQueue.length > 0 && socket) {
+      addLog('info', 'queue:processing', { count: messageQueue.length });
+
+      // Process each queued message
+      const processQueue = async () => {
+        for (const queuedMsg of messageQueue) {
+          // Update status to sending
+          setMessages(prev => prev.map(m =>
+            m.id === queuedMsg.id ? { ...m, status: 'sending' } : m
+          ));
+
+          // Send the message
+          socket.emit('message:send', {
+            recipientId: queuedMsg.recipientId,
+            content: queuedMsg.content,
+            type: 'text',
+          }, (response: any) => {
+            if (response?.error) {
+              addLog('error', 'queue:send-failed', { messageId: queuedMsg.id, error: response.error });
+              setMessages(prev => prev.map(m =>
+                m.id === queuedMsg.id ? { ...m, status: 'failed' } : m
+              ));
+            } else {
+              addLog('info', 'queue:sent', { messageId: queuedMsg.id });
+            }
+          });
+
+          // Small delay between messages
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      };
+
+      processQueue().then(() => {
+        // Clear the queue after all messages are sent
+        setMessageQueue([]);
+        addLog('info', 'queue:cleared', { processedCount: messageQueue.length });
+      });
+    }
+  }, [effectivelyOnline, socket]); // Removed messageQueue from dependencies to avoid infinite loop
+
+  // Add log entry (filtered - only important activities)
+  const addLog = (type: LogEntry['type'], event: string, data: any) => {
+    // Filter out non-essential events - only keep message-related logs
+    const ignoredEvents = [
+      // Removed typing events - now shown for debugging
+      // 'typing:start',
+      // 'typing:stop',
+      // 'typing:status',
+      'user:status',
+      'presence:update',
+      'presence:request',
+      'presence:response',
+    ];
+
+    // Skip if event is in ignored list
+    if (ignoredEvents.includes(event)) {
+      return;
+    }
+
+    const logEntry: LogEntry = {
+      id: Date.now().toString() + Math.random(),
+      type,
+      event,
+      data,
+      timestamp: new Date(),
+    };
+    setLogs(prev => [logEntry, ...prev].slice(0, 100)); // Keep last 100
+    console.log(`[${type.toUpperCase()}] ${event}:`, data);
+  };
+
+  // Listen to all WebSocket events
+  useEffect(() => {
+    if (!socket) {
+      addLog('info', 'socket:not-initialized', {});
+      return;
+    }
+
+    addLog('info', 'socket:initialized', { connected, connecting });
+
+    // Listen for message events
+    const handleMessageReceived = (data: any) => {
+      addLog('received', 'message:received', data);
+
+      // Add to messages list
+      const newMessage: Message = {
+        id: data.id || Date.now().toString(),
+        content: data.content,
+        senderId: data.senderId,
+        recipientId: currentUserId,
+        direction: 'received',
+        status: 'delivered',
+        timestamp: new Date(data.timestamp || Date.now()),
+        type: data.type || 'text',
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        fileType: data.fileType,
+        duration: data.duration,
+        waveformData: data.waveformData,
+      };
+
+      console.log('📥 Received message:', newMessage);
+      console.log('📥 Waveform data details:', {
+        hasWaveform: !!newMessage.waveformData,
+        waveformLength: newMessage.waveformData?.length,
+        waveformType: typeof newMessage.waveformData,
+        isArray: Array.isArray(newMessage.waveformData),
+        firstSamples: newMessage.waveformData?.slice(0, 10),
+        lastSamples: newMessage.waveformData?.slice(-10),
+      });
+
+      setMessages(prev => [...prev, newMessage]);
+
+      // Update conversation list if conversationId is present
+      if (data.conversationId) {
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === data.conversationId) {
+            return {
+              ...conv,
+              lastMessage: {
+                content: data.content,
+                createdAt: new Date(data.timestamp || Date.now()),
+              },
+              lastMessageAt: new Date(data.timestamp || Date.now()),
+              unreadCount: conv.id === selectedConversation?.id ? conv.unreadCount : conv.unreadCount + 1,
+            };
+          }
+          return conv;
+        }));
+      }
+
+      // Send delivery receipt (but NOT for audio/voice - they should only be marked as read AFTER listening)
+      if (socket && data.type !== 'voice' && data.type !== 'audio') {
+        socket.emit('message:read', data.id);
+        addLog('sent', 'message:read', { messageId: data.id });
+      }
+    };
+
+    const handleMessageSent = (data: any) => {
+      addLog('received', 'message:sent', data);
+
+      // Update message status to sent
+      setMessages(prev => prev.map(m =>
+        m.recipientId === data.recipientId && m.status === 'sending'
+          ? { ...m, id: data.id || m.id, status: 'sent' }
+          : m
+      ));
+
+      // Update conversation list
+      if (data.conversationId) {
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === data.conversationId) {
+            return {
+              ...conv,
+              lastMessage: {
+                content: data.content,
+                createdAt: new Date(data.timestamp || Date.now()),
+              },
+              lastMessageAt: new Date(data.timestamp || Date.now()),
+            };
+          }
+          return conv;
+        }));
+
+        // Update selected conversation if it matches
+        if (selectedConversation?.id === data.conversationId) {
+          setSelectedConversation(prev => prev ? {
+            ...prev,
+            lastMessage: {
+              content: data.content,
+              createdAt: new Date(data.timestamp || Date.now()),
+            },
+            lastMessageAt: new Date(data.timestamp || Date.now()),
+          } : prev);
+        }
+      }
+    };
+
+    const handleMessageStatus = (data: any) => {
+      console.log('📬 Received message:status event:', data);
+      addLog('received', 'message:status', data);
+
+      // Update message status
+      setMessages(prev => {
+        const before = prev.find(m => m.id === data.messageId);
+        console.log(`📬 Updating message ${data.messageId} status: ${before?.status} → ${data.status}`);
+        return prev.map(m =>
+          m.id === data.messageId
+            ? { ...m, status: data.status }
+            : m
+        );
+      });
+    };
+
+    const handleTypingStatus = (data: any) => {
+      console.log('🔵 Typing status received:', data);
+      console.log('🔵 Current recipient ID:', testRecipientId);
+
+      // Log to system logs for debugging
+      addLog('received', 'typing:status', data);
+
+      // Backend sends: { userId, username, isTyping, type }
+      const senderId = data.userId;
+      const isTyping = data.isTyping;
+
+      // Only show typing indicator if it's from the selected recipient
+      if (senderId === testRecipientId) {
+        console.log(`✅ ${isTyping ? 'Showing' : 'Hiding'} typing indicator for:`, senderId);
+        setIsRecipientTyping(isTyping);
+
+        if (isTyping) {
+          // Clear any existing timeout
+          if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+          }
+
+          // Auto-hide typing indicator after 3 seconds
+          typingTimeoutRef.current = setTimeout(() => {
+            console.log('⏱️ Typing indicator timeout - hiding');
+            setIsRecipientTyping(false);
+          }, 3000);
+        } else {
+          // Clear timeout when stop is received
+          if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+          }
+
+          // Clear ghost text when typing stops
+          if (ghostTypingEnabled) {
+            setRecipientGhostText('');
+          }
+        }
+      } else {
+        console.log('❌ Ignoring typing from:', senderId, '(not selected recipient)');
+      }
+    };
+
+    // Handle ghost typing updates
+    const handleGhostTyping = (data: any) => {
+      const senderId = data.userId || data.senderId;
+      const text = data.text || '';
+
+      // Show ghost text if it's from the selected recipient (receiver doesn't need ghost mode enabled)
+      if (senderId === testRecipientId) {
+        setRecipientGhostText(text);
+        console.log('👻 Ghost typing update:', text.substring(0, 20) + (text.length > 20 ? '...' : ''));
+      }
+    };
+
+    // Handle audio listening status updates
+    const handleAudioListening = (data: any) => {
+      addLog('received', 'audio:listening', data);
+
+      console.log('📥 Received audio listening status:', data);
+      console.log('📥 Looking for message with ID:', data.messageId);
+      console.log('📥 Current messages:', messages.map(m => ({
+        id: m.id,
+        direction: m.direction,
+        type: m.type,
+        status: m.status
+      })));
+
+      // ONLY update to "listening" when isListening is true
+      // When false, the message:read handler will set it to "read" via message:status event
+      if (data.isListening) {
+        setMessages(prev => {
+          console.log('📥 BEFORE update, messages:', prev.map(m => ({ id: m.id, status: m.status })));
+          const found = prev.find(m => m.id === data.messageId);
+          console.log('📥 Found message?', !!found, found ? `Current status: ${found.status}` : 'NOT FOUND!');
+
+          const updated = prev.map(m =>
+            m.id === data.messageId
+              ? { ...m, status: 'listening' as any }
+              : m
+          );
+
+          const updatedMsg = updated.find(m => m.id === data.messageId);
+          console.log('📥 AFTER update:', updatedMsg ? `Status is now: ${updatedMsg.status}` : 'MESSAGE NOT FOUND!');
+          console.log('📥 Updated array:', updated.map(m => ({ id: m.id, status: m.status })));
+
+          return updated;
+        });
+      } else {
+        console.log('📥 Listening stopped - waiting for message:status to update to read');
+      }
+    };
+
+    // Listen to important WebSocket events only (messages and connection)
+    const events = [
+      'connect',
+      'disconnect',
+      'connect_error',
+      'error',
+      // Typing and presence events are handled but not logged (filtered in addLog)
+    ];
+
+    const handlers: Record<string, (data: any) => void> = {};
+
+    events.forEach(event => {
+      handlers[event] = (data: any) => {
+        addLog('received', event, data);
+      };
+      socket.on(event, handlers[event]);
+    });
+
+    // Add message-specific handlers (these ARE logged)
+    socket.on('message:received', handleMessageReceived);
+    socket.on('message:sent', handleMessageSent);
+    socket.on('message:status', handleMessageStatus);
+
+    // Add typing handler (NOT logged but displayed in messages view)
+    socket.on('typing:status', handleTypingStatus);
+
+    // Add audio listening handler
+    socket.on('audio:listening', handleAudioListening);
+
+    // Add ghost typing handler (real-time typing preview)
+    socket.on('ghost:typing', handleGhostTyping);
+
+    // Handle reconnection - fetch missed messages
+    const handleReconnect = async () => {
+      console.log('🔄 Reconnected - checking for missed messages...');
+      addLog('info', 'reconnect:sync-messages', { timestamp: new Date() });
+
+      // Fetch messages from last 24 hours (or use stored last message timestamp)
+      try {
+        const token = localStorage.getItem('token');
+        if (!token || !testRecipientId) {
+          console.log('⏭️ Skipping missed messages sync - no recipient selected');
+          return;
+        }
+
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Last 24 hours
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/messages/history?userId=${testRecipientId}&since=${since}&limit=50`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`📬 Fetched ${data.messages?.length || 0} missed messages`);
+
+          if (data.messages && data.messages.length > 0) {
+            // Add missed messages to the UI
+            const newMessages = data.messages
+              .filter((msg: any) => !messages.find(m => m.id === msg.id)) // Avoid duplicates
+              .map((msg: any) => ({
+                id: msg.id,
+                content: msg.content,
+                senderId: msg.senderId,
+                recipientId: msg.recipientId,
+                direction: msg.senderId === currentUserId ? 'sent' : 'received',
+                type: msg.type || 'text',
+                status: msg.status || 'delivered',
+                timestamp: new Date(msg.createdAt),
+                fileUrl: msg.fileUrl,
+                fileName: msg.fileName,
+                fileSize: msg.fileSize,
+                fileType: msg.fileType,
+                duration: msg.duration,
+                waveformData: msg.waveformData ? JSON.parse(msg.waveformData) : undefined,
+              }));
+
+            if (newMessages.length > 0) {
+              setMessages(prev => [...prev, ...newMessages].sort((a, b) =>
+                a.timestamp.getTime() - b.timestamp.getTime()
+              ));
+              showToast(`📬 Received ${newMessages.length} missed message(s)`, 'success');
+              console.log(`✅ Added ${newMessages.length} missed messages to UI`);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch missed messages:', error);
+        addLog('error', 'reconnect:sync-failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+      }
+    };
+
+    socket.on('connect', handleReconnect);
+
+    return () => {
+      events.forEach(event => {
+        if (handlers[event]) {
+          socket.off(event, handlers[event]);
+        }
+      });
+      socket.off('message:received', handleMessageReceived);
+      socket.off('message:sent', handleMessageSent);
+      socket.off('message:status', handleMessageStatus);
+      socket.off('typing:status', handleTypingStatus);
+      socket.off('audio:listening', handleAudioListening);
+      socket.off('ghost:typing', handleGhostTyping);
+      socket.off('connect', handleReconnect);
+
+      // Clean up timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (userTypingTimeoutRef.current) {
+        clearTimeout(userTypingTimeoutRef.current);
+      }
+    };
+  }, [socket, connected, connecting, currentUserId, testRecipientId]);
+
+  // Auto-scroll logs
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs.length]);
+
+  // Auto-scroll messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  // Test: Send message
+  const testSendMessage = () => {
+    if (!testRecipientId) {
+      showToast('Select a conversation or start a new one', 'error');
+      return;
+    }
+    if (!testMessage) {
+      showToast('Enter test message', 'error');
+      return;
+    }
+
+    // Stop typing indicator when sending
+    if (isUserTyping && socket && effectivelyOnline) {
+      socket.emit('typing:stop', { recipientId: testRecipientId });
+      setIsUserTyping(false);
+      if (userTypingTimeoutRef.current) {
+        clearTimeout(userTypingTimeoutRef.current);
+      }
+    }
+
+    // Clear ghost typing when sending message
+    if (ghostTypingEnabled && socket && effectivelyOnline && testRecipientId) {
+      socket.emit('ghost:typing', {
+        recipientId: testRecipientId,
+        text: '' // Clear the ghost text
+      });
+      console.log('👻 Cleared ghost typing (message sent)');
+    }
+
+    const newMessage: Message = {
+      id: Date.now().toString() + Math.random(),
+      content: testMessage,
+      senderId: currentUserId,
+      recipientId: testRecipientId,
+      direction: 'sent',
+      status: effectivelyOnline ? 'sending' : 'queued',
+      timestamp: new Date(),
+    };
+
+    // Add to messages list
+    setMessages(prev => [...prev, newMessage]);
+
+    if (!socket || !effectivelyOnline) {
+      // Add to queue for later
+      setMessageQueue(prev => [...prev, newMessage]);
+      addLog('info', 'message:queued', { messageId: newMessage.id, queueLength: messageQueue.length + 1 });
+      showToast(`Message queued (${manualOffline ? 'manually offline' : 'disconnected'})`, 'info');
+      setTestMessage('');
+      return;
+    }
+
+    // Send immediately with conversationId if available
+    addLog('sent', 'message:send', {
+      recipientId: testRecipientId,
+      conversationId: selectedConversation?.id,
+      content: testMessage
+    });
+
+    socket.emit('message:send', {
+      recipientId: testRecipientId,
+      conversationId: selectedConversation?.id, // Include conversation ID
+      content: testMessage,
+      type: 'text',
+    }, (response: any) => {
+      if (response?.error) {
+        addLog('error', 'message:send-failed', { error: response.error });
+        setMessages(prev => prev.map(m =>
+          m.id === newMessage.id ? { ...m, status: 'failed' } : m
+        ));
+      }
+    });
+
+    setTestMessage('');
+    showToast('Message sent', 'success');
+  };
+
+  // Handle message input changes with automatic typing indicators
+  const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setTestMessage(value);
+
+    // Only send typing indicators if recipient is selected and online
+    if (!testRecipientId || !socket || !effectivelyOnline) {
+      return;
+    }
+
+    // If user starts typing and wasn't already typing, send typing:start
+    if (value.length > 0 && !isUserTyping) {
+      socket.emit('typing:start', { recipientId: testRecipientId });
+      setIsUserTyping(true);
+      console.log('🔵 Sent typing:start (initial)');
+    }
+
+    // Send ghost typing update (throttled) if enabled
+    if (ghostTypingEnabled) {
+      // Clear existing throttle
+      if (ghostTypingThrottleRef.current) {
+        clearTimeout(ghostTypingThrottleRef.current);
+      }
+
+      // Throttle ghost typing updates to every 100ms (faster for real-time feel)
+      ghostTypingThrottleRef.current = setTimeout(() => {
+        if (socket && effectivelyOnline && testRecipientId) {
+          socket.emit('ghost:typing', {
+            recipientId: testRecipientId,
+            text: value
+          });
+          console.log('👻 Sent ghost typing update:', value.substring(0, 20) + (value.length > 20 ? '...' : ''));
+        }
+      }, 100);
+    }
+
+    // Clear existing timeout
+    if (userTypingTimeoutRef.current) {
+      clearTimeout(userTypingTimeoutRef.current);
+    }
+
+    // If there's text, keep sending typing:start every 2 seconds
+    if (value.length > 0) {
+      userTypingTimeoutRef.current = setTimeout(() => {
+        if (socket && effectivelyOnline && testRecipientId) {
+          // Send another typing:start to keep indicator alive
+          socket.emit('typing:start', { recipientId: testRecipientId });
+          console.log('🔵 Re-sent typing:start (keep-alive)');
+
+          // Set timeout to stop after 3 seconds of no new input
+          userTypingTimeoutRef.current = setTimeout(() => {
+            if (socket && effectivelyOnline) {
+              socket.emit('typing:stop', { recipientId: testRecipientId });
+              setIsUserTyping(false);
+              console.log('🔵 Auto-sent typing:stop (inactivity timeout)');
+            }
+          }, 3000);
+        }
+      }, 2000); // Send keep-alive every 2 seconds
+    } else {
+      // If input is cleared, immediately stop typing
+      if (isUserTyping) {
+        socket.emit('typing:stop', { recipientId: testRecipientId });
+        setIsUserTyping(false);
+        console.log('🔵 Sent typing:stop (input cleared)');
+      }
+
+      // Clear ghost text when input is cleared
+      if (ghostTypingEnabled && socket && effectivelyOnline && testRecipientId) {
+        socket.emit('ghost:typing', {
+          recipientId: testRecipientId,
+          text: ''
+        });
+      }
+    }
+  };
+
+  // Test: Typing indicator
+  const testTypingStart = () => {
+    if (!socket || !effectivelyOnline) {
+      showToast('WebSocket not connected', 'error');
+      return;
+    }
+    if (!testRecipientId) {
+      showToast('Enter recipient ID', 'error');
+      return;
+    }
+
+    socket.emit('typing:start', { recipientId: testRecipientId });
+    showToast('Typing indicator sent', 'success');
+  };
+
+  const testTypingStop = () => {
+    if (!socket || !effectivelyOnline) {
+      showToast('WebSocket not connected', 'error');
+      return;
+    }
+    if (!testRecipientId) {
+      showToast('Enter recipient ID', 'error');
+      return;
+    }
+
+    socket.emit('typing:stop', { recipientId: testRecipientId });
+    showToast('Typing stop sent', 'success');
+  };
+
+  // Handle audio listening status - notify sender when recipient is listening
+  const handleAudioPlayStatus = (messageId: string, senderId: string, isPlaying: boolean) => {
+    console.log('🎵 Audio play status change:', {
+      messageId,
+      senderId,
+      isPlaying,
+      currentUserId,
+      'I am': currentUserId === senderId ? 'SENDER' : 'RECIPIENT'
+    });
+
+    // Emit listening status to the sender (like a read receipt)
+    if (socket && effectivelyOnline) {
+      socket.emit('audio:listening', {
+        messageId,
+        recipientId: senderId, // The person who sent the audio (we're listening to their message)
+        isListening: isPlaying,
+      });
+
+      console.log('📤 Emitted audio:listening to sender:', {
+        messageId,
+        toUserId: senderId,
+        isListening: isPlaying
+      });
+
+      addLog('sent', 'audio:listening', {
+        messageId,
+        recipientId: senderId,
+        isListening: isPlaying,
+      });
+
+      // When stopping (audio ended or paused), mark as read
+      if (!isPlaying) {
+        console.log('📤 Marking audio as read after listening');
+        socket.emit('message:read', messageId);
+        addLog('sent', 'message:read', { messageId });
+      }
+    }
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      showToast('File too large (max 10MB)', 'error');
+      return;
+    }
+
+    setSelectedFile(file);
+
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFilePreviewUrl(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreviewUrl(null);
+    }
+
+    console.log('📎 File selected:', file.name, file.type, file.size);
+  };
+
+  // Cancel file selection
+  const cancelFileSelection = () => {
+    setSelectedFile(null);
+    setFilePreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Send file
+  const sendFile = async () => {
+    if (!selectedFile || !testRecipientId) return;
+    if (!socket || !effectivelyOnline) {
+      showToast('Cannot send file while offline', 'error');
+      return;
+    }
+
+    setUploadingFile(true);
+
+    try {
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('recipientId', testRecipientId);
+
+      // Determine type based on file mime type
+      let messageType = 'file';
+      if (selectedFile.type.startsWith('image/')) {
+        messageType = 'image';
+      } else if (selectedFile.type.startsWith('audio/')) {
+        messageType = 'audio'; // MP3, etc. treated as audio
+      }
+
+      formData.append('type', messageType);
+
+      // Upload to backend
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/messages/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+
+      console.log('📎 File upload response:', data);
+
+      // Generate random waveform for audio files (since we don't have real waveform for MP3)
+      let waveformData: number[] | undefined = undefined;
+      let duration: number | undefined = undefined;
+
+      if (messageType === 'audio') {
+        // Generate random waveform (60 samples for ~1 second at 60fps)
+        // You can adjust this based on actual file duration if available
+        const sampleCount = 180; // 3 seconds worth
+        waveformData = Array.from({ length: sampleCount }, () =>
+          0.1 + Math.random() * 0.9 // Random amplitude between 0.1 and 1.0
+        );
+
+        console.log('🎵 Generated random waveform for audio file:', {
+          samples: sampleCount,
+          fileName: selectedFile.name,
+        });
+      }
+
+      // Create message with file info
+      const newMessage: Message = {
+        id: data.messageId || Date.now().toString(),
+        content: selectedFile.name,
+        senderId: currentUserId,
+        recipientId: testRecipientId,
+        direction: 'sent',
+        status: 'sent',
+        timestamp: new Date(),
+        type: messageType as 'text' | 'image' | 'file' | 'voice' | 'audio',
+        fileUrl: data.fileUrl,
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        fileType: selectedFile.type,
+        ...(messageType === 'audio' && { waveformData, duration }),
+      };
+
+      // Add to local messages
+      setMessages(prev => [...prev, newMessage]);
+
+      // Send file message via WebSocket to recipient
+      if (socket && effectivelyOnline) {
+        socket.emit('message:send', {
+          recipientId: testRecipientId,
+          content: selectedFile.name,
+          type: messageType,
+          fileUrl: data.fileUrl,
+          fileName: selectedFile.name,
+          fileSize: selectedFile.size,
+          fileType: selectedFile.type,
+          ...(messageType === 'audio' && { waveformData, duration }),
+        });
+        console.log('📎 Sent file message via WebSocket:', {
+          recipientId: testRecipientId,
+          fileName: selectedFile.name,
+          type: messageType,
+          fileUrl: data.fileUrl,
+        });
+      }
+
+      const fileTypeLabel = messageType === 'image' ? 'Image' : messageType === 'audio' ? 'Audio' : 'File';
+      showToast(`${fileTypeLabel} sent successfully`, 'success');
+
+      // Clear selection
+      cancelFileSelection();
+
+    } catch (error) {
+      console.error('File upload error:', error);
+      showToast('Failed to send file', 'error');
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  // Handle voice recording complete
+  const handleVoiceRecordingComplete = async (audioBlob: Blob, duration: number, waveformData: number[]) => {
+    console.log('🎤 Voice recording complete:', {
+      blobSize: audioBlob.size,
+      blobType: audioBlob.type,
+      duration,
+      waveformLength: waveformData.length,
+      waveformSample: waveformData.slice(0, 5),
+    });
+
+    if (!testRecipientId) {
+      showToast('Select a recipient first', 'error');
+      setIsRecordingVoice(false);
+      return;
+    }
+
+    setUploadingVoice(true);
+    setIsRecordingVoice(false);
+
+    try {
+      // Determine file extension based on blob type
+      const fileExtension = audioBlob.type.includes('mp4') ? 'm4a' : 'webm';
+      const fileName = `voice-note.${fileExtension}`;
+
+      console.log('🎤 Preparing upload:', { fileName, type: audioBlob.type });
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', audioBlob, fileName);
+      formData.append('recipientId', testRecipientId);
+      formData.append('type', 'voice');
+      formData.append('duration', duration.toString());
+      formData.append('waveformData', JSON.stringify(waveformData));
+
+      console.log('🎤 Uploading voice note...', {
+        fileSize: audioBlob.size,
+        duration,
+        waveformDataLength: waveformData.length,
+        waveformSample: waveformData.slice(0, 10), // First 10 samples
+        waveformMin: Math.min(...waveformData),
+        waveformMax: Math.max(...waveformData),
+        waveformAvg: waveformData.reduce((a, b) => a + b, 0) / waveformData.length,
+      });
+
+      // Upload to backend
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/messages/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🎤 Upload failed:', response.status, errorText);
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      console.log('🎤 Voice upload response:', data);
+
+      // Create message with voice info
+      const newMessage: Message = {
+        id: data.messageId || Date.now().toString(),
+        content: 'Voice Note',
+        senderId: currentUserId,
+        recipientId: testRecipientId,
+        direction: 'sent',
+        status: 'sent',
+        timestamp: new Date(),
+        type: 'voice',
+        fileUrl: data.fileUrl,
+        duration: duration,
+        waveformData: waveformData,
+      };
+
+      console.log('🎤 Created voice message:', {
+        ...newMessage,
+        waveformLength: waveformData?.length,
+      });
+
+      console.log('🎤 Waveform data in message:', {
+        hasWaveform: !!newMessage.waveformData,
+        waveformLength: newMessage.waveformData?.length,
+        isArray: Array.isArray(newMessage.waveformData),
+        firstSamples: newMessage.waveformData?.slice(0, 10),
+        lastSamples: newMessage.waveformData?.slice(-10),
+        minValue: Math.min(...(newMessage.waveformData || [])),
+        maxValue: Math.max(...(newMessage.waveformData || [])),
+      });
+
+      // Add to local messages
+      setMessages(prev => [...prev, newMessage]);
+
+      // NOTE: Don't emit message:send here! The HTTP upload endpoint already:
+      // 1. Saves the message to database
+      // 2. Emits message:received to recipient via WebSocket
+      // If we emit message:send here, it creates a DUPLICATE with a different ID!
+
+      showToast('Voice note sent successfully', 'success');
+
+    } catch (error) {
+      console.error('Voice upload error:', error);
+      showToast('Failed to send voice note', 'error');
+    } finally {
+      setUploadingVoice(false);
+    }
+  };
+
+  // Cancel voice recording
+  const handleCancelVoiceRecording = () => {
+    setIsRecordingVoice(false);
+  };
+
+  // Test: Presence
+  const testPresenceUpdate = (status: 'online' | 'away') => {
+    if (!socket || !effectivelyOnline) {
+      showToast('WebSocket not connected', 'error');
+      return;
+    }
+
+    socket.emit('presence:update', status);
+    showToast(`Presence updated: ${status}`, 'success');
+  };
+
+  const testPresenceRequest = () => {
+    if (!socket || !effectivelyOnline) {
+      showToast('WebSocket not connected', 'error');
+      return;
+    }
+    if (!testRecipientId) {
+      showToast('Enter recipient ID', 'error');
+      return;
+    }
+
+    socket.emit('presence:request', [testRecipientId]);
+    showToast('Presence requested', 'success');
+  };
+
+  // Clear logs
+  const clearLogs = () => {
+    setLogs([]);
+    addLog('info', 'logs:cleared', {});
+  };
+
+  // Clear messages
+  const clearMessages = () => {
+    setMessages([]);
+    addLog('info', 'messages:cleared', {});
+  };
+
+  // Copy logs to clipboard
+  const copyLogs = () => {
+    const logsText = logs.map(log =>
+      `[${log.timestamp.toLocaleTimeString()}] [${log.type.toUpperCase()}] ${log.event}: ${JSON.stringify(log.data)}`
+    ).join('\n');
+
+    navigator.clipboard.writeText(logsText);
+    showToast('Logs copied to clipboard', 'success');
+  };
+
+  return (
+    <>
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes typingDot1 {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-10px); }
+        }
+        
+        @keyframes typingDot2 {
+          0%, 60%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-10px); }
+        }
+        
+        @keyframes typingDot3 {
+          0%, 60%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+      `}</style>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%', // Fit within parent (app layout)
+        width: '100%',  // Full width of parent
+        backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+        overflow: 'hidden', // No scrolling on main container
+      }}>
+
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        overflow: 'hidden', // No scrolling
+        height: '100%', // Full height
+      }}>
+        {/* Left Panel - Controls */}
+        <div style={{
+          width: '350px',
+          minWidth: '350px', // Prevent shrinking
+          maxWidth: '350px', // Prevent growing
+          height: '100%',
+          padding: '20px',
+          backgroundColor: isDark ? '#1e293b' : '#ffffff',
+          borderRight: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+        }}>
+          {/* Connection Status - Compact */}
+          <div style={{
+            padding: '12px',
+            marginBottom: '20px',
+            borderRadius: '8px',
+            backgroundColor: effectivelyOnline
+              ? 'rgba(16, 185, 129, 0.1)'
+              : 'rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${effectivelyOnline ? '#10b981' : '#ef4444'}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>
+                  {connecting ? '🟠' : effectivelyOnline ? '🟢' : '🔴'}
+                </span>
+                <span style={{ fontWeight: '600', fontSize: '14px' }}>
+                  {connecting ? 'Connecting...' : effectivelyOnline ? 'Online' : manualOffline ? 'Offline (Manual)' : 'Offline'}
+                </span>
+              </div>
+            </div>
+            <div style={{ fontSize: '11px', opacity: 0.7 }}>
+              User: <code style={{
+                padding: '2px 4px',
+                backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.1)',
+                borderRadius: '4px',
+                fontFamily: 'monospace',
+              }}>{currentUserId?.substring(0, 8) || 'N/A'}...</code>
+            </div>
+          </div>
+
+          {/* Manual Offline Toggle */}
+          <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px',
+              backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)',
+              borderRadius: '6px',
+              marginTop: '8px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '14px', fontWeight: '500' }}>Manual Offline</span>
+                <span style={{ fontSize: '11px', opacity: 0.7 }}>(for testing)</span>
+              </div>
+              <label style={{
+                position: 'relative',
+                display: 'inline-block',
+                width: '44px',
+                height: '24px',
+                cursor: 'pointer',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={manualOffline}
+                  onChange={(e) => {
+                    const newValue = e.target.checked;
+                    setManualOffline(newValue);
+                    addLog('info', 'manual-offline:toggled', { offline: newValue });
+
+                    if (newValue) {
+                      // Actually disconnect the socket
+                      if (socket) {
+                        console.log('🔴 Manually disconnecting socket...');
+                        socket.disconnect();
+                        addLog('info', 'socket:manual-disconnect', { reason: 'manual-offline-toggle' });
+                      }
+                      showToast('🔴 Manually disconnected - fully offline', 'info');
+                    } else {
+                      // Reconnect the socket
+                      if (socket) {
+                        console.log('🟢 Manually reconnecting socket...');
+                        socket.connect();
+                        addLog('info', 'socket:manual-reconnect', { reason: 'manual-online-toggle' });
+                      }
+                      showToast('🟢 Reconnecting...', 'success');
+                    }
+                  }}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute',
+                  cursor: 'pointer',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: manualOffline ? '#ef4444' : '#94a3b8',
+                  transition: '0.3s',
+                  borderRadius: '24px',
+                }}>
+                  <span style={{
+                    position: 'absolute',
+                    content: '""',
+                    height: '18px',
+                    width: '18px',
+                    left: manualOffline ? '23px' : '3px',
+                    bottom: '3px',
+                    backgroundColor: 'white',
+                    transition: '0.3s',
+                    borderRadius: '50%',
+                  }} />
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Test Controls */}
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+              ➕ New Conversation
+            </h3>
+
+            {loadingUsers ? (
+              <div style={{
+                padding: '10px',
+                textAlign: 'center',
+                fontSize: '14px',
+                opacity: 0.7,
+              }}>
+                Loading users...
+              </div>
+            ) : availableUsers.length === 0 ? (
+              <div style={{
+                padding: '10px',
+                textAlign: 'center',
+                fontSize: '14px',
+                opacity: 0.7,
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                borderRadius: '8px',
+                border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+              }}>
+                No other users available
+              </div>
+            ) : (
+              <div>
+                <Select
+                  label="Start chat with..."
+                  value=""
+                  onChange={async (e) => {
+                    const selectedUserId = e.target.value;
+                    if (!selectedUserId) return;
+
+                    const selectedUser = availableUsers.find(u => u.id === selectedUserId);
+                    addLog('info', 'new-conversation:initiated', {
+                      userId: selectedUserId,
+                      username: selectedUser?.username
+                    });
+
+                    // Check if conversation already exists
+                    const existingConv = conversations.find(conv =>
+                      conv.type === 'direct' &&
+                      conv.participants.some(p => p.id === selectedUserId)
+                    );
+
+                    if (existingConv) {
+                      // Select existing conversation
+                      setSelectedConversation(existingConv);
+                      setTestRecipientId(selectedUserId);
+                      loadConversationMessages(existingConv.id);
+                      showToast('Conversation already exists', 'info');
+                    } else {
+                      // Create new conversation by sending first message or get/create via API
+                      try {
+                        const token = localStorage.getItem('token');
+                        const response = await fetch(
+                          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/conversations/direct/${selectedUserId}`,
+                          {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                            },
+                          }
+                        );
+
+                        if (response.ok) {
+                          const data = await response.json();
+                          const newConv = data.conversation;
+
+                          // Format conversation
+                          const formattedConv: Conversation = {
+                            id: newConv.id,
+                            type: 'direct',
+                            name: selectedUser?.username || 'Unknown',
+                            participants: newConv.participants.map((p: any) => ({
+                              id: p.user.id,
+                              username: p.user.username,
+                              profileImage: p.user.profileImage,
+                            })),
+                            unreadCount: 0,
+                          };
+
+                          // Add to conversations list
+                          setConversations(prev => [formattedConv, ...prev]);
+                          setSelectedConversation(formattedConv);
+                          setTestRecipientId(selectedUserId);
+                          setMessages([]); // Clear messages for new conversation
+
+                          showToast(`Started conversation with ${selectedUser?.username}`, 'success');
+                          addLog('info', 'conversation:created', {
+                            conversationId: newConv.id,
+                            userId: selectedUserId,
+                          });
+                        }
+                      } catch (error) {
+                        console.error('Failed to create conversation:', error);
+                        showToast('Failed to create conversation', 'error');
+                      }
+                    }
+
+                    // Reset select
+                    e.target.value = '';
+                  }}
+                >
+                  <option value="">-- Select a user to chat --</option>
+                  {availableUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.username} ({user.email})
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {/* Ghost Typing Mode Toggle */}
+          {testRecipientId && (
+            <div style={{
+              marginBottom: '20px',
+              padding: '12px',
+              backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)',
+              borderRadius: '8px',
+              border: `1px solid ${ghostTypingEnabled ? '#8b5cf6' : (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)')}`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                    👻 Ghost Typing Mode
+                  </div>
+                  <div style={{ fontSize: '11px', opacity: 0.7 }}>
+                    Show what you're typing in real-time
+                  </div>
+                </div>
+                <label style={{
+                  position: 'relative',
+                  display: 'inline-block',
+                  width: '44px',
+                  height: '24px',
+                  cursor: 'pointer',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={ghostTypingEnabled}
+                    onChange={(e) => {
+                      setGhostTypingEnabled(e.target.checked);
+                      if (!e.target.checked) {
+                        // Clear ghost text when disabling
+                        setRecipientGhostText('');
+                        if (socket && effectivelyOnline && testRecipientId) {
+                          socket.emit('ghost:typing', {
+                            recipientId: testRecipientId,
+                            text: ''
+                          });
+                        }
+                      }
+                      showToast(
+                        e.target.checked ? 'Ghost typing enabled' : 'Ghost typing disabled',
+                        e.target.checked ? 'success' : 'info'
+                      );
+                    }}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    cursor: 'pointer',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: ghostTypingEnabled ? '#8b5cf6' : '#94a3b8',
+                    transition: '0.3s',
+                    borderRadius: '24px',
+                  }}>
+                    <span style={{
+                      position: 'absolute',
+                      content: '""',
+                      height: '18px',
+                      width: '18px',
+                      left: ghostTypingEnabled ? '23px' : '3px',
+                      bottom: '3px',
+                      backgroundColor: 'white',
+                      transition: '0.3s',
+                      borderRadius: '50%',
+                    }}></span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Message Test */}
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+              💬 Message Test
+            </h3>
+            <Input
+              type="text"
+              value={testMessage}
+              onChange={handleMessageInputChange}
+              placeholder="Type test message"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  testSendMessage();
+                }
+              }}
+              style={{ marginBottom: '8px' }}
+            />
+            <Button
+              variant="orange"
+              fullWidth
+              onClick={testSendMessage}
+              disabled={!effectivelyOnline}
+            >
+              Send Message
+            </Button>
+
+            {/* Voice Note Button */}
+            <div style={{ marginTop: '8px' }}>
+              <Button
+                variant="purple"
+                fullWidth
+                onClick={() => setIsRecordingVoice(true)}
+                disabled={!effectivelyOnline || uploadingVoice || isRecordingVoice}
+                icon={<span>🎤</span>}
+              >
+                {uploadingVoice ? 'Uploading Voice Note...' : 'Record Voice Note'}
+              </Button>
+            </div>
+
+            {/* File Upload */}
+            <div style={{ marginTop: '12px' }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+                accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.zip"
+              />
+              <Button
+                variant="blue"
+                fullWidth
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!effectivelyOnline || uploadingFile}
+                icon={<span>📎</span>}
+              >
+                {uploadingFile ? 'Uploading...' : 'Attach File/Image'}
+              </Button>
+            </div>
+
+            {/* File Preview */}
+            {selectedFile && (
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                borderRadius: '8px',
+                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                border: `1px solid #3b82f6`,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: '600' }}>
+                    📎 {selectedFile.name}
+                  </div>
+                  <button
+                    onClick={cancelFileSelection}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      backgroundColor: '#ef4444',
+                      color: '#ffffff',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '8px' }}>
+                  {(selectedFile.size / 1024).toFixed(2)} KB • {selectedFile.type || 'Unknown type'}
+                </div>
+                {filePreviewUrl && (
+                  <img
+                    src={filePreviewUrl}
+                    alt="Preview"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '200px',
+                      borderRadius: '8px',
+                      marginBottom: '8px',
+                    }}
+                  />
+                )}
+                <Button
+                  variant="green"
+                  fullWidth
+                  onClick={sendFile}
+                  disabled={uploadingFile || !effectivelyOnline}
+                >
+                  {uploadingFile ? 'Sending...' : 'Send File'}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Typing Indicators Test */}
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+              ⌨️ Typing Indicators
+            </h3>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button
+                variant="blue"
+                onClick={testTypingStart}
+                disabled={!effectivelyOnline}
+                style={{ flex: 1 }}
+              >
+                Start
+              </Button>
+              <Button
+                variant="purple"
+                onClick={testTypingStop}
+                disabled={!effectivelyOnline}
+                style={{ flex: 1 }}
+              >
+                Stop
+              </Button>
+            </div>
+          </div>
+
+          {/* Presence Test */}
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+              👤 Presence
+            </h3>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <Button
+                variant="green"
+                onClick={() => testPresenceUpdate('online')}
+                disabled={!effectivelyOnline}
+                style={{ flex: 1 }}
+              >
+                Online
+              </Button>
+              <Button
+                variant="orange"
+                onClick={() => testPresenceUpdate('away')}
+                disabled={!effectivelyOnline}
+                style={{ flex: 1 }}
+              >
+                Away
+              </Button>
+            </div>
+            <Button
+              variant="purple"
+              fullWidth
+              onClick={testPresenceRequest}
+              disabled={!effectivelyOnline}
+            >
+              Request Status
+            </Button>
+          </div>
+        </div>
+
+        {/* Center Panel - Messages */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          height: '100%',
+          backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+        }}>
+          {/* Messages Header */}
+          <div style={{
+            height: '48px',
+            minHeight: '48px',
+            maxHeight: '48px',
+            padding: '12px 20px',
+            backgroundColor: isDark ? '#1e293b' : '#ffffff',
+            borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}>
+            <div>
+              <span style={{ fontWeight: '600' }}>💬 Messages</span>
+              <span style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }}>
+                ({messages.length})
+              </span>
+              {messageQueue.length > 0 && (
+                <span style={{
+                  marginLeft: '8px',
+                  fontSize: '12px',
+                  padding: '2px 8px',
+                  backgroundColor: '#f59e0b',
+                  color: '#ffffff',
+                  borderRadius: '12px',
+                  fontWeight: '600'
+                }}>
+                  {messageQueue.length} queued
+                </span>
+              )}
+            </div>
+            <button
+              onClick={clearMessages}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#ef4444',
+                color: '#ffffff',
+                fontSize: '14px',
+                cursor: 'pointer',
+              }}
+            >
+              🗑️ Clear
+            </button>
+          </div>
+
+          {/* Messages Content - this will be copied from the right panel below */}
+          <div style={{
+            position: 'relative',
+            flex: '1 1 0',
+            height: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            WebkitOverflowScrolling: 'touch',
+          }}>
+            {/* Message rendering will stay here - keeping existing implementation */}
+            {messages.length === 0 ? (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+                opacity: 0.6,
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '8px' }}>💬</div>
+                  <div style={{ fontSize: '14px' }}>No messages yet</div>
+                  <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>
+                    {selectedConversation
+                      ? 'Start chatting!'
+                      : 'Select a conversation or start a new one'}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Messages will render here - placeholder for now */}
+                <div>Messages rendering preserved below...</div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Right Panel - Split View: Conversations (Top) and System Logs (Bottom) */}
+        <div style={{
+          width: '400px',
+          minWidth: '400px',
+          maxWidth: '400px',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          height: '100%',
+        }}>
+
+          {/* CONVERSATIONS SECTION - TOP (50%) */}
+          <div style={{
+            position: 'relative',
+            height: '50%',
+            minHeight: '50%',
+            maxHeight: '50%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderBottom: `2px solid ${isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'}`,
+            overflow: 'hidden',
+          }}>
+            {/* Conversations Header */}
+            <div style={{
+              height: '48px',
+              minHeight: '48px',
+              maxHeight: '48px',
+              padding: '12px 20px',
+              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0, // Don't shrink
+            }}>
+              <div>
+                <span style={{ fontWeight: '600' }}>💬 Conversations</span>
+                <span style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }}>
+                  ({conversations.length})
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  backgroundColor: loadingConversations
+                    ? 'rgba(249, 115, 22, 0.1)'
+                    : 'rgba(16, 185, 129, 0.1)',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                }}>
+                  {loadingConversations ? '⏳ Loading...' : `✓ Loaded`}
+                </div>
+              </div>
+            </div>
+
+            {/* Conversations Content */}
+            <div style={{
+              position: 'relative', // Important for Chrome
+              flex: '1 1 0', // Flex with zero base - prevents content from expanding
+              height: 0, // Force flex to calculate height
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '12px',
+              WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+            }}>
+              {/* Loading State */}
+              {loadingConversations && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  opacity: 0.6,
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>⏳</div>
+                    <div style={{ fontSize: '14px' }}>Loading conversations...</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loadingConversations && conversations.length === 0 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  opacity: 0.6,
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>💬</div>
+                    <div style={{ fontSize: '14px', marginBottom: '4px' }}>No conversations yet</div>
+                    <div style={{ fontSize: '12px', opacity: 0.7 }}>
+                      Start a new conversation using the dropdown on the left
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Conversations List */}
+              {!loadingConversations && conversations.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {conversations.map(conv => {
+                    const isSelected = selectedConversation?.id === conv.id;
+                    const otherParticipants = conv.participants.filter(p => p.id !== currentUserId);
+                    const displayName = conv.type === 'group'
+                      ? conv.name
+                      : otherParticipants[0]?.username || 'Unknown';
+
+                    return (
+                      <div
+                        key={conv.id}
+                        onClick={() => {
+                          setSelectedConversation(conv);
+                          // Set recipient for direct messages
+                          if (conv.type === 'direct' && otherParticipants[0]) {
+                            setTestRecipientId(otherParticipants[0].id);
+                          }
+                          // Load messages for this conversation
+                          loadConversationMessages(conv.id);
+                          addLog('info', 'conversation:selected', {
+                            conversationId: conv.id,
+                            type: conv.type,
+                            name: displayName,
+                          });
+                        }}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '8px',
+                          backgroundColor: isSelected
+                            ? 'rgba(249, 115, 22, 0.2)'
+                            : isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+                          border: `1px solid ${isSelected ? '#f97316' : 'transparent'}`,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = isDark
+                              ? 'rgba(255, 255, 255, 0.1)'
+                              : 'rgba(0, 0, 0, 0.1)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.backgroundColor = isDark
+                              ? 'rgba(255, 255, 255, 0.05)'
+                              : 'rgba(0, 0, 0, 0.05)';
+                          }
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'space-between',
+                          marginBottom: '4px',
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            flex: 1,
+                          }}>
+                            <span style={{ fontSize: '20px' }}>
+                              {conv.type === 'group' ? '👥' : '👤'}
+                            </span>
+                            <span style={{
+                              fontWeight: isSelected ? '600' : '500',
+                              fontSize: '15px',
+                            }}>
+                              {displayName}
+                            </span>
+                          </div>
+                          {conv.unreadCount > 0 && (
+                            <span style={{
+                              backgroundColor: '#f97316',
+                              color: 'white',
+                              borderRadius: '12px',
+                              padding: '3px 10px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                            }}>
+                              {conv.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        {conv.lastMessage && (
+                          <div style={{
+                            fontSize: '13px',
+                            opacity: 0.7,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            marginBottom: '6px',
+                            paddingLeft: '28px', // Align with name (icon width + gap)
+                          }}>
+                            {conv.lastMessage.content}
+                          </div>
+                        )}
+                        <div style={{
+                          fontSize: '11px',
+                          opacity: 0.5,
+                          paddingLeft: '28px', // Align with name
+                        }}>
+                          {conv.lastMessageAt
+                            ? new Date(conv.lastMessageAt).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })
+                            : 'No messages'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* System Logs - Moved to bottom half */}
+          <div style={{
+            height: '50%',
+            minHeight: '50%',
+            maxHeight: '50%',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}>
+            {/* System Logs Header */}
+            <div style={{
+              height: '48px',
+              minHeight: '48px',
+              maxHeight: '48px',
+              padding: '12px 20px',
+              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0,
+            }}>
+              <div>
+                <span style={{ fontWeight: '600' }}>📊 System Logs</span>
+                <span style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }}>
+                  ({logs.length})
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={copyLogs}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                    color: isDark ? '#ffffff' : '#000000',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📋 Copy
+                </button>
+                <button
+                  onClick={clearLogs}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: '#ef4444',
+                    color: '#ffffff',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  🗑️ Clear
+                </button>
+              </div>
+            </div>
+
+            {/* Log Content */}
+            <div style={{
+              position: 'relative', // Important for Chrome
+              flex: '1 1 0', // Flex with zero base - prevents content from expanding
+              height: 0, // Force flex to calculate height
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '12px',
+              WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+            }}>
+              {logs.length === 0 ? (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  opacity: 0.6,
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📡</div>
+                    <div style={{ fontSize: '14px' }}>No system events yet</div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column-reverse', gap: '6px' }}>
+                  {logs.map((log) => {
+                    let bgColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)';
+                    let borderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                    let iconColor = '#94a3b8';
+
+                    if (log.type === 'sent') {
+                      bgColor = 'rgba(59, 130, 246, 0.1)';
+                      borderColor = '#3b82f6';
+                      iconColor = '#3b82f6';
+                    } else if (log.type === 'received') {
+                      bgColor = 'rgba(16, 185, 129, 0.1)';
+                      borderColor = '#10b981';
+                      iconColor = '#10b981';
+                    } else if (log.type === 'error') {
+                      bgColor = 'rgba(239, 68, 68, 0.1)';
+                      borderColor = '#ef4444';
+                      iconColor = '#ef4444';
+                    }
+
+                    return (
+                      <div
+                        key={log.id}
+                        style={{
+                          padding: '8px',
+                          borderRadius: '6px',
+                          backgroundColor: bgColor,
+                          border: `1px solid ${borderColor}`,
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '4px',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: iconColor, fontSize: '14px' }}>
+                              {log.type === 'sent' && '↗️'}
+                              {log.type === 'received' && '↙️'}
+                              {log.type === 'info' && 'ℹ️'}
+                              {log.type === 'error' && '⚠️'}
+                            </span>
+                            <span style={{ fontWeight: '600', fontSize: '13px' }}>
+                              {log.event}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '11px', opacity: 0.7 }}>
+                            {log.timestamp.toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <pre style={{
+                          fontSize: '11px',
+                          fontFamily: 'monospace',
+                          margin: 0,
+                          opacity: 0.8,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all',
+                          maxHeight: '100px',
+                          overflowY: 'auto',
+                        }}>
+                          {JSON.stringify(log.data, null, 2)}
+                        </pre>
+                      </div>
+                    );
+                  })}
+                  <div ref={logsEndRef} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* MESSAGES SECTION - BOTTOM (67% = bigger for better viewing) */}
+          <div style={{
+            position: 'relative', // Positioning context for Chrome
+            height: '67%',
+            minHeight: '67%', // Lock to exactly 67%
+            maxHeight: '67%', // Lock to exactly 67%
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden', // No overflow on container
+          }}>
+            {/* Messages Header */}
+            <div style={{
+              height: '48px', // Fixed header height (same as logs)
+              minHeight: '48px',
+              maxHeight: '48px',
+              padding: '12px 20px',
+              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0, // Don't shrink
+            }}>
+              <div>
+                <span style={{ fontWeight: '600' }}>💬 Messages</span>
+                <span style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }}>
+                  ({messages.length})
+                </span>
+                {messageQueue.length > 0 && (
+                  <span style={{
+                    marginLeft: '8px',
+                    fontSize: '12px',
+                    padding: '2px 8px',
+                    backgroundColor: '#f59e0b',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    fontWeight: '600'
+                  }}>
+                    {messageQueue.length} queued
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={clearMessages}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                }}
+              >
+                🗑️ Clear
+              </button>
+            </div>
+
+            {/* Messages Content */}
+            <div style={{
+              position: 'relative', // Important for Chrome
+              flex: '1 1 0', // Flex with zero base - prevents content from expanding
+              height: 0, // Force flex to calculate height
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+            }}>
+              {messages.length === 0 ? (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  opacity: 0.6,
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>💬</div>
+                    <div style={{ fontSize: '14px' }}>No messages yet</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {messages.map((msg, index) => {
+                    const isSent = msg.direction === 'sent';
+                    let statusColor = '#94a3b8';
+                    let statusText = 'Pending';
+
+                    if (msg.status === 'queued') {
+                      statusColor = '#f59e0b';
+                      statusText = 'Queued';
+                    } else if (msg.status === 'sending') {
+                      statusColor = '#3b82f6';
+                      statusText = 'Sending';
+                    } else if (msg.status === 'sent') {
+                      statusColor = '#10b981';
+                      statusText = 'Sent';
+                    } else if (msg.status === 'delivered') {
+                      statusColor = '#10b981';
+                      statusText = 'Delivered';
+                    } else if (msg.status === 'listening') {
+                      statusColor = '#8b5cf6'; // Purple for listening
+                      statusText = 'Listening';
+                    } else if (msg.status === 'read') {
+                      statusColor = '#3b82f6';
+                      // Show "Viewed" for images/files/voice/audio, "Read" for text
+                      statusText = (msg.type === 'image' || msg.type === 'file' || msg.type === 'voice' || msg.type === 'audio') ? 'Viewed' : 'Read';
+                    } else if (msg.status === 'failed') {
+                      statusColor = '#ef4444';
+                      statusText = 'Failed';
+                    }
+
+                    // Check if previous/next message is from same sender for grouping
+                    const prevMsg = index > 0 ? messages[index - 1] : null;
+                    const nextMsg = index < messages.length - 1 ? messages[index + 1] : null;
+                    const isGroupedWithPrev = prevMsg && prevMsg.direction === msg.direction;
+                    const isGroupedWithNext = nextMsg && nextMsg.direction === msg.direction;
+
+                    // Calculate border radius for grouping
+                    let borderRadius: string;
+                    if (isSent) {
+                      // Sent messages (right side)
+                      if (isGroupedWithPrev && isGroupedWithNext) {
+                        // Middle message
+                        borderRadius = '12px 4px 4px 12px';
+                      } else if (isGroupedWithPrev) {
+                        // Last in group
+                        borderRadius = '12px 4px 12px 12px';
+                      } else if (isGroupedWithNext) {
+                        // First in group
+                        borderRadius = '12px 12px 4px 12px';
+                      } else {
+                        // Single message
+                        borderRadius = '12px';
+                      }
+                    } else {
+                      // Received messages (left side)
+                      if (isGroupedWithPrev && isGroupedWithNext) {
+                        // Middle message
+                        borderRadius = '4px 12px 12px 4px';
+                      } else if (isGroupedWithPrev) {
+                        // Last in group
+                        borderRadius = '4px 12px 12px 12px';
+                      } else if (isGroupedWithNext) {
+                        // First in group
+                        borderRadius = '12px 12px 12px 4px';
+                      } else {
+                        // Single message
+                        borderRadius = '12px';
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={msg.id}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: isSent ? 'flex-end' : 'flex-start',
+                          marginBottom: isGroupedWithNext ? '1px' : '8px', // 1px for grouped, 8px for separate
+                        }}
+                      >
+                        <div style={{
+                          maxWidth: (msg.type === 'image') ? '350px' : (msg.type === 'voice' || msg.type === 'audio') ? '75%' : '70%',
+                          padding: '5px 11px', // Same padding for all message types
+                          borderRadius,
+                          backgroundColor: isSent
+                            ? (msg.status === 'queued' ? '#2563eb' : '#3b82f6') // Your messages: blue
+                            : '#f97316', // Their messages: orange
+                          color: '#ffffff', // Always white text
+                        }}>
+                          {/* Image Message */}
+                          {msg.type === 'image' && msg.fileUrl && (
+                            <div>
+                              <img
+                                src={msg.fileUrl}
+                                alt={msg.fileName || 'Image'}
+                                style={{
+                                  width: '100%',
+                                  borderRadius: '8px',
+                                  display: 'block',
+                                  cursor: 'pointer',
+                                  transition: 'opacity 0.2s',
+                                }}
+                                onClick={() => {
+                                  setLightboxImageUrl(msg.fileUrl!);
+                                  setLightboxImageName(msg.fileName || '');
+                                  setLightboxOpen(true);
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.opacity = '0.8';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.opacity = '1';
+                                }}
+                              />
+                              {msg.fileName && (
+                                <div style={{
+                                  fontSize: '12px',
+                                  marginTop: '4px',
+                                  padding: '4px',
+                                  opacity: 0.9,
+                                }}>
+                                  📷 {msg.fileName}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* File Message */}
+                          {msg.type === 'file' && msg.fileUrl && (
+                            <a
+                              href={msg.fileUrl}
+                              download={msg.fileName}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px',
+                                textDecoration: 'none',
+                                color: '#ffffff',
+                                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                                borderRadius: '8px',
+                              }}
+                            >
+                              <span style={{ fontSize: '24px' }}>📄</span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '14px', fontWeight: '600' }}>
+                                  {msg.fileName || 'File'}
+                                </div>
+                                {msg.fileSize && (
+                                  <div style={{ fontSize: '11px', opacity: 0.7 }}>
+                                    {(msg.fileSize / 1024).toFixed(2)} KB
+                                  </div>
+                                )}
+                              </div>
+                              <span style={{ fontSize: '16px' }}>⬇️</span>
+                            </a>
+                          )}
+
+                          {/* Voice Note Message OR Audio File (MP3, etc.) */}
+                          {(msg.type === 'voice' || msg.type === 'audio') && msg.fileUrl && (() => {
+                            // Log waveform data for debugging
+                            console.log('🎵 Rendering MessageAudioPlayer:', {
+                              messageType: msg.type,
+                              hasWaveformData: !!msg.waveformData,
+                              waveformLength: msg.waveformData?.length,
+                              waveformType: typeof msg.waveformData,
+                              waveformIsArray: Array.isArray(msg.waveformData),
+                              firstSamples: msg.waveformData?.slice(0, 10),
+                              isSent,
+                              messageId: msg.id,
+                            });
+
+                            return (
+                              <MessageAudioPlayer
+                                audioUrl={msg.fileUrl}
+                                duration={msg.duration || 0}
+                                waveformData={msg.waveformData || []} // Use actual data or empty array
+                                timestamp={msg.timestamp}
+                                isSent={isSent}
+                                messageId={msg.id}
+                                senderId={msg.senderId}
+                                onPlayStatusChange={handleAudioPlayStatus}
+                              />
+                            );
+                          })()}
+
+                          {/* Text Message */}
+                          {(!msg.type || msg.type === 'text') && (
+                            <div style={{
+                              fontSize: '14px',
+                              marginBottom: (!isGroupedWithNext) ? '4px' : '0',
+                              textAlign: isSent ? 'right' : 'left', // Right-align sent messages
+                            }}>
+                              {msg.content}
+                            </div>
+                          )}
+
+                          {/* Only show timestamp on last message in group */}
+                          {!isGroupedWithNext && (
+                            <div style={{
+                              fontSize: '11px',
+                              opacity: 0.8,
+                              textAlign: 'right',
+                              padding: msg.type === 'image' || msg.type === 'file' ? '4px' : '0',
+                            }}>
+                              {msg.timestamp.toLocaleTimeString()}
+                            </div>
+                          )}
+                        </div>
+                        {/* Status text under message - only on last message in group */}
+                        {isSent && !isGroupedWithNext && (
+                          <div style={{
+                            fontSize: '10px',
+                            color: statusColor,
+                            marginTop: '2px',
+                            marginRight: '4px',
+                            fontWeight: '500',
+                          }}>
+                            {statusText}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Ghost Typing Bubble - shows what recipient is typing */}
+                  {recipientGhostText && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      marginBottom: '4px',
+                      animation: 'fadeIn 0.3s ease-in',
+                    }}>
+                      <div style={{
+                        maxWidth: '70%',
+                        padding: '5px 11px',
+                        borderRadius: '12px',
+                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                        border: `1px dashed ${isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}`,
+                        color: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.4)',
+                      }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontStyle: 'italic',
+                        }}>
+                          {recipientGhostText}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Typing Indicator */}
+                  {isRecipientTyping && !recipientGhostText && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      marginBottom: '4px',
+                      animation: 'fadeIn 0.3s ease-in',
+                    }}>
+                      <div style={{
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}>
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.4)',
+                          animation: 'typingDot1 1.4s infinite',
+                        }} />
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.4)',
+                          animation: 'typingDot2 1.4s infinite',
+                        }} />
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.4)',
+                          animation: 'typingDot3 1.4s infinite',
+                        }} />
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      {/* Lightbox for viewing images */}
+      <Lightbox
+        imageUrl={lightboxImageUrl}
+        imageName={lightboxImageName}
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
+
+      {/* Voice Recorder */}
+      {isRecordingVoice && (
+        <VoiceRecorder
+          onRecordingComplete={handleVoiceRecordingComplete}
+          onCancel={handleCancelVoiceRecording}
+        />
+      )}
+    </>
+  );
+}
+

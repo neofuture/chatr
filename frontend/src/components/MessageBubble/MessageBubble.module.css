@@ -1,0 +1,177 @@
+/* Message Wrapper */
+.messageWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Message Bubble */
+.messageBubble {
+  color: #ffffff;
+}
+
+/* Message Text */
+.messageText {
+  font-size: 14px;
+}
+
+/* Timestamp */
+.timestamp {
+  font-size: 11px;
+  opacity: 0.8;
+  text-align: right;
+}
+
+/* Status Text */
+.statusText {
+  font-size: 10px;
+  margin-top: 2px;
+  margin-right: 4px;
+  font-weight: 500;
+}
+
+/* Image Message */
+.messageImage {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.messageImage:hover {
+  opacity: 0.8;
+}
+
+.imageFileName {
+  font-size: 12px;
+  margin-top: 4px;
+  padding: 4px;
+  opacity: 0.9;
+}
+
+/* File Message */
+.fileLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  text-decoration: none;
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.fileIcon {
+  font-size: 24px;
+}
+
+.fileInfo {
+  flex: 1;
+}
+
+.fileName {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fileSize {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.downloadIcon {
+  font-size: 16px;
+}
+
+/* Ghost Typing Bubble */
+.ghostTypingWrapper {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.ghostTypingBubble {
+  max-width: 70%;
+  padding: 5px 11px;
+  border-radius: 12px;
+}
+
+.ghostTypingText {
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Typing Indicator */
+.typingIndicatorWrapper {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.typingIndicatorBubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typingDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation-duration: 1.4s;
+  animation-iteration-count: infinite;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes typingDot1 {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes typingDot2 {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes recordingPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.recordingMic {
+  font-size: 14px;
+  animation: recordingPulse 1s ease-in-out infinite;
+}
+
+@keyframes typingDot3 {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+

@@ -1,0 +1,168 @@
+/* Theme Button - Theme-aware button component with color variants */
+.themeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  color: white;
+}
+
+.themeButtonFull {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Icon styling */
+.themeButtonIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Purple button */
+.themeButtonPurple {
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.5);
+}
+
+[data-theme='light'] .themeButtonPurple {
+  background: rgba(168, 85, 247, 0.95);
+  border: 1px solid rgba(168, 85, 247, 1);
+}
+
+.themeButtonPurple:hover {
+  background: rgba(168, 85, 247, 0.3);
+}
+
+[data-theme='light'] .themeButtonPurple:hover {
+  background: rgba(168, 85, 247, 1);
+}
+
+.themeButtonIconPurple {
+  background: rgba(168, 85, 247, 0.4);
+}
+
+[data-theme='light'] .themeButtonIconPurple {
+  background: rgba(168, 85, 247, 1);
+}
+
+/* Green button */
+.themeButtonGreen {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+}
+
+[data-theme='light'] .themeButtonGreen {
+  background: rgba(34, 197, 94, 0.95);
+  border: 1px solid rgba(34, 197, 94, 1);
+}
+
+.themeButtonGreen:hover {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+[data-theme='light'] .themeButtonGreen:hover {
+  background: rgba(34, 197, 94, 1);
+}
+
+.themeButtonIconGreen {
+  background: rgba(34, 197, 94, 0.4);
+}
+
+[data-theme='light'] .themeButtonIconGreen {
+  background: rgba(34, 197, 94, 1);
+}
+
+/* Red button */
+.themeButtonRed {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+[data-theme='light'] .themeButtonRed {
+  background: rgba(239, 68, 68, 0.95);
+  border: 1px solid rgba(239, 68, 68, 1);
+}
+
+.themeButtonRed:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+[data-theme='light'] .themeButtonRed:hover {
+  background: rgba(239, 68, 68, 1);
+}
+
+.themeButtonIconRed {
+  background: rgba(239, 68, 68, 0.4);
+}
+
+[data-theme='light'] .themeButtonIconRed {
+  background: rgba(239, 68, 68, 1);
+}
+
+/* Blue button */
+.themeButtonBlue {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+[data-theme='light'] .themeButtonBlue {
+  background: rgba(59, 130, 246, 0.95);
+  border: 1px solid rgba(59, 130, 246, 1);
+}
+
+.themeButtonBlue:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+[data-theme='light'] .themeButtonBlue:hover {
+  background: rgba(59, 130, 246, 1);
+}
+
+.themeButtonIconBlue {
+  background: rgba(59, 130, 246, 0.4);
+}
+
+[data-theme='light'] .themeButtonIconBlue {
+  background: rgba(59, 130, 246, 1);
+}
+
+/* Orange button */
+.themeButtonOrange {
+  background: rgba(249, 115, 22, 0.2);
+  border: 1px solid rgba(249, 115, 22, 0.5);
+}
+
+[data-theme='light'] .themeButtonOrange {
+  background: rgba(249, 115, 22, 0.95);
+  border: 1px solid rgba(249, 115, 22, 1);
+}
+
+.themeButtonOrange:hover {
+  background: rgba(249, 115, 22, 0.3);
+}
+
+[data-theme='light'] .themeButtonOrange:hover {
+  background: rgba(249, 115, 22, 1);
+}
+
+.themeButtonIconOrange {
+  background: rgba(249, 115, 22, 0.4);
+}
+
+[data-theme='light'] .themeButtonIconOrange {
+  background: rgba(249, 115, 22, 1);
+}
+

@@ -1,0 +1,421 @@
+'use client';
+
+import { useState } from 'react';
+import BottomSheet from '@/components/BottomSheet/BottomSheet';
+import Button from '@/components/Button/Button';
+import Input from '@/components/Input/Input';
+import Textarea from '@/components/Textarea/Textarea';
+import Select from '@/components/Select/Select';
+import Radio from '@/components/Radio/Radio';
+import Checkbox from '@/components/Checkbox/Checkbox';
+import RangeSlider from '@/components/RangeSlider/RangeSlider';
+import DualRangeSlider from '@/components/DualRangeSlider/DualRangeSlider';
+import SimpleDualRangeSlider from '@/components/SimpleDualRangeSlider/SimpleDualRangeSlider';
+import DatePicker from '@/components/DatePicker/DatePicker';
+import { useToast } from '@/contexts/ToastContext';
+
+export default function BottomSheetDemo() {
+  const { showToast } = useToast();
+  const [fullHeightOpen, setFullHeightOpen] = useState(false);
+  const [fixedHeightOpen, setFixedHeightOpen] = useState(false);
+  const [autoHeightOpen, setAutoHeightOpen] = useState(false);
+  const [noCloseButtonOpen, setNoCloseButtonOpen] = useState(false);
+
+  return (
+    <div>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem', textAlign: 'center' }}>
+          📋 Bottom Sheet Demo
+        </h2>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+          Mobile-style bottom sheets that slide up from the bottom and overlay all content
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+        {/* Full Height */}
+        <div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Full Height</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            Sheet takes up the entire viewport height (100vh)
+          </p>
+          <button
+            onClick={() => setFullHeightOpen(true)}
+            className="demo-btn-blue"
+            style={{
+              color: 'var(--text-primary)',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              width: '100%'
+            }}
+          >
+            📏 Open Full Height Sheet
+          </button>
+        </div>
+
+        {/* Fixed Height */}
+        <div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Fixed Height</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            Sheet with fixed 600px height featuring all form components including iOS-style date picker
+          </p>
+          <button
+            onClick={() => setFixedHeightOpen(true)}
+            className="demo-btn-purple"
+            style={{
+              color: 'var(--text-primary)',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              width: '100%'
+            }}
+          >
+            📐 Open Fixed Height Sheet
+          </button>
+        </div>
+
+        {/* Auto Height */}
+        <div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Auto Height</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            Sheet height adjusts to fit content (max 90vh)
+          </p>
+          <button
+            onClick={() => setAutoHeightOpen(true)}
+            className="demo-btn-green"
+            style={{
+              color: 'var(--text-primary)',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              width: '100%'
+            }}
+          >
+            📄 Open Auto Height Sheet
+          </button>
+        </div>
+
+        {/* No Close Button */}
+        <div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No Close Button</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            Sheet without close button - requires action button to dismiss
+          </p>
+          <button
+            onClick={() => setNoCloseButtonOpen(true)}
+            className="demo-btn-orange"
+            style={{
+              color: 'var(--text-primary)',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              transition: 'all 0.2s',
+              width: '100%'
+            }}
+          >
+            🚫 Open Sheet (No Button)
+          </button>
+        </div>
+      </div>
+
+      {/* Full Height Sheet */}
+      <BottomSheet
+        isOpen={fullHeightOpen}
+        onClose={() => setFullHeightOpen(false)}
+        heightMode="full"
+        title="Full Height Bottom Sheet"
+      >
+        <div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Extended Contact Form</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              This bottom sheet takes up the entire viewport height. Perfect for full-screen
+              experiences or complex forms with multiple fields.
+            </p>
+          </div>
+
+          <form>
+            <Input
+              type="text"
+              placeholder="Enter your first name"
+              label="First Name"
+              required
+            />
+            <Input
+              type="text"
+              placeholder="Enter your last name"
+              label="Last Name"
+              required
+            />
+            <Input
+              type="email"
+              placeholder="your.email@example.com"
+              label="Email Address"
+              required
+            />
+            <Input
+              type="tel"
+              placeholder="+1 (555) 000-0000"
+              label="Phone Number"
+            />
+            <Input
+              type="text"
+              placeholder="Your company name"
+              label="Company (Optional)"
+            />
+            <Textarea
+              placeholder="Tell us about your project requirements..."
+              rows={6}
+              label="Project Details"
+              required
+            />
+            <Textarea
+              placeholder="Any additional information or special requests..."
+              rows={4}
+              label="Additional Notes (Optional)"
+            />
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <Button variant="primary" fullWidth>
+                Submit Inquiry
+              </Button>
+            </div>
+          </form>
+        </div>
+      </BottomSheet>
+
+      {/* Fixed Height Sheet */}
+      <BottomSheet
+        isOpen={fixedHeightOpen}
+        onClose={() => setFixedHeightOpen(false)}
+        heightMode="fixed"
+        fixedHeight="600px"
+        title="Fixed Height Bottom Sheet (600px)"
+      >
+        <div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Enhanced Feedback Form</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+              This form showcases all our form components including radio buttons, checkboxes, and range sliders.
+            </p>
+          </div>
+
+          <form>
+            <Input
+              type="text"
+              placeholder="Enter your name"
+              label="Your Name"
+              required
+            />
+            <Input
+              type="email"
+              placeholder="your.email@example.com"
+              label="Email Address"
+              required
+            />
+
+            <Select label="Rating" required>
+              <option value="">Select your rating</option>
+              <option value="5">⭐⭐⭐⭐⭐ Excellent</option>
+              <option value="4">⭐⭐⭐⭐ Good</option>
+              <option value="3">⭐⭐⭐ Average</option>
+              <option value="2">⭐⭐ Poor</option>
+              <option value="1">⭐ Very Poor</option>
+            </Select>
+
+            <Radio
+              label="How likely are you to recommend us?"
+              name="recommendation"
+              options={[
+                { value: 'very-likely', label: 'Very Likely' },
+                { value: 'likely', label: 'Likely' },
+                { value: 'neutral', label: 'Neutral' },
+                { value: 'unlikely', label: 'Unlikely' },
+              ]}
+            />
+
+            <RangeSlider
+              label="Satisfaction Level"
+              min={0}
+              max={100}
+              defaultValue={75}
+              showValue={true}
+              valueSuffix="%"
+            />
+
+            <DualRangeSlider
+              label="Price Range"
+              min={0}
+              max={1000}
+              defaultMinValue={200}
+              defaultMaxValue={750}
+              step={10}
+              showValues={true}
+              valuePrefix="$"
+            />
+
+            <SimpleDualRangeSlider
+              label="Age Range (Boring Style)"
+              min={18}
+              max={100}
+              defaultMinValue={25}
+              defaultMaxValue={65}
+              step={1}
+              showValues={true}
+              valueSuffix=" years"
+            />
+
+            <DatePicker
+              label="Date of Experience (Date Only)"
+              locale="en-GB"
+              mode="date"
+            />
+
+            <DatePicker
+              label="Preferred Time (Time Only)"
+              mode="time"
+            />
+
+            <DatePicker
+              label="Appointment Date & Time (Both)"
+              locale="en-GB"
+              mode="datetime"
+            />
+
+            <Textarea
+              placeholder="Please share your experience with us..."
+              rows={4}
+              label="Your Feedback"
+              required
+            />
+
+            <Checkbox
+              label="I would like to receive updates about new features"
+            />
+
+            <Checkbox
+              label="I agree to the terms and conditions"
+              required
+            />
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <Button variant="primary" fullWidth>
+                Submit Feedback
+              </Button>
+            </div>
+          </form>
+        </div>
+      </BottomSheet>
+
+      {/* Auto Height Sheet */}
+      <BottomSheet
+        isOpen={autoHeightOpen}
+        onClose={() => setAutoHeightOpen(false)}
+        heightMode="auto"
+        title="Auto Height Bottom Sheet"
+      >
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Quick Contact Form</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+            This bottom sheet adjusts its height automatically to fit the content. Perfect for shorter forms.
+          </p>
+        </div>
+
+        <form>
+          <Input
+            type="text"
+            placeholder="Enter your name"
+            label="Name"
+            required
+          />
+          <Input
+            type="email"
+            placeholder="your.email@example.com"
+            label="Email Address"
+            required
+          />
+          <Textarea
+            placeholder="How can we help you?"
+            rows={4}
+            label="Message"
+            required
+          />
+
+          <div style={{ marginTop: '1.5rem' }}>
+            <Button variant="primary" fullWidth>
+              Send Message
+            </Button>
+          </div>
+        </form>
+      </BottomSheet>
+
+      {/* No Close Button Sheet */}
+      <BottomSheet
+        isOpen={noCloseButtonOpen}
+        onClose={() => setNoCloseButtonOpen(false)}
+        heightMode="auto"
+        showCloseButton={false}
+        title="Bottom Sheet Without Close Button"
+      >
+        <div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Action Required</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              This bottom sheet has no close button. You must use an action button to dismiss it.
+            </p>
+            <p style={{ color: 'var(--blue-400)', fontSize: '0.875rem' }}>
+              Note: Clicking the backdrop or pressing Escape will NOT close this sheet.
+            </p>
+          </div>
+
+          <div style={{
+            background: 'rgba(30, 41, 59, 0.5)',
+            padding: '1.5rem',
+            borderRadius: '0.5rem',
+            border: '1px solid rgba(59, 130, 246, 0.2)'
+          }}>
+            <p style={{ color: 'var(--text-primary)', fontWeight: '600', marginBottom: '0.75rem' }}>Confirm Your Action</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+              In a real application, you would perform an action (like saving, confirming, or canceling)
+              and then close the sheet programmatically.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <Button
+                variant="secondary"
+                onClick={() => setNoCloseButtonOpen(false)}
+                fullWidth
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  // Show success toast
+                  showToast('Action confirmed successfully! ✓', 'success');
+                  // Close the sheet
+                  setNoCloseButtonOpen(false);
+                }}
+                fullWidth
+              >
+                Confirm Action
+              </Button>
+            </div>
+          </div>
+        </div>
+      </BottomSheet>
+    </div>
+  );
+}
+

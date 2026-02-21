@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String    @id @default(uuid())
+  email                   String?   @unique
+  phoneNumber             String? // Removed @unique to allow dev phone sharing
+  username                String    @unique
+  password                String
+  profileImage            String?
+  coverImage              String?
+  twoFactorSecret         String?
+  twoFactorEnabled        Boolean   @default(false)
+  emailVerified           Boolean   @default(false)
+  phoneVerified           Boolean   @default(false)
+  emailVerificationCode   String?
+  phoneVerificationCode   String?
+  verificationExpiry      DateTime?
+  passwordResetCode       String?
+  passwordResetExpiry     DateTime?
+  loginVerificationCode   String?
+  loginVerificationExpiry DateTime?
+  loginVerificationMethod String?
+  lastSeen                DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  sentMessages      Message[]      @relation("Sender")
+  receivedMessages  Message[]      @relation("Recipient")
+  groupMemberships  GroupMember[]
+  groupsOwned       Group[]
+  sentGroupMessages GroupMessage[] @relation("GroupSender")
+}
+
+model Message {
+  id          String    @id @default(uuid())
+  senderId    String
+  sender      User      @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  content     String
+  type        String    @default("text")
+  status      String    @default("sent")
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  isRead      Boolean   @default(false)
+
+  // File metadata for images, documents, and audio files
+  fileUrl  String?
+  fileName String?
+  fileSize Int?
+  fileType String?
+
+  // Audio-specific metadata for voice messages
+  audioWaveform Json? // Array of amplitude values (0-1)
+  audioDuration Float? // Duration in seconds
+
+  @@index([senderId])
+  @@index([recipientId])
+}
+
+model GroupMessage {
+  id        String   @id @default(uuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation("GroupSender", fields: [senderId], references: [id], onDelete: Cascade)
+  content   String
+  type      String   @default("text")
+  createdAt DateTime @default(now())
+
+  @@index([groupId])
+  @@index([senderId])
+}
+
+model Group {
+  id          String         @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String
+  owner       User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  members     GroupMember[]
+  messages    GroupMessage[]
+
+  @@index([ownerId])
+}
+
+model GroupMember {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId  String
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
+}

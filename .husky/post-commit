@@ -1,0 +1,7 @@
+# Fix for GUI apps not loading PATH correctly
+export PATH=$PATH:/usr/local/bin:/opt/homebrew/bin
+
+echo "🔄 Auto-incrementing version..."
+cd frontend
+npm run version:increment
+git add src/version.ts

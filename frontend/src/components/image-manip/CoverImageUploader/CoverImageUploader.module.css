@@ -1,0 +1,32 @@
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateX(0) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes popOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(0) scale(0.95);
+  }
+}
+
+.menuEnter {
+  transform-origin: bottom right;
+  animation: popIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.menuExit {
+  transform-origin: bottom right;
+  animation: popOut 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+

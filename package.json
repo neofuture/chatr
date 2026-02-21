@@ -1,0 +1,25 @@
+{
+  "name": "chatrr-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chatr monorepo - Real-time messaging platform",
+  "scripts": {
+    "prepare": "husky",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm test",
+    "test:backend": "cd backend && npm test",
+    "test:export": "npm run test:export:frontend && npm run test:export:backend",
+    "test:export:frontend": "cd frontend && npm run test:export",
+    "test:export:backend": "cd backend && npm run test:export"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "dependencies": {
+    "framer-motion": "^12.34.1"
+  }
+}

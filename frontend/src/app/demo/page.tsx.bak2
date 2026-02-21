@@ -1,0 +1,702 @@
+'use client';
+
+import Link from 'next/link';
+import { usePanels } from '@/contexts/PanelContext';
+import { useToast } from '@/contexts/ToastContext';
+import { useConfirmation } from '@/contexts/ConfirmationContext';
+import { Panel1Content } from '@/components/DemoPanels/DemoPanels';
+import { Demo2FAContent } from '@/components/Demo2FA/Demo2FA';
+import BackgroundBlobs from '@/components/BackgroundBlobs/BackgroundBlobs';
+import BottomSheetDemo from '@/components/BottomSheetDemo/BottomSheetDemo';
+import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
+
+const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
+
+export default function DemoPage() {
+  const { openPanel } = usePanels();
+  const { showToast } = useToast();
+  const { showConfirmation } = useConfirmation();
+
+  const openDemoPanel = () => {
+    openPanel('Panel 1', <Panel1Content />);
+  };
+
+  const open2FADemo = () => {
+    openPanel('Verify Your Email', <Demo2FAContent />);
+  };
+
+  // Demo toast handlers
+  const showSuccessToast = () => {
+    showToast('Operation completed successfully!', 'success');
+  };
+
+  const showErrorToast = () => {
+    showToast('Something went wrong. Please try again.', 'error');
+  };
+
+  const showInfoToast = () => {
+    showToast('Here is some helpful information for you.', 'info');
+  };
+
+  const showWarningToast = () => {
+    showToast('Please be careful with this action.', 'warning');
+  };
+
+  const showMultipleToasts = () => {
+    showToast('First notification', 'info', 6000);
+    setTimeout(() => showToast('Second notification', 'success', 6000), 500);
+    setTimeout(() => showToast('Third notification', 'warning', 6000), 1000);
+  };
+
+  // Demo confirmation handlers
+  const showInfoConfirmation = async () => {
+    const result = await showConfirmation({
+      title: 'Continue to Next Step?',
+      message: 'You are about to proceed to the next step. Do you want to continue?',
+      urgency: 'info',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Continue', variant: 'primary', value: true },
+      ],
+    });
+
+    if (result) {
+      showToast('Continued to next step', 'success');
+    } else {
+      showToast('Action cancelled', 'info');
+    }
+  };
+
+  const showWarningConfirmation = async () => {
+    const result = await showConfirmation({
+      title: 'Discard Changes?',
+      message: 'You have unsaved changes. Are you sure you want to discard them?',
+      urgency: 'warning',
+      actions: [
+        { label: 'Keep Editing', variant: 'secondary', value: false },
+        { label: 'Discard', variant: 'destructive', value: true },
+      ],
+    });
+
+    if (result) {
+      showToast('Changes discarded', 'warning');
+    }
+  };
+
+  const showDangerConfirmation = async () => {
+    const result = await showConfirmation({
+      title: 'Delete Account?',
+      message: 'This action cannot be undone. Your account and all data will be permanently deleted.',
+      urgency: 'danger',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Delete Account', variant: 'destructive', value: true },
+      ],
+    });
+
+    if (result) {
+      showToast('Account deleted (demo)', 'error');
+    }
+  };
+
+  const showSimpleOK = async () => {
+    await showConfirmation({
+      title: 'Welcome!',
+      message: 'Thanks for trying out the confirmation dialog system.',
+      urgency: 'info',
+      actions: [
+        { label: 'Got It', variant: 'primary', value: true },
+      ],
+    });
+  };
+
+  const showYesNo = async () => {
+    const result = await showConfirmation({
+      title: 'Enable Notifications?',
+      message: 'Would you like to receive notifications for new messages?',
+      urgency: 'info',
+      actions: [
+        { label: 'No', variant: 'secondary', value: false },
+        { label: 'Yes', variant: 'primary', value: true },
+      ],
+    });
+
+    showToast(result ? 'Notifications enabled' : 'Notifications disabled', 'info');
+  };
+
+  const showThreeOptions = async () => {
+    const result = await showConfirmation({
+      title: 'Save Changes?',
+      message: 'You have unsaved changes. What would you like to do?',
+      urgency: 'info',
+      actions: [
+        { label: 'Discard', variant: 'destructive', value: 'discard' },
+        { label: 'Save as Draft', variant: 'secondary', value: 'draft' },
+        { label: 'Publish', variant: 'primary', value: 'publish' },
+      ],
+    });
+
+    if (result) {
+      showToast(`Action: ${result}`, 'success');
+    }
+  };
+
+  return (
+    <div className="hero-container">
+      <BackgroundBlobs />
+
+      <div className="hero-content">
+        {/* Theme Toggle - Top Right */}
+        <div style={{
+          position: 'fixed',
+          top: '1rem',
+          right: '1rem',
+          zIndex: 1000
+        }}>
+          <ThemeToggle />
+        </div>
+
+        {/* Page Title */}
+        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <h1 style={{
+            color: 'var(--text-primary)',
+            fontSize: '3rem',
+            marginBottom: '1rem',
+            fontWeight: 'bold'
+          }}>
+            {PRODUCT_NAME} Demo
+          </h1>
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: '1.25rem'
+          }}>
+            Explore our UI components and features
+          </p>
+        </div>
+
+        {/* Panel Demos Section */}
+        <div style={{
+          marginBottom: '3rem',
+          padding: '2rem',
+          background: 'var(--bg-container)',
+          borderRadius: '1rem',
+          border: '1px solid rgba(168, 85, 247, 0.3)'
+        }}>
+          <h2 style={{
+            color: 'var(--text-primary)',
+            fontSize: '1.5rem',
+            marginBottom: '1rem',
+            textAlign: 'center'
+          }}>
+            🔲 Panel System
+          </h2>
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: '0.875rem',
+            marginBottom: '1.5rem',
+            textAlign: 'center'
+          }}>
+            Test our sliding panel system with stacking and navigation
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '1rem',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={openDemoPanel}
+              className="demo-btn-purple"
+              style={{
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+            >
+              🔲 Stacked Panels Demo
+            </button>
+
+            <button
+              onClick={open2FADemo}
+              className="demo-btn-green"
+              style={{
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+            >
+              📧 Email Verification Demo
+            </button>
+          </div>
+        </div>
+
+        {/* Toast Demos Section */}
+        <div style={{
+          padding: '2rem',
+          background: 'var(--bg-container)',
+          borderRadius: '1rem',
+          border: '1px solid rgba(59, 130, 246, 0.3)'
+        }}>
+          <h2 style={{
+            color: 'var(--text-primary)',
+            fontSize: '1.5rem',
+            marginBottom: '1rem',
+            textAlign: 'center'
+          }}>
+            🔔 Toast Notifications
+          </h2>
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: '0.875rem',
+            marginBottom: '1.5rem',
+            textAlign: 'center'
+          }}>
+            Try our toast notification system - hover over toasts to pause the timer!
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '0.75rem',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={showSuccessToast}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(34, 197, 94, 0.2)',
+                border: '1px solid rgba(34, 197, 94, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(34, 197, 94, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)';
+              }}
+            >
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: 'rgba(34, 197, 94, 0.5)',
+                color: 'white',
+                fontSize: '0.875rem',
+                fontWeight: '700'
+              }}>✓</span>
+              Success
+            </button>
+
+            <button
+              onClick={showErrorToast}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+              }}
+            >
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: 'rgba(239, 68, 68, 0.5)',
+                color: 'white',
+                fontSize: '0.875rem',
+                fontWeight: '700'
+              }}>✕</span>
+              Error
+            </button>
+
+            <button
+              onClick={showInfoToast}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(59, 130, 246, 0.2)',
+                border: '1px solid rgba(59, 130, 246, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+              }}
+            >
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: 'rgba(59, 130, 246, 0.5)',
+                color: 'white',
+                fontSize: '0.875rem',
+                fontWeight: '700'
+              }}>ℹ</span>
+              Info
+            </button>
+
+            <button
+              onClick={showWarningToast}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(249, 115, 22, 0.2)',
+                border: '1px solid rgba(249, 115, 22, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(249, 115, 22, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(249, 115, 22, 0.2)';
+              }}
+            >
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: 'rgba(249, 115, 22, 0.5)',
+                color: 'white',
+                fontSize: '0.875rem',
+                fontWeight: '700'
+              }}>⚠</span>
+              Warning
+            </button>
+
+            <button
+              onClick={showMultipleToasts}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(168, 85, 247, 0.2)',
+                border: '1px solid rgba(168, 85, 247, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(168, 85, 247, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)';
+              }}
+            >
+              <span style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                background: 'rgba(168, 85, 247, 0.5)',
+                color: 'white',
+                fontSize: '0.875rem',
+                fontWeight: '700'
+              }}>🔢</span>
+              Multiple Toasts
+            </button>
+          </div>
+        </div>
+
+        {/* Confirmation Demos Section */}
+        <div style={{
+          marginTop: '3rem',
+          padding: '2rem',
+          background: 'var(--bg-container)',
+          borderRadius: '1rem',
+          border: '1px solid rgba(34, 197, 94, 0.3)'
+        }}>
+          <h2 style={{
+            color: 'var(--text-primary)',
+            fontSize: '1.5rem',
+            marginBottom: '1rem',
+            textAlign: 'center'
+          }}>
+            ✔️ Confirmation Dialogs
+          </h2>
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: '0.875rem',
+            marginBottom: '1.5rem',
+            textAlign: 'center'
+          }}>
+            Experience our confirmation dialogs with various scenarios
+          </p>
+          <div style={{
+            display: 'flex',
+            gap: '0.75rem',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              onClick={showInfoConfirmation}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(59, 130, 246, 0.2)',
+                border: '1px solid rgba(59, 130, 246, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+              }}
+            >
+              Info Confirmation
+            </button>
+
+            <button
+              onClick={showWarningConfirmation}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(249, 115, 22, 0.2)',
+                border: '1px solid rgba(249, 115, 22, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(249, 115, 22, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(249, 115, 22, 0.2)';
+              }}
+            >
+              Warning Confirmation
+            </button>
+
+            <button
+              onClick={showDangerConfirmation}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+              }}
+            >
+              Danger Confirmation
+            </button>
+
+            <button
+              onClick={showSimpleOK}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(34, 197, 94, 0.2)',
+                border: '1px solid rgba(34, 197, 94, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(34, 197, 94, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(34, 197, 94, 0.2)';
+              }}
+            >
+              Simple OK
+            </button>
+
+            <button
+              onClick={showYesNo}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(59, 130, 246, 0.2)',
+                border: '1px solid rgba(59, 130, 246, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+              }}
+            >
+              Yes/No Confirmation
+            </button>
+
+            <button
+              onClick={showThreeOptions}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                background: 'rgba(249, 115, 22, 0.2)',
+                border: '1px solid rgba(249, 115, 22, 0.5)',
+                color: 'white',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(249, 115, 22, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(249, 115, 22, 0.2)';
+              }}
+            >
+              Three Options Confirmation
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Sheet Demo Section */}
+        <div style={{
+          marginTop: '3rem',
+          padding: '2rem',
+          background: 'var(--bg-container)',
+          borderRadius: '1rem',
+          border: '1px solid rgba(59, 130, 246, 0.3)'
+        }}>
+          <BottomSheetDemo />
+        </div>
+
+        {/* Back to Home Link */}
+        <div style={{ marginTop: '3rem', textAlign: 'center', display: 'flex', gap: '1.5rem', justifyContent: 'center' }}>
+          <Link
+            href="/"
+            style={{
+              color: 'var(--text-secondary)',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--blue-500)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+          >
+            ← Back to Home
+          </Link>
+          <span style={{ color: 'var(--text-secondary)' }}>|</span>
+          <Link
+            href="/docs"
+            style={{
+              color: 'var(--text-secondary)',
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--blue-500)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+          >
+            Documentation →
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

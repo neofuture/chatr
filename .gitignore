@@ -1,0 +1,9 @@
+/deployAWS.sh
+
+# Node modules
+/node_modules/
+**/node_modules/
+
+# IDE
+/.idea/
+**/.idea/

@@ -1,0 +1,4 @@
+# Fix for GUI apps not loading PATH correctly
+export PATH=$PATH:/usr/local/bin:/opt/homebrew/bin
+
+npm test
