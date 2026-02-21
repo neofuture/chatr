@@ -14,6 +14,7 @@ import Button from '@/components/form-controls/Button/Button';
 import DatePicker from '@/components/form-controls/DatePicker/DatePicker';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function DemoPage() {
   const { openPanel } = usePanels();
@@ -407,6 +408,133 @@ export default function DemoPage() {
           border: '1px solid rgba(59, 130, 246, 0.3)'
         }}>
           <BottomSheetDemo />
+        </div>
+
+        {/* API Endpoints Section */}
+        <div style={{
+          marginTop: '3rem',
+          padding: '2rem',
+          background: 'var(--bg-container)',
+          borderRadius: '1rem',
+          border: '1px solid rgba(99, 102, 241, 0.3)'
+        }}>
+          <h2 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', marginBottom: '0.5rem', textAlign: 'center' }}>
+            <i className="fas fa-plug"></i> API Endpoints
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '0.5rem', textAlign: 'center' }}>
+            All endpoints defined in the backend codebase
+          </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginBottom: '2rem', textAlign: 'center', fontFamily: 'monospace' }}>
+            Base: <span style={{ color: '#22c55e' }}>{API_URL}</span>
+          </p>
+
+          {(
+            [
+              {
+                group: 'Authentication', prefix: '/api/auth', color: 'rgba(249,115,22,0.3)', icon: 'fas fa-lock',
+                routes: [
+                  { method: 'POST', path: '/register', description: 'Register a new user', auth: false },
+                  { method: 'POST', path: '/login', description: 'User login', auth: false },
+                  { method: 'POST', path: '/logout', description: 'User logout', auth: false },
+                  { method: 'POST', path: '/verify-email', description: 'Verify email with code', auth: false },
+                  { method: 'POST', path: '/verify-phone', description: 'Verify phone with code', auth: false },
+                  { method: 'POST', path: '/forgot-password', description: 'Request password reset', auth: false },
+                  { method: 'POST', path: '/2fa/setup', description: 'Generate 2FA secret and QR code', auth: true },
+                  { method: 'POST', path: '/2fa/verify', description: 'Verify 2FA code and enable 2FA', auth: true },
+                ],
+              },
+              {
+                group: 'Users', prefix: '/api/users', color: 'rgba(59,130,246,0.3)', icon: 'fas fa-users',
+                routes: [
+                  { method: 'GET', path: '/', description: 'Get all verified users', auth: true },
+                  { method: 'GET', path: '/me', description: 'Get current user', auth: true },
+                  { method: 'GET', path: '/check-username', description: 'Check if username is available', auth: false },
+                  { method: 'GET', path: '/suggest-username', description: 'Get username suggestions', auth: false },
+                  { method: 'GET', path: '/search', description: 'Search users by username', auth: false },
+                  { method: 'GET', path: '/:username', description: 'Get user profile', auth: false },
+                  { method: 'POST', path: '/profile-image', description: 'Upload profile image', auth: true },
+                  { method: 'POST', path: '/cover-image', description: 'Upload cover image', auth: true },
+                  { method: 'DELETE', path: '/profile-image', description: 'Delete profile image', auth: true },
+                  { method: 'DELETE', path: '/cover-image', description: 'Delete cover image', auth: true },
+                ],
+              },
+              {
+                group: 'Messages', prefix: '/api/messages', color: 'rgba(34,197,94,0.3)', icon: 'fas fa-comments',
+                routes: [
+                  { method: 'GET', path: '/history', description: 'Get message history (otherUserId, limit, before)', auth: true },
+                  { method: 'GET', path: '/conversations', description: 'Get user conversations', auth: false },
+                  { method: 'POST', path: '/upload', description: 'Upload a file/audio message', auth: true },
+                  { method: 'PATCH', path: '/:id/waveform', description: 'Update audio waveform data', auth: true },
+                ],
+              },
+              {
+                group: 'Groups', prefix: '/api/groups', color: 'rgba(168,85,247,0.3)', icon: 'fas fa-layer-group',
+                routes: [
+                  { method: 'POST', path: '/', description: 'Create a new group', auth: false },
+                  { method: 'GET', path: '/:id', description: 'Get group details', auth: false },
+                  { method: 'POST', path: '/:id/join', description: 'Join a group', auth: false },
+                  { method: 'POST', path: '/:id/leave', description: 'Leave a group', auth: false },
+                  { method: 'GET', path: '/:id/messages', description: 'Get group messages', auth: false },
+                ],
+              },
+              {
+                group: 'Misc', prefix: '/api', color: 'rgba(20,184,166,0.3)', icon: 'fas fa-cog',
+                routes: [
+                  { method: 'GET', path: '/email-preview', description: 'Preview email templates', auth: false },
+                  { method: 'GET', path: '/docs', description: 'Swagger / API docs UI', auth: false },
+                ],
+              },
+            ] as { group: string; prefix: string; color: string; icon: string; routes: { method: string; path: string; description: string; auth: boolean }[] }[]
+          ).map(({ group, prefix, color, icon, routes }) => (
+            <div key={group} style={{ marginBottom: '1.5rem' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                marginBottom: '0.75rem',
+                paddingBottom: '0.5rem',
+                borderBottom: `1px solid ${color}`,
+              }}>
+                <i className={icon} style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}></i>
+                <span style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--text-primary)' }}>{group}</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{prefix}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {routes.map(({ method, path, description, auth }) => {
+                  const methodColor: Record<string, string> = {
+                    GET: '#22c55e', POST: '#3b82f6', PATCH: '#f59e0b', DELETE: '#ef4444', PUT: '#8b5cf6',
+                  };
+                  return (
+                    <div key={method + path} style={{
+                      display: 'grid',
+                      gridTemplateColumns: '60px 1fr auto',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.4rem 0.75rem',
+                      borderRadius: '0.4rem',
+                      background: 'rgba(255,255,255,0.03)',
+                      fontSize: '0.8rem',
+                    }}>
+                      <span style={{
+                        fontFamily: 'monospace', fontWeight: '700', fontSize: '0.7rem',
+                        color: methodColor[method] ?? '#94a3b8',
+                        background: `${methodColor[method] ?? '#94a3b8'}20`,
+                        padding: '0.15rem 0.35rem', borderRadius: '0.25rem', textAlign: 'center',
+                      }}>{method}</span>
+                      <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>
+                        <span style={{ opacity: 0.35 }}>{API_URL}</span>
+                        <span style={{ opacity: 0.55 }}>{prefix}</span>{path}
+                        <span style={{ marginLeft: '0.75rem', fontFamily: 'sans-serif', opacity: 0.55, fontSize: '0.75rem' }}>{description}</span>
+                      </span>
+                      {auth && (
+                        <span title="Requires auth" style={{ fontSize: '0.65rem', color: '#f59e0b', opacity: 0.8 }}>
+                          <i className="fas fa-key"></i>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Back to Home Link */}

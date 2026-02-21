@@ -565,9 +565,10 @@ export default function DocsPage() {
         borderRadius: '0.25rem',
         background: selectedFile === file.path ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
         transition: 'all 0.2s',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.4rem',
+        minWidth: 0,
       }}
       onMouseEnter={(e) => {
         if (selectedFile !== file.path) e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
@@ -577,7 +578,10 @@ export default function DocsPage() {
       }}
       title={formatFileName(file.name)}
     >
-      {formatFileName(file.name)}
+      <span style={{ fontSize: '0.55rem', flexShrink: 0, width: '10px', textAlign: 'center', opacity: 0.5, display: 'inline-block' }}>–</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+        {formatFileName(file.name)}
+      </span>
     </div>
   );
 
