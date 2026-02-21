@@ -1,7 +1,14 @@
 # Fix for GUI apps not loading PATH correctly
 export PATH=$PATH:/usr/local/bin:/opt/homebrew/bin
 
+# Skip if this commit is already a version bump (prevents infinite loop)
+LAST_MSG=$(git log -1 --pretty=%s)
+if [ "$LAST_MSG" = "chore: bump version" ]; then
+  exit 0
+fi
+
 echo "🔄 Auto-incrementing version..."
-cd frontend
-npm run version:increment
-git add src/version.ts
+cd "$(git rev-parse --show-toplevel)"
+node frontend/scripts/increment-version.js
+git add frontend/src/version.ts
+git commit --no-verify -m "chore: bump version"
