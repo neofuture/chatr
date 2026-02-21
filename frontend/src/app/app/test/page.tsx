@@ -1183,7 +1183,7 @@ export default function TestPage() {
                     <i className="fas fa-ghost"></i> Ghost Typing Mode
                   </div>
                   <div style={{ fontSize: '11px', opacity: 0.7 }}>
-                    Show what you&#39;re typing in real-time
+                    Show what you're typing in real-time
                   </div>
                 </div>
                 <label style={{
