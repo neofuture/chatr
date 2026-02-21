@@ -9,6 +9,10 @@ if [ ! -d ".git" ]; then
     exit 1
 fi
 
+# Initialise husky (sets core.hooksPath to .husky/_)
+echo "🐶 Initialising husky..."
+npm run prepare
+
 # Check if frontend directory exists
 if [ ! -d "frontend" ]; then
     echo "❌ Error: frontend directory not found"
