@@ -963,45 +963,41 @@ export default function TestPage() {
                 </div>
               ))}
             </div>
-              <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px', opacity: 0.7 }}>
-                CONNECTION STATUS
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px',
-                borderRadius: '6px',
-                backgroundColor: effectivelyOnline
-                  ? (isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)')
-                  : (isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'),
-              }}>
-                <div style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '50%',
-                  backgroundColor: effectivelyOnline ? '#10b981' : '#ef4444',
-                  animation: effectivelyOnline ? 'pulse 2s ease-in-out infinite' : 'none',
-                }}></div>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: effectivelyOnline ? '#10b981' : '#ef4444',
-                }}>
-                  {effectivelyOnline ? <><i className="fas fa-check-circle"></i> Connected</> : <><i className="fas fa-times-circle"></i> Disconnected</>}
-                </div>
-              </div>
-              {manualOffline && (
-                <div style={{
-                  marginTop: '6px',
-                  fontSize: '11px',
-                  opacity: 0.7,
-                  fontStyle: 'italic',
-                }}>
-                  (Manually offline)
-                </div>
-              )}
+
+            {/* Connection Status */}
+            <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px', opacity: 0.7 }}>
+              CONNECTION STATUS
             </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px',
+              borderRadius: '6px',
+              backgroundColor: effectivelyOnline
+                ? (isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)')
+                : (isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)'),
+            }}>
+              <div style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: effectivelyOnline ? '#10b981' : '#ef4444',
+                animation: effectivelyOnline ? 'pulse 2s ease-in-out infinite' : 'none',
+              }}></div>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: effectivelyOnline ? '#10b981' : '#ef4444',
+              }}>
+                {effectivelyOnline ? <><i className="fas fa-check-circle"></i> Connected</> : <><i className="fas fa-times-circle"></i> Disconnected</>}
+              </div>
+            </div>
+            {manualOffline && (
+              <div style={{ marginTop: '6px', fontSize: '11px', opacity: 0.7, fontStyle: 'italic' }}>
+                (Manually offline)
+              </div>
+            )}
 
             {/* Manual Offline Toggle */}
             <div style={{
@@ -1729,6 +1725,7 @@ export default function TestPage() {
             </div>
           </div>
         </div>
+      </div>{/* end row */}
 
       {/* Lightbox for viewing images */}
       <Lightbox
