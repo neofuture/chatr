@@ -1,4 +1,5 @@
 /deployAWS.sh
+/aws.sh
 
 # Node modules
 /node_modules/
