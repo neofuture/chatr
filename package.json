@@ -4,7 +4,7 @@
   "private": true,
   "description": "Chatr monorepo - Real-time messaging platform",
   "scripts": {
-    "prepare": "husky",
+    "prepare": "is-ci || node scripts/install-hooks.js",
     "test": "npm run test:frontend && npm run test:backend",
     "test:frontend": "cd frontend && npm test",
     "test:backend": "cd backend && npm test",
@@ -13,7 +13,8 @@
     "test:export:backend": "cd backend && npm run test:export"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "is-ci": "^4.1.0"
   },
   "workspaces": [
     "frontend",
