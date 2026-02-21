@@ -24,9 +24,16 @@ fi
 # Create post-commit hook
 cat > .git/hooks/post-commit << 'EOF'
 #!/bin/sh
-cd frontend
-node scripts/increment-version.js
-git add src/version.ts
+# Skip if this commit is already a version bump (prevents infinite loop)
+LAST_MSG=$(git log -1 --pretty=%s)
+if [ "$LAST_MSG" = "chore: bump version" ]; then
+  exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)"
+node frontend/scripts/increment-version.js
+git add frontend/src/version.ts
+git commit --no-verify -m "chore: bump version"
 EOF
 
 # Make it executable
