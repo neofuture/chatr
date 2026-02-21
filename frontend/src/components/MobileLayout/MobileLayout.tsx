@@ -223,10 +223,11 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
       </div>
 
 
-      {/* Content Area - Scrollable */}
+      {/* Content Area */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
         color: theme.contentText

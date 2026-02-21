@@ -45,19 +45,19 @@ sequenceDiagram
     participant SV as Server
     participant R as Recipient
 
-    S->>SV: message:send { recipientId, content, type }
+    S->>SV: "message:send { recipientId, content, type }"
     SV->>SV: prisma.message.create status=sent
     alt Recipient online
-        SV-->>R: message:received { id, content, status: delivered }
+        SV-->>R: "message:received { id, content, status: delivered }"
         SV->>SV: update status = delivered
-        SV-->>S: message:sent { status: delivered }
+        SV-->>S: "message:sent { status: delivered }"
     else Recipient offline
-        SV-->>S: message:sent { status: sent }
+        SV-->>S: "message:sent { status: sent }"
     end
 
     R->>SV: message:read "messageId"
     SV->>SV: update status = read, readAt = now
-    SV-->>S: message:status { status: read }
+    SV-->>S: "message:status { status: read }"
 ```
 
 ---
@@ -75,14 +75,14 @@ sequenceDiagram
     C->>API: POST /api/messages/upload (multipart/form-data)
     Note over API: Multer middleware
     API->>API: Save file to /uploads/ or S3
-    API->>DB: prisma.message.create { fileUrl, type, senderId, recipientId }
-    API-->>C: { messageId, fileUrl, needsWaveformGeneration: true }
-    C->>WS: message:send { messageId, recipientId, content: filename }
-    WS-->>R: message:received { fileUrl, type }
+    API->>DB: "prisma.message.create { fileUrl, type, senderId, recipientId }"
+    API-->>C: "{ messageId, fileUrl, needsWaveformGeneration: true }"
+    C->>WS: "message:send { messageId, recipientId, content: filename }"
+    WS-->>R: "message:received { fileUrl, type }"
     Note over C,API: Audio/Voice only — waveform extraction
     C->>C: OfflineAudioContext.decodeAudioData(blob)
     C->>C: Extract 100-bar RMS waveform array
-    C->>API: PATCH /api/messages/:id/waveform { waveform[], duration }
+    C->>API: "PATCH /api/messages/:id/waveform { waveform[], duration }"
     API->>DB: update audioWaveform, audioDuration
     API->>WS: emit audio:waveform to sender + recipient rooms
 ```
@@ -151,11 +151,11 @@ sequenceDiagram
     participant SV as Server
     participant R as Recipient
 
-    S->>SV: ghost:typing { recipientId, text: "Hello" }
-    SV-->>R: ghost:typing { userId, username, text: "Hello" }
-    S->>SV: ghost:typing { recipientId, text: "Hello wor" }
-    SV-->>R: ghost:typing { text: "Hello wor" }
-    S->>SV: message:send { content: "Hello world" }
+    S->>SV: "ghost:typing { recipientId, text: Hello }"
+    SV-->>R: "ghost:typing { userId, username, text: Hello }"
+    S->>SV: "ghost:typing { recipientId, text: Hello wor }"
+    SV-->>R: "ghost:typing { text: Hello wor }"
+    S->>SV: "message:send { content: Hello world }"
     Note over R: Ghost text replaced by real message
 ```
 

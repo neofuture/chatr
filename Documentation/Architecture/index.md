@@ -103,7 +103,7 @@ sequenceDiagram
     B->>N: HTTPS request
     N->>E: proxy_pass :3001
     E->>J: authenticateToken middleware
-    J-->>E: req.user = { userId, username }
+    J-->>E: "req.user = { userId, username }"
     E->>R: route handler
     R->>P: prisma.model.operation()
     P->>DB: SQL query
@@ -121,20 +121,20 @@ sequenceDiagram
     participant R as Recipient
     participant DB as PostgreSQL
 
-    S->>SV: connect (auth: { token })
+    S->>SV: "connect (auth: { token })"
     SV->>SV: verify JWT → socket.userId
-    SV->>SV: socket.join("user:{userId}")
+    SV->>SV: "socket.join(user:userId room)"
     SV-->>S: presence:update (online user list)
     SV-->>R: user:status (online)
 
-    S->>SV: message:send { recipientId, content, type }
+    S->>SV: "message:send { recipientId, content, type }"
     SV->>DB: prisma.message.create()
-    SV-->>R: message:received { id, content, status: "delivered" }
-    SV-->>S: message:sent { id, status }
+    SV-->>R: "message:received { id, content, status: delivered }"
+    SV-->>S: "message:sent { id, status }"
 
     R->>SV: message:read "messageId"
     SV->>DB: update status = "read"
-    SV-->>S: message:status { status: "read" }
+    SV-->>S: "message:status { status: read }"
 ```
 
 ### File Upload Flow
@@ -151,7 +151,7 @@ sequenceDiagram
     API->>API: Multer saves file to disk/S3
     API->>DB: prisma.message.create (fileUrl, type)
     API-->>C: "{ messageId, fileUrl, needsWaveformGeneration }"
-    C->>SV: message:send { messageId, recipientId }
+    C->>SV: "message:send { messageId, recipientId }"
     SV-->>R: message:received (with fileUrl)
     Note over C: Audio/Voice only
     C->>C: OfflineAudioContext decode

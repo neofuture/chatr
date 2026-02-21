@@ -11,6 +11,7 @@ import Lightbox from '@/components/Lightbox/Lightbox';
 import MessageBubble, { type Message } from '@/components/MessageBubble';
 import VoiceRecorder from '@/components/VoiceRecorder';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
+import { version } from '@/version';
 
 interface LogEntry {
   id: string;
@@ -905,25 +906,25 @@ export default function TestPage() {
 
   return (
     <div style={{
+      position: 'absolute',
+      inset: 0,
       display: 'flex',
       flexDirection: 'column',
-      height: '100%', // Fit within parent (app layout)
-      width: '100%',  // Full width of parent
       backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-      overflow: 'hidden', // No scrolling on main container
+      overflow: 'hidden',
     }}>
 
       <div style={{
         display: 'flex',
         flex: 1,
-        overflow: 'hidden', // No scrolling
-        height: '100%', // Full height
+        overflow: 'hidden',
+        minHeight: 0,
       }}>
         {/* Left Panel - Controls */}
         <div style={{
           width: '350px',
-          minWidth: '350px', // Prevent shrinking
-          maxWidth: '350px', // Prevent growing
+          minWidth: '350px',
+          flexShrink: 0,
           height: '100%',
           padding: '20px',
           backgroundColor: isDark ? '#1e293b' : '#ffffff',
@@ -950,7 +951,7 @@ export default function TestPage() {
                 { label: 'API URL', value: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001 (default)' },
                 { label: 'WS URL', value: process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001 (default)' },
                 { label: 'App', value: process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr (default)' },
-                { label: 'Version', value: (require('@/version').version) },
+                { label: 'Version', value: version },
                 { label: 'Env', value: process.env.NODE_ENV || 'unknown' },
               ].map(({ label, value }) => (
                 <div key={label} style={{ display: 'flex', gap: '8px', fontSize: '11px', marginBottom: '4px', fontFamily: 'monospace' }}>
@@ -1183,7 +1184,7 @@ export default function TestPage() {
                     <i className="fas fa-ghost"></i> Ghost Typing Mode
                   </div>
                   <div style={{ fontSize: '11px', opacity: 0.7 }}>
-                    Show what you're typing in real-time
+                    Show what you&apos;re typing in real-time
                   </div>
                 </div>
                 <label style={{
@@ -1253,7 +1254,7 @@ export default function TestPage() {
               value={testMessage}
               onChange={handleMessageInputChange}
               placeholder="Type test message"
-              onKeyPress={(e) => {
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   testSendMessage();
                 }
@@ -1450,11 +1451,10 @@ export default function TestPage() {
         {/* Right Panel - Split View: System Logs (Top) and Messages (Bottom) */}
         <div style={{
           flex: 1,
+          minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          height: '100%', // Lock to full height
-          minHeight: '100%', // Prevent shrinking
         }}>
 
           {/* SYSTEM LOGS SECTION - TOP HALF (Fixed 50%) */}

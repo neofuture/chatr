@@ -135,8 +135,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </button>
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Content — flex-1 so it fills between header and nav, overflow-hidden so children can manage their own scroll */}
+      <div className="flex-1 overflow-hidden min-h-0">
         {children}
       </div>
 

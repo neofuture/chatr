@@ -22,16 +22,16 @@ sequenceDiagram
     M->>M: Validate file size (max 10MB)
     M->>M: Save to /uploads/audio/ or /uploads/messages/
     M->>R: req.file populated
-    R->>R: Build fileUrl = BACKEND_URL/uploads/{subfolder}/{filename}
+    R->>R: "Build fileUrl = BACKEND_URL/uploads/{subfolder}/{filename}"
     alt Audio file with no waveform provided
         R->>R: generatePlaceholderWaveform(filename)
         R->>R: needsWaveformGeneration = true
     end
-    R->>DB: prisma.message.create { fileUrl, type, waveform... }
-    R-->>C: { messageId, fileUrl, waveform, needsWaveformGeneration }
+    R->>DB: "prisma.message.create { fileUrl, type, waveform... }"
+    R-->>C: "{ messageId, fileUrl, waveform, needsWaveformGeneration }"
     Note over C: Client now emits message:send via Socket.io
-    C->>WS: message:send { messageId, recipientId }
-    WS-->>RCP: message:received { fileUrl, type, waveform }
+    C->>WS: "message:send { messageId, recipientId }"
+    WS-->>RCP: "message:received { fileUrl, type, waveform }"
     alt needsWaveformGeneration = true
         Note over R: setImmediate async — non-blocking
         R->>R: generateWaveformFromFile (reads metadata only)
