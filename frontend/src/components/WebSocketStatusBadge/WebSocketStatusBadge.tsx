@@ -123,7 +123,7 @@ export default function WebSocketStatusBadge() {
     if (!isDragging) return;
 
     const newX = window.innerWidth - e.clientX - dragOffset.x;
-    const newY = window.innerHeight - e.clientY - dragOffset.y;
+    const newY = e.clientY - dragOffset.y;
 
     // Keep within bounds (minimum 10px from edges)
     const boundedX = Math.max(10, Math.min(window.innerWidth - 100, newX));
@@ -188,7 +188,7 @@ export default function WebSocketStatusBadge() {
       onClick={handleClick}
       style={{
         position: 'fixed',
-        bottom: `${position.y}px`,
+        top: `${position.y}px`,
         right: `${position.x}px`,
         zIndex: 10000,
         backgroundColor: bgColor,

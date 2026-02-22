@@ -9,7 +9,6 @@ import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import PanelContainer from '@/components/panels/PanelContainer/PanelContainer';
 import ToastContainer from '@/components/ToastContainer/ToastContainer';
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog/ConfirmationDialog';
-import WebSocketStatusBadge from '@/components/WebSocketStatusBadge/WebSocketStatusBadge';
 import RoutePreloader from '@/components/RoutePreloader';
 import * as versionModule from '@/version';
 
@@ -76,7 +75,6 @@ export default function RootLayout({
                   <PanelContainer />
                   <ToastContainer />
                   <ConfirmationDialog />
-                  <WebSocketStatusBadge />
                 </ConfirmationProvider>
               </PanelProvider>
             </ToastProvider>
