@@ -380,11 +380,18 @@ export default function MessageBubble({
         // Initials for avatar fallback
         const initials = senderDisplayName.slice(0, 2).toUpperCase() || '??';
 
+        const hasReactions = (msg.reactions?.length ?? 0) > 0;
+        const bottomMargin = hasReactions
+          ? '22px'                           // always enough room for the badge
+          : isGroupedWithNext
+          ? '1px'                            // tight grouping, no badge
+          : '8px';                           // last in group / solo
+
         return (
           <div key={msg.id} className={styles.messageWrapper}
             style={{
               alignItems: isSent ? 'flex-end' : 'flex-start',
-              marginBottom: isGroupedWithNext ? '1px' : ((msg.reactions?.length ?? 0) > 0 ? '18px' : '8px'),
+              marginBottom: bottomMargin,
               flexDirection: 'row',
               display: 'flex',
               justifyContent: isSent ? 'flex-end' : 'flex-start',
@@ -422,6 +429,54 @@ export default function MessageBubble({
                 <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: '3px', paddingLeft: '4px' }}>
                   {senderDisplayName}
                 </span>
+              )}
+
+              {/* ── Reply quote — above the bubble, outside it ── */}
+              {msg.replyTo && (
+                <div style={{
+                  alignSelf: isSent ? 'flex-end' : 'flex-start',
+                  maxWidth: '100%',
+                  marginTop: '16px',
+                  marginBottom: '2px',
+                  paddingLeft: isSent ? '0' : '4px',
+                  paddingRight: isSent ? '4px' : '0',
+                }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'stretch',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
+                    maxWidth: '100%',
+                  }}>
+                    {/* Accent bar */}
+                    <div style={{
+                      width: '3px',
+                      flexShrink: 0,
+                      backgroundColor: isSent ? '#93c5fd' : '#fdba74',
+                    }} />
+                    <div style={{ padding: '5px 10px', minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '11px', fontWeight: 700,
+                        color: isSent ? '#93c5fd' : '#fdba74',
+                        marginBottom: '2px', whiteSpace: 'nowrap',
+                      }}>
+                        {msg.replyTo.senderUsername === 'You'
+                          ? 'You'
+                          : msg.replyTo.senderDisplayName || msg.replyTo.senderUsername?.replace(/^@/, '') || 'Unknown'}
+                      </div>
+                      <div style={{
+                        fontSize: '12px',
+                        color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        maxWidth: '240px',
+                      }}>
+                        {msg.replyTo.content}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Bubble + reaction badge */}
@@ -475,22 +530,6 @@ export default function MessageBubble({
               {/* Text */}
               {(!msg.type || msg.type === 'text') && (
                 <div style={{ position: 'relative' }}>
-                  {/* Quoted reply snippet */}
-                  {msg.replyTo && (
-                    <div style={{
-                      borderLeft: `3px solid ${isSent ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.5)'}`,
-                      paddingLeft: '8px',
-                      marginBottom: '6px',
-                      opacity: 0.75,
-                    }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '2px' }}>
-                        {msg.replyTo.senderUsername === 'You' ? 'You' : msg.replyTo.senderDisplayName || msg.replyTo.senderUsername?.replace(/^@/, '') || 'Unknown'}
-                      </div>
-                      <div style={{ fontSize: '12px', color: isSent ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
-                        {msg.replyTo.content}
-                      </div>
-                    </div>
-                  )}
                   <div className={styles.messageText}
                     style={{ marginBottom: !isGroupedWithNext ? '4px' : '0', textAlign: isSent ? 'right' : 'left' }}>
                     {msg.content}
