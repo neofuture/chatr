@@ -438,7 +438,7 @@ export function setupSocketHandlers(io: Server) {
 
         await prisma.message.update({
           where: { id: messageId },
-          data: { deletedAt: new Date(), content: '', reaction: null }
+          data: { deletedAt: new Date(), content: '', reactions: { deleteMany: {} } }
         });
 
         // Notify both parties to remove the message
