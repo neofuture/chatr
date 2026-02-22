@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import api from '@/lib/api';
+import { saveAuthToken } from '@/lib/authUtils';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -59,8 +60,7 @@ function Setup2FAContent() {
     try {
       const data = await api.auth.verify2FA(userId, code);
 
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      saveAuthToken(data.token, data.user);
 
       router.push('/app');
     } catch (err: any) {

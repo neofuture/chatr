@@ -795,7 +795,34 @@ router.post('/verify-email', async (req: Request, res: Response) => {
       },
     });
 
-    // Generate phone verification code
+    // If no phone number, skip phone verification — issue token immediately
+    if (!user.phoneNumber) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { phoneVerified: true },
+      });
+
+      const token = jwt.sign(
+        { userId: user.id, username: user.username },
+        process.env.JWT_SECRET || 'your_secret_key_change_in_production',
+        { expiresIn: '7d' }
+      );
+
+      return res.status(200).json({
+        message: 'Email verified successfully. Registration complete!',
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          phoneNumber: null,
+          username: user.username,
+          emailVerified: true,
+          phoneVerified: true,
+        },
+      });
+    }
+
+    // User has a phone number — send phone verification code
     const phoneCode = Math.floor(100000 + Math.random() * 900000).toString();
     const phoneExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
@@ -810,23 +837,17 @@ router.post('/verify-email', async (req: Request, res: Response) => {
 
     console.log(`Phone verification code for ${user.phoneNumber}: ${phoneCode}`);
 
-    // Send SMS verification code
-    if (user.phoneNumber) {
-      console.log(`Sending SMS to ${user.phoneNumber} for user ${user.username}`);
-      try {
-        await sendPhoneVerificationSMS(user.phoneNumber, phoneCode, user.username);
-        console.log('✅ SMS sent successfully');
-      } catch (smsError) {
-        console.error('❌ Failed to send SMS:', smsError);
-        // Continue anyway - user can still complete verification
-      }
-    } else {
-      console.warn('⚠️ No phone number found for user:', user.username);
+    try {
+      await sendPhoneVerificationSMS(user.phoneNumber, phoneCode, user.username);
+      console.log('✅ SMS sent successfully');
+    } catch (smsError) {
+      console.error('❌ Failed to send SMS:', smsError);
     }
 
     res.status(200).json({
       message: 'Email verified successfully. Please verify your phone number.',
       requiresPhoneVerification: true,
+      phoneNumber: user.phoneNumber,
       userId: user.id,
     });
   } catch (error) {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useToast } from '@/contexts/ToastContext';
 import { usePanels } from '@/contexts/PanelContext';
+import { saveAuthToken } from '@/lib/authUtils';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -148,22 +149,24 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
       }
 
       // Check if phone verification is required
-      if (data.requiresPhoneVerification) {
-        showToast('Email verified! Now verify your phone number.', 'success');
-        // Clear email code
-        setCode(['', '', '', '', '', '']);
-        // Close current panel and open phone verification
-        closeAllPanels();
-        setTimeout(() => {
-          openPanel(
-            'phone-verification',
-            <EmailVerificationContent userId={data.userId} verificationType="phone" />,
-            'Verify Phone Number',
-            'center'
-          );
-        }, 300);
-        setLoading(false);
-        return;
+      if (data.requiresPhoneVerification && data.userId) {
+        // Only show phone verification if the user actually has a phone number
+        if (data.phoneNumber) {
+          showToast('Email verified! Now verify your phone number.', 'success');
+          setCode(['', '', '', '', '', '']);
+          closeAllPanels();
+          setTimeout(() => {
+            openPanel(
+              'phone-verification',
+              <EmailVerificationContent userId={data.userId} verificationType="phone" />,
+              'Verify Phone Number',
+              'center'
+            );
+          }, 300);
+          setLoading(false);
+          return;
+        }
+        // No phone number — treat as fully verified, token should be in response
       }
 
       // Clear temporary login credentials if they exist
@@ -172,10 +175,9 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
         localStorage.removeItem('temp_login_password');
       }
 
-      // Store token and user
+      // Store token and user — use saveAuthToken so WebSocket connects immediately
       if (data.token && data.user) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        saveAuthToken(data.token, data.user);
       }
 
       const successMessage = verificationType === 'phone'
