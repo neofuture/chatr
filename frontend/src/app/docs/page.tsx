@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, isValidElement } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
@@ -9,6 +10,19 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+// Mermaid is browser-only — load with ssr:false so webpack never bundles it for the server
+const MermaidDiagram = dynamic(
+  () => import('@/components/MermaidDiagram/MermaidDiagram'),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{ padding: '2rem', color: '#60a5fa', fontFamily: 'monospace' }}>
+        Loading diagram…
+      </div>
+    ),
+  }
+);
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -125,80 +139,10 @@ export default function DocsPage() {
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<DocFile[]>([]);
-  const mermaidInitialized = useRef(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const sidebarScrollTop = useRef(0);
   const pendingHash = useRef<string | null>(null);
 
-  // Initialize mermaid dynamically (browser-only, cannot be statically imported)
-  useEffect(() => {
-    if (!mermaidInitialized.current) {
-      import('mermaid').then(({ default: mermaid }) => {
-        mermaid.initialize({
-          startOnLoad: true,
-          theme: 'dark',
-          themeVariables: {
-            primaryColor: '#3b82f6',
-            primaryTextColor: '#e0f2fe',
-            primaryBorderColor: '#3b82f6',
-            lineColor: '#3b82f6',
-            secondaryColor: '#f97316',
-            tertiaryColor: '#1e3a5f',
-            background: '#0f172a',
-            mainBkg: '#1e293b',
-            secondBkg: '#334155',
-            textColor: '#e0f2fe',
-            border1: '#3b82f6',
-            border2: '#f97316',
-            arrowheadColor: '#3b82f6',
-            fontFamily: 'ui-monospace, monospace',
-            fontSize: '14px',
-          },
-          securityLevel: 'loose',
-        });
-        mermaidInitialized.current = true;
-      });
-    }
-  }, []);
-
-  // Custom Mermaid component
-  const MermaidDiagram = ({ chart }: { chart: string }) => {
-    const ref = useRef<HTMLDivElement>(null);
-    const [svg, setSvg] = useState<string>('');
-
-    useEffect(() => {
-      const renderDiagram = async () => {
-        if (ref.current && chart) {
-          try {
-            const { default: mermaid } = await import('mermaid');
-            const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-            const { svg } = await mermaid.render(id, chart);
-            setSvg(svg);
-          } catch (error) {
-            console.error('Mermaid rendering error:', error);
-            setSvg(`<pre style="color: #ef4444;">Error rendering diagram: ${error}</pre>`);
-          }
-        }
-      };
-      renderDiagram();
-    }, [chart]);
-
-    return (
-      <div
-        ref={ref}
-        className="mermaid-diagram"
-        style={{
-          background: 'rgba(15, 23, 42, 0.5)',
-          padding: '2rem',
-          borderRadius: '0.5rem',
-          margin: '2rem 0',
-          overflow: 'auto',
-          border: '1px solid rgba(59, 130, 246, 0.3)',
-        }}
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
-    );
-  };
 
   // Custom syntax-highlighted code block
   const CodeBlock = ({ language, code }: { language: string; code: string }) => {
