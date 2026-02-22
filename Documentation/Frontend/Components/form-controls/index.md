@@ -12,6 +12,7 @@ Accessible, ref-forwarding form input components. All extend the corresponding n
 | [Radio](./Radio/index.md) | Group of radio buttons from options array |
 | [RangeSlider](./RangeSlider/index.md) | Single-handle range slider with value display |
 | [DualRangeSlider](./DualRangeSlider/index.md) | Two-handle range slider for min/max selection |
+| [SimpleDualRangeSlider](./SimpleDualRangeSlider/index.md) | Lightweight two-handle range slider — no dependencies |
 | [DatePicker](./DatePicker/index.md) | Scroll-wheel date/time picker with portal rendering |
 | [Calendar](./Calendar/index.md) | Month-grid calendar used by DatePicker |
 

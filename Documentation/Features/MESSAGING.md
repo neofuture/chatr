@@ -200,10 +200,42 @@ flowchart LR
     G --> H[prisma.user.update lastSeen=now]
 ```
 
-Clients can request presence for specific users:
+### Presence Request / Poll
+
+Clients can request presence for specific users at any time, and the `useConversation` hook polls every **10 seconds** to catch users who disconnect without emitting an event:
+
 ```
-client → presence:request [userId1, userId2]
-server → presence:response [{ userId, status, lastSeen }]
+client → presence:request [userId1, userId2, ...]
+server → presence:response [{ userId, status, lastSeen }, ...]
 ```
 
-> ⚠️ The in-memory presence Maps are per-process. In a multi-instance deployment this should be moved to Redis.
+The 10-second poll ensures stale `online` states are corrected even when a device drops the connection silently (e.g. airplane mode, background kill).
+
+### Live Status Updates
+
+The `user:status` event is emitted server-wide whenever a user's status changes:
+
+```json
+{ "userId": "uuid", "username": "@user", "status": "offline", "lastSeen": "2026-02-22T10:00:00Z" }
+```
+
+### Status Display
+
+| Status | Colour | Subtitle shown |
+|---|---|---|
+| `online` | 🟢 `#10b981` | "online" |
+| `away` | 🟠 `#f97316` | "away" |
+| `offline` | ⚫ `#64748b` | "Last seen X ago" |
+
+`lastSeen` timestamps are formatted as: *just now*, *5m ago*, *3h ago*, or *Feb 20*.
+
+### Manual Offline Mode (Test Lab)
+
+The Test Lab provides a manual offline toggle. When activated:
+1. Emits `presence:update: 'offline'` so the server records the status immediately
+2. After 150ms calls `socket.disconnect()` to fully drop the connection
+3. Other clients see `user:status: offline` in real time
+
+Toggling back calls `socket.connect()` which triggers a full reconnect and broadcasts `online`.
+
+> ⚠️ The in-memory presence Maps are per-process. In a multi-instance deployment this should be moved to Redis (already configured on the AWS stack).

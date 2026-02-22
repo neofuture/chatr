@@ -18,11 +18,12 @@ graph TD
     root --> emailpreview["/email-preview"]
     root --> app["/app — requires auth"]
 
-    app --> apphome["/app<br/>Main chat"]
-    app --> settings["/app/settings<br/>Profile · Cover · 2FA"]
-    app --> groups["/app/groups<br/>Group chat"]
-    app --> updates["/app/updates<br/>Changelog"]
-    app --> test["/app/test<br/>Dev test lab"]
+    app --> apphome["/app — Main chat"]
+    app --> chatdemo["/app/chat-demo — Chat prototype"]
+    app --> settings["/app/settings — Profile, Cover, 2FA"]
+    app --> groups["/app/groups — Group chat"]
+    app --> updates["/app/updates — Changelog"]
+    app --> test["/app/test — Dev Test Lab"]
 ```
 
 ---
@@ -46,15 +47,23 @@ graph TD
 Manages the Socket.io connection lifecycle. Reads `token` and `user` from `localStorage` on mount. If either is missing or invalid, the connection is skipped.
 
 ```typescript
-const { socket, connected, connecting } = useWebSocket();
+const { socket, connected, connecting, disconnect, reconnect } = useWebSocket();
 ```
+
+| Value | Type | Description |
+|---|---|---|
+| `socket` | `Socket \| null` | Raw Socket.io instance |
+| `connected` | `boolean` | Whether the socket is currently connected |
+| `connecting` | `boolean` | Whether a connection attempt is in progress |
+| `disconnect` | `() => void` | Manually close the socket (e.g. manual offline mode) |
+| `reconnect` | `() => void` | Reconnect after a manual disconnect |
 
 **Reconnection config:**
 - `reconnectionDelay`: 1000ms
 - `reconnectionDelayMax`: 5000ms
 - `reconnectionAttempts`: 5
 
-Automatically connects on mount and disconnects on unmount. Exposes the raw `socket` instance so components can attach event listeners directly.
+Automatically connects on mount and disconnects on unmount. The `disconnect` / `reconnect` methods are used by the Test Lab's manual offline toggle to simulate going offline — this emits `presence:update: offline` to the server before dropping the connection so presence is correctly recorded.
 
 ### ThemeContext
 
@@ -192,8 +201,10 @@ Message compose bar. Supports:
 ### Lightbox
 Full-screen image viewer overlay. Opens on clicking an image message. Supports keyboard `Escape` to close.
 
-### ConnectionIndicator / WebSocketStatusBadge
-Visual indicators for WebSocket connection state. Shows `connecting`, `connected`, or `disconnected` states.
+### ConnectionIndicator
+Visual indicator for WebSocket connection state. Shows `connecting`, `connected`, or `disconnected` states. Used within authenticated layouts.
+
+> **Note:** The `WebSocketStatusBadge` floating developer overlay has been removed from the app. Connection status is now surfaced through the presence system in the Test Lab.
 
 ---
 
@@ -259,3 +270,55 @@ CSS custom properties on `:root` drive all colours. Components read the theme vi
 | `--text-secondary` | `#94a3b8` | `#64748b` |
 | `--blue-500` | `#3b82f6` | `#3b82f6` |
 | `--orange-500` | `#f97316` | `#f97316` |
+
+---
+
+## Contexts
+
+All contexts in `src/contexts/`. See [Contexts](./Contexts/index.md) for full detail.
+
+| Context | Hook | Description |
+|---|---|---|
+| `WebSocketContext` | `useWebSocket()` | Socket.io lifecycle — connect, disconnect, reconnect |
+| `ThemeContext` | `useTheme()` | Light/dark preference — persisted to `localStorage` |
+| `ToastContext` | `useToast()` | Queue-based toast notifications |
+| `ConfirmationContext` | `useConfirmation()` | Promise-based confirmation dialogs |
+| `PanelContext` | `usePanel()` | Stacked slide-in panel system |
+
+---
+
+## Hooks
+
+Custom hooks in `src/hooks/`. See [Hooks index](./Hooks/index.md) for full detail.
+
+| Hook | Description |
+|---|---|
+| [`useAuth`](./Hooks/useAuth.md) | Auth state, login, logout — reads/writes `localStorage`, redirects via router |
+| [`useOfflineSync`](./Hooks/useOfflineSync.md) | Monitors `navigator.onLine`, auto-syncs IndexedDB-queued messages on reconnect |
+| [`useConversation`](./Hooks/useConversation.md) | Full messaging state machine — messages, presence, socket events, file/voice sending, manual offline mode |
+
+---
+
+## Lib
+
+Utility modules in `src/lib/`. See [Lib](./Lib/index.md) for full detail.
+
+| Module | Description |
+|---|---|
+| `api.ts` | Typed REST API wrapper |
+| `db.ts` | Dexie (IndexedDB) schema — offline messages, images |
+| `offline.ts` | Offline queue helpers — save, sync, mark synced |
+| `authUtils.ts` | Token save/clear with WebSocket reconnect trigger |
+| `profileImageService.ts` | Profile image URL resolver (IndexedDB → server → default) |
+| `coverImageService.ts` | Cover image URL resolver |
+
+---
+
+## Types
+
+Shared TypeScript interfaces in `src/types/`. See [Types](./Types/index.md).
+
+```typescript
+User · AuthResponse · Message · Group
+```
+

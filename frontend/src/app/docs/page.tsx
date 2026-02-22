@@ -348,22 +348,21 @@ export default function DocsPage() {
   };
 
 
-  // Convert filename to Word Case for display
+  // Convert filename to display label
   const formatFileName = (fileName: string): string => {
-    // Remove .md extension
     const nameWithoutExt = fileName.replace('.md', '');
 
-    // Split by underscore or hyphen only
-    const words = nameWithoutExt
-      .split(/[_-]+/) // Split only by underscore or hyphen
-      .filter(word => word.length > 0);
+    // camelCase names (hooks etc) — return as-is: useAuth, useConversation
+    if (/^use[A-Z]/.test(nameWithoutExt)) {
+      return nameWithoutExt;
+    }
 
-    // Capitalize first letter of each word, lowercase the rest
-    const formatted = words
+    // Split on underscores and hyphens, title-case each word, join with space
+    return nameWithoutExt
+      .split(/[_-]+/)
+      .filter(word => word.length > 0)
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
-
-    return formatted;
   };
 
   // Search through all files

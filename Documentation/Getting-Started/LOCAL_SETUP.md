@@ -112,7 +112,7 @@ The project uses a `post-commit` hook to auto-increment the frontend version (`f
 If hooks stop working (e.g. after re-initialising git), run:
 
 ```bash
-bash setup-hooks.sh
+bash setup-Hooks.sh
 ```
 
 Or simply:

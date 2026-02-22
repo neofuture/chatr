@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const hookPath = path.join(__dirname, '..', '.git', 'hooks', 'post-commit');
+const hookPath = path.join(__dirname, '..', '.git', 'Hooks', 'post-commit');
 
 const hookContent = `#!/bin/sh
 # Skip if this is already a version bump commit (prevents infinite loop)

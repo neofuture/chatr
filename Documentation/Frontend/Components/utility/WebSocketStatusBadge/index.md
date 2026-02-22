@@ -1,8 +1,8 @@
-# WebSocketStatusBadge
+# WebSocketStatusBadge *(deprecated)*
 
-**File:** `src/components/WebSocketStatusBadge/WebSocketStatusBadge.tsx`
+> ⚠️ **Removed** — The `WebSocketStatusBadge` floating overlay has been removed from the application. Connection and presence status is now handled by the Test Lab (`/app/test`) which uses `useConversation` and displays live presence per user. This file is kept for historical reference only.
 
-A draggable developer badge that shows WebSocket connection status and a live log of all Socket.io events. For development and testing only.
+A draggable developer badge that showed WebSocket connection status and a live log of all Socket.io events. For development and testing only.
 
 ## Props
 
@@ -33,4 +33,3 @@ interface MessageLog {
 // Render conditionally in dev mode
 {process.env.NODE_ENV === 'development' && <WebSocketStatusBadge />}
 ```
-

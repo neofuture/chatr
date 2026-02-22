@@ -26,7 +26,7 @@ if [ ! -f "frontend/scripts/increment-version.js" ]; then
 fi
 
 # Create post-commit hook
-cat > .git/hooks/post-commit << 'EOF'
+cat > .git/Hooks/post-commit << 'EOF'
 #!/bin/sh
 # Skip if this commit is already a version bump (prevents infinite loop)
 LAST_MSG=$(git log -1 --pretty=%s)
@@ -41,7 +41,7 @@ git commit --no-verify -m "chore: bump version"
 EOF
 
 # Make it executable
-chmod +x .git/hooks/post-commit
+chmod +x .git/Hooks/post-commit
 
 echo "✅ Git hook installed successfully!"
 echo ""

@@ -9,31 +9,41 @@ The backend is an Express 4 application written in TypeScript, running on Node.j
 ## Structure
 
 ```mermaid
-graph TD
-    backend --> src
-
-    src --> index["index.ts<br/>Express app + Socket.io"]
-    src --> swagger["swagger.ts<br/>API spec"]
+graph LR
     src --> middleware
     src --> routes
     src --> socket
     src --> services
 
-    middleware --> mauth["auth.ts<br/>JWT middleware"]
+    middleware --> mauth[auth.ts]
 
-    routes --> rauth["auth.ts<br/>/api/auth/*"]
-    routes --> rusers["users.ts<br/>/api/users/*"]
-    routes --> rmessages["messages.ts<br/>/api/messages/*"]
-    routes --> rgroups["groups.ts<br/>/api/groups/*"]
-    routes --> rupload["file-upload.ts<br/>/api/messages/upload"]
-    routes --> remail["email-templates.ts<br/>/api/email-preview"]
+    routes --> rauth[auth.ts]
+    routes --> rusers[users.ts]
+    routes --> rmessages[messages.ts]
+    routes --> rgroups[groups.ts]
+    routes --> rupload[file-upload.ts]
 
-    socket --> handlers["handlers.ts<br/>Socket.io events + presence"]
+    socket --> handlers[handlers.ts]
 
-    services --> semail["email.ts<br/>Mailtrap"]
-    services --> ssms["sms.ts<br/>SMS Works"]
-    services --> swaveform["waveform.ts<br/>Waveform + duration"]
+    services --> semail[email.ts]
+    services --> ssms[sms.ts]
+    services --> swaveform[waveform.ts]
 ```
+
+| Folder | File | Responsibility |
+|---|---|---|
+| `src/` | `index.ts` | Express app entry, Socket.io setup, route mounting |
+| `src/` | `swagger.ts` | OpenAPI spec |
+| `middleware/` | `auth.ts` | JWT authentication middleware |
+| `routes/` | `auth.ts` | `/api/auth/*` — register, login, OTP, 2FA |
+| `routes/` | `users.ts` | `/api/users/*` — profiles, image upload |
+| `routes/` | `messages.ts` | `/api/messages/*` — history, conversations |
+| `routes/` | `groups.ts` | `/api/groups/*` — group CRUD |
+| `routes/` | `file-upload.ts` | `/api/messages/upload` — file/audio |
+| `socket/` | `handlers.ts` | Socket.io events and presence |
+| `services/` | `email.ts` | Mailtrap email sending |
+| `services/` | `sms.ts` | SMS Works SMS sending |
+| `services/` | `waveform.ts` | Audio waveform + duration |
 
 ---
 
@@ -42,15 +52,15 @@ graph TD
 Requests pass through the following layers in order:
 
 ```mermaid
-flowchart LR
-    A[Incoming Request] --> B[Helmet<br/>Security headers]
-    B --> C[CORS<br/>Origin whitelist]
-    C --> D[express.json<br/>Body parsing]
-    D --> E{Route}
-    E -->|Public route| F[Handler]
-    E -->|Protected route| G[authenticateToken<br/>JWT validation]
-    G -->|Valid| F
-    G -->|Invalid| H[401 / 403]
+flowchart TD
+    A[Incoming Request] --> B[Helmet — security headers]
+    B --> C[CORS — origin whitelist]
+    C --> D[express.json — body parsing]
+    D --> E{Protected route?}
+    E -- No --> F[Handler]
+    E -- Yes --> G[authenticateToken — JWT validation]
+    G -- Valid --> F
+    G -- Invalid --> H[401 / 403]
 ```
 
 ### Helmet
@@ -121,8 +131,10 @@ This ensures PM2 restarts are clean with no dangling connections.
 
 ## Sub-sections
 
-- [Authentication](./AUTHENTICATION.md) — Registration, login, OTP, JWT, 2FA, password reset
-- [Services](./SERVICES.md) — Email, SMS, Waveform services
-- [File Upload](./FILE_UPLOAD.md) — Multer config, upload flow, waveform generation
-- [Middleware](./MIDDLEWARE.md) — JWT auth middleware detail
+- [Routes](./Routes.md) — All Express route files — auth, users, messages, groups, file upload
+- [Socket Handlers](./Socket_Handlers.md) — Socket.io events, presence lifecycle, in-memory store
+- [Authentication](./Authentication.md) — Registration, login, OTP, JWT, 2FA, password reset
+- [Services](./Services.md) — Email, SMS, Waveform services
+- [File Upload](./File_Upload.md) — Multer config, upload flow, waveform generation
+- [Middleware](./Middleware.md) — JWT auth middleware detail
 
