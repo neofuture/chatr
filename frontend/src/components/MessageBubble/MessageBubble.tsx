@@ -32,11 +32,14 @@ export interface Message {
   waveformData?: number[];
   duration?: number;
   reactions?: MessageReaction[];
+  unsent?: boolean;
   replyTo?: {
     id: string;
     content: string;
     senderUsername: string;
     senderDisplayName?: string | null;
+    type?: string;
+    duration?: number;
   };
 }
 
@@ -466,14 +469,48 @@ export default function MessageBubble({
                           ? 'You'
                           : msg.replyTo.senderDisplayName || msg.replyTo.senderUsername?.replace(/^@/, '') || 'Unknown'}
                       </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        maxWidth: '240px',
-                      }}>
-                        {msg.replyTo.content}
-                      </div>
+                      {msg.replyTo.type === 'audio' ? (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          fontSize: '12px',
+                          color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
+                        }}>
+                          <i className="fas fa-microphone" style={{ fontSize: '11px', opacity: 0.8 }} />
+                          <span>Voice message</span>
+                          {msg.replyTo.duration != null && msg.replyTo.duration > 0 && (
+                            <span style={{ opacity: 0.6 }}>
+                              {Math.floor(msg.replyTo.duration / 60)}:{String(Math.round(msg.replyTo.duration % 60)).padStart(2, '0')}
+                            </span>
+                          )}
+                        </div>
+                      ) : msg.replyTo.type === 'image' ? (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          fontSize: '12px',
+                          color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
+                        }}>
+                          <i className="fas fa-image" style={{ fontSize: '11px', opacity: 0.8 }} />
+                          <span>Photo</span>
+                        </div>
+                      ) : msg.replyTo.type === 'file' ? (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          fontSize: '12px',
+                          color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
+                        }}>
+                          <i className="fas fa-file" style={{ fontSize: '11px', opacity: 0.8 }} />
+                          <span>{msg.replyTo.content || 'File'}</span>
+                        </div>
+                      ) : (
+                        <div style={{
+                          fontSize: '12px',
+                          color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          maxWidth: '240px',
+                        }}>
+                          {msg.replyTo.content}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -481,84 +518,104 @@ export default function MessageBubble({
 
               {/* Bubble + reaction badge */}
               <div style={{ position: 'relative', display: 'inline-block', width: msg.type === 'audio' ? 'fit-content' : 'auto', maxWidth: '100%' }}>
-            <div
-              className={styles.messageBubble}
-              style={{
-                maxWidth: '100%',
-                width: 'auto',
-                padding: msg.type === 'audio' ? '2px' : (!msg.type || msg.type === 'text') ? '5px 11px' : '4px',
-                borderRadius, backgroundColor: bgColor,
-                userSelect: 'none', WebkitUserSelect: 'none',
-              }}
-              onContextMenu={e => { e.preventDefault(); openMenu(e.currentTarget, msg, isSent, borderRadius, bgColor); }}
-              onTouchStart={e => startLongPress(e, msg, isSent, borderRadius, bgColor)}
-              onTouchEnd={cancelLongPress}
-              onTouchMove={cancelLongPress}
-              onMouseDown={e => { if (e.button === 0) startLongPress(e, msg, isSent, borderRadius, bgColor); }}
-              onMouseUp={cancelLongPress}
-              onMouseLeave={cancelLongPress}
-            >
-              {/* Image */}
-              {msg.type === 'image' && msg.fileUrl && (
-                <div>
-                  <img src={msg.fileUrl} alt={msg.fileName || 'Image'} className={styles.messageImage}
-                    onClick={() => { if (onImageClick) onImageClick(msg.fileUrl!, msg.fileName || ''); }} />
-                  {msg.fileName && <div className={styles.imageFileName}><i className="fas fa-camera" /> {msg.fileName}</div>}
-                </div>
-              )}
-              {/* Audio */}
-              {(msg.type === 'audio' || (msg.type === 'file' && msg.fileType?.startsWith('audio/'))) && msg.fileUrl && (
-                <MessageAudioPlayer
-                  audioUrl={msg.fileUrl} duration={msg.duration || 0} waveformData={msg.waveformData || []}
-                  timestamp={msg.timestamp} isSent={isSent} messageId={msg.id} senderId={msg.senderId}
-                  onPlayStatusChange={onAudioPlayStatusChange} status={msg.status}
-                  isListening={listeningMessageIds.has(msg.id)}
-                  isActivePlayer={activeAudioMessageId !== undefined ? activeAudioMessageId === msg.id : undefined}
-                />
-              )}
-              {/* File */}
-              {msg.type === 'file' && !msg.fileType?.startsWith('audio/') && msg.fileUrl && (
-                <a href={msg.fileUrl} download={msg.fileName} target="_blank" rel="noopener noreferrer" className={styles.fileLink}>
-                  <span className={styles.fileIcon}><i className="fas fa-file" /></span>
-                  <div className={styles.fileInfo}>
-                    <div className={styles.fileName}>{msg.fileName || 'File'}</div>
-                    {msg.fileSize && <div className={styles.fileSize}>{(msg.fileSize / 1024).toFixed(2)} KB</div>}
-                  </div>
-                  <span className={styles.downloadIcon}><i className="fas fa-download" /></span>
-                </a>
-              )}
-              {/* Text */}
-              {(!msg.type || msg.type === 'text') && (
-                <div style={{ position: 'relative' }}>
-                  <div className={styles.messageText}
-                    style={{ marginBottom: !isGroupedWithNext ? '4px' : '0', textAlign: isSent ? 'right' : 'left' }}>
-                    {msg.content}
-                  </div>
-                  {false && ttsSupported && (
-                    <button onClick={e => { e.stopPropagation(); speak(msg.id, msg.content); }}
-                      style={{ position: 'absolute', top: '50%', right: isSent ? 'unset' : '-2px', left: isSent ? '-2px' : 'unset', transform: 'translateY(-60%)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', lineHeight: 1, color: speakingId === msg.id ? '#ffffff' : 'rgba(255,255,255,0.45)', fontSize: '11px' }}>
-                      <i className={speakingId === msg.id ? 'fas fa-volume-up' : 'fas fa-volume-off'} />
-                    </button>
-                  )}
-                </div>
-              )}
-              {/* Timestamp */}
-              {!isGroupedWithNext && msg.type !== 'audio' && !(msg.type === 'file' && msg.fileType?.startsWith('audio/')) && (
-                <div className={styles.timestamp} style={{ padding: msg.type === 'image' || msg.type === 'file' ? '4px' : '0' }}>
-                  {msg.timestamp.toLocaleTimeString()}
-                </div>
-              )}
-            </div>{/* end messageBubble */}
 
-              {/* Reaction badge — absolute, overlapping bottom corner */}
-              {(msg.reactions?.length ?? 0) > 0 && (
-                <ReactionBadge
-                  reactions={msg.reactions!}
-                  isSent={isSent}
-                  currentUserId={currentUserId}
-                />
-              )}
-            </div>{/* end relative wrapper */}
+                {/* ── Unsent placeholder ── */}
+                {msg.unsent ? (
+                  <div style={{
+                    padding: '6px 12px',
+                    borderRadius,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                    border: `1px dashed ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}`,
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                  }}>
+                    <i className="fas fa-ban" style={{ fontSize: '11px', opacity: 0.4 }} />
+                    <span style={{
+                      fontSize: '13px', fontStyle: 'italic',
+                      color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)',
+                    }}>
+                      {isSent ? 'You unsent this message' : `${senderDisplayName} unsent this message`}
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    className={styles.messageBubble}
+                    style={{
+                      maxWidth: '100%',
+                      width: 'auto',
+                      padding: msg.type === 'audio' ? '2px' : (!msg.type || msg.type === 'text') ? '5px 11px' : '4px',
+                      borderRadius, backgroundColor: bgColor,
+                      userSelect: 'none', WebkitUserSelect: 'none',
+                    }}
+                    onContextMenu={e => { e.preventDefault(); openMenu(e.currentTarget, msg, isSent, borderRadius, bgColor); }}
+                    onTouchStart={e => startLongPress(e, msg, isSent, borderRadius, bgColor)}
+                    onTouchEnd={cancelLongPress}
+                    onTouchMove={cancelLongPress}
+                    onMouseDown={e => { if (e.button === 0) startLongPress(e, msg, isSent, borderRadius, bgColor); }}
+                    onMouseUp={cancelLongPress}
+                    onMouseLeave={cancelLongPress}
+                  >
+                    {/* Image */}
+                    {msg.type === 'image' && msg.fileUrl && (
+                      <div>
+                        <img src={msg.fileUrl} alt={msg.fileName || 'Image'} className={styles.messageImage}
+                          onClick={() => { if (onImageClick) onImageClick(msg.fileUrl!, msg.fileName || ''); }} />
+                        {msg.fileName && <div className={styles.imageFileName}><i className="fas fa-camera" /> {msg.fileName}</div>}
+                      </div>
+                    )}
+                    {/* Audio */}
+                    {(msg.type === 'audio' || (msg.type === 'file' && msg.fileType?.startsWith('audio/'))) && msg.fileUrl && (
+                      <MessageAudioPlayer
+                        audioUrl={msg.fileUrl} duration={msg.duration || 0} waveformData={msg.waveformData || []}
+                        timestamp={msg.timestamp} isSent={isSent} messageId={msg.id} senderId={msg.senderId}
+                        onPlayStatusChange={onAudioPlayStatusChange} status={msg.status}
+                        isListening={listeningMessageIds.has(msg.id)}
+                        isActivePlayer={activeAudioMessageId !== undefined ? activeAudioMessageId === msg.id : undefined}
+                      />
+                    )}
+                    {/* File */}
+                    {msg.type === 'file' && !msg.fileType?.startsWith('audio/') && msg.fileUrl && (
+                      <a href={msg.fileUrl} download={msg.fileName} target="_blank" rel="noopener noreferrer" className={styles.fileLink}>
+                        <span className={styles.fileIcon}><i className="fas fa-file" /></span>
+                        <div className={styles.fileInfo}>
+                          <div className={styles.fileName}>{msg.fileName || 'File'}</div>
+                          {msg.fileSize && <div className={styles.fileSize}>{(msg.fileSize / 1024).toFixed(2)} KB</div>}
+                        </div>
+                        <span className={styles.downloadIcon}><i className="fas fa-download" /></span>
+                      </a>
+                    )}
+                    {/* Text */}
+                    {(!msg.type || msg.type === 'text') && (
+                      <div style={{ position: 'relative' }}>
+                        <div className={styles.messageText}
+                          style={{ marginBottom: !isGroupedWithNext ? '4px' : '0', textAlign: isSent ? 'right' : 'left' }}>
+                          {msg.content}
+                        </div>
+                        {false && ttsSupported && (
+                          <button onClick={e => { e.stopPropagation(); speak(msg.id, msg.content); }}
+                            style={{ position: 'absolute', top: '50%', right: isSent ? 'unset' : '-2px', left: isSent ? '-2px' : 'unset', transform: 'translateY(-60%)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', lineHeight: 1, color: speakingId === msg.id ? '#ffffff' : 'rgba(255,255,255,0.45)', fontSize: '11px' }}>
+                            <i className={speakingId === msg.id ? 'fas fa-volume-up' : 'fas fa-volume-off'} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {/* Timestamp */}
+                    {!isGroupedWithNext && msg.type !== 'audio' && !(msg.type === 'file' && msg.fileType?.startsWith('audio/')) && (
+                      <div className={styles.timestamp} style={{ padding: msg.type === 'image' || msg.type === 'file' ? '4px' : '0' }}>
+                        {msg.timestamp.toLocaleTimeString()}
+                      </div>
+                    )}
+                  </div>
+                )}{/* end unsent ternary */}
+
+                {/* Reaction badge — absolute, overlapping bottom corner */}
+                {(msg.reactions?.length ?? 0) > 0 && (
+                  <ReactionBadge
+                    reactions={msg.reactions!}
+                    isSent={isSent}
+                    currentUserId={currentUserId}
+                  />
+                )}
+              </div>{/* end relative wrapper */}
 
             {/* Status */}
             {isSent && !isGroupedWithNext && (

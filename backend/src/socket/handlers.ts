@@ -115,7 +115,13 @@ export function setupSocketHandlers(io: Server) {
       fileType?: string;
       waveform?: number[];
       duration?: number;
-      messageId?: string; // Pre-existing message ID (e.g. from file upload)
+      messageId?: string;
+      replyTo?: {
+        id: string;
+        content: string;
+        senderDisplayName?: string | null;
+        senderUsername?: string;
+      };
     }) => {
       try {
         console.log(`💬 Message from ${username} to user ${data.recipientId}`, {
@@ -160,6 +166,12 @@ export function setupSocketHandlers(io: Server) {
               fileType: data.fileType,
               audioWaveform: data.waveform ? data.waveform : undefined,
               audioDuration: data.duration,
+              // Reply snapshot
+              replyToId: data.replyTo?.id ?? null,
+              replyToContent: data.replyTo?.content ?? null,
+              replyToSenderName: data.replyTo?.senderDisplayName || data.replyTo?.senderUsername?.replace(/^@/, '') || null,
+              replyToType: (data.replyTo as any)?.type ?? null,
+              replyToDuration: (data.replyTo as any)?.duration ?? null,
             },
             include: { sender: { select: { id: true, username: true, email: true } } }
           });
@@ -174,6 +186,16 @@ export function setupSocketHandlers(io: Server) {
         const fileType = message.fileType || data.fileType;
         const waveform = (message.audioWaveform as number[] | null) || data.waveform;
         const duration = message.audioDuration || data.duration;
+
+        // Build replyTo snapshot for emit (use DB values for reliability)
+        const replyToPayload = message.replyToId ? {
+          id: message.replyToId,
+          content: message.replyToContent || '',
+          senderDisplayName: message.replyToSenderName || null,
+          senderUsername: message.replyToSenderName || '',
+          type: message.replyToType || 'text',
+          duration: message.replyToDuration || null,
+        } : undefined;
 
         if (recipientSocketId) {
           io.to(`user:${data.recipientId}`).emit('message:received', {
@@ -192,6 +214,7 @@ export function setupSocketHandlers(io: Server) {
             fileType,
             waveform,
             duration,
+            replyTo: replyToPayload,
           });
 
           // Update message status to delivered
@@ -207,7 +230,8 @@ export function setupSocketHandlers(io: Server) {
           recipientId: data.recipientId,
           content: message.content,
           timestamp: message.createdAt,
-          status: recipientSocketId ? 'delivered' : 'sent'
+          status: recipientSocketId ? 'delivered' : 'sent',
+          replyTo: replyToPayload,
         });
 
       } catch (error) {
@@ -438,11 +462,11 @@ export function setupSocketHandlers(io: Server) {
 
         await prisma.message.update({
           where: { id: messageId },
-          data: { deletedAt: new Date(), content: '', reactions: { deleteMany: {} } }
+          data: { deletedAt: new Date() }  // keep content in DB, just mark as deleted
         });
 
-        // Notify both parties to remove the message
-        const payload = { messageId };
+        // Notify both parties — they render a placeholder, not remove
+        const payload = { messageId, senderDisplayName: displayName || username };
         io.to(`user:${message.senderId}`).emit('message:unsent', payload);
         io.to(`user:${message.recipientId}`).emit('message:unsent', payload);
 

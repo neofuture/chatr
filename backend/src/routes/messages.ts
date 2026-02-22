@@ -32,7 +32,6 @@ router.get('/history', authenticateToken as any, async (req: AuthenticatedReques
 
     // Build query
     const whereClause: any = {
-      deletedAt: null,   // exclude soft-deleted (unsent) messages
       OR: [
         { senderId: userId, recipientId: otherUserId as string },
         { senderId: otherUserId as string, recipientId: userId }
@@ -91,22 +90,32 @@ router.get('/history', authenticateToken as any, async (req: AuthenticatedReques
       senderDisplayName: m.sender.displayName ?? null,
       senderProfileImage: m.sender.profileImage,
       recipientId: m.recipientId,
-      content: m.content,
-      type: m.type,
+      content: m.deletedAt ? '' : m.content,
+      unsent: !!m.deletedAt,
+      type: m.deletedAt ? 'text' : m.type,
       status: m.status,
       isRead: m.isRead,
       readAt: m.readAt,
       createdAt: m.createdAt,
-      // File metadata
-      fileUrl: m.fileUrl,
-      fileName: m.fileName,
-      fileSize: m.fileSize,
-      fileType: m.fileType,
+      // File metadata (hide for unsent)
+      fileUrl: m.deletedAt ? null : m.fileUrl,
+      fileName: m.deletedAt ? null : m.fileName,
+      fileSize: m.deletedAt ? null : m.fileSize,
+      fileType: m.deletedAt ? null : m.fileType,
       // Audio metadata
-      waveform: m.audioWaveform as number[] | null,
-      duration: m.audioDuration,
-      // Reactions array
+      waveform: m.deletedAt ? null : (m.audioWaveform as number[] | null),
+      duration: m.deletedAt ? null : m.audioDuration,
+      // Reactions (cleared on unsend)
       reactions: (m.reactions || []).map((r: any) => ({ userId: r.userId, username: r.user.username, emoji: r.emoji })),
+      // Reply snapshot
+      replyTo: m.replyToId ? {
+        id: m.replyToId,
+        content: m.replyToContent || '',
+        senderDisplayName: m.replyToSenderName || null,
+        senderUsername: m.replyToSenderName || '',
+        type: m.replyToType || 'text',
+        duration: m.replyToDuration || null,
+      } : undefined,
     }));
 
     res.json({

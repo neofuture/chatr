@@ -148,6 +148,7 @@ export function useConversation() {
         type: data.type || 'text', fileUrl: data.fileUrl, fileName: data.fileName,
         fileSize: data.fileSize, fileType: data.fileType,
         waveformData: data.waveform || data.waveformData, duration: data.duration,
+        replyTo: data.replyTo ?? undefined,
       };
 
       // Update conversation summary
@@ -272,7 +273,9 @@ export function useConversation() {
     const onUnsent = (data: any) => {
       addLog('received', 'message:unsent', data);
       if (data.messageId) {
-        setMessages(prev => prev.filter(m => m.id !== data.messageId));
+        setMessages(prev => prev.map(m =>
+          m.id === data.messageId ? { ...m, unsent: true, reactions: [] } : m
+        ));
       }
     };
 
@@ -344,7 +347,9 @@ export function useConversation() {
 
     const replyToSnapshot = replyingTo ? {
       id: replyingTo.id,
-      content: replyingTo.content,
+      content: replyingTo.type === 'audio' ? 'Voice message' : replyingTo.type === 'image' ? 'Photo' : replyingTo.type === 'file' ? (replyingTo.fileName || 'File') : replyingTo.content,
+      type: replyingTo.type || 'text',
+      duration: replyingTo.duration,
       senderUsername: replyingTo.senderId === currentUserId ? 'You' : (replyingTo.senderUsername || ''),
       senderDisplayName: replyingTo.senderId === currentUserId
         ? currentDisplayName || 'You'
@@ -624,8 +629,10 @@ export function useConversation() {
     if (!s || !o) { showToast('Not connected', 'error'); return; }
     addLog('sent', 'message:unsend', { messageId });
     s.emit('message:unsend', messageId);
-    // Optimistic: remove locally immediately
-    setMessages(prev => prev.filter(m => m.id !== messageId));
+    // Optimistic: mark as unsent locally immediately
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, unsent: true, reactions: [] } : m
+    ));
   }, [addLog, showToast]);
 
   // ── Log helpers ──────────────────────────────────────
@@ -687,6 +694,7 @@ export function useConversation() {
           replyTo: m.replyTo ?? undefined,
           senderProfileImage: m.senderProfileImage ?? null,
           senderDisplayName: m.senderDisplayName ?? null,
+          unsent: !!m.unsent,
         }));
         setMessages(mapped);
         addLog('info', 'history:loaded', { count: mapped.length, userId: id });

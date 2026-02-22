@@ -68,6 +68,13 @@ model Message {
   // Soft delete for unsend
   deletedAt DateTime?
 
+  // Reply-to snapshot (stores orignal message snapshot so it survives unsend/delete)
+  replyToId         String?
+  replyToContent    String?
+  replyToSenderName String? // display name of the original sender
+  replyToType       String? // type of the original message (text/audio/image/file)
+  replyToDuration   Float? // duration in seconds for audio replies
+
   reactions MessageReaction[]
 
   @@index([senderId])
