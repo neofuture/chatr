@@ -13,6 +13,8 @@ import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 import Button from '@/components/form-controls/Button/Button';
 import DatePicker from '@/components/form-controls/DatePicker/DatePicker';
 
+import { version } from '@/version';
+
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -163,6 +165,29 @@ export default function DemoPage() {
           zIndex: 1000
         }}>
           <ThemeToggle />
+        </div>
+
+        {/* Env Info Bar */}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: '6px 20px',
+          justifyContent: 'center', alignItems: 'center',
+          padding: '8px 20px', marginBottom: '2rem',
+          borderRadius: '8px', fontFamily: 'monospace', fontSize: '12px',
+          backgroundColor: 'rgba(59,130,246,0.06)',
+          border: '1px solid rgba(59,130,246,0.15)',
+        }}>
+          {[
+            { label: 'API URL', value: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001' },
+            { label: 'WS URL',  value: process.env.NEXT_PUBLIC_WS_URL  || 'http://localhost:3001' },
+            { label: 'App',     value: process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr' },
+            { label: 'Version', value: version },
+            { label: 'Env',     value: process.env.NODE_ENV || 'unknown' },
+          ].map(({ label, value }) => (
+            <span key={label} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <span style={{ opacity: 0.45 }}>{label}:</span>
+              <span style={{ color: '#3b82f6', fontWeight: '600' }}>{value}</span>
+            </span>
+          ))}
         </div>
 
         {/* Page Title */}

@@ -1,18 +1,22 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import io, { Socket } from 'socket.io-client';
 
 interface WebSocketContextType {
   socket: Socket | null;
   connected: boolean;
   connecting: boolean;
+  disconnect: () => void;
+  reconnect: () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>({
   socket: null,
   connected: false,
   connecting: false,
+  disconnect: () => {},
+  reconnect: () => {},
 });
 
 export const useWebSocket = () => useContext(WebSocketContext);
@@ -25,6 +29,8 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
+  const initRef = useRef<(() => Socket | null) | null>(null);
 
   useEffect(() => {
     // Function to initialize WebSocket connection
@@ -135,8 +141,10 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     };
 
     // Initialize on mount
+    initRef.current = initializeWebSocket;
     const initialSocket = initializeWebSocket();
     if (initialSocket) {
+      socketRef.current = initialSocket;
       setSocket(initialSocket);
     }
 
@@ -199,7 +207,31 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   }, []); // Only run once on mount, but with event listeners for changes
 
   return (
-    <WebSocketContext.Provider value={{ socket, connected, connecting }}>
+    <WebSocketContext.Provider value={{
+      socket, connected, connecting,
+      disconnect: () => {
+        const s = socketRef.current;
+        if (s) {
+          s.disconnect();
+          setConnected(false);
+          setConnecting(false);
+        }
+      },
+      reconnect: () => {
+        const s = socketRef.current;
+        if (s) {
+          // Reconnect existing socket
+          s.connect();
+        } else if (initRef.current) {
+          // Create a fresh socket if none exists
+          const newSocket = initRef.current();
+          if (newSocket) {
+            socketRef.current = newSocket;
+            setSocket(newSocket);
+          }
+        }
+      },
+    }}>
       {children}
     </WebSocketContext.Provider>
   );
