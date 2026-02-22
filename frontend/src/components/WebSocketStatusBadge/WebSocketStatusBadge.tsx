@@ -19,7 +19,23 @@ export default function WebSocketStatusBadge() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [messages, setMessages] = useState<MessageLog[]>([]);
+  const [isAuthed, setIsAuthed] = useState(false);
   const badgeRef = useRef<HTMLDivElement>(null);
+
+  // Check auth on mount and storage changes
+  useEffect(() => {
+    const check = () => {
+      const token = localStorage.getItem('token');
+      setIsAuthed(!!token && token !== 'undefined');
+    };
+    check();
+    window.addEventListener('storage', check);
+    window.addEventListener('userLoggedIn', check);
+    return () => {
+      window.removeEventListener('storage', check);
+      window.removeEventListener('userLoggedIn', check);
+    };
+  }, []);
 
   // Load saved position from localStorage on mount
   useEffect(() => {
@@ -162,6 +178,8 @@ export default function WebSocketStatusBadge() {
     statusText = 'Offline';
     statusIcon = <i className="fas fa-circle" style={{ color: '#ef4444' }}></i>;
   }
+
+  if (!isAuthed) return null;
 
   return (
     <div
