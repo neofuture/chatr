@@ -11,6 +11,13 @@ const nextConfig = {
   experimental: {
     outputFileTracingRoot: path.join(__dirname, '../'),
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // mermaid uses browser-only APIs — exclude from server bundle entirely
+      config.externals = [...(config.externals || []), 'mermaid'];
+    }
+    return config;
+  },
 }
 
 module.exports = nextConfig
