@@ -30,6 +30,7 @@ export function useConversation() {
   const [isRecipientRecording, setIsRecipientRecording] = useState(false);
   const [isRecipientListeningToMyAudio, setIsRecipientListeningToMyAudio] = useState<string | null>(null);
   const [listeningMessageIds, setListeningMessageIds] = useState<Set<string>>(new Set());
+  const [activeAudioMessageId, setActiveAudioMessageId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -44,12 +45,14 @@ export function useConversation() {
   const ghostTypingThrottleRef = useRef<NodeJS.Timeout | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<Message[]>([]);
 
   const effectivelyOnline = connected && !manualOffline;
 
   useEffect(() => { socketRef.current = socket; }, [socket]);
   useEffect(() => { testRecipientIdRef.current = testRecipientId; }, [testRecipientId]);
   useEffect(() => { effectivelyOnlineRef.current = effectivelyOnline; }, [effectivelyOnline]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // ── Logging ──────────────────────────────────────────
   const addLog = useCallback((type: LogEntry['type'], event: string, data: any) => {
@@ -472,6 +475,35 @@ export function useConversation() {
       addLog('sent', 'audio:listening', { senderId, messageId, isListening: isPlaying, isEnded: isEnded === true });
       s.emit('audio:listening', { senderId, messageId, isListening: isPlaying, isEnded: isEnded === true });
     }
+
+    if (isPlaying) {
+      // A new player started — make it the active one (stops all others via prop)
+      setActiveAudioMessageId(messageId);
+    } else if (isEnded) {
+      // This message finished — check if the IMMEDIATELY next message in the
+      // full thread is also an audio message. If yes, auto-play it.
+      // Stop if the next message is text, image, file or there are no more messages.
+      setActiveAudioMessageId(null);
+
+      const msgs = messagesRef.current;
+      const currentIdx = msgs.findIndex(m => m.id === messageId);
+
+      if (currentIdx >= 0 && currentIdx < msgs.length - 1) {
+        const next = msgs[currentIdx + 1];
+        const isNextAudio =
+          next.fileUrl &&
+          (next.type === 'audio' || (next.type === 'file' && next.fileType?.startsWith('audio/')));
+
+        if (isNextAudio) {
+          // Small defer so the ended player's state resets before we activate the next
+          setTimeout(() => setActiveAudioMessageId(next.id), 80);
+        }
+      }
+      // Otherwise stop — text / image / file boundary, or end of thread
+    } else {
+      // Paused
+      setActiveAudioMessageId(null);
+    }
   };
 
   // ── Log helpers ──────────────────────────────────────
@@ -514,6 +546,7 @@ export function useConversation() {
     recipientGhostText,
     isRecipientRecording, isRecipientListeningToMyAudio,
     listeningMessageIds,
+    activeAudioMessageId,
     selectedFile, filePreviewUrl, uploadingFile,
     effectivelyOnline,
     userPresence,

@@ -13,6 +13,9 @@ export interface MessageAudioPlayerProps {
   onPlayStatusChange?: (messageId: string, senderId: string, isPlaying: boolean, isEnded?: boolean) => void;
   status?: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   isListening?: boolean; // recipient is actively listening right now
+  /** When true this player is the globally active one and should auto-play.
+   *  When false and this player is currently playing it should pause. */
+  isActivePlayer?: boolean;
 }
 
 export default function MessageAudioPlayer({
@@ -26,6 +29,7 @@ export default function MessageAudioPlayer({
   onPlayStatusChange,
   status,
   isListening = false,
+  isActivePlayer,
 }: MessageAudioPlayerProps) {
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -166,9 +170,11 @@ export default function MessageAudioPlayer({
       setCurrentTime(0);
       audio.currentTime = 0;
 
-      // isEnded=true → backend marks as read (Listened)
-      if (!isSent && onPlayStatusChange && messageId && senderId) {
-        console.log('🎧 Fully listened, notifying sender', senderId);
+      if (onPlayStatusChange && messageId && senderId) {
+        if (!isSent) {
+          console.log('🎧 Fully listened, notifying sender', senderId);
+        }
+        // Fire for both sent & received so auto-advance works in all cases
         onPlayStatusChange(messageId, senderId, false, true); // isEnded = true
       }
     };
@@ -276,6 +282,56 @@ export default function MessageAudioPlayer({
     };
   }, [isPlaying]);
 
+  // ── Single-player enforcement + auto-play ─────────────
+  // Track whether we're waiting to auto-play once audio loads
+  const pendingAutoPlay = useRef(false);
+
+  useEffect(() => {
+    if (isActivePlayer === undefined) return; // unmanaged — old behaviour
+
+    if (isActivePlayer) {
+      // We've been chosen as the active player
+      const audio = audioRef.current;
+      if (audio && audioLoaded && !isPlaying) {
+        // Audio already loaded — play immediately
+        audio.play().catch(err => console.error('🎵 Auto-play error:', err));
+        setIsPlaying(true);
+        if (onPlayStatusChange && messageId && senderId) {
+          onPlayStatusChange(messageId, senderId, true, false);
+        }
+      } else if (!audioLoaded) {
+        // Not loaded yet — mark pending; the audioLoaded branch below will pick it up
+        pendingAutoPlay.current = true;
+      }
+    } else {
+      // Another player became active — cancel any pending auto-play and pause
+      pendingAutoPlay.current = false;
+      const audio = audioRef.current;
+      if (audio && isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+        if (onPlayStatusChange && messageId && senderId) {
+          onPlayStatusChange(messageId, senderId, false, false);
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActivePlayer]);
+
+  // When audio finishes loading, check if we were waiting to auto-play
+  useEffect(() => {
+    if (!audioLoaded || !pendingAutoPlay.current) return;
+    pendingAutoPlay.current = false;
+    const audio = audioRef.current;
+    if (!audio || isPlaying) return;
+    audio.play().catch(err => console.error('🎵 Pending auto-play error:', err));
+    setIsPlaying(true);
+    if (onPlayStatusChange && messageId && senderId) {
+      onPlayStatusChange(messageId, senderId, true, false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioLoaded]);
+
   const togglePlayPause = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!audioRef.current || !audioLoaded) return;
@@ -288,14 +344,18 @@ export default function MessageAudioPlayer({
       if (!isSent && onPlayStatusChange && messageId && senderId) {
         onPlayStatusChange(messageId, senderId, false, false); // isEnded=false = paused
       }
+      // For sent messages we still need to tell the parent to clear active
+      if (isSent && onPlayStatusChange && messageId && senderId) {
+        onPlayStatusChange(messageId, senderId, false, false);
+      }
     } else {
       audioRef.current.play().catch(err => {
         console.error('🎵 Play error:', err);
       });
       setIsPlaying(true);
 
-      // Started listening - show "Listening..." on sender's bubble
-      if (!isSent && onPlayStatusChange && messageId && senderId) {
+      // Notify parent — this triggers activeAudioMessageId update which stops other players
+      if (onPlayStatusChange && messageId && senderId) {
         onPlayStatusChange(messageId, senderId, true, false);
       }
     }

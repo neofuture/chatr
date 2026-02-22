@@ -17,12 +17,14 @@ interface Props {
   onOpenLogs: () => void;
   onImageClick: (url: string, name: string) => void;
   onAudioPlayStatusChange: (messageId: string, senderId: string, isPlaying: boolean, isEnded?: boolean) => void;
+  activeAudioMessageId?: string | null;
 }
 
 export default function ConversationsColumn({
   isDark, messages, messageQueue, messagesEndRef,
   isRecipientTyping, isRecipientRecording, recipientGhostText,
   listeningMessageIds, logCount, onClear, onOpenLogs, onImageClick, onAudioPlayStatusChange,
+  activeAudioMessageId,
 }: Props) {
   return (
     <div style={{
@@ -88,6 +90,7 @@ export default function ConversationsColumn({
         listeningMessageIds={listeningMessageIds}
         onImageClick={onImageClick}
         onAudioPlayStatusChange={onAudioPlayStatusChange}
+        activeAudioMessageId={activeAudioMessageId}
       />
     </div>
   );

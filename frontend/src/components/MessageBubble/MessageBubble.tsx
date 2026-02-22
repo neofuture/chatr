@@ -31,6 +31,8 @@ interface MessageBubbleProps {
   messagesEndRef?: React.RefObject<HTMLDivElement | null>;
   onAudioPlayStatusChange?: (messageId: string, senderId: string, isPlaying: boolean, isEnded?: boolean) => void;
   listeningMessageIds?: Set<string>; // messageIds currently being listened to by recipient
+  /** The single audio message ID that is currently active (playing). All others will be paused. */
+  activeAudioMessageId?: string | null;
 }
 
 export default function MessageBubble({
@@ -42,6 +44,7 @@ export default function MessageBubble({
   messagesEndRef,
   onAudioPlayStatusChange,
   listeningMessageIds = new Set(),
+  activeAudioMessageId,
 }: MessageBubbleProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -181,6 +184,7 @@ export default function MessageBubble({
                   onPlayStatusChange={onAudioPlayStatusChange}
                   status={msg.status}
                   isListening={listeningMessageIds.has(msg.id)}
+                  isActivePlayer={activeAudioMessageId !== undefined ? activeAudioMessageId === msg.id : undefined}
                 />
               )}
 

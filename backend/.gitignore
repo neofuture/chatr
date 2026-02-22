@@ -5,3 +5,12 @@ node_modules/
 .DS_Store
 *.log
 
+# Uploaded files — ignore content but keep folder structure via .gitkeep
+uploads/audio/*
+uploads/covers/*
+uploads/messages/*
+uploads/profiles/*
+!uploads/audio/.gitkeep
+!uploads/covers/.gitkeep
+!uploads/messages/.gitkeep
+!uploads/profiles/.gitkeep

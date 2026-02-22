@@ -26,6 +26,8 @@ export interface ChatViewProps {
   onImageClick: (url: string, name: string) => void;
   /** Called when an audio bubble play-state changes */
   onAudioPlayStatusChange: (messageId: string, senderId: string, isPlaying: boolean, isEnded?: boolean) => void;
+  /** The single audio message ID that is currently playing (undefined = unmanaged) */
+  activeAudioMessageId?: string | null;
   /** Optional: show a clear button in the header */
   showClearButton?: boolean;
   onClear?: () => void;
@@ -43,6 +45,7 @@ export default function ChatView({
   listeningMessageIds,
   onImageClick,
   onAudioPlayStatusChange,
+  activeAudioMessageId,
   showClearButton,
   onClear,
   queuedCount = 0,
@@ -102,6 +105,7 @@ export default function ChatView({
             onImageClick={onImageClick}
             messagesEndRef={messagesEndRef}
             onAudioPlayStatusChange={onAudioPlayStatusChange}
+            activeAudioMessageId={activeAudioMessageId}
           />
         )}
       </div>
