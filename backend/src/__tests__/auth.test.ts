@@ -41,15 +41,21 @@ describe('Auth Routes', () => {
       email: 'test@example.com',
       username: 'testuser',
       password: 'Test123!@#',
+      firstName: 'Test',
+      lastName: 'User',
     };
 
     it('should register a new user successfully', async () => {
-      // Mock Prisma responses
-      (prisma.user.findFirst as jest.Mock).mockResolvedValue(null); // No existing user
+      // Route calls: findUnique(email) → null, findFirst(phone) → null, findUnique(username) → null, then create
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce(null)  // email check
+        .mockResolvedValueOnce(null); // username check
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue(null); // phone check
       (prisma.user.create as jest.Mock).mockResolvedValue({
         id: '1',
         email: validUser.email,
         username: `@${validUser.username}`,
+        displayName: 'Test User',
         createdAt: new Date(),
       });
 
@@ -67,8 +73,11 @@ describe('Auth Routes', () => {
       const response = await request(app)
         .post('/api/auth/register')
         .send({
+          firstName: 'Test',
+          lastName: 'User',
           username: 'testuser',
           password: 'Test123!@#',
+          // no email, no phoneNumber
         })
         .expect(400);
 
@@ -80,8 +89,11 @@ describe('Auth Routes', () => {
       const response = await request(app)
         .post('/api/auth/register')
         .send({
+          firstName: 'Test',
+          lastName: 'User',
           email: 'test@example.com',
           password: 'Test123!@#',
+          // no username
         })
         .expect(400);
 
@@ -93,8 +105,11 @@ describe('Auth Routes', () => {
       const response = await request(app)
         .post('/api/auth/register')
         .send({
+          firstName: 'Test',
+          lastName: 'User',
           email: 'test@example.com',
           username: 'testuser',
+          // no password
         })
         .expect(400);
 
@@ -163,12 +178,13 @@ describe('Auth Routes', () => {
     });
 
     it('should reject registration when email already exists', async () => {
-      // Mock existing verified user
+      // Route calls findUnique(email), then findFirst(phone), then findUnique(username)
+      // We only need the first one to return a verified user to trigger 409
       (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
         id: '1',
         email: validUser.email,
         username: '@existinguser',
-        emailVerified: true, // Must be verified to trigger 409
+        emailVerified: true, // verified → triggers 409
       });
 
       const response = await request(app)
@@ -180,18 +196,23 @@ describe('Auth Routes', () => {
     });
 
     it('should handle username with @ prefix', async () => {
-      (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
+      // Route: findUnique(email) → null, findFirst(phone) → null, findUnique(username) → null, then create
+      (prisma.user.findUnique as jest.Mock)
+        .mockResolvedValueOnce(null)   // email check
+        .mockResolvedValueOnce(null);  // username check
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue(null); // phone check
       (prisma.user.create as jest.Mock).mockResolvedValue({
         id: '1',
         email: validUser.email,
         username: '@testuser',
+        displayName: 'Test User',
       });
 
       const response = await request(app)
         .post('/api/auth/register')
         .send({
           ...validUser,
-          username: '@testuser', // With @ prefix
+          username: '@testuser',
         })
         .expect(201);
 
@@ -199,7 +220,8 @@ describe('Auth Routes', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      (prisma.user.findFirst as jest.Mock).mockRejectedValue(
+      // Route hits findUnique(email) first — throw there
+      (prisma.user.findUnique as jest.Mock).mockRejectedValue(
         new Error('Database connection error')
       );
 

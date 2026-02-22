@@ -5,7 +5,7 @@ import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
 import { type Message, type MessageReaction } from '@/components/MessageBubble';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
-import type { LogEntry, AvailableUser, PresenceStatus, PresenceInfo } from '@/components/test/types';
+import type { LogEntry, AvailableUser, PresenceStatus, PresenceInfo, ConversationSummary } from '@/components/test/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -20,6 +20,8 @@ export function useConversation() {
   const [testRecipientId, setTestRecipientId] = useState('');
   const [testMessage, setTestMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
+  const [currentUsername, setCurrentUsername] = useState('');
+  const [currentDisplayName, setCurrentDisplayName] = useState('');
   const [manualOffline, setManualOffline] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -35,6 +37,8 @@ export function useConversation() {
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [userPresence, setUserPresence] = useState<Record<string, PresenceInfo>>({});
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [conversations, setConversations] = useState<Record<string, ConversationSummary>>({});
 
   // ── Refs ─────────────────────────────────────────────
   const socketRef = useRef(socket);
@@ -66,7 +70,9 @@ export function useConversation() {
     try {
       const user = JSON.parse(raw);
       setCurrentUserId(user.id);
-      addLog('info', 'user:loaded', { userId: user.id, username: user.username });
+      setCurrentUsername(user.username || '');
+      setCurrentDisplayName(user.displayName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '') || (user.username || '').replace(/^@/, ''));
+      addLog('info', 'user:loaded', { userId: user.id, username: user.username, displayName: user.displayName });
     } catch (e) { addLog('error', 'user:parse-failed', { error: e }); }
   }, [addLog]);
 
@@ -83,7 +89,13 @@ export function useConversation() {
         const data = await res.json();
         const others: AvailableUser[] = data.users
           .filter((u: any) => u.id !== currentUserId && u.emailVerified)
-          .map((u: any) => ({ id: u.id, username: u.username, email: u.email || 'No email' }));
+          .map((u: any) => ({
+            id: u.id,
+            username: u.username,
+            displayName: u.displayName ?? null,
+            profileImage: u.profileImage ?? null,
+            email: u.email || 'No email',
+          }));
         setAvailableUsers(others);
         addLog('info', 'users:loaded', { count: others.length });
         if (others.length > 0) {
@@ -124,17 +136,42 @@ export function useConversation() {
 
     const onReceived = (data: any) => {
       addLog('received', 'message:received', data);
-      setMessages(prev => [...prev, {
+      const newMsg: Message = {
         id: data.id || Date.now().toString(), content: data.content,
-        senderId: data.senderId, senderUsername: data.senderUsername,
+        senderId: data.senderId,
+        senderUsername: data.senderUsername,
+        senderDisplayName: data.senderDisplayName ?? null,
+        senderProfileImage: data.senderProfileImage ?? null,
         recipientId: currentUserId,
         direction: 'received', status: 'delivered',
         timestamp: new Date(data.timestamp || Date.now()),
         type: data.type || 'text', fileUrl: data.fileUrl, fileName: data.fileName,
         fileSize: data.fileSize, fileType: data.fileType,
         waveformData: data.waveform || data.waveformData, duration: data.duration,
-      }]);
-      if (data.type !== 'audio') socket.emit('message:read', data.id);
+      };
+
+      // Update conversation summary
+      const isCurrentConversation = testRecipientIdRef.current === data.senderId;
+      setConversations(prev => ({
+        ...prev,
+        [data.senderId]: {
+          userId: data.senderId,
+          lastMessage: data.content || (data.type === 'audio' ? '🎤 Voice message' : data.type === 'image' ? '📷 Image' : '📎 File'),
+          lastMessageAt: new Date(data.timestamp || Date.now()),
+          unreadCount: isCurrentConversation ? 0 : ((prev[data.senderId]?.unreadCount ?? 0) + 1),
+          lastSenderId: data.senderId,
+        },
+      }));
+
+      // Only add to messages if this is the active conversation
+      if (isCurrentConversation) {
+        setMessages(prev => [...prev, newMsg]);
+        if (data.type !== 'audio') socket.emit('message:read', data.id);
+      } else if (!testRecipientIdRef.current) {
+        // No conversation open — auto-select this sender
+        setTestRecipientId(data.senderId);
+        setMessages([newMsg]);
+      }
     };
 
     const onSent = (data: any) => {
@@ -305,12 +342,36 @@ export function useConversation() {
       socket.emit('ghost:typing', { recipientId: testRecipientId, text: '' });
     }
 
+    const replyToSnapshot = replyingTo ? {
+      id: replyingTo.id,
+      content: replyingTo.content,
+      senderUsername: replyingTo.senderId === currentUserId ? 'You' : (replyingTo.senderUsername || ''),
+      senderDisplayName: replyingTo.senderId === currentUserId
+        ? currentDisplayName || 'You'
+        : (replyingTo.senderDisplayName || (replyingTo.senderUsername || '').replace(/^@/, '') || 'Unknown'),
+    } : undefined;
+
     const msg: Message = {
       id: Date.now().toString() + Math.random(), content: testMessage,
-      senderId: currentUserId, recipientId: testRecipientId,
+      senderId: currentUserId, senderUsername: currentUsername,
+      senderDisplayName: currentDisplayName,
+      recipientId: testRecipientId,
       direction: 'sent', status: effectivelyOnline ? 'sending' : 'queued', timestamp: new Date(),
+      replyTo: replyToSnapshot,
     };
     setMessages(prev => [...prev, msg]);
+    setReplyingTo(null);
+    // Update conversation summary
+    setConversations(prev => ({
+      ...prev,
+      [testRecipientId]: {
+        userId: testRecipientId,
+        lastMessage: testMessage,
+        lastMessageAt: new Date(),
+        unreadCount: 0,
+        lastSenderId: currentUserId,
+      },
+    }));
 
     if (!socket || !effectivelyOnline) {
       setMessageQueue(prev => [...prev, msg]);
@@ -318,8 +379,8 @@ export function useConversation() {
       setTestMessage('');
       return;
     }
-    addLog('sent', 'message:send', { recipientId: testRecipientId, content: testMessage });
-    socket.emit('message:send', { recipientId: testRecipientId, content: testMessage, type: 'text' },
+    addLog('sent', 'message:send', { recipientId: testRecipientId, content: testMessage, replyTo: replyToSnapshot });
+    socket.emit('message:send', { recipientId: testRecipientId, content: testMessage, type: 'text', replyTo: replyToSnapshot },
       (res: any) => {
         if (res?.error) {
           addLog('error', 'message:send-failed', res);
@@ -594,6 +655,8 @@ export function useConversation() {
   const handleRecipientChange = (id: string) => {
     setTestRecipientId(id);
     setMessages([]);
+    // Clear unread for this conversation
+    setConversations(prev => prev[id] ? { ...prev, [id]: { ...prev[id], unreadCount: 0 } } : prev);
     addLog('info', 'recipient:selected', { userId: id });
     // Load message history
     const token = localStorage.getItem('token');
@@ -621,6 +684,9 @@ export function useConversation() {
           waveformData: m.waveform,
           duration: m.duration,
           reactions: m.reactions ?? [],
+          replyTo: m.replyTo ?? undefined,
+          senderProfileImage: m.senderProfileImage ?? null,
+          senderDisplayName: m.senderDisplayName ?? null,
         }));
         setMessages(mapped);
         addLog('info', 'history:loaded', { count: mapped.length, userId: id });
@@ -634,6 +700,7 @@ export function useConversation() {
     testRecipientId, testMessage, currentUserId,
     manualOffline, setManualOffline: handleManualOfflineChange,
     availableUsers, loadingUsers,
+    conversations,
     isRecipientTyping, isUserTyping,
     ghostTypingEnabled,
     recipientGhostText,
@@ -657,6 +724,9 @@ export function useConversation() {
     handleAudioPlayStatusChange,
     handleReaction,
     handleUnsend,
+    handleReply: (msg: Message) => setReplyingTo(msg),
+    clearReply: () => setReplyingTo(null),
+    replyingTo,
     handleTypingStart,
     handleTypingStop,
     handlePresenceUpdate,

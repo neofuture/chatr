@@ -21,6 +21,9 @@ interface Props {
   onReaction?: (messageId: string, emoji: string) => void;
   onUnsend?: (messageId: string) => void;
   currentUserId?: string;
+  onReply?: (message: Message) => void;
+  replyingTo?: Message | null;
+  clearReply?: () => void;
 }
 
 export default function ConversationsColumn({
@@ -28,6 +31,7 @@ export default function ConversationsColumn({
   isRecipientTyping, isRecipientRecording, recipientGhostText,
   listeningMessageIds, logCount, onClear, onOpenLogs, onImageClick, onAudioPlayStatusChange,
   activeAudioMessageId, onReaction, onUnsend, currentUserId,
+  onReply, replyingTo, clearReply,
 }: Props) {
   return (
     <div style={{
@@ -96,8 +100,50 @@ export default function ConversationsColumn({
         activeAudioMessageId={activeAudioMessageId}
         onReaction={onReaction}
         onUnsend={onUnsend}
+        onReply={onReply}
         currentUserId={currentUserId}
       />
+
+      {/* Reply banner — shown above the message input */}
+      {replyingTo && (
+        <div style={{
+          flexShrink: 0,
+          display: 'flex', alignItems: 'center', gap: '10px',
+          padding: '8px 16px',
+          backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.08)',
+          borderTop: `1px solid ${isDark ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.2)'}`,
+          borderLeft: '3px solid #3b82f6',
+        }}>
+          <i className="fas fa-reply" style={{ color: '#3b82f6', fontSize: '13px', flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#3b82f6', marginBottom: '2px' }}>
+              {(() => {
+                const name = replyingTo.senderDisplayName || (replyingTo.senderUsername || '').replace(/^@/, '');
+                if (!name || name === 'You') return 'Replying to yourself';
+                return `Replying to ${name}`;
+              })()}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {replyingTo.content}
+            </div>
+          </div>
+          <button
+            onClick={clearReply}
+            title="Cancel reply"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
+              color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
+              fontSize: '14px', flexShrink: 0,
+            }}
+          >
+            <i className="fas fa-times" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

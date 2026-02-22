@@ -18,6 +18,8 @@ export interface Message {
   content: string;
   senderId: string;
   senderUsername?: string;
+  senderDisplayName?: string | null;
+  senderProfileImage?: string | null;
   recipientId: string;
   direction: 'sent' | 'received';
   status: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -30,6 +32,12 @@ export interface Message {
   waveformData?: number[];
   duration?: number;
   reactions?: MessageReaction[];
+  replyTo?: {
+    id: string;
+    content: string;
+    senderUsername: string;
+    senderDisplayName?: string | null;
+  };
 }
 
 interface MessageBubbleProps {
@@ -367,12 +375,57 @@ export default function MessageBubble({
         const borderRadius = getBorderRadius(isSent, isGroupedWithPrev, isGroupedWithNext);
         const bgColor = isSent ? (msg.status === 'queued' ? '#2563eb' : '#3b82f6') : '#f97316';
 
+        // Prefer displayName, fall back to username without @
+        const senderDisplayName = msg.senderDisplayName || (msg.senderUsername || '').replace(/^@/, '') || 'Unknown';
+        // Initials for avatar fallback
+        const initials = senderDisplayName.slice(0, 2).toUpperCase() || '??';
+
         return (
           <div key={msg.id} className={styles.messageWrapper}
-            style={{ alignItems: isSent ? 'flex-end' : 'flex-start', marginBottom: isGroupedWithNext ? '1px' : ((msg.reactions?.length ?? 0) > 0 ? '18px' : '8px') }}>
+            style={{
+              alignItems: isSent ? 'flex-end' : 'flex-start',
+              marginBottom: isGroupedWithNext ? '1px' : ((msg.reactions?.length ?? 0) > 0 ? '18px' : '8px'),
+              flexDirection: 'row',
+              display: 'flex',
+              justifyContent: isSent ? 'flex-end' : 'flex-start',
+            }}>
 
-            {/* Bubble + reaction badge in a relative wrapper */}
-            <div style={{ position: 'relative', display: 'inline-block', maxWidth: msg.type === 'audio' ? 'none' : msg.type === 'image' ? '300px' : '70%', width: msg.type === 'audio' ? 'fit-content' : 'auto' }}>
+            {/* Received: avatar column (left side) */}
+            {!isSent && (
+              <div style={{ width: 28, flexShrink: 0, alignSelf: 'flex-end', marginRight: 6, marginBottom: 2 }}>
+                {/* Only show avatar on last bubble of a group (or solo) */}
+                {!isGroupedWithNext && (
+                  msg.senderProfileImage ? (
+                    <img
+                      src={msg.senderProfileImage}
+                      alt={senderDisplayName}
+                      style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      backgroundColor: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '10px', fontWeight: 700, color: '#fff',
+                    }}>
+                      {initials}
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+            {/* Bubble column */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: isSent ? 'flex-end' : 'flex-start', maxWidth: msg.type === 'audio' ? 'none' : msg.type === 'image' ? '300px' : '70%' }}>
+
+              {/* Sender name — only on first bubble in a received group */}
+              {!isSent && !isGroupedWithPrev && (
+                <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: '3px', paddingLeft: '4px' }}>
+                  {senderDisplayName}
+                </span>
+              )}
+
+              {/* Bubble + reaction badge */}
+              <div style={{ position: 'relative', display: 'inline-block', width: msg.type === 'audio' ? 'fit-content' : 'auto', maxWidth: '100%' }}>
             <div
               className={styles.messageBubble}
               style={{
@@ -422,6 +475,22 @@ export default function MessageBubble({
               {/* Text */}
               {(!msg.type || msg.type === 'text') && (
                 <div style={{ position: 'relative' }}>
+                  {/* Quoted reply snippet */}
+                  {msg.replyTo && (
+                    <div style={{
+                      borderLeft: `3px solid ${isSent ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.5)'}`,
+                      paddingLeft: '8px',
+                      marginBottom: '6px',
+                      opacity: 0.75,
+                    }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '2px' }}>
+                        {msg.replyTo.senderUsername === 'You' ? 'You' : msg.replyTo.senderDisplayName || msg.replyTo.senderUsername?.replace(/^@/, '') || 'Unknown'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: isSent ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
+                        {msg.replyTo.content}
+                      </div>
+                    </div>
+                  )}
                   <div className={styles.messageText}
                     style={{ marginBottom: !isGroupedWithNext ? '4px' : '0', textAlign: isSent ? 'right' : 'left' }}>
                     {msg.content}
@@ -460,6 +529,9 @@ export default function MessageBubble({
                   : statusText}
               </div>
             )}
+
+            </div>{/* end bubble column */}
+
           </div>
         );
       })}

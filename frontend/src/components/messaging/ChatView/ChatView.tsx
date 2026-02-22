@@ -31,6 +31,7 @@ export interface ChatViewProps {
   queuedCount?: number;
   onReaction?: (messageId: string, emoji: string) => void;
   onUnsend?: (messageId: string) => void;
+  onReply?: (message: import('@/components/MessageBubble').Message) => void;
   currentUserId?: string;
 }
 
@@ -50,6 +51,7 @@ export default function ChatView({
   queuedCount = 0,
   onReaction,
   onUnsend,
+  onReply,
   currentUserId,
 }: ChatViewProps) {
   const scrollRef  = useRef<HTMLDivElement>(null);
@@ -119,6 +121,7 @@ export default function ChatView({
             overlayContainerRef={overlayRef}
             onReaction={onReaction}
             onUnsend={onUnsend}
+            onReply={onReply}
             currentUserId={currentUserId}
           />
         )}

@@ -7,6 +7,8 @@ const prisma = new PrismaClient();
 interface AuthenticatedSocket extends Socket {
   userId?: string;
   username?: string;
+  displayName?: string | null;
+  profileImage?: string | null;
 }
 
 interface UserPresence {
@@ -43,7 +45,7 @@ export function setupSocketHandlers(io: Server) {
       // Verify user exists in database
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
-        select: { id: true, username: true, email: true }
+        select: { id: true, username: true, email: true, profileImage: true, displayName: true }
       });
 
       if (!user) {
@@ -53,6 +55,8 @@ export function setupSocketHandlers(io: Server) {
 
       socket.userId = user.id;
       socket.username = user.username;
+      socket.displayName = user.displayName;
+      socket.profileImage = user.profileImage;
 
       console.log(`✅ User authenticated via WebSocket: ${user.username} (${user.id})`);
       next();
@@ -65,6 +69,8 @@ export function setupSocketHandlers(io: Server) {
   io.on('connection', (socket: AuthenticatedSocket) => {
     const userId = socket.userId!;
     const username = socket.username!;
+    const displayName = socket.displayName ?? null;
+    const profileImage = socket.profileImage ?? null;
 
     console.log(`🔌 User connected: ${username} (${socket.id})`);
 
@@ -174,6 +180,8 @@ export function setupSocketHandlers(io: Server) {
             id: message.id,
             senderId: userId,
             senderUsername: username,
+            senderDisplayName: displayName,
+            senderProfileImage: profileImage,
             content: message.content,
             type: message.type,
             timestamp: message.createdAt,

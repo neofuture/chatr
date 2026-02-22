@@ -2,11 +2,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export const api = {
   auth: {
-    register: async (email: string, username: string, password: string) => {
+    register: async (email: string, username: string, password: string, firstName: string, lastName: string) => {
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, username, password, firstName, lastName }),
       });
 
       if (!response.ok) {

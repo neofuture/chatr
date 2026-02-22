@@ -2,7 +2,6 @@
 
 import ConnectionStatus from './ConnectionStatus';
 import LabActionControls from './LabActionControls';
-import type { AvailableUser } from './types';
 
 export interface LabControlsProps {
   isDark: boolean;
@@ -12,8 +11,6 @@ export interface LabControlsProps {
   testMessage: string;
   testRecipientId: string;
   ghostTypingEnabled: boolean;
-  availableUsers: AvailableUser[];
-  loadingUsers: boolean;
   selectedFile: File | null;
   filePreviewUrl: string | null;
   isUserTyping: boolean;
@@ -23,7 +20,6 @@ export interface LabControlsProps {
   onManualOfflineChange: (val: boolean) => void;
   onMessageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onMessageSend: () => void;
-  onRecipientChange: (id: string) => void;
   onGhostTypingToggle: (val: boolean) => void;
   onTypingStart: () => void;
   onTypingStop: () => void;
@@ -57,13 +53,10 @@ export default function LabControls(props: LabControlsProps) {
         testMessage={props.testMessage}
         testRecipientId={props.testRecipientId}
         ghostTypingEnabled={props.ghostTypingEnabled}
-        availableUsers={props.availableUsers}
-        loadingUsers={props.loadingUsers}
         selectedFile={props.selectedFile}
         filePreviewUrl={props.filePreviewUrl}
         onMessageChange={props.onMessageChange}
         onMessageSend={props.onMessageSend}
-        onRecipientChange={props.onRecipientChange}
         onGhostTypingToggle={props.onGhostTypingToggle}
         onTypingStart={props.onTypingStart}
         onTypingStop={props.onTypingStop}

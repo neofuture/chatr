@@ -63,9 +63,9 @@ router.post('/register', async (req: Request, res: Response) => {
     console.log('\n🔵 === REGISTRATION REQUEST START ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
 
-    const { email, phoneNumber, username, password } = req.body;
+    const { email, phoneNumber, username, password, firstName, lastName } = req.body;
 
-    console.log('Extracted values:', { email, phoneNumber, username, hasPassword: !!password });
+    console.log('Extracted values:', { email, phoneNumber, username, firstName, lastName, hasPassword: !!password });
 
     // Validate input - require either email or phone number
     if ((!email && !phoneNumber) || !username || !password) {
@@ -74,6 +74,15 @@ router.post('/register', async (req: Request, res: Response) => {
         error: 'Email or phone number, username, and password are required'
       });
     }
+
+    if (!firstName || !firstName.trim()) {
+      return res.status(400).json({ error: 'First name is required' });
+    }
+    if (!lastName || !lastName.trim()) {
+      return res.status(400).json({ error: 'Last name is required' });
+    }
+
+    const displayName = `${firstName.trim()} ${lastName.trim()}`;
 
     // Validate email format if provided
     if (email) {
@@ -206,67 +215,52 @@ router.post('/register', async (req: Request, res: Response) => {
         where: { email },
         data: {
           username: usernameWithAt,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          displayName,
           password: hashedPassword,
           phoneNumber: formattedPhone,
           emailVerificationCode: verificationCode,
           verificationExpiry: verificationExpiry,
         },
-        select: {
-          id: true,
-          email: true,
-          phoneNumber: true,
-          username: true,
-          createdAt: true,
-        }
+        select: { id: true, email: true, phoneNumber: true, username: true, displayName: true, createdAt: true }
       });
       console.log(`📧 Re-sending verification code to unverified user: ${email}`);
     } else if (existingPhone && !existingPhone.phoneVerified && formattedPhone && !isDevPhone) {
-      // Only update existing phone user if NOT a dev phone
-      // Use ID since phoneNumber is no longer unique
       user = await prisma.user.update({
         where: { id: existingPhone.id },
         data: {
           username: usernameWithAt,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          displayName,
           password: hashedPassword,
           email: email,
           emailVerificationCode: verificationCode,
           verificationExpiry: verificationExpiry,
         },
-        select: {
-          id: true,
-          email: true,
-          phoneNumber: true,
-          username: true,
-          createdAt: true,
-        }
+        select: { id: true, email: true, phoneNumber: true, username: true, displayName: true, createdAt: true }
       });
       console.log(`📱 Re-sending verification code to unverified user: ${formattedPhone}`);
     } else {
-      // Create new user (unverified)
-      // This works for dev phones now that phoneNumber is not unique
       console.log('📝 Creating new user...');
-      if (isDevPhone) {
-        console.log('🔧 Creating new user with dev phone number (duplicates allowed)');
-      }
+      if (isDevPhone) console.log('🔧 Creating new user with dev phone number (duplicates allowed)');
 
       user = await prisma.user.create({
         data: {
           email,
-          phoneNumber: formattedPhone, // Always store the phone number
+          phoneNumber: formattedPhone,
           username: usernameWithAt,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          displayName,
           password: hashedPassword,
           emailVerified: false,
           phoneVerified: false,
           emailVerificationCode: verificationCode,
           verificationExpiry: verificationExpiry,
         },
-        select: {
-          id: true,
-          email: true,
-          phoneNumber: true,
-          username: true,
-          createdAt: true,
-        }
+        select: { id: true, email: true, phoneNumber: true, username: true, displayName: true, createdAt: true }
       });
     }
 
@@ -479,6 +473,9 @@ router.post('/login', async (req: Request, res: Response) => {
           id: user.id,
           email: user.email,
           username: user.username,
+          displayName: user.displayName,
+          firstName: user.firstName,
+          lastName: user.lastName,
           createdAt: user.createdAt,
           emailVerified: user.emailVerified,
         },

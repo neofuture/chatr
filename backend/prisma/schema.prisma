@@ -12,6 +12,9 @@ model User {
   email                   String?   @unique
   phoneNumber             String? // Removed @unique to allow dev phone sharing
   username                String    @unique
+  displayName             String?
+  firstName               String?
+  lastName                String?
   password                String
   profileImage            String?
   coverImage              String?

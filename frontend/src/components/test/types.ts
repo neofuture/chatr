@@ -9,6 +9,8 @@ export interface LogEntry {
 export interface AvailableUser {
   id: string;
   username: string;
+  displayName?: string | null;
+  profileImage?: string | null;
   email: string;
 }
 
@@ -19,3 +21,10 @@ export interface PresenceInfo {
   lastSeen: Date | null;
 }
 
+export interface ConversationSummary {
+  userId: string;
+  lastMessage: string;
+  lastMessageAt: Date;
+  unreadCount: number;
+  lastSenderId: string;
+}

@@ -364,6 +364,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         email: true,
         phoneNumber: true,
         username: true,
+        displayName: true,
         profileImage: true,
         emailVerified: true,
         phoneVerified: true,
@@ -378,6 +379,29 @@ router.get('/me', authenticateToken, async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error('Get current user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /api/users/me - Update profile (displayName etc.)
+router.put('/me', authenticateToken as any, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const { displayName } = req.body;
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(displayName !== undefined ? { displayName: displayName || null } : {}),
+      },
+      select: { id: true, username: true, displayName: true, profileImage: true },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

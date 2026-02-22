@@ -4,8 +4,6 @@ import { useRef } from 'react';
 import Input from '@/components/form-controls/Input/Input';
 import Button from '@/components/form-controls/Button/Button';
 import VoiceRecorder from '@/components/VoiceRecorder';
-import Select from '@/components/form-controls/Select/Select';
-import type { AvailableUser } from './types';
 
 interface Props {
   isDark: boolean;
@@ -14,13 +12,10 @@ interface Props {
   testMessage: string;
   testRecipientId: string;
   ghostTypingEnabled: boolean;
-  availableUsers: AvailableUser[];
-  loadingUsers: boolean;
   selectedFile: File | null;
   filePreviewUrl: string | null;
   onMessageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onMessageSend: () => void;
-  onRecipientChange: (id: string) => void;
   onGhostTypingToggle: (val: boolean) => void;
   onTypingStart: () => void;
   onTypingStop: () => void;
@@ -45,8 +40,8 @@ function SectionTitle({ icon, label }: { icon: string; label: string }) {
 export default function LabActionControls({
   isDark, effectivelyOnline, uploadingFile,
   testMessage, testRecipientId, ghostTypingEnabled,
-  availableUsers, loadingUsers, selectedFile, filePreviewUrl,
-  onMessageChange, onMessageSend, onRecipientChange,
+  selectedFile, filePreviewUrl,
+  onMessageChange, onMessageSend,
   onGhostTypingToggle, onTypingStart, onTypingStop,
   onPresenceUpdate, onPresenceRequest,
   onFileSelect, onFileSend, onFileCancelSelection,
@@ -57,23 +52,6 @@ export default function LabActionControls({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
 
-      {/* ── Recipient ─────────────────────────────────── */}
-      <div style={{ marginBottom: '20px' }}>
-        {loadingUsers ? (
-          <div style={{ padding: '10px', textAlign: 'center', fontSize: '14px', opacity: 0.7 }}>Loading users...</div>
-        ) : availableUsers.length === 0 ? (
-          <div style={{
-            padding: '10px', textAlign: 'center', fontSize: '14px', opacity: 0.7,
-            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-            borderRadius: '8px', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-          }}>No other users available</div>
-        ) : (
-          <Select label="Select Recipient" value={testRecipientId} onChange={(e) => onRecipientChange(e.target.value)}>
-            <option value="">-- Choose a user --</option>
-            {availableUsers.map((u) => <option key={u.id} value={u.id}>{u.username} ({u.email})</option>)}
-          </Select>
-        )}
-      </div>
 
       {/* ── Ghost Typing Toggle ───────────────────────── */}
       {testRecipientId && (

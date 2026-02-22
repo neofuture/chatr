@@ -35,6 +35,8 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
 
   // Register state
   const [regEmail, setRegEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [username, setUsername] = useState('');
   const [usernameManuallyEdited, setUsernameManuallyEdited] = useState(false);
@@ -113,21 +115,30 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
     }
   };
 
-  // Handle email change and auto-populate username
+  // Handle name changes and auto-populate username from first+last name
+  const handleFirstNameChange = (val: string) => {
+    setFirstName(val);
+    if (!usernameManuallyEdited) {
+      setUsername(`${val}${lastName}`.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20).toLowerCase());
+    }
+  };
+
+  const handleLastNameChange = (val: string) => {
+    setLastName(val);
+    if (!usernameManuallyEdited) {
+      setUsername(`${firstName}${val}`.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20).toLowerCase());
+    }
+  };
+
+  // Handle email change
   const handleEmailChange = (newEmail: string) => {
     setRegEmail(newEmail);
     setEmailValid(true);
-
-    if (!usernameManuallyEdited) {
-      const emailPrefix = newEmail.includes('@') ? newEmail.split('@')[0] : newEmail;
-      const cleanUsername = emailPrefix.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
-      setUsername(cleanUsername);
-    }
   };
 
   const handleUsernameChange = (newUsername: string) => {
     setUsernameManuallyEdited(true);
-    setUsername(newUsername.replace(/\s/g, ''));
+    setUsername(newUsername.replace(/\s/g, '').toLowerCase());
   };
 
   const isUsernameInvalid = () => {
@@ -231,6 +242,8 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
         } else {
           // Reset registration form
           setRegEmail('');
+          setFirstName('');
+          setLastName('');
           setUsername('');
           setUsernameManuallyEdited(false);
           setRegPassword('');
@@ -382,6 +395,10 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
     setError('');
     setUsernameSubmitError(false);
 
+    // Name validation
+    if (!firstName.trim()) { showToast('Please enter your first name', 'warning'); return; }
+    if (!lastName.trim()) { showToast('Please enter your last name', 'warning'); return; }
+
     // Email validation
     if (!regEmail) {
       showToast('Please enter your email address', 'warning');
@@ -489,6 +506,8 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
           phoneNumber,
           username,
           password: regPassword,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
         }),
       });
 
@@ -506,6 +525,8 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
 
       // Clear registration form
       setRegEmail('');
+      setFirstName('');
+      setLastName('');
       setPhoneNumber('');
       setUsername('');
       setRegPassword('');
@@ -730,6 +751,32 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
             </form>
           ) : (
             <form onSubmit={handleRegister}>
+              {/* First Name + Last Name */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">First Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => handleFirstNameChange(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label className="form-label">Last Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={(e) => handleLastNameChange(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
               {/* Email */}
               <div className="form-group">
                 <label className="form-label">Email</label>

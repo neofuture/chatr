@@ -74,8 +74,6 @@ export default function TestPage() {
     testMessage: lab.testMessage,
     testRecipientId: lab.testRecipientId,
     ghostTypingEnabled: lab.ghostTypingEnabled,
-    availableUsers: lab.availableUsers,
-    loadingUsers: lab.loadingUsers,
     selectedFile: lab.selectedFile,
     filePreviewUrl: lab.filePreviewUrl,
     isUserTyping: lab.isUserTyping,
@@ -85,7 +83,6 @@ export default function TestPage() {
     onManualOfflineChange: lab.setManualOffline,
     onMessageChange: lab.handleMessageInputChange,
     onMessageSend: lab.handleMessageSend,
-    onRecipientChange: (id: string) => { lab.handleRecipientChange(id); if (isMobile) setMobileTab('messages'); },
     onGhostTypingToggle: lab.handleGhostTypingToggle,
     onTypingStart: lab.handleTypingStart,
     onTypingStop: lab.handleTypingStop,
@@ -188,6 +185,8 @@ export default function TestPage() {
                 availableUsers={lab.availableUsers}
                 selectedUserId={lab.testRecipientId}
                 userPresence={lab.userPresence}
+                conversations={lab.conversations}
+                currentUserId={lab.currentUserId}
                 onSelectUser={(id) => { lab.handleRecipientChange(id); setMobileTab('messages'); }}
               />
             </div>
@@ -211,6 +210,9 @@ export default function TestPage() {
                 activeAudioMessageId={lab.activeAudioMessageId}
                 onReaction={lab.handleReaction}
                 onUnsend={lab.handleUnsend}
+                onReply={lab.handleReply}
+                replyingTo={lab.replyingTo}
+                clearReply={lab.clearReply}
                 currentUserId={lab.currentUserId}
               />
             </div>
@@ -263,6 +265,8 @@ export default function TestPage() {
             availableUsers={lab.availableUsers}
             selectedUserId={lab.testRecipientId}
             userPresence={lab.userPresence}
+            conversations={lab.conversations}
+            currentUserId={lab.currentUserId}
             onSelectUser={lab.handleRecipientChange}
           />
         </div>
@@ -288,6 +292,9 @@ export default function TestPage() {
             activeAudioMessageId={lab.activeAudioMessageId}
             onReaction={lab.handleReaction}
             onUnsend={lab.handleUnsend}
+            onReply={lab.handleReply}
+            replyingTo={lab.replyingTo}
+            clearReply={lab.clearReply}
             currentUserId={lab.currentUserId}
           />
         </div>

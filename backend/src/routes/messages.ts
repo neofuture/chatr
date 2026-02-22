@@ -61,6 +61,7 @@ router.get('/history', authenticateToken as any, async (req: AuthenticatedReques
           select: {
             id: true,
             username: true,
+            displayName: true,
             profileImage: true
           }
         },
@@ -87,6 +88,7 @@ router.get('/history', authenticateToken as any, async (req: AuthenticatedReques
       id: m.id,
       senderId: m.senderId,
       senderUsername: m.sender.username,
+      senderDisplayName: m.sender.displayName ?? null,
       senderProfileImage: m.sender.profileImage,
       recipientId: m.recipientId,
       content: m.content,
