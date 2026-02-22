@@ -8,6 +8,8 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import mermaid from 'mermaid';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -121,7 +123,6 @@ export default function DocsPage() {
     return 300; // Default width
   });
   const [isDragging, setIsDragging] = useState(false);
-  const [isTogglingsidebar, setIsTogglingsidebar] = useState(false);
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<DocFile[]>([]);
@@ -197,6 +198,82 @@ export default function DocsPage() {
     );
   };
 
+  // Custom syntax-highlighted code block
+  const CodeBlock = ({ language, code }: { language: string; code: string }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+      navigator.clipboard.writeText(code).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    };
+
+    // Language display label
+    const langLabel: Record<string, string> = {
+      js: 'JavaScript', jsx: 'JSX', ts: 'TypeScript', tsx: 'TSX',
+      bash: 'Bash', sh: 'Shell', shell: 'Shell',
+      json: 'JSON', yaml: 'YAML', yml: 'YAML',
+      sql: 'SQL', prisma: 'Prisma', nginx: 'Nginx',
+      css: 'CSS', html: 'HTML', md: 'Markdown',
+      python: 'Python', dockerfile: 'Dockerfile',
+    };
+    const displayLang = language ? (langLabel[language] ?? language.toUpperCase()) : 'Plain';
+
+    return (
+      <div style={{ position: 'relative', margin: '1.25rem 0', borderRadius: '0.5rem', overflow: 'hidden', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+        {/* Header bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'rgba(15, 23, 42, 0.95)',
+          borderBottom: '1px solid rgba(59, 130, 246, 0.2)',
+          padding: '6px 12px',
+        }}>
+          <span style={{
+            fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em',
+            color: '#60a5fa', textTransform: 'uppercase', fontFamily: 'ui-monospace, monospace',
+          }}>
+            {displayLang}
+          </span>
+          <button
+            onClick={handleCopy}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              background: copied ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+              border: `1px solid ${copied ? 'rgba(34, 197, 94, 0.4)' : 'rgba(59, 130, 246, 0.3)'}`,
+              borderRadius: '4px', padding: '3px 8px', cursor: 'pointer',
+              color: copied ? '#4ade80' : '#93c5fd',
+              fontSize: '11px', fontWeight: 500,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <i className={copied ? 'fas fa-check' : 'fas fa-copy'} style={{ fontSize: '10px' }} />
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+        {/* Highlighted code */}
+        <SyntaxHighlighter
+          language={language || 'text'}
+          style={vscDarkPlus}
+          customStyle={{
+            margin: 0,
+            borderRadius: 0,
+            background: 'rgba(15, 23, 42, 0.85)',
+            fontSize: '13px',
+            lineHeight: '1.6',
+            padding: '1rem 1.25rem',
+          }}
+          codeTagProps={{ style: { fontFamily: 'ui-monospace, "Fira Code", monospace' } }}
+          showLineNumbers={code.split('\n').length > 5}
+          lineNumberStyle={{ color: 'rgba(148, 163, 184, 0.35)', fontSize: '11px', minWidth: '2.5em' }}
+          wrapLongLines={false}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
+    );
+  };
+
   // Load documentation structure
   useEffect(() => {
     fetch('/api/docs')
@@ -247,7 +324,7 @@ export default function DocsPage() {
       });
 
     // Handle browser back/forward buttons
-    const handlePopState = (event: PopStateEvent) => {
+    const handlePopState = (_event: PopStateEvent) => {
       const urlParams = new URLSearchParams(window.location.search);
       const fileParam = urlParams.get('file');
       if (fileParam) {
@@ -260,6 +337,7 @@ export default function DocsPage() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const rememberSidebarScroll = () => {
@@ -503,7 +581,7 @@ export default function DocsPage() {
             paddingTop: '0.35rem',
             paddingBottom: '0.35rem',
             paddingRight: '0.5rem',
-            paddingLeft: `${0.5 + level * 1}rem`,
+            paddingLeft: `${0.5 + level}rem`,
             color: isActive ? 'var(--orange-500)' : 'var(--blue-200)',
             fontWeight: '600',
             fontSize: '0.875rem',
@@ -557,7 +635,7 @@ export default function DocsPage() {
         paddingTop: '0.35rem',
         paddingBottom: '0.35rem',
         paddingRight: '0.5rem',
-        paddingLeft: `${0.5 + level * 1}rem`,
+        paddingLeft: `${0.5 + level}rem`,
         color: selectedFile === file.path ? 'var(--orange-500)' : 'var(--blue-300)',
         fontSize: '0.875rem',
         cursor: 'pointer',
@@ -774,7 +852,7 @@ export default function DocsPage() {
                     textAlign: 'center',
                     padding: '2rem 0'
                   }}>
-                    No results found for "{searchQuery}"
+                    No results found for &ldquo;{searchQuery}&rdquo;
                   </div>
                 )}
               </div>
@@ -850,11 +928,7 @@ export default function DocsPage() {
       }}>
         {/* Fixed Toggle Button */}
         <button
-          onClick={() => {
-            setIsTogglingsidebar(true);
-            setSidebarOpen(!sidebarOpen);
-            setTimeout(() => setIsTogglingsidebar(false), 300);
-          }}
+          onClick={() => setSidebarOpen(!sidebarOpen)}
           style={{
             position: 'fixed',
             top: '0.5rem',
@@ -989,19 +1063,7 @@ export default function DocsPage() {
                       return <MermaidDiagram chart={codeText} />;
                     }
 
-                    return (
-                      <pre
-                        style={{
-                          background: 'rgba(15, 23, 42, 0.8)',
-                          padding: '1rem',
-                          borderRadius: '0.5rem',
-                          overflow: 'auto',
-                          border: '1px solid rgba(59, 130, 246, 0.3)',
-                        }}
-                      >
-                        {children}
-                      </pre>
-                    );
+                    return <CodeBlock language={language} code={codeText} />;
                   },
                   code: ({ inline, className, children, ...props }: any) => {
                     if (inline) {

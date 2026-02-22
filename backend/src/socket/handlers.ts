@@ -366,6 +366,84 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
+    // ==================== REACTIONS & UNSEND ====================
+
+    // ==================== REACTIONS & UNSEND ====================
+
+    socket.on('message:react', async (data: { messageId: string; emoji: string }) => {
+      try {
+        const message = await prisma.message.findUnique({
+          where: { id: data.messageId },
+          select: { senderId: true, recipientId: true }
+        });
+        if (!message) return;
+
+        // Check if this user already reacted with this exact emoji — if so, remove it (toggle off)
+        const existing = await (prisma as any).messageReaction.findUnique({
+          where: { messageId_userId: { messageId: data.messageId, userId } }
+        });
+
+        if (existing && existing.emoji === data.emoji) {
+          // Same emoji — remove reaction
+          await (prisma as any).messageReaction.delete({
+            where: { messageId_userId: { messageId: data.messageId, userId } }
+          });
+        } else {
+          // New reaction or different emoji — upsert
+          await (prisma as any).messageReaction.upsert({
+            where: { messageId_userId: { messageId: data.messageId, userId } },
+            update: { emoji: data.emoji },
+            create: { messageId: data.messageId, userId, emoji: data.emoji }
+          });
+        }
+
+        // Fetch full updated reactions list
+        const reactions = await (prisma as any).messageReaction.findMany({
+          where: { messageId: data.messageId },
+          include: { user: { select: { id: true, username: true } } }
+        });
+
+        const payload = {
+          messageId: data.messageId,
+          reactions: reactions.map((r: any) => ({ userId: r.userId, username: r.user.username, emoji: r.emoji }))
+        };
+
+        io.to(`user:${message.senderId}`).emit('message:reaction', payload);
+        io.to(`user:${message.recipientId}`).emit('message:reaction', payload);
+
+        console.log(`💬 Reaction on message ${data.messageId} by ${username}: ${reactions.length} total`);
+      } catch (error) {
+        console.error('❌ Error updating reaction:', error);
+      }
+    });
+
+    socket.on('message:unsend', async (messageId: string) => {
+      try {
+        const message = await prisma.message.findUnique({
+          where: { id: messageId },
+          select: { senderId: true, recipientId: true, deletedAt: true }
+        });
+        if (!message) return;
+        // Only the sender can unsend
+        if (message.senderId !== userId) return;
+        if (message.deletedAt) return; // already unsent
+
+        await prisma.message.update({
+          where: { id: messageId },
+          data: { deletedAt: new Date(), content: '', reaction: null }
+        });
+
+        // Notify both parties to remove the message
+        const payload = { messageId };
+        io.to(`user:${message.senderId}`).emit('message:unsent', payload);
+        io.to(`user:${message.recipientId}`).emit('message:unsent', payload);
+
+        console.log(`🗑️  Message ${messageId} unsent by ${username}`);
+      } catch (error) {
+        console.error('❌ Error unsending message:', error);
+      }
+    });
+
     // ==================== TYPING INDICATORS ====================
 
     socket.on('typing:start', (data: { recipientId?: string; groupId?: string }) => {

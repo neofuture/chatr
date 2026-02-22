@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
-import { type Message } from '@/components/MessageBubble';
+import { type Message, type MessageReaction } from '@/components/MessageBubble';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
 import type { LogEntry, AvailableUser, PresenceStatus, PresenceInfo } from '@/components/test/types';
 
@@ -126,7 +126,8 @@ export function useConversation() {
       addLog('received', 'message:received', data);
       setMessages(prev => [...prev, {
         id: data.id || Date.now().toString(), content: data.content,
-        senderId: data.senderId, recipientId: currentUserId,
+        senderId: data.senderId, senderUsername: data.senderUsername,
+        recipientId: currentUserId,
         direction: 'received', status: 'delivered',
         timestamp: new Date(data.timestamp || Date.now()),
         type: data.type || 'text', fileUrl: data.fileUrl, fileName: data.fileName,
@@ -220,6 +221,24 @@ export function useConversation() {
       }
     };
 
+    const onReaction = (data: any) => {
+      addLog('received', 'message:reaction', data);
+      if (data.messageId) {
+        setMessages(prev => prev.map(m =>
+          m.id === data.messageId
+            ? { ...m, reactions: (data.reactions as MessageReaction[]) ?? [] }
+            : m
+        ));
+      }
+    };
+
+    const onUnsent = (data: any) => {
+      addLog('received', 'message:unsent', data);
+      if (data.messageId) {
+        setMessages(prev => prev.filter(m => m.id !== data.messageId));
+      }
+    };
+
     const baseEvents = ['connect', 'disconnect', 'connect_error', 'error'];
     const baseHandlers: Record<string, (d: any) => void> = {};
     baseEvents.forEach(ev => { baseHandlers[ev] = (d: any) => addLog('received', ev, d); socket.on(ev, baseHandlers[ev]); });
@@ -233,6 +252,8 @@ export function useConversation() {
     socket.on('audio:waveform', onAudioWaveform);
     socket.on('user:status', onUserStatus);
     socket.on('presence:response', onPresenceResponse);
+    socket.on('message:reaction', onReaction);
+    socket.on('message:unsent', onUnsent);
 
     return () => {
       baseEvents.forEach(ev => socket.off(ev, baseHandlers[ev]));
@@ -246,6 +267,8 @@ export function useConversation() {
       socket.off('audio:waveform', onAudioWaveform);
       socket.off('user:status', onUserStatus);
       socket.off('presence:response', onPresenceResponse);
+      socket.off('message:reaction', onReaction);
+      socket.off('message:unsent', onUnsent);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (userTypingTimeoutRef.current) clearTimeout(userTypingTimeoutRef.current);
     };
@@ -506,6 +529,44 @@ export function useConversation() {
     }
   };
 
+  // ── Reactions ────────────────────────────────────────
+  const handleReaction = useCallback((messageId: string, emoji: string) => {
+    const s = socketRef.current;
+    const o = effectivelyOnlineRef.current;
+    if (!s || !o) { showToast('Not connected', 'error'); return; }
+    addLog('sent', 'message:react', { messageId, emoji });
+    s.emit('message:react', { messageId, emoji });
+    // Optimistic update: toggle this user's reaction in the local array
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+      const existing = m.reactions ?? [];
+      const myReaction = existing.find(r => r.userId === currentUserId);
+      let next: MessageReaction[];
+      if (myReaction?.emoji === emoji) {
+        // Same emoji — remove
+        next = existing.filter(r => r.userId !== currentUserId);
+      } else if (myReaction) {
+        // Different emoji — replace
+        next = existing.map(r => r.userId === currentUserId ? { ...r, emoji } : r);
+      } else {
+        // New reaction
+        next = [...existing, { userId: currentUserId, username: 'You', emoji }];
+      }
+      return { ...m, reactions: next };
+    }));
+  }, [addLog, showToast, currentUserId]);
+
+  // ── Unsend ───────────────────────────────────────────
+  const handleUnsend = useCallback((messageId: string) => {
+    const s = socketRef.current;
+    const o = effectivelyOnlineRef.current;
+    if (!s || !o) { showToast('Not connected', 'error'); return; }
+    addLog('sent', 'message:unsend', { messageId });
+    s.emit('message:unsend', messageId);
+    // Optimistic: remove locally immediately
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+  }, [addLog, showToast]);
+
   // ── Log helpers ──────────────────────────────────────
   const clearLogs = () => { setLogs([]); addLog('info', 'logs:cleared', {}); };
   const clearMessages = () => { setMessages([]); addLog('info', 'messages:cleared', {}); };
@@ -532,7 +593,39 @@ export function useConversation() {
   };
   const handleRecipientChange = (id: string) => {
     setTestRecipientId(id);
+    setMessages([]);
     addLog('info', 'recipient:selected', { userId: id });
+    // Load message history
+    const token = localStorage.getItem('token');
+    if (!token || !id) return;
+    fetch(`${API}/api/messages/history?otherUserId=${id}&limit=50`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => {
+        const currentId = JSON.parse(localStorage.getItem('user') || '{}').id || '';
+        const mapped: Message[] = (data.messages || []).map((m: any) => ({
+          id: m.id,
+          content: m.content,
+          senderId: m.senderId,
+          senderUsername: m.senderUsername,
+          recipientId: m.recipientId,
+          direction: m.senderId === currentId ? 'sent' : 'received',
+          status: m.status || 'sent',
+          timestamp: new Date(m.createdAt || m.timestamp),
+          type: m.type || 'text',
+          fileUrl: m.fileUrl,
+          fileName: m.fileName,
+          fileSize: m.fileSize,
+          fileType: m.fileType,
+          waveformData: m.waveform,
+          duration: m.duration,
+          reactions: m.reactions ?? [],
+        }));
+        setMessages(mapped);
+        addLog('info', 'history:loaded', { count: mapped.length, userId: id });
+      })
+      .catch(err => addLog('error', 'history:load-failed', { error: err, userId: id }));
   };
 
   return {
@@ -562,6 +655,8 @@ export function useConversation() {
     handleAudioRecordingStart,
     handleAudioRecordingStop,
     handleAudioPlayStatusChange,
+    handleReaction,
+    handleUnsend,
     handleTypingStart,
     handleTypingStop,
     handlePresenceUpdate,

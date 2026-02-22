@@ -4,6 +4,11 @@
   flex-direction: column;
 }
 
+/* Messages Container */
+.messagesContainer {
+  /* no position:relative needed — overlay is portalled into the scroll div */
+}
+
 /* Message Bubble */
 .messageBubble {
   color: #ffffff;
@@ -175,3 +180,280 @@
   }
 }
 
+/* TTS pulse animation for the speaker icon when reading aloud */
+@keyframes ttsPulse {
+  from { opacity: 0.6; transform: translateY(-60%) scale(1); }
+  to   { opacity: 1;   transform: translateY(-60%) scale(1.3); }
+}
+
+/* ── Context Menu Overlay ─────────────────────────────────────────────────── */
+
+.contextOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: overlayFadeIn 0.15s ease forwards;
+  pointer-events: all;   /* re-enable — parent portal div has pointer-events:none */
+  overflow: hidden;      /* clip pill/menu to chat pane boundary */
+}
+
+.contextOverlayClosing {
+  animation: overlayFadeOut 0.22s ease forwards;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes overlayFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.contextContent {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Flex column — vertically centres pill + bubble + menu with equal gaps */
+.contextStack {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  pointer-events: none;
+}
+
+/* ── Reactions Pill ───────────────────────────────────────────────────────── */
+
+/* Outer: full width flex row, aligns pill to correct edge via inline justifyContent */
+.reactionsRowOuter {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+  pointer-events: all;
+  animation: pillOuterIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.reactionsRowOuterClosing {
+  animation: pillOuterOut 0.18s ease-in forwards;
+}
+
+@keyframes pillOuterIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes pillOuterOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Inner pill: auto-width, centred by the outer flex container */
+.reactionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 6px 10px;
+  gap: 0;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  animation: pillScaleIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.reactionsRowOuterClosing .reactionsRow {
+  animation: pillScaleOut 0.18s ease-in forwards;
+}
+
+@keyframes pillScaleIn {
+  from { transform: scale(0.55); }
+  to   { transform: scale(1); }
+}
+
+@keyframes pillScaleOut {
+  from { transform: scale(1); }
+  to   { transform: scale(0.6); }
+}
+
+.reactionBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  padding: 4px 7px;
+  border-radius: 50%;
+  transition: transform 0.15s, background 0.15s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.reactionBtn:hover,
+.reactionBtn:active {
+  transform: scale(1.4);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Cloned Bubble ────────────────────────────────────────────────────────── */
+
+.clonedBubble {
+  flex-shrink: 0;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: bubbleSlideIn 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.clonedBubbleClosing {
+  animation: bubbleSlideOut 0.22s cubic-bezier(0.55, 0, 0.75, 0.05) forwards !important;
+}
+
+@keyframes bubbleSlideIn {
+  from {
+    opacity: 0.5;
+    transform: translateY(var(--bubble-from-y, 0px)) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bubbleSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0.4;
+    transform: translateY(var(--bubble-to-y, 0px)) scale(0.96);
+  }
+}
+
+/* ── Action Menu ──────────────────────────────────────────────────────────── */
+
+.actionMenu {
+  flex-shrink: 0;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: all;
+  animation: menuFadeUp 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+.actionMenuClosing {
+  animation: menuFadeDown 0.18s ease-in forwards;
+}
+
+@keyframes menuFadeUp {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes menuFadeDown {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(6px) scale(0.97); }
+}
+
+.actionItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 13px 18px;
+  background: none;
+  border: none;
+  color: #e2e8f0;
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.actionItem:last-child {
+  border-bottom: none;
+}
+
+.actionItem:hover,
+.actionItem:active {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.actionItemDanger {
+  color: #f87171;
+}
+
+.actionItemDanger:hover,
+.actionItemDanger:active {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* ── Reaction Badge (absolute, overlapping bottom corner of bubble) ────────── */
+
+.reactionBadge {
+  position: absolute;
+  /* top/bottom/left/right set via inline style */
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  z-index: 2;
+  animation: badgePopIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Prevent long-press from triggering on the badge */
+  pointer-events: all;
+}
+
+.reactionEmoji {
+  font-size: 13px;
+  line-height: 1.3;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.reactionCount {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  line-height: 1;
+}
+
+/* Tooltip shown on click */
+.reactionTooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  animation: badgePopIn 0.15s ease;
+  z-index: 10;
+}
+
+@keyframes badgePopIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}

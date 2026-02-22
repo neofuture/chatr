@@ -32,6 +32,7 @@ router.get('/history', authenticateToken as any, async (req: AuthenticatedReques
 
     // Build query
     const whereClause: any = {
+      deletedAt: null,   // exclude soft-deleted (unsent) messages
       OR: [
         { senderId: userId, recipientId: otherUserId as string },
         { senderId: otherUserId as string, recipientId: userId }
@@ -62,6 +63,9 @@ router.get('/history', authenticateToken as any, async (req: AuthenticatedReques
             username: true,
             profileImage: true
           }
+        },
+        reactions: {
+          include: { user: { select: { id: true, username: true } } }
         }
       }
     });
@@ -99,6 +103,8 @@ router.get('/history', authenticateToken as any, async (req: AuthenticatedReques
       // Audio metadata
       waveform: m.audioWaveform as number[] | null,
       duration: m.audioDuration,
+      // Reactions array
+      reactions: (m.reactions || []).map((r: any) => ({ userId: r.userId, username: r.user.username, emoji: r.emoji })),
     }));
 
     res.json({

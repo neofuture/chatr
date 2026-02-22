@@ -31,11 +31,12 @@ model User {
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
-  sentMessages      Message[]      @relation("Sender")
-  receivedMessages  Message[]      @relation("Recipient")
+  sentMessages      Message[]         @relation("Sender")
+  receivedMessages  Message[]         @relation("Recipient")
   groupMemberships  GroupMember[]
   groupsOwned       Group[]
-  sentGroupMessages GroupMessage[] @relation("GroupSender")
+  sentGroupMessages GroupMessage[]    @relation("GroupSender")
+  messageReactions  MessageReaction[]
 }
 
 model Message {
@@ -61,8 +62,27 @@ model Message {
   audioWaveform Json? // Array of amplitude values (0-1)
   audioDuration Float? // Duration in seconds
 
+  // Soft delete for unsend
+  deletedAt DateTime?
+
+  reactions MessageReaction[]
+
   @@index([senderId])
   @@index([recipientId])
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId]) // one reaction per user per message
+  @@index([messageId])
+  @@index([userId])
 }
 
 model GroupMessage {

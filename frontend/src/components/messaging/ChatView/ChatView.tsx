@@ -1,10 +1,6 @@
 'use client';
 
-/**
- * ChatView — reusable message thread component.
- * Used on the /test page today; will be the main chat window when messaging is built out.
- */
-
+import { useRef } from 'react';
 import MessageBubble, { type Message } from '@/components/MessageBubble';
 
 export interface ChatViewProps {
@@ -33,6 +29,9 @@ export interface ChatViewProps {
   onClear?: () => void;
   /** Optional queue badge count */
   queuedCount?: number;
+  onReaction?: (messageId: string, emoji: string) => void;
+  onUnsend?: (messageId: string) => void;
+  currentUserId?: string;
 }
 
 export default function ChatView({
@@ -49,11 +48,18 @@ export default function ChatView({
   showClearButton,
   onClear,
   queuedCount = 0,
+  onReaction,
+  onUnsend,
+  currentUserId,
 }: ChatViewProps) {
+  const scrollRef  = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
   return (
     <div style={{
       flex: 1, minHeight: 0,
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      position: 'relative',
     }}>
       {/* Header */}
       {(showClearButton || queuedCount > 0) && (
@@ -83,11 +89,15 @@ export default function ChatView({
       )}
 
       {/* Message list */}
-      <div style={{
-        flex: '1 1 0', height: 0, overflowY: 'auto', overflowX: 'hidden',
-        padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px',
-        WebkitOverflowScrolling: 'touch',
-      } as React.CSSProperties}>
+      <div
+        ref={scrollRef}
+        data-chat-scroll
+        style={{
+          flex: '1 1 0', height: 0, overflowY: 'auto', overflowX: 'hidden',
+          padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px',
+          WebkitOverflowScrolling: 'touch',
+        } as React.CSSProperties}
+      >
         {messages.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', opacity: 0.6 }}>
             <div style={{ textAlign: 'center' }}>
@@ -106,10 +116,29 @@ export default function ChatView({
             messagesEndRef={messagesEndRef}
             onAudioPlayStatusChange={onAudioPlayStatusChange}
             activeAudioMessageId={activeAudioMessageId}
+            overlayContainerRef={overlayRef}
+            onReaction={onReaction}
+            onUnsend={onUnsend}
+            currentUserId={currentUserId}
           />
         )}
       </div>
+
+      {/*
+        Overlay target — zero padding, sits exactly over the message list.
+        Portal renders into here so it's clipped to the chat pane with no offset issues.
+        pointer-events:none by default; the context menu overlay re-enables them on itself.
+      */}
+      <div
+        ref={overlayRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+          zIndex: 100,
+        }}
+      />
     </div>
   );
 }
-

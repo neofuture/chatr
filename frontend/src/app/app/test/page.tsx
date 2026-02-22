@@ -209,6 +209,9 @@ export default function TestPage() {
                 onImageClick={(url, name) => { setLightboxImageUrl(url); setLightboxImageName(name); setLightboxOpen(true); }}
                 onAudioPlayStatusChange={lab.handleAudioPlayStatusChange}
                 activeAudioMessageId={lab.activeAudioMessageId}
+                onReaction={lab.handleReaction}
+                onUnsend={lab.handleUnsend}
+                currentUserId={lab.currentUserId}
               />
             </div>
           )}
@@ -283,6 +286,9 @@ export default function TestPage() {
             onImageClick={(url, name) => { setLightboxImageUrl(url); setLightboxImageName(name); setLightboxOpen(true); }}
             onAudioPlayStatusChange={lab.handleAudioPlayStatusChange}
             activeAudioMessageId={lab.activeAudioMessageId}
+            onReaction={lab.handleReaction}
+            onUnsend={lab.handleUnsend}
+            currentUserId={lab.currentUserId}
           />
         </div>
 
