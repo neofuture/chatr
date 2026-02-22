@@ -9,13 +9,13 @@ const PRESENCE_COLOUR: Record<PresenceStatus, string> = {
 };
 
 function formatLastSeen(date: Date | null): string {
-  if (!date) return 'last seen unknown';
+  if (!date) return 'Last seen just now';
   const now = Date.now();
   const diff = Math.floor((now - date.getTime()) / 1000);
-  if (diff < 60)  return 'last seen just now';
-  if (diff < 3600) return `last seen ${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `last seen ${Math.floor(diff / 3600)}h ago`;
-  return `last seen ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  if (diff < 60)  return 'Last seen just now';
+  if (diff < 3600) return `Last seen ${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `Last seen ${Math.floor(diff / 3600)}h ago`;
+  return `Last seen ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
 }
 
 interface Props {
@@ -76,6 +76,8 @@ export default function ConversationsList({ isDark, availableUsers, selectedUser
             const dotColour = PRESENCE_COLOUR[info.status];
             const subtitle = info.status === 'online'
               ? 'online'
+              : info.status === 'away'
+              ? 'away'
               : formatLastSeen(info.lastSeen);
             return (
               <button
@@ -103,8 +105,8 @@ export default function ConversationsList({ isDark, availableUsers, selectedUser
                   </div>
                   {/* Presence dot */}
                   <div style={{
-                    position: 'absolute', bottom: '1px', right: '1px',
-                    width: '11px', height: '11px', borderRadius: '50%',
+                    position: 'absolute', bottom: '0px', right: '0px',
+                    width: '14px', height: '14px', borderRadius: '50%',
                     backgroundColor: dotColour,
                     border: `2px solid ${isDark ? '#0f172a' : '#f8fafc'}`,
                     transition: 'background-color 0.3s',
@@ -122,7 +124,7 @@ export default function ConversationsList({ isDark, availableUsers, selectedUser
                   </div>
                   <div style={{
                     fontSize: '12px', marginTop: '2px',
-                    color: info.status === 'online' ? dotColour : (isDark ? 'rgba(148,163,184,0.7)' : 'rgba(100,116,139,0.8)'),
+                    color: info.status !== 'offline' ? dotColour : (isDark ? 'rgba(148,163,184,0.7)' : 'rgba(100,116,139,0.8)'),
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     {subtitle}
