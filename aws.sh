@@ -28,8 +28,7 @@ case "$TARGET" in
   backend|frontend|docs|"")
     ;;  # valid
   *)
-    echo -e "${BOLD}Usage:${NC} bash aws.sh [backend|frontend|docs]"
-    echo ""
+    printf "${BOLD}Usage:${NC} bash aws.sh [backend|frontend|docs]\n\n"
     echo "  (no arg)   Full deploy — all 7 steps"
     echo "  backend    Rebuild & restart backend only"
     echo "  frontend   Rebuild & restart frontend only"
@@ -53,14 +52,23 @@ echo ""
 [ ! -f "$KEY" ]    && error "SSH key not found at $KEY"
 [ ! -f "$SCRIPT" ] && error "Deploy script not found: $SCRIPT"
 
+# ── Shared SSH options ────────────────────────────────────────────────────────
+SSH_OPTS="-i $KEY -o StrictHostKeyChecking=no -o ConnectTimeout=15 -o ServerAliveInterval=30"
+
+# ── Connectivity pre-check ────────────────────────────────────────────────────
+info "Checking SSH connectivity to $SERVER..."
+ssh $SSH_OPTS -o BatchMode=yes "$SERVER" "echo ok" > /dev/null 2>&1 \
+  || error "Cannot reach $SERVER — check the server is running and port 22 is open in the AWS Security Group"
+success "Server reachable"
+
 # ── For docs, we can rsync directly — no need to run deployAWS.sh ─────────────
 if [ "$TARGET" = "docs" ]; then
   info "Syncing Documentation/ to server..."
-  rsync -az --delete \
-    -e "ssh -i $KEY -o StrictHostKeyChecking=no" \
+  rsync -az --delete --progress \
+    -e "ssh $SSH_OPTS" \
     ./Documentation/ \
     "$SERVER:/home/ubuntu/chatr/Documentation/" \
-    || error "rsync failed"
+    || error "rsync failed — check the server is running and ~/chatr/Documentation exists"
   success "Documentation synced"
   echo ""
   success "Docs deploy complete!"
@@ -69,14 +77,14 @@ fi
 
 # ── Copy deploy script ────────────────────────────────────────────────────────
 info "Copying deployAWS.sh to server..."
-scp -i "$KEY" -o StrictHostKeyChecking=no "$SCRIPT" "$SERVER:~/deployAWS.sh" \
+scp $SSH_OPTS "$SCRIPT" "$SERVER:~/deployAWS.sh" \
   || error "SCP failed — check your key and server IP"
 success "Script copied"
 
 # ── Run on server, passing target as argument ─────────────────────────────────
 info "Running deploy on server (streaming output)..."
 echo ""
-ssh -i "$KEY" -o StrictHostKeyChecking=no -tt "$SERVER" \
+ssh $SSH_OPTS -tt "$SERVER" \
   "bash ~/deployAWS.sh ${TARGET}" \
   || error "Deploy script exited with an error — check output above"
 

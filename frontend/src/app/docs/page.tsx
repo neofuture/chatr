@@ -7,7 +7,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
-import mermaid from 'mermaid';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -131,32 +130,34 @@ export default function DocsPage() {
   const sidebarScrollTop = useRef(0);
   const pendingHash = useRef<string | null>(null);
 
-  // Initialize mermaid
+  // Initialize mermaid dynamically (browser-only, cannot be statically imported)
   useEffect(() => {
     if (!mermaidInitialized.current) {
-      mermaid.initialize({
-        startOnLoad: true,
-        theme: 'dark',
-        themeVariables: {
-          primaryColor: '#3b82f6',
-          primaryTextColor: '#e0f2fe',
-          primaryBorderColor: '#3b82f6',
-          lineColor: '#3b82f6',
-          secondaryColor: '#f97316',
-          tertiaryColor: '#1e3a5f',
-          background: '#0f172a',
-          mainBkg: '#1e293b',
-          secondBkg: '#334155',
-          textColor: '#e0f2fe',
-          border1: '#3b82f6',
-          border2: '#f97316',
-          arrowheadColor: '#3b82f6',
-          fontFamily: 'ui-monospace, monospace',
-          fontSize: '14px',
-        },
-        securityLevel: 'loose',
+      import('mermaid').then(({ default: mermaid }) => {
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: 'dark',
+          themeVariables: {
+            primaryColor: '#3b82f6',
+            primaryTextColor: '#e0f2fe',
+            primaryBorderColor: '#3b82f6',
+            lineColor: '#3b82f6',
+            secondaryColor: '#f97316',
+            tertiaryColor: '#1e3a5f',
+            background: '#0f172a',
+            mainBkg: '#1e293b',
+            secondBkg: '#334155',
+            textColor: '#e0f2fe',
+            border1: '#3b82f6',
+            border2: '#f97316',
+            arrowheadColor: '#3b82f6',
+            fontFamily: 'ui-monospace, monospace',
+            fontSize: '14px',
+          },
+          securityLevel: 'loose',
+        });
+        mermaidInitialized.current = true;
       });
-      mermaidInitialized.current = true;
     }
   }, []);
 
@@ -169,6 +170,7 @@ export default function DocsPage() {
       const renderDiagram = async () => {
         if (ref.current && chart) {
           try {
+            const { default: mermaid } = await import('mermaid');
             const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
             const { svg } = await mermaid.render(id, chart);
             setSvg(svg);
