@@ -16,7 +16,7 @@ export default function MermaidDiagram({ chart }: Props) {
 
   useEffect(() => {
     const render = async () => {
-      const { default: mermaid } = await import('mermaid');
+      const { default: mermaid } = await import(/* webpackIgnore: true */ 'mermaid' as string);
 
       if (!initialized.current) {
         mermaid.initialize({
