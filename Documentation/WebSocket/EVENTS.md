@@ -55,7 +55,54 @@ Acknowledge receipt of a message (triggers `delivered` status).
 
 ---
 
-### `message:read`
+### `message:unsend`
+Soft-delete a sent message. Only the sender may unsend.
+
+```json
+"messageId"
+```
+*(passes the `messageId` string directly)*
+
+---
+
+### `message:edit`
+Edit the content of a previously sent text message. Only the sender may edit; only `text` type; cannot edit an unsent message.
+
+```json
+{
+  "messageId": "uuid",
+  "content": "Corrected message text"
+}
+```
+
+---
+
+### `message:unsent`
+Delivered to both sender and recipient when a message is unsent. Both clients render a placeholder.
+
+```json
+{
+  "messageId": "uuid",
+  "senderDisplayName": "John"
+}
+```
+
+---
+
+### `message:edited`
+Delivered to both sender and recipient when a message is edited. Clients update the message content and show the `✏ edited` marker.
+
+```json
+{
+  "messageId": "uuid",
+  "content": "Corrected message text",
+  "editedAt": "2026-02-23T10:00:00Z"
+}
+```
+
+---
+
+### `message:reaction`
 Mark a message as read.
 
 ```json

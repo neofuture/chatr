@@ -217,8 +217,13 @@ Retrieve message history between two users.
     "id": "uuid",
     "senderId": "uuid",
     "senderUsername": "@johndoe",
+    "senderDisplayName": "John Doe",
+    "senderProfileImage": "/profile/johndoe.jpg",
     "recipientId": "uuid",
     "content": "Hello",
+    "unsent": false,
+    "edited": false,
+    "editedAt": null,
     "type": "text",
     "status": "delivered",
     "isRead": true,
@@ -228,16 +233,63 @@ Retrieve message history between two users.
     "fileName": null,
     "fileSize": null,
     "fileType": null,
-    "audioWaveform": null,
-    "audioDuration": null
+    "waveform": null,
+    "duration": null,
+    "reactions": [],
+    "replyTo": null
   }
 ]
 ```
+
+> For **unsent** messages: `content` is `""`, `unsent` is `true`, file/audio fields are `null`, `edited` is `false`.
+> For **edited** messages: `edited` is `true`, `editedAt` is an ISO timestamp.
 
 ---
 
 ### GET `/api/messages/conversations`
 Get a list of recent conversations. *(Note: currently a stub — returns 501)*
+
+---
+
+### GET `/api/messages/:id/edits` 🔒
+Retrieve the full edit-history audit trail for a message. Only the sender or recipient may access this endpoint. Rows are immutable — never deleted — to satisfy legal/compliance retention requirements.
+
+**Response `200`**
+```json
+{
+  "messageId": "uuid",
+  "edits": [
+    {
+      "id": "uuid",
+      "previousContent": "Original text before first edit",
+      "editedAt": "2026-02-23T10:00:00Z",
+      "editedBy": {
+        "id": "uuid",
+        "username": "@johndoe",
+        "displayName": "John Doe"
+      }
+    },
+    {
+      "id": "uuid",
+      "previousContent": "Text after first edit, before second",
+      "editedAt": "2026-02-23T10:05:00Z",
+      "editedBy": {
+        "id": "uuid",
+        "username": "@johndoe",
+        "displayName": "John Doe"
+      }
+    }
+  ]
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|--------|--------|
+| 401 | No / invalid auth token |
+| 403 | Caller is neither sender nor recipient |
+| 404 | Message ID not found |
 
 ---
 

@@ -177,6 +177,25 @@ describe('MessageBubble', () => {
       render(<Wrapper messages={[unsentMsg]} />);
       expect(screen.getByText(/you unsent this message/i)).toBeInTheDocument();
     });
+
+    it('renders edited marker on a text message with edited=true', () => {
+      const editedMsg: Message = { ...sentMsg, edited: true, editedAt: new Date('2026-01-01T13:00:00Z') };
+      render(<Wrapper messages={[editedMsg]} />);
+      expect(screen.getByText(/edited/i)).toBeInTheDocument();
+    });
+
+    it('does NOT render edited marker when edited=false', () => {
+      render(<Wrapper messages={[sentMsg]} />);
+      expect(screen.queryByText(/✏/)).not.toBeInTheDocument();
+    });
+
+    it('does NOT render edited marker on an unsent message', () => {
+      const unsentEdited: Message = { ...sentMsg, unsent: true, edited: true };
+      render(<Wrapper messages={[unsentEdited]} />);
+      // Unsent renders placeholder, not edited marker
+      expect(screen.getByText(/you unsent this message/i)).toBeInTheDocument();
+      expect(screen.queryByText(/edited/i)).not.toBeInTheDocument();
+    });
   });
 
   describe('Accessibility', () => {
@@ -277,6 +296,42 @@ describe('MessageBubble', () => {
       const bubble = article.querySelector('[tabindex="0"]') as HTMLElement;
       fireEvent.keyDown(bubble, { key: ' ' });
       expect(screen.getByRole('dialog', { name: /message actions/i })).toBeInTheDocument();
+    });
+
+    it('context menu shows Edit button for sent text messages', () => {
+      render(<Wrapper currentUserId="user1" onReaction={jest.fn()} onReply={jest.fn()} onUnsend={jest.fn()} onEdit={jest.fn()} />);
+      const article = screen.getByRole('article');
+      const bubble = article.querySelector('[tabindex="0"]') as HTMLElement;
+      fireEvent.keyDown(bubble, { key: 'Enter' });
+      expect(screen.getByRole('button', { name: /edit this message/i })).toBeInTheDocument();
+    });
+
+    it('context menu does NOT show Edit for received messages', () => {
+      render(<Wrapper messages={[receivedMsg]} currentUserId="user1" onReaction={jest.fn()} onReply={jest.fn()} onUnsend={jest.fn()} onEdit={jest.fn()} />);
+      const article = screen.getByRole('article');
+      const bubble = article.querySelector('[tabindex="0"]') as HTMLElement;
+      fireEvent.keyDown(bubble, { key: 'Enter' });
+      expect(screen.queryByRole('button', { name: /edit this message/i })).not.toBeInTheDocument();
+    });
+
+    it('context menu does NOT show Edit for sent image messages', () => {
+      const imageMsg: Message = { ...sentMsg, type: 'image', fileUrl: '/img.jpg' };
+      render(<Wrapper messages={[imageMsg]} currentUserId="user1" onReaction={jest.fn()} onReply={jest.fn()} onUnsend={jest.fn()} onEdit={jest.fn()} />);
+      const article = screen.getByRole('article');
+      const bubble = article.querySelector('[tabindex="0"]') as HTMLElement;
+      fireEvent.keyDown(bubble, { key: 'Enter' });
+      expect(screen.queryByRole('button', { name: /edit this message/i })).not.toBeInTheDocument();
+    });
+
+    it('context menu calls onEdit when Edit is clicked', () => {
+      const onEdit = jest.fn();
+      render(<Wrapper currentUserId="user1" onReaction={jest.fn()} onReply={jest.fn()} onUnsend={jest.fn()} onEdit={onEdit} />);
+      const article = screen.getByRole('article');
+      const bubble = article.querySelector('[tabindex="0"]') as HTMLElement;
+      fireEvent.keyDown(bubble, { key: 'Enter' });
+      const editBtn = screen.getByRole('button', { name: /edit this message/i });
+      fireEvent.click(editBtn);
+      expect(onEdit).toHaveBeenCalledWith(sentMsg);
     });
   });
 

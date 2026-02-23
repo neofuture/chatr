@@ -141,7 +141,76 @@ Audio ended (100%)      → socket.emit('audio:listening', { isEnded: true })
 
 ---
 
-## Ghost Typing
+## Message Reactions
+
+Reactions are stored one-per-user-per-message. Reacting with the same emoji again removes it (toggle).
+
+```
+client → message:react { messageId, emoji }
+server → message:reaction { messageId, reactions: [{ userId, username, emoji }] }
+            (emitted to both sender and recipient rooms)
+```
+
+---
+
+## Message Unsend
+
+Soft-delete: the row is never removed from the database, only `deletedAt` is set.
+
+```
+client → message:unsend "messageId"
+server → message:unsent { messageId, senderDisplayName }
+            (emitted to both sender and recipient rooms)
+```
+
+Both parties render an italicised placeholder: *"You unsent this message"* / *"This message was unsent"*.
+
+---
+
+## Message Editing
+
+Only the **sender** may edit a message. Only `text` type messages are editable. Unsent messages cannot be edited.
+
+### Flow
+
+```mermaid
+sequenceDiagram
+    participant S as Sender
+    participant SV as Server
+    participant R as Recipient
+
+    S->>SV: message:edit { messageId, content }
+    SV->>SV: Validate: sender only, text type, not unsent
+    SV->>SV: INSERT MessageEditHistory (previousContent)
+    SV->>SV: UPDATE Message SET content, edited=true, editedAt=now
+    SV-->>S: message:edited { messageId, content, editedAt }
+    SV-->>R: message:edited { messageId, content, editedAt }
+```
+
+### UI Triggers
+
+| Action | Result |
+|--------|--------|
+| Long-press / right-click → **Edit** in context menu | Opens edit mode with current text pre-filled |
+| Press **↑** (Up arrow) in empty input | Opens last sent text message for editing |
+| Press **Escape** while editing | Cancels edit mode |
+| Press **Send** (or Enter) while editing | Submits the edited content |
+
+The input shows an orange tint and orange border in edit mode. An orange banner above the input shows the original text. The send button changes to a **✓** (tick) icon.
+
+Both the sender and recipient see a small `✏ edited` marker below the message bubble.
+
+### Edit History (Legal Audit Trail)
+
+Every edit appends an immutable row to the `MessageEditHistory` table containing the **content before the edit**. These rows are **never deleted** — they satisfy legal/compliance retention requirements.
+
+Retrieve the full history for a message via the REST API:
+
+```
+GET /api/messages/:id/edits
+```
+
+See [REST API → Messages](#messages----apimessages) for full details.
 
 Ghost typing sends the sender's keystrokes in real-time to the recipient before the message is sent. The recipient sees the text appearing live in a ghost bubble above the input area.
 

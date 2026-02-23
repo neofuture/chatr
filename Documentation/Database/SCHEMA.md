@@ -40,7 +40,18 @@ erDiagram
         String fileType
         Json audioWaveform
         Float audioDuration
+        DateTime deletedAt
+        Boolean edited
+        DateTime editedAt
         DateTime createdAt
+    }
+
+    MessageEditHistory {
+        String id PK
+        String messageId FK
+        String editedById FK
+        String previousContent
+        DateTime editedAt
     }
 
     Group {
@@ -73,8 +84,10 @@ erDiagram
     User ||--o{ GroupMember : "belongs to"
     User ||--o{ Group : "owns"
     User ||--o{ GroupMessage : "sends"
+    User ||--o{ MessageEditHistory : "edits"
     Group ||--o{ GroupMember : "has"
     Group ||--o{ GroupMessage : "contains"
+    Message ||--o{ MessageEditHistory : "history"
 ```
 
 ## Models
@@ -108,7 +121,7 @@ Represents a registered account.
 | createdAt | DateTime | Default now() | — |
 | updatedAt | DateTime | Auto-updated | — |
 
-**Relations:** `sentMessages`, `receivedMessages`, `groupMemberships`, `groupsOwned`, `sentGroupMessages`
+**Relations:** `sentMessages`, `receivedMessages`, `groupMemberships`, `groupsOwned`, `sentGroupMessages`, `messageReactions`, `messageEdits`
 
 ---
 
@@ -133,6 +146,16 @@ A direct message between two users.
 | fileType | String | Nullable | MIME type |
 | audioWaveform | Json | Nullable | Array of amplitude values `[0..1]` × 100 bars |
 | audioDuration | Float | Nullable | Duration in seconds |
+| deletedAt | DateTime | Nullable | Set when unsent (soft-delete) |
+| edited | Boolean | Default false | Whether the message has been edited |
+| editedAt | DateTime | Nullable | Timestamp of the most recent edit |
+| replyToId | String | Nullable | ID of the quoted message |
+| replyToContent | String | Nullable | Snapshot of quoted content |
+| replyToSenderName | String | Nullable | Snapshot of quoted sender name |
+| replyToType | String | Nullable | Type of the quoted message |
+| replyToDuration | Float | Nullable | Duration (audio replies) |
+
+**Relations:** `reactions` (MessageReaction[]), `editHistory` (MessageEditHistory[])
 
 **Indexes:** `senderId`, `recipientId`
 
@@ -141,6 +164,22 @@ A direct message between two users.
 sent → delivered → listening → listened   (audio/voice messages)
 sent → delivered → read                   (text/image/file messages)
 ```
+
+---
+
+### MessageEditHistory
+
+Immutable audit log — one row is appended for **every edit**, storing the content **before** that edit. Rows are never deleted. Required for legal/compliance retention.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | String (UUID) | PK | — |
+| messageId | String | FK → Message | The message that was edited |
+| editedById | String | FK → User | The user who made the edit (always the sender) |
+| previousContent | String | — | The message body **before** this edit |
+| editedAt | DateTime | Default now() | When the edit was applied |
+
+**Indexes:** `messageId`, `editedById`
 
 ---
 
