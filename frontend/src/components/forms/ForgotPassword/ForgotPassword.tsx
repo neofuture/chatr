@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import Image from 'next/image';
 import { usePanels } from '@/contexts/PanelContext';
 import { useToast } from '@/contexts/ToastContext';
+import styles from './ForgotPassword.module.css';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -66,21 +67,13 @@ export function ForgotPasswordContent() {
 
   return (
     <>
-      {/* Logo - matching AuthPanel style */}
       <div className="auth-panel-logo">
-        <Image
-          src="/images/logo-horizontal.png"
-          alt={PRODUCT_NAME}
-          width={180}
-          height={60}
-          priority
-          style={{ width: '180px', height: 'auto' }}
-        />
+        <Image src="/images/logo-horizontal.png" alt={PRODUCT_NAME} width={180} height={60} priority style={{ width: '180px', height: 'auto' }} />
       </div>
 
       <form onSubmit={handleSubmit}>
-        <p style={{ color: 'var(--blue-300)', fontSize: '0.875rem', marginBottom: '1.5rem', textAlign: 'center' }}>
-          Enter your email address and we'll send you a link to reset your password.
+        <p className={styles.introText}>
+          Enter your email address and we&apos;ll send you a link to reset your password.
         </p>
 
         <div className="form-group">
@@ -97,23 +90,13 @@ export function ForgotPasswordContent() {
           />
         </div>
 
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={loading}
-          style={{ width: '100%' }}
-        >
+        <button type="submit" className={`btn btn-primary ${styles.submitBtn}`} disabled={loading} style={{ width: '100%' }}>
           {loading ? 'Sending...' : 'Send Reset Link'}
         </button>
 
-        <p className="text-center text-sm text-muted" style={{ marginTop: '1.5rem' }}>
+        <p className={`text-center text-sm text-muted ${styles.switchText}`}>
           Remember your password?{' '}
-          <button
-            type="button"
-            onClick={handleBackToSignIn}
-            className="text-link"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
+          <button type="button" onClick={handleBackToSignIn} className={`text-link ${styles.switchBtn}`}>
             Sign in
           </button>
         </p>
@@ -121,4 +104,3 @@ export function ForgotPasswordContent() {
     </>
   );
 }
-

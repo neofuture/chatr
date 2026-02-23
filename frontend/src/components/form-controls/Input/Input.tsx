@@ -1,4 +1,5 @@
 import { InputHTMLAttributes, forwardRef } from 'react';
+import styles from './Input.module.css';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -17,19 +18,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         {icon ? (
           <div className="input-wrapper">
-            <span style={{
-              position: 'absolute',
-              left: '1rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--blue-400)'
-            }}>
+            <span className={styles.iconSpan}>
               {icon}
             </span>
             <input
               ref={ref}
-              className={`form-input ${error ? 'error' : ''} ${className}`}
-              style={icon ? { paddingLeft: '3rem' } : undefined}
+              className={`form-input ${error ? 'error' : ''} ${styles.inputWithIcon} ${className}`}
+              style={{ paddingLeft: '3rem' }}
               {...props}
             />
           </div>

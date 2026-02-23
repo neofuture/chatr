@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 // This component is loaded with next/dynamic { ssr: false } so mermaid
 // is never bundled for the server and won't cause build errors.
 
+import styles from './MermaidDiagram.module.css';
+
 interface Props {
   chart: string;
 }
@@ -60,15 +62,7 @@ export default function MermaidDiagram({ chart }: Props) {
   return (
     <div
       ref={containerRef}
-      className="mermaid-diagram"
-      style={{
-        background: 'rgba(15, 23, 42, 0.5)',
-        padding: '2rem',
-        borderRadius: '0.5rem',
-        margin: '2rem 0',
-        overflow: 'auto',
-        border: '1px solid rgba(59, 130, 246, 0.3)',
-      }}
+      className={`mermaid-diagram ${styles.diagram}`}
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );

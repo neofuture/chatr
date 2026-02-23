@@ -1,0 +1,92 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: opacity 300ms ease-in-out;
+}
+
+.backdropOpen {
+  opacity: 1;
+}
+
+.backdropClosed {
+  opacity: 0;
+}
+
+.sheet {
+  position: relative;
+  width: 100%;
+  background-color: var(--bg-secondary);
+  box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.5);
+  transition: transform 300ms ease-out, border-top-left-radius 300ms ease-out, border-top-right-radius 300ms ease-out;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sheetOpen {
+  transform: translateY(0);
+}
+
+.sheetClosed {
+  transform: translateY(100%);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.closeBtn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-card);
+}
+
+.body {
+  flex: 1;
+  padding: 1.5rem;
+}
+
+.bodyScroll {
+  overflow-y: auto;
+}
+
+.bodyVisible {
+  overflow-y: visible;
+}
+

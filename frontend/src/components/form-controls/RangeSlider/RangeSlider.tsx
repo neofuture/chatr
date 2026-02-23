@@ -1,4 +1,5 @@
 import { InputHTMLAttributes, forwardRef, useState } from 'react';
+import styles from './RangeSlider.module.css';
 
 interface RangeSliderProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label?: string;
@@ -24,8 +25,8 @@ const RangeSlider = forwardRef<HTMLInputElement, RangeSliderProps>(
     return (
       <div className="form-group">
         {(label || showValue) && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            {label && <label className="form-label" style={{ marginBottom: 0 }}>{label}</label>}
+          <div className={styles.labelRow}>
+            {label && <label className={`form-label ${styles.labelNoMargin}`}>{label}</label>}
             {showValue && (
               <span className="range-value">
                 {valuePrefix}{displayValue}{valueSuffix}

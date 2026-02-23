@@ -1,0 +1,12 @@
+.iconSpan {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--blue-400);
+}
+
+.inputWithIcon {
+  padding-left: 3rem;
+}
+

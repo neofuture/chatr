@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import BurgerMenu from '@/components/BurgerMenu/BurgerMenu';
 import { getProfileImageURL } from '@/lib/profileImageService';
 import type { User } from '@/types';
+import styles from './MobileLayout.module.css';
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -105,17 +106,21 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
   // Show loading screen while checking auth
   if (isLoading || (!isAuthenticated && !user)) {
     return (
-      <div style={{
-        height: '100vh',
-        width: '100vw',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: isDark ? '#0f172a' : '#ffffff'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: isDark ? '#3b82f6' : '#0f172a' }}></i>
-          <p style={{ marginTop: '20px', color: isDark ? '#93c5fd' : '#475569' }}>Loading...</p>
+      <div
+        className={styles.loadingScreen}
+        style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff' }}
+      >
+        <div className={styles.loadingContent}>
+          <i
+            className={`fas fa-spinner fa-spin ${styles.loadingIcon}`}
+            style={{ color: isDark ? '#3b82f6' : '#0f172a' }}
+          />
+          <p
+            className={styles.loadingText}
+            style={{ color: isDark ? '#93c5fd' : '#475569' }}
+          >
+            Loading...
+          </p>
         </div>
       </div>
     );
@@ -141,37 +146,19 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
   ];
 
   return (
-    <div style={{
-      height: '100vh',
-      width: '100vw',
-      display: 'flex',
-      flexDirection: 'column',
-      backgroundColor: theme.bg
-    }}>
+    <div className={styles.root} style={{ backgroundColor: theme.bg }}>
       {/* Title Bar - Fixed at Top */}
-      <div style={{
-        backgroundColor: theme.headerBg,
-        borderBottom: `1px solid ${theme.border}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0.5rem 1rem',
-        flexShrink: 0,
-        position: 'relative',
-        minHeight: '56px'
-      }}>
+      <div
+        className={styles.header}
+        style={{ backgroundColor: theme.headerBg, borderBottom: `1px solid ${theme.border}` }}
+      >
         {/* Burger Menu on Left */}
-        <div style={{ width: '40px', display: 'flex', alignItems: 'center' }}>
+        <div className={styles.headerLeft}>
           <BurgerMenu isDark={isDark} onPanelDemo={onPanelDemo} />
         </div>
 
         {/* Centered Title */}
-        <div style={{
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          pointerEvents: 'none'
-        }}>
+        <div className={styles.headerCenter}>
           <AnimatePresence mode="wait">
             <motion.h1
               key={title}
@@ -179,22 +166,16 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.3 }}
-              style={{
-                color: theme.text,
-                fontSize: '1rem',
-                fontWeight: '600',
-                margin: 0,
-                lineHeight: '1.5',
-                whiteSpace: 'nowrap'
-              }}
+              className={styles.headerTitle}
+              style={{ color: theme.text }}
             >
               {title}
             </motion.h1>
           </AnimatePresence>
         </div>
 
-        {/* Right spacer for balance or Action Button */}
-        <div style={{ width: '40px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+        {/* Right spacer / Action Button */}
+        <div className={styles.headerRight}>
           <AnimatePresence>
             {headerAction && (
               <motion.button
@@ -203,17 +184,8 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.2 }}
                 onClick={headerAction.onClick}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: theme.text,
-                  fontSize: '1.25rem',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                className={styles.headerActionBtn}
+                style={{ color: theme.text }}
               >
                 <i className={headerAction.icon}></i>
               </motion.button>
@@ -222,92 +194,43 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
         </div>
       </div>
 
-
       {/* Content Area */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        color: theme.contentText
-      }}>
+      <div className={styles.content} style={{ color: theme.contentText, overflowY: 'auto' }}>
         {children}
       </div>
 
       {/* Bottom Menu - Fixed at Bottom */}
-      <div style={{
-        height: '80px',
-        backgroundColor: theme.headerBg,
-        borderTop: `1px solid ${theme.border}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        padding: '0 16px',
-        flexShrink: 0,
-        zIndex: 100
-      }}>
+      <div
+        className={styles.bottomNav}
+        style={{ backgroundColor: theme.headerBg, borderTop: `1px solid ${theme.border}` }}
+      >
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '4px',
-                textDecoration: 'none',
-                cursor: 'pointer',
-                padding: '8px',
-                minWidth: '60px',
-                WebkitTapHighlightColor: 'transparent'
-              }}
-            >
+            <Link key={item.name} href={item.href} className={styles.navLink}>
               {item.type === 'image' ? (
                 <motion.img
                   key={item.icon}
                   src={item.icon}
                   alt={item.name}
-                  animate={{
-                    scale: isActive ? 1.1 : 1,
-                    opacity: isActive ? 1 : 0.8
-                  }}
+                  animate={{ scale: isActive ? 1.1 : 1, opacity: isActive ? 1 : 0.8 }}
                   transition={{ duration: 0.3 }}
+                  className={styles.navProfileImg}
                   style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    pointerEvents: 'none',
                     border: isActive ? `2px solid ${theme.activeText}` : `2px solid ${theme.menuText}`,
                   }}
                 />
               ) : (
                 <motion.i
-                  className={`fad ${item.icon}`}
-                  animate={{
-                    scale: isActive ? 1.15 : 1,
-                    color: isActive ? theme.activeText : theme.menuText
-                  }}
+                  className={`fad ${item.icon} ${styles.navIcon}`}
+                  animate={{ scale: isActive ? 1.15 : 1, color: isActive ? theme.activeText : theme.menuText }}
                   transition={{ duration: 0.3 }}
-                  style={{
-                    fontSize: '24px',
-                    pointerEvents: 'none',
-                  }}
                 />
               )}
               <motion.span
-                animate={{
-                  color: isActive ? theme.activeText : theme.menuText
-                }}
+                animate={{ color: isActive ? theme.activeText : theme.menuText }}
                 transition={{ duration: 0.3 }}
-                style={{
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  pointerEvents: 'none'
-                }}
+                className={styles.navLabel}
               >
                 {item.name}
               </motion.span>

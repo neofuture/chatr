@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import styles from './BottomSheet.module.css';
 
 type HeightMode = 'full' | 'fixed' | 'auto';
 
@@ -125,29 +126,13 @@ export default function BottomSheet({
   if (!mounted || !shouldRender) return null;
 
   const sheetContent = (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-      }}
-    >
+    <div className={styles.overlay}>
       {/* Backdrop */}
       <div
         onClick={handleBackdropClick}
         onTouchMove={(e) => e.preventDefault()}
         onWheel={(e) => e.preventDefault()}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(4px)',
-          opacity: isAnimating ? 1 : 0,
-          transition: 'opacity 300ms ease-in-out',
-        }}
+        className={`${styles.backdrop} ${isAnimating ? styles.backdropOpen : styles.backdropClosed}`}
         role="presentation"
         aria-hidden="true"
       />
@@ -157,46 +142,19 @@ export default function BottomSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'bottom-sheet-title' : undefined}
-        className={className}
+        className={`${styles.sheet} ${isAnimating ? styles.sheetOpen : styles.sheetClosed} ${className}`}
         style={{
-          position: 'relative',
-          width: '100%',
           height: getHeight(),
           maxHeight: getMaxHeight(),
-          backgroundColor: 'var(--bg-secondary)',
           borderTopLeftRadius: getBorderRadius(),
           borderTopRightRadius: getBorderRadius(),
-          boxShadow: '0 -10px 50px rgba(0, 0, 0, 0.5)',
           transform: isAnimating ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 300ms ease-out, border-top-left-radius 300ms ease-out, border-top-right-radius 300ms ease-out',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
         }}
       >
         {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '1rem 1.5rem',
-            borderBottom: '1px solid var(--border-color)',
-            flexShrink: 0,
-          }}
-        >
+        <div className={styles.header}>
           {title ? (
-            <h2
-              id="bottom-sheet-title"
-              style={{
-                fontSize: '1.25rem',
-                fontWeight: '600',
-                color: 'var(--text-primary)',
-                margin: 0,
-              }}
-            >
-              {title}
-            </h2>
+            <h2 id="bottom-sheet-title" className={styles.title}>{title}</h2>
           ) : (
             <div />
           )}
@@ -205,37 +163,9 @@ export default function BottomSheet({
             <button
               onClick={onClose}
               aria-label="Close bottom sheet"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                padding: '0.5rem',
-                borderRadius: '0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--text-primary)';
-                e.currentTarget.style.backgroundColor = 'var(--bg-card)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+              className={styles.closeBtn}
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -244,13 +174,7 @@ export default function BottomSheet({
         </div>
 
         {/* Content */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: heightMode === 'auto' ? 'visible' : 'auto',
-            padding: '1.5rem',
-          }}
-        >
+        <div className={`${styles.body} ${heightMode === 'auto' ? styles.bodyVisible : styles.bodyScroll}`}>
           {children}
         </div>
       </div>

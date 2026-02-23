@@ -8,6 +8,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { EmailVerificationContent } from '@/components/forms/EmailVerification/EmailVerification';
 import { ForgotPasswordContent } from '@/components/forms/ForgotPassword/ForgotPassword';
 import api from '@/lib/api';
+import styles from './AuthPanel.module.css';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -597,7 +598,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
           <h2 className="auth-panel-title">
             {view === 'login' ? 'Sign In' : 'Create Account'}
           </h2>
-          <div style={{ minWidth: '50px' }}>
+          <div className={styles.spacer}>
             {/* Empty space for layout symmetry */}
           </div>
         </div>
@@ -612,6 +613,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
               height={60}
               priority
               style={{ width: '180px', height: 'auto' }}
+              className={styles.logoWrapper}
             />
           </div>
 
@@ -654,12 +656,11 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                     <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                   </button>
                 </div>
-                <p style={{ textAlign: 'right', marginTop: '0.5rem', marginBottom: 0 }}>
+                <p className={styles.forgotWrapper}>
                   <button
                     type="button"
                     onClick={handleForgotPassword}
-                    className="text-link"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
+                    className={`text-link ${styles.forgotBtn}`}
                   >
                     Forgot password?
                   </button>
@@ -668,34 +669,14 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
 
               {/* Verification Method Toggle */}
               <div className="form-group">
-                <label className="form-label" style={{ marginBottom: '0.75rem' }}>
+                <label className="form-label">
                   Send verification code via:
                 </label>
-                <div style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                  padding: '0.25rem',
-                  background: 'var(--bg-secondary)',
-                  borderRadius: '8px',
-                }}>
+                <div className={styles.verifyToggle}>
                   <button
                     type="button"
                     onClick={() => setVerificationMethod('sms')}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      border: 'none',
-                      borderRadius: '6px',
-                      background: verificationMethod === 'sms' ? 'var(--orange-500)' : 'transparent',
-                      color: verificationMethod === 'sms' ? 'white' : 'var(--text-primary)',
-                      fontWeight: verificationMethod === 'sms' ? '600' : '400',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                    }}
+                    className={`${styles.verifyBtn} ${verificationMethod === 'sms' ? styles.verifyBtnActive : styles.verifyBtnInactive}`}
                   >
                     <i className="fas fa-mobile-alt"></i>
                     SMS
@@ -703,32 +684,13 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                   <button
                     type="button"
                     onClick={() => setVerificationMethod('email')}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      border: 'none',
-                      borderRadius: '6px',
-                      background: verificationMethod === 'email' ? 'var(--orange-500)' : 'transparent',
-                      color: verificationMethod === 'email' ? 'white' : 'var(--text-primary)',
-                      fontWeight: verificationMethod === 'email' ? '600' : '400',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                    }}
+                    className={`${styles.verifyBtn} ${verificationMethod === 'email' ? styles.verifyBtnActive : styles.verifyBtnInactive}`}
                   >
                     <i className="fas fa-envelope"></i>
                     Email
                   </button>
                 </div>
-                <p style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  marginTop: '0.5rem',
-                  marginBottom: 0,
-                }}>
+                <p className={styles.verifyHint}>
                   Choose how you want to receive your login verification code
                 </p>
               </div>
@@ -737,13 +699,12 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                 {loading ? 'Signing in...' : 'Sign In'}
               </button>
 
-              <p className="text-center text-sm text-muted" style={{ marginTop: '1.5rem' }}>
+              <p className={`text-center text-sm text-muted ${styles.switchText}`}>
                 Don't have an account?{' '}
                 <button
                   type="button"
                   onClick={() => handleViewSwitch('register')}
-                  className="text-link"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  className={`text-link ${styles.switchBtn}`}
                 >
                   Create account
                 </button>
@@ -752,8 +713,8 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
           ) : (
             <form onSubmit={handleRegister}>
               {/* First Name + Last Name */}
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div className="form-group" style={{ flex: 1 }}>
+              <div className={styles.nameRow}>
+                <div className={`form-group ${styles.nameField}`}>
                   <label className="form-label">First Name</label>
                   <input
                     type="text"
@@ -764,7 +725,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                     required
                   />
                 </div>
-                <div className="form-group" style={{ flex: 1 }}>
+                <div className={`form-group ${styles.nameField}`}>
                   <label className="form-label">Last Name</label>
                   <input
                     type="text"
@@ -833,13 +794,13 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                   {username.length > 0 && (
                     <span className="input-status-icon">
                       {usernameChecking && (
-                        <span style={{ color: '#f97316', fontSize: '1rem' }}><i className="fas fa-spinner fa-spin"></i></span>
+                        <span className={styles.usernameChecking}><i className="fas fa-spinner fa-spin"></i></span>
                       )}
                       {!usernameChecking && username.length >= 3 && !isUsernameInvalid() && usernameAvailable === true && (
-                        <span style={{ color: '#22c55e', fontSize: '1.25rem' }}><i className="fas fa-check"></i></span>
+                        <span className={styles.usernameAvailable}><i className="fas fa-check"></i></span>
                       )}
                       {!usernameChecking && (isUsernameInvalid() || usernameAvailable === false) && (
-                        <span style={{ color: '#ef4444', fontSize: '1.25rem' }}><i className="fas fa-times"></i></span>
+                        <span className={styles.usernameUnavailable}><i className="fas fa-times"></i></span>
                       )}
                     </span>
                   )}
@@ -850,44 +811,17 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                 )}
                 {/* Username suggestions when username is taken */}
                 {usernameSuggestions.length > 0 && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <p style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--text-muted)',
-                      marginBottom: '0.5rem'
-                    }}>
+                  <div className={styles.suggestionsWrapper}>
+                    <p className={styles.suggestionsHint}>
                       Try these available usernames:
                     </p>
-                    <div style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: '0.5rem'
-                    }}>
+                    <div className={styles.suggestionsList}>
                       {usernameSuggestions.map((suggestion, index) => (
                         <button
                           key={index}
                           type="button"
                           onClick={() => handleSuggestionClick(suggestion)}
-                          style={{
-                            padding: '0.5rem 0.75rem',
-                            background: 'var(--bg-secondary)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '6px',
-                            color: 'var(--text-primary)',
-                            fontSize: '0.875rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--orange-500)';
-                            e.currentTarget.style.color = 'white';
-                            e.currentTarget.style.borderColor = 'var(--orange-500)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'var(--bg-secondary)';
-                            e.currentTarget.style.color = 'var(--text-primary)';
-                            e.currentTarget.style.borderColor = 'var(--border)';
-                          }}
+                          className={styles.suggestionBtn}
                         >
                           @{suggestion}
                         </button>
@@ -921,24 +855,17 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                 </div>
                 {/* RAG Password Strength Bar - Always visible when typing */}
                 {regPassword && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <div style={{
-                      height: '4px',
-                      width: '100%',
-                      backgroundColor: 'var(--bg-secondary)',
-                      borderRadius: '4px',
-                      overflow: 'hidden'
-                    }}>
+                  <div className={styles.strengthBarWrapper}>
+                    <div className={styles.strengthBarTrack}>
                       <div
+                        className={styles.strengthBarFill}
                         style={{
-                          height: '100%',
                           width: `${passwordStrength}%`,
-                          transition: 'all 0.3s ease',
                           backgroundColor:
-                            passwordStrength <= 25 ? '#ef4444' : // Red
-                            passwordStrength <= 50 ? '#f97316' : // Orange
-                            passwordStrength <= 75 ? '#eab308' : // Yellow
-                            '#22c55e' // Green
+                            passwordStrength <= 25 ? '#ef4444' :
+                            passwordStrength <= 50 ? '#f97316' :
+                            passwordStrength <= 75 ? '#eab308' :
+                            '#22c55e'
                         }}
                       />
                     </div>
@@ -977,13 +904,12 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                 {loading ? 'Creating account...' : 'Sign Up'}
               </button>
 
-              <p className="text-center text-sm text-muted" style={{ marginTop: '1.5rem' }}>
+              <p className={`text-center text-sm text-muted ${styles.switchText}`}>
                 Already have an account?{' '}
                 <button
                   type="button"
                   onClick={() => handleViewSwitch('login')}
-                  className="text-link"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  className={`text-link ${styles.switchBtn}`}
                 >
                   Sign in
                 </button>

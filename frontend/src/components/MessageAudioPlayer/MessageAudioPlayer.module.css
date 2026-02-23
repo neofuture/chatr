@@ -1,0 +1,89 @@
+.container {
+  padding: 6px;
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  box-sizing: border-box;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.playBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.playBtn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.playBtn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.playBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.playBtn:not(:disabled) {
+  cursor: pointer;
+}
+
+.waveform {
+  flex: 1;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.waveformSeekable {
+  cursor: pointer;
+}
+
+.waveformStatic {
+  cursor: default;
+}
+
+.waveBar {
+  flex: 1 1 0;
+  min-width: 2px;
+  border-radius: 1px;
+  transition: background-color 0.2s ease;
+}
+
+.bottomRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.bottomRowSent {
+  flex-direction: row;
+}
+
+.bottomRowReceived {
+  flex-direction: row-reverse;
+}
+

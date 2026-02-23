@@ -3,6 +3,7 @@
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useState, useEffect, useRef } from 'react';
+import styles from './WebSocketStatusBadge.module.css';
 
 interface MessageLog {
   type: 'sent' | 'received';
@@ -164,17 +165,18 @@ export default function WebSocketStatusBadge() {
 
   const bgColor = theme === 'dark' ? 'rgba(0, 0, 0, 0.85)' : 'rgba(255, 255, 255, 0.95)';
   const textColor = theme === 'dark' ? '#ffffff' : '#000000';
+  const dividerColor = theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
 
-  let statusColor = '#10b981'; // Green for connected
+  let statusColor = '#10b981';
   let statusText = 'Connected';
   let statusIcon = <i className="fas fa-circle" style={{ color: '#10b981' }}></i>;
 
   if (connecting) {
-    statusColor = '#f97316'; // Orange
+    statusColor = '#f97316';
     statusText = 'Connecting';
     statusIcon = <i className="fas fa-circle" style={{ color: '#f97316' }}></i>;
   } else if (!connected) {
-    statusColor = '#ef4444'; // Red
+    statusColor = '#ef4444';
     statusText = 'Offline';
     statusIcon = <i className="fas fa-circle" style={{ color: '#ef4444' }}></i>;
   }
@@ -186,55 +188,29 @@ export default function WebSocketStatusBadge() {
       ref={badgeRef}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
+      className={`${styles.badge} ${expanded ? styles.badgeExpanded : styles.badgeCollapsed} ${isDragging ? styles.badgeDragging : ''}`}
       style={{
-        position: 'fixed',
         top: `${position.y}px`,
         right: `${position.x}px`,
-        zIndex: 10000,
         backgroundColor: bgColor,
         color: textColor,
-        padding: expanded ? '16px' : '10px 16px',
-        borderRadius: '12px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: expanded ? '12px' : '0',
         boxShadow: theme === 'dark'
           ? '0 4px 20px rgba(0, 0, 0, 0.5)'
           : '0 4px 20px rgba(0, 0, 0, 0.15)',
-        backdropFilter: 'blur(10px)',
         border: `2px solid ${statusColor}`,
-        fontSize: '13px',
-        fontWeight: '600',
-        cursor: isDragging ? 'grabbing' : (expanded ? 'default' : 'grab'),
-        transition: isDragging ? 'none' : 'all 0.3s ease',
-        minWidth: expanded ? '300px' : 'auto',
-        maxWidth: expanded ? '400px' : 'auto',
-        maxHeight: expanded ? '500px' : 'auto',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        MozUserSelect: 'none',
-        msUserSelect: 'none',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '16px' }}>{statusIcon}</span>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <span className={styles.statusIconWrapper}>{statusIcon}</span>
           <span style={{ color: statusColor }}>{statusText}</span>
         </div>
-        {!expanded && <span style={{ fontSize: '10px', opacity: 0.6 }}>⋮⋮</span>}
+        {!expanded && <span className={styles.dragHint}>⋮⋮</span>}
         {expanded && messages.length > 0 && (
           <button
             onClick={clearMessages}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: textColor,
-              opacity: 0.6,
-              cursor: 'pointer',
-              fontSize: '10px',
-              padding: '4px',
-            }}
+            className={styles.clearBtn}
+            style={{ color: textColor }}
             title="Clear messages"
           >
             <i className="fas fa-trash"></i>
@@ -243,43 +219,28 @@ export default function WebSocketStatusBadge() {
       </div>
 
       {expanded && (
-        <div style={{
-          fontSize: '11px',
-          opacity: 0.8,
-          textAlign: 'left',
-          borderTop: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-          paddingTop: '12px',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          maxHeight: '400px',
-          overflowY: 'auto',
-        }}>
+        <div
+          className={styles.expandedContent}
+          style={{ borderTop: `1px solid ${dividerColor}` }}
+        >
           {/* Status Section */}
-          <div style={{ marginBottom: '8px' }}>
+          <div className={styles.statusSection}>
             {connected && (
               <>
-                <div style={{ color: '#10b981' }}>✅ Real-time messaging active</div>
-                <div style={{ marginTop: '4px', opacity: 0.6, fontSize: '10px' }}>
-                  Drag to reposition
-                </div>
+                <div className={styles.statusConnected}>✅ Real-time messaging active</div>
+                <div className={styles.statusHint}>Drag to reposition</div>
               </>
             )}
             {connecting && (
               <>
-                <div style={{ color: '#f97316' }}><i className="fas fa-spinner fa-pulse"></i> Establishing connection...</div>
-                <div style={{ marginTop: '4px', opacity: 0.6 }}>
-                  Please wait
-                </div>
+                <div className={styles.statusConnecting}><i className="fas fa-spinner fa-pulse"></i> Establishing connection...</div>
+                <div style={{ marginTop: '4px', opacity: 0.6 }}>Please wait</div>
               </>
             )}
             {!connected && !connecting && (
               <>
-                <div style={{ color: '#ef4444' }}><i className="fas fa-exclamation-triangle"></i> Connection lost</div>
-                <div style={{ marginTop: '4px', opacity: 0.6 }}>
-                  Check backend server
-                </div>
+                <div className={styles.statusDisconnected}><i className="fas fa-exclamation-triangle"></i> Connection lost</div>
+                <div style={{ marginTop: '4px', opacity: 0.6 }}>Check backend server</div>
               </>
             )}
           </div>
@@ -287,49 +248,35 @@ export default function WebSocketStatusBadge() {
           {/* Message Log Section */}
           {connected && (
             <>
-              <div style={{
-                borderTop: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                paddingTop: '8px',
-                fontWeight: '600',
-              }}>
+              <div
+                className={styles.logHeader}
+                style={{ borderTop: `1px solid ${dividerColor}` }}
+              >
                 📨 Message Log ({messages.length}/10)
               </div>
 
               {messages.length === 0 ? (
-                <div style={{ opacity: 0.6, fontSize: '10px', textAlign: 'center', padding: '8px' }}>
-                  No messages yet...
-                </div>
+                <div className={styles.logEmpty}>No messages yet...</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className={styles.logList}>
                   {messages.map((msg, idx) => (
                     <div
                       key={idx}
+                      className={styles.logItem}
                       style={{
-                        padding: '6px 8px',
                         backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                        borderRadius: '6px',
-                        fontSize: '10px',
                         borderLeft: `3px solid ${msg.type === 'sent' ? '#3b82f6' : '#10b981'}`,
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{
-                          fontWeight: '600',
-                          color: msg.type === 'sent' ? '#3b82f6' : '#10b981'
-                        }}>
+                      <div className={styles.logItemHeader}>
+                        <span className={`${styles.logItemEvent} ${msg.type === 'sent' ? styles.logItemEventSent : styles.logItemEventReceived}`}>
                           {msg.type === 'sent' ? <i className="fas fa-arrow-up"></i> : <i className="fas fa-arrow-down"></i>} {msg.event}
                         </span>
-                        <span style={{ opacity: 0.6 }}>
+                        <span className={styles.logItemTime}>
                           {msg.timestamp.toLocaleTimeString()}
                         </span>
                       </div>
-                      <div style={{
-                        opacity: 0.8,
-                        fontFamily: 'monospace',
-                        wordBreak: 'break-all',
-                        maxHeight: '60px',
-                        overflowY: 'auto',
-                      }}>
+                      <div className={styles.logItemData}>
                         {typeof msg.data === 'object'
                           ? JSON.stringify(msg.data, null, 2).slice(0, 200) + (JSON.stringify(msg.data).length > 200 ? '...' : '')
                           : String(msg.data)
@@ -346,4 +293,3 @@ export default function WebSocketStatusBadge() {
     </div>
   );
 }
-

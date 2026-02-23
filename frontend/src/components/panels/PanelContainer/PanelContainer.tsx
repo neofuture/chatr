@@ -3,6 +3,7 @@
 import { usePanels, ActionIcon } from '@/contexts/PanelContext';
 import { useEffect, useState } from 'react';
 import { getProfileImageURL } from '@/lib/profileImageService';
+import styles from './PanelContainer.module.css';
 
 interface PanelProps {
   id: string;
@@ -125,85 +126,37 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
           <button onClick={handleClose} className="auth-panel-back">
             ‹
           </button>
-          <div className="auth-panel-title" style={{
-            position: titlePosition === 'center' ? 'absolute' : 'relative',
-            left: titlePosition === 'center' ? '50%' : 'auto',
-            transform: titlePosition === 'center' ? 'translateX(-50%)' : 'none',
-            textAlign: titlePosition,
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: currentProfileImage ? '0.75rem' : (subTitle ? '0.125rem' : '0'),
-            flex: titlePosition !== 'center' ? 1 : undefined,
-          }}>
+          <div
+            className={`auth-panel-title ${titlePosition === 'center' ? styles.titleBlockCenter : styles.titleBlockLeft} ${styles.titleBlock}`}
+            style={{ gap: currentProfileImage ? '0.75rem' : (subTitle ? '0.125rem' : '0') }}
+          >
             {currentProfileImage && (
               <img
                 src={currentProfileImage}
                 alt="Profile"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  flexShrink: 0
-                }}
+                className={styles.profileImg}
               />
             )}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              height: '40px', // Fixed height equal to typical profile image or icon height
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}>
-              <span style={{
-                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: subTitle ? 'translateY(0)' : 'translateY(0)', // In center if no subtitle, push up if subtitle?
-              }}>{title}</span>
-              <div style={{
-                height: subTitle ? '14px' : '0px',
-                opacity: subTitle ? 0.7 : 0,
-                overflow: 'hidden',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                <span style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '400',
-                  whiteSpace: 'nowrap',
-                  transform: subTitle ? 'translateY(0)' : 'translateY(-5px)'
-                }}>{subTitle || ' '}</span>
+            <div className={styles.titleText}>
+              <span className={styles.titleName}>{title}</span>
+              <div
+                className={styles.titleSub}
+                style={{ height: subTitle ? '14px' : '0px', opacity: subTitle ? 0.7 : 0 }}
+              >
+                <span
+                  className={styles.titleSubText}
+                  style={{ transform: subTitle ? 'translateY(0)' : 'translateY(-5px)' }}
+                >{subTitle || ' '}</span>
               </div>
             </div>
           </div>
-          <div style={{
-            minWidth: '50px',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '0.5rem',
-            alignItems: 'center'
-          }}>
+          <div className={styles.actions}>
             {actionIcons && actionIcons.map((action, index) => (
               <button
                 key={index}
                 onClick={action.onClick}
                 aria-label={action.label}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'inherit',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.5rem',
-                  opacity: 0.7,
-                  transition: 'opacity 0.2s',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                className={styles.actionBtn}
               >
                 <i className={action.icon}></i>
               </button>

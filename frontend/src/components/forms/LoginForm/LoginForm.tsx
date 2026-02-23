@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { usePanels } from '@/contexts/PanelContext';
 import { useToast } from '@/contexts/ToastContext';
+import styles from './LoginForm.module.css';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -141,12 +142,11 @@ export function LoginFormContent() {
               <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
             </button>
           </div>
-          <p style={{ textAlign: 'right', marginTop: '0.5rem', marginBottom: 0 }}>
+          <p className={styles.forgotWrapper}>
             <button
               type="button"
               onClick={handleForgotPassword}
-              className="text-link"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
+              className={`text-link ${styles.forgotBtn}`}
             >
               Forgot password?
             </button>
@@ -160,4 +160,3 @@ export function LoginFormContent() {
     </>
   );
 }
-

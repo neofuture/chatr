@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import styles from './ChatMessageList.module.css';
 
 interface Message {
   id: string;
@@ -124,15 +125,9 @@ export default function ChatMessageList({ recipientId, recipientUsername, curren
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100%',
-        color: isDark ? '#94a3b8' : '#64748b',
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
+      <div className={styles.centered} style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
+        <div className={styles.centeredContent}>
+          <div className={styles.stateIcon}>💬</div>
           <div>Loading messages...</div>
         </div>
       </div>
@@ -141,15 +136,9 @@ export default function ChatMessageList({ recipientId, recipientUsername, curren
 
   if (error) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100%',
-        color: '#ef4444',
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
+      <div className={`${styles.centered} ${styles.stateError}`}>
+        <div className={styles.centeredContent}>
+          <div className={styles.stateIcon}>⚠️</div>
           <div>{error}</div>
         </div>
       </div>
@@ -158,19 +147,11 @@ export default function ChatMessageList({ recipientId, recipientUsername, curren
 
   if (messages.length === 0) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100%',
-        color: isDark ? '#94a3b8' : '#64748b',
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
-          <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
-            No messages yet
-          </div>
-          <div style={{ fontSize: '14px', opacity: 0.7 }}>
+      <div className={styles.centered} style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
+        <div className={styles.centeredContent}>
+          <div className={styles.stateIconLarge}>💬</div>
+          <div className={styles.stateEmpty}>No messages yet</div>
+          <div className={styles.stateEmptyHint}>
             Start a conversation with @{recipientUsername}
           </div>
         </div>
@@ -179,69 +160,34 @@ export default function ChatMessageList({ recipientId, recipientUsername, curren
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '12px',
-      padding: '20px',
-      overflowY: 'auto',
-      height: '100%',
-    }}>
+    <div className={styles.container}>
       {messages.map((message) => {
         const isSent = message.senderId === currentUserId;
 
         return (
           <div
             key={message.id}
-            style={{
-              display: 'flex',
-              justifyContent: isSent ? 'flex-end' : 'flex-start',
-              alignItems: 'flex-end',
-              gap: '8px',
-            }}
+            className={`${styles.messageRow} ${isSent ? styles.messageRowSent : styles.messageRowReceived}`}
           >
             {/* Message bubble */}
             <div
-              style={{
-                maxWidth: '70%',
-                padding: '12px 16px',
-                borderRadius: '18px',
-                backgroundColor: isSent
-                  ? '#f97316'
-                  : (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'),
-                color: isSent ? '#ffffff' : (isDark ? '#ffffff' : '#000000'),
-                wordBreak: 'break-word',
-                position: 'relative',
-              }}
+              className={`${styles.bubble} ${isSent ? styles.bubbleSent : ''}`}
+              style={!isSent ? {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                color: isDark ? '#ffffff' : '#000000',
+              } : undefined}
             >
-              {/* Message content */}
-              <div style={{ fontSize: '15px', lineHeight: '1.4' }}>
-                {message.content}
-              </div>
+              <div className={styles.bubbleText}>{message.content}</div>
 
-              {/* Timestamp and status */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                marginTop: '4px',
-                fontSize: '11px',
-                opacity: 0.7,
-                justifyContent: 'flex-end',
-              }}>
+              <div className={styles.bubbleMeta}>
                 <span>
-                  {new Date(message.timestamp).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
-
-                {/* Status indicators (only for sent messages) */}
                 {isSent && (
-                  <span style={{ marginLeft: '4px' }}>
+                  <span className={styles.statusMargin}>
                     {message.status === 'sent' && '✓'}
                     {message.status === 'delivered' && '✓✓'}
-                    {message.status === 'read' && <span style={{ color: '#60a5fa' }}>✓✓</span>}
+                    {message.status === 'read' && <span className={styles.readTick}>✓✓</span>}
                   </span>
                 )}
               </div>
@@ -249,10 +195,7 @@ export default function ChatMessageList({ recipientId, recipientUsername, curren
           </div>
         );
       })}
-
-      {/* Scroll anchor */}
       <div ref={messagesEndRef} />
     </div>
   );
 }
-

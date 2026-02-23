@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import styles from './BurgerMenu.module.css';
 
 interface BurgerMenuProps {
   isDark: boolean;
@@ -16,7 +17,7 @@ export default function BurgerMenu({ isDark, onPanelDemo }: BurgerMenuProps) {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    router.push('/'); // Redirect to home page
+    router.push('/');
   };
 
   const menuItems = [
@@ -31,156 +32,58 @@ export default function BurgerMenu({ isDark, onPanelDemo }: BurgerMenuProps) {
   const textColor = isDark ? '#93c5fd' : '#475569';
   const borderColor = isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(15, 23, 42, 0.2)';
   const hoverBg = isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(15, 23, 42, 0.05)';
+  const barColor = isOpen ? '#3b82f6' : (isDark ? '#ffffff' : '#0f172a');
 
   return (
     <>
       {/* Burger Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: '40px',
-          height: '40px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '8px',
-          zIndex: 2000,
-          position: 'relative'
-        }}
-      >
-        <div style={{
-          width: '24px',
-          height: '16px',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <span style={{
-            width: '24px',
-            height: '2px',
-            backgroundColor: isOpen ? '#3b82f6' : (isDark ? '#ffffff' : '#0f172a'),
-            position: 'absolute',
-            transition: 'all 0.3s ease',
-            transform: isOpen ? 'rotate(45deg)' : 'translateY(-6px)',
-            top: '50%',
-            left: 0
-          }}></span>
-          <span style={{
-            width: '24px',
-            height: '2px',
-            backgroundColor: isOpen ? '#3b82f6' : (isDark ? '#ffffff' : '#0f172a'),
-            position: 'absolute',
-            transition: 'all 0.3s ease',
-            opacity: isOpen ? 0 : 1,
-            top: '50%',
-            left: 0
-          }}></span>
-          <span style={{
-            width: '24px',
-            height: '2px',
-            backgroundColor: isOpen ? '#3b82f6' : (isDark ? '#ffffff' : '#0f172a'),
-            position: 'absolute',
-            transition: 'all 0.3s ease',
-            transform: isOpen ? 'rotate(-45deg)' : 'translateY(6px)',
-            top: '50%',
-            left: 0
-          }}></span>
+      <button className={styles.burgerBtn} onClick={() => setIsOpen(!isOpen)}>
+        <div className={styles.burgerIcon}>
+          <span
+            className={`${styles.bar} ${isOpen ? styles.barTopOpen : styles.barTop}`}
+            style={{ backgroundColor: barColor }}
+          />
+          <span
+            className={`${styles.bar} ${isOpen ? styles.barMidOpen : styles.barMid}`}
+            style={{ backgroundColor: barColor }}
+          />
+          <span
+            className={`${styles.bar} ${isOpen ? styles.barBottomOpen : styles.barBottom}`}
+            style={{ backgroundColor: barColor }}
+          />
         </div>
       </button>
 
       {/* Backdrop */}
       {isOpen && (
-        <div
-          onClick={() => setIsOpen(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.8)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 1998,
-            animation: 'fadeIn 0.2s ease-out'
-          }}
-        />
+        <div className={styles.backdrop} onClick={() => setIsOpen(false)} />
       )}
 
       {/* Menu Panel */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: isOpen ? 0 : '-280px',
-        height: '100vh',
-        width: '280px',
-        backgroundColor: bgColor,
-        borderRight: `1px solid ${borderColor}`,
-        transition: 'left 0.3s ease-out',
-        zIndex: 1999,
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: isOpen ? '4px 0 12px rgba(0, 0, 0, 0.3)' : 'none'
-      }}>
+      <div
+        data-testid="burger-drawer"
+        className={`${styles.panel} ${isOpen ? styles.panelOpen : styles.panelClosed}`}
+        style={{ backgroundColor: bgColor, borderRight: `1px solid ${borderColor}`, left: isOpen ? '0px' : '-280px' }}
+      >
         {/* Menu Header */}
-        <div style={{
-          padding: '0.5rem 1rem',
-          borderBottom: `1px solid ${borderColor}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '56px'
-        }}>
-          {/* Centered Menu title */}
-          <h3 style={{
-            color: textColor,
-            fontSize: '1rem',
-            fontWeight: '600',
-            margin: 0,
-            lineHeight: '1.5'
-          }}>Menu</h3>
+        <div className={styles.panelHeader} style={{ borderBottom: `1px solid ${borderColor}` }}>
+          <h3 className={styles.panelTitle} style={{ color: textColor }}>Menu</h3>
         </div>
 
         {/* Menu Items */}
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '8px 0'
-        }}>
+        <div className={styles.panelBody}>
           {menuItems.map((item) => {
             if (item.isButton && onPanelDemo) {
               return (
                 <button
                   key={item.name}
-                  onClick={() => {
-                    onPanelDemo();
-                    setIsOpen(false);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '16px 20px',
-                    color: textColor,
-                    textDecoration: 'none',
-                    transition: 'background-color 0.2s',
-                    cursor: 'pointer',
-                    width: '100%',
-                    border: 'none',
-                    background: 'transparent',
-                    textAlign: 'left',
-                    fontFamily: 'inherit',
-                    fontSize: '16px',
-                    fontWeight: '500'
-                  }}
+                  onClick={() => { onPanelDemo(); setIsOpen(false); }}
+                  className={styles.menuItem}
+                  style={{ color: textColor }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <i className={`fad ${item.icon}`} style={{ fontSize: '20px', width: '20px' }}></i>
+                  <i className={`fad ${item.icon} ${styles.menuItemIcon}`}></i>
                   <span>{item.name}</span>
                 </button>
               );
@@ -191,21 +94,13 @@ export default function BurgerMenu({ isDark, onPanelDemo }: BurgerMenuProps) {
                 key={item.name}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '16px 20px',
-                  color: textColor,
-                  textDecoration: 'none',
-                  transition: 'background-color 0.2s',
-                  cursor: 'pointer'
-                }}
+                className={styles.menuItem}
+                style={{ color: textColor }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                <i className={`fad ${item.icon}`} style={{ fontSize: '20px', width: '20px' }}></i>
-                <span style={{ fontSize: '16px', fontWeight: '500' }}>{item.name}</span>
+                <i className={`fad ${item.icon} ${styles.menuItemIcon}`}></i>
+                <span>{item.name}</span>
               </Link>
             );
           })}
@@ -213,29 +108,10 @@ export default function BurgerMenu({ isDark, onPanelDemo }: BurgerMenuProps) {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '16px 20px',
-              color: '#ef4444',
-              textDecoration: 'none',
-              transition: 'background-color 0.2s',
-              cursor: 'pointer',
-              width: '100%',
-              border: 'none',
-              background: 'transparent',
-              textAlign: 'left',
-              fontFamily: 'inherit',
-              fontSize: '16px',
-              fontWeight: '500',
-              marginTop: '8px',
-              borderTop: `1px solid ${borderColor}`
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            className={styles.logoutBtn}
+            style={{ borderTop: `1px solid ${borderColor}` }}
           >
-            <span style={{ fontSize: '20px' }}>🚪</span>
+            <i className={`fad fa-sign-out-alt ${styles.logoutIcon}`}></i>
             <span>Logout</span>
           </button>
         </div>
@@ -243,4 +119,3 @@ export default function BurgerMenu({ isDark, onPanelDemo }: BurgerMenuProps) {
     </>
   );
 }
-

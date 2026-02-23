@@ -1,0 +1,95 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.centered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.centeredContent {
+  text-align: center;
+}
+
+.stateIcon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.stateIconLarge {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.stateError {
+  color: #ef4444;
+}
+
+.stateEmpty {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.stateEmptyHint {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.messageRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.messageRowSent {
+  justify-content: flex-end;
+}
+
+.messageRowReceived {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  word-break: break-word;
+  position: relative;
+}
+
+.bubbleSent {
+  background-color: #f97316;
+  color: #ffffff;
+}
+
+.bubbleText {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.bubbleMeta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.7;
+  justify-content: flex-end;
+}
+
+.readTick {
+  color: #60a5fa;
+}
+
+.statusMargin {
+  margin-left: 4px;
+}
+

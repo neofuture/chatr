@@ -1,0 +1,125 @@
+.root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+.loadingScreen {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loadingContent {
+  text-align: center;
+}
+
+.loadingIcon {
+  font-size: 48px;
+}
+
+.loadingText {
+  margin-top: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  flex-shrink: 0;
+  position: relative;
+  min-height: 56px;
+}
+
+.headerLeft {
+  width: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.headerCenter {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.headerTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.headerRight {
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.headerActionBtn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bottomNav {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 16px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.navLink {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 8px;
+  min-width: 60px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.navProfileImg {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.navIcon {
+  font-size: 24px;
+  pointer-events: none;
+}
+
+.navLabel {
+  font-size: 10px;
+  font-weight: bold;
+  pointer-events: none;
+}
+

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import styles from './MessageAudioPlayer.module.css';
 
 export interface MessageAudioPlayerProps {
   audioUrl: string;
@@ -383,13 +384,7 @@ export default function MessageAudioPlayer({
   const isCrossOrigin = audioUrl.startsWith('http') && !audioUrl.includes(window.location.hostname);
 
   return (
-    <div style={{
-      padding: '6px',
-      width: '320px',
-      minWidth: '320px',
-      maxWidth: '320px',
-      boxSizing: 'border-box',
-    }}>
+    <div className={styles.container}>
       <audio
         ref={audioRef}
         src={audioUrl}
@@ -400,48 +395,12 @@ export default function MessageAudioPlayer({
 
 
       {/* Play button and waveform */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        marginBottom: '6px',
-      }}>
+      <div className={styles.controls}>
         {/* Play/Pause button */}
         <button
           onClick={togglePlayPause}
           disabled={!audioLoaded}
-          onMouseEnter={(e) => {
-            if (audioLoaded) {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-          }}
-          style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            border: 'none',
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            color: '#ffffff',
-            cursor: audioLoaded ? 'pointer' : 'not-allowed',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px',
-            flexShrink: 0,
-            transition: 'background-color 0.2s, transform 0.1s',
-            opacity: audioLoaded ? 1 : 0.5,
-          }}
-          onMouseDown={(e) => {
-            if (audioLoaded) {
-              e.currentTarget.style.transform = 'scale(0.95)';
-            }
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-          }}
+          className={styles.playBtn}
         >
           {!audioLoaded ? <i className="fas fa-spinner fa-pulse"></i> : isPlaying ? <i className="fas fa-pause"></i> : <i className="fas fa-play"></i>}
         </button>
@@ -450,52 +409,29 @@ export default function MessageAudioPlayer({
         <div
           onClick={(e) => {
             if (!audioRef.current || !audioLoaded) return;
-
             const rect = e.currentTarget.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const percentage = Math.max(0, Math.min(1, clickX / rect.width));
             const newTime = percentage * actualDuration;
-
             audioRef.current.currentTime = newTime;
             setCurrentTime(newTime);
-
             console.log('🎵 Waveform seek to:', { newTime, percentage: percentage * 100 });
           }}
-          style={{
-            flex: 1,
-            height: '48px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            gap: '0px',
-            overflow: 'hidden',
-            cursor: audioLoaded ? 'pointer' : 'default',
-            borderRadius: '4px',
-            padding: '0 4px',
-          }}>
+          className={`${styles.waveform} ${audioLoaded ? styles.waveformSeekable : styles.waveformStatic}`}
+        >
           {waveformData.map((amplitude, index) => {
             const progressPercentage = (index / waveformData.length) * 100;
             const isPassed = progressPercentage <= progress;
-
-            // Color logic based on message type
-            // Sent messages (BLUE bg): ORANGE highlight for played, white for unplayed
-            // Received messages (ORANGE bg): BLUE highlight for played, white for unplayed
             const playedColor = isSent ? '#f97316' : '#3b82f6';
             const unplayedColor = 'rgba(255, 255, 255, 0.4)';
-
-            // Amplitude is already 0-1 range, convert to percentage with minimum 5% for visibility
             const barHeight = Math.max(amplitude * 100, 5);
-
             return (
               <div
                 key={index}
+                className={styles.waveBar}
                 style={{
-                  flex: '1 1 0',
-                  minWidth: '2px',
                   height: `${barHeight}%`,
                   backgroundColor: isPassed ? playedColor : unplayedColor,
-                  borderRadius: '1px',
-                  transition: 'background-color 0.2s ease',
                   marginRight: index < waveformData.length - 1 ? '1px' : '0',
                 }}
               />
@@ -506,14 +442,7 @@ export default function MessageAudioPlayer({
 
 
       {/* Bottom row: time on one side, timestamp on the other */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        fontSize: '11px',
-        opacity: 0.8,
-        flexDirection: isSent ? 'row' : 'row-reverse',
-      }}>
+      <div className={`${styles.bottomRow} ${isSent ? styles.bottomRowSent : styles.bottomRowReceived}`}>
         <span>{formatTime(currentTime)} / {formatTime(actualDuration)}</span>
         <span>{timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>

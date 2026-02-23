@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useToast } from '@/contexts/ToastContext';
 import { usePanels } from '@/contexts/PanelContext';
 import { saveAuthToken } from '@/lib/authUtils';
+import styles from './EmailVerification.module.css';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -214,12 +215,12 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
           height={60}
           priority
           style={{ width: '180px', height: 'auto' }}
+          className={styles.logoImg}
         />
       </div>
 
-
-      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <p style={{ color: 'var(--blue-300)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+      <div className={styles.intro}>
+        <p className={styles.introText}>
           {verificationType === 'login'
             ? 'We\'ve sent a 6-digit code to your email to verify this login attempt'
             : verificationType === 'phone'
@@ -227,9 +228,7 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
             : 'We\'ve sent a 6-digit code to'}
         </p>
         {email && verificationType === 'email' && (
-          <p style={{ color: 'var(--orange-500)', fontSize: '1rem', fontWeight: 600, marginBottom: 0 }}>
-            {email}
-          </p>
+          <p className={styles.introEmail}>{email}</p>
         )}
 
         {/* REMOVED: Don't show verification code in frontend - backend only validation */}
@@ -238,12 +237,7 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
       <form onSubmit={handleVerify}>
         {/* 6 OTP Input Boxes */}
         <div className="form-group">
-          <div style={{
-            display: 'flex',
-            gap: '0.75rem',
-            justifyContent: 'center',
-            marginBottom: '0.5rem'
-          }}>
+          <div className={styles.otpRow}>
             {code.map((digit, index) => (
               <input
                 key={index}
@@ -258,54 +252,18 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={index === 0 ? handlePaste : undefined}
                 autoFocus={index === 0}
-                style={{
-                  width: '50px',
-                  height: '50px',
-                  fontSize: '1.75rem',
-                  fontWeight: 700,
-                  textAlign: 'center',
-                  padding: '0.75rem 1rem',
-                  background: 'var(--bg-input)',
-                  borderWidth: '1px',
-                  borderStyle: 'solid',
-                  borderColor: digit ? 'var(--orange-500)' : 'rgba(59, 130, 246, 0.3)',
-                  borderRadius: '0.5rem',
-                  color: 'var(--text-primary)',
-                  outline: 'none',
-                  transition: 'all 0.2s',
-                  ...(digit && {
-                    background: 'rgba(249, 115, 22, 0.1)'
-                  })
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = 'var(--orange-500)';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.1)';
-                }}
-                onBlur={(e) => {
-                  if (!digit) {
-                    e.target.style.borderColor = 'rgba(59, 130, 246, 0.3)';
-                    e.target.style.boxShadow = 'none';
-                  }
-                }}
+                className={`${styles.otpInput} ${digit ? styles.otpInputFilled : ''}`}
               />
             ))}
           </div>
 
-          <p style={{
-            color: 'var(--blue-300)',
-            fontSize: '0.75rem',
-            textAlign: 'center',
-            marginBottom: 0
-          }}>
-            Code expires in 15 minutes
-          </p>
+          <p className={styles.expiryText}>Code expires in 15 minutes</p>
         </div>
 
         <button
           type="submit"
-          className="btn btn-primary"
+          className={`btn btn-primary ${styles.submitBtn}`}
           disabled={loading || code.some(d => !d)}
-          style={{ width: '100%' }}
         >
           {loading ? 'Verifying...' : 'Verify Email'}
         </button>
@@ -314,37 +272,24 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
         {verificationCode && process.env.NODE_ENV === 'development' && (
           <button
             type="button"
-            className="btn btn-secondary"
+            className={`btn btn-secondary ${styles.autoFillBtn}`}
             onClick={() => {
               const codeArray = verificationCode.split('');
               setCode(codeArray);
               showToast('Code auto-filled!', 'info', 2000);
             }}
-            style={{ width: '100%', marginTop: '0.5rem' }}
           >
             Auto-Fill Code
           </button>
         )}
       </form>
 
-      <div style={{
-        marginTop: '1.5rem',
-        textAlign: 'center'
-      }}>
-        <p style={{ color: 'var(--blue-300)', fontSize: '0.875rem', marginBottom: 0 }}>
-          Didn't receive the code ?{' '}
+      <div className={styles.resendWrapper}>
+        <p className={styles.resendText}>
+          Didn&apos;t receive the code ?{' '}
           <button
             type="button"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--orange-500)',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              padding: 0
-            }}
+            className={styles.resendBtn}
             onClick={() => {
               // TODO: Implement resend functionality
               alert('Resend functionality coming soon!');
@@ -355,15 +300,9 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
         </p>
       </div>
 
-      <div style={{
-        background: 'rgba(59, 130, 246, 0.1)',
-        border: '1px solid rgba(59, 130, 246, 0.3)',
-        borderRadius: '0.5rem',
-        padding: '1rem',
-        marginTop: '1rem'
-      }}>
-        <p style={{ color: 'var(--blue-300)', fontSize: '0.75rem', textAlign: 'center', margin: 0 }}>
-          <i className="fas fa-lightbulb"></i> Check your spam folder if you don't see the email
+      <div className={styles.hint}>
+        <p className={styles.hintText}>
+          <i className="fas fa-lightbulb"></i> Check your spam folder if you don&apos;t see the email
         </p>
       </div>
     </>

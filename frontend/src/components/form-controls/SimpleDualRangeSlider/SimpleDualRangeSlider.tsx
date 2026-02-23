@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import './SimpleDualRangeSlider.css';
+import styles from './SimpleDualRangeSlider.module.css';
 
 interface SimpleDualRangeSliderProps {
   label?: string;
@@ -62,7 +63,7 @@ export default function SimpleDualRangeSlider({
         <label className="form-label">
           {label}
           {showValues && (
-            <span style={{ color: 'var(--blue-400)', fontWeight: '600', marginLeft: '0.5rem' }}>
+            <span className={styles.valueDisplay}>
               {valuePrefix}{minValue}{valueSuffix} - {valuePrefix}{maxValue}{valueSuffix}
             </span>
           )}

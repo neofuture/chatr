@@ -1,4 +1,5 @@
 import { TextareaHTMLAttributes, forwardRef } from 'react';
+import styles from './Textarea.module.css';
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -16,8 +17,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         )}
         <textarea
           ref={ref}
-          className={`form-input ${error ? 'error' : ''} ${className}`}
-          style={{ resize: 'vertical', minHeight: '80px' }}
+          className={`form-input ${error ? 'error' : ''} ${styles.textarea} ${className}`}
           {...props}
         />
         {error && (

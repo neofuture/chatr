@@ -264,18 +264,7 @@ export default function CoverImageCropper({ imageFile, onCropComplete, onCancel,
         )}
 
         {/* Rectangle overlay border */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            border: '3px solid white',
-            pointerEvents: 'none',
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)',
-          }}
-        />
+        <div className={styles.rectOverlay} />
       </div>
 
       {/* Zoom controls */}

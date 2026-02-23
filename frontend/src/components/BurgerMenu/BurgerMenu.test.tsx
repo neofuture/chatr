@@ -13,9 +13,9 @@ jest.mock('next/link', () => ({
 // The burger toggle is always the first button rendered
 const getBurgerBtn = () => screen.getAllByRole('button')[0];
 
-// Find the slide-in drawer by its position style
+// Find the slide-in drawer by its test id
 const getDrawer = (container: HTMLElement) =>
-  container.querySelector('[style*="280px"]') as HTMLElement;
+  container.querySelector('[data-testid="burger-drawer"]') as HTMLElement;
 
 describe('BurgerMenu', () => {
   describe('Rendering', () => {

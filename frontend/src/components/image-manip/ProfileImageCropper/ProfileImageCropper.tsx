@@ -287,16 +287,7 @@ export default function ProfileImageCropper({ imageFile, onCropComplete, onCance
         )}
 
         {/* Circular overlay */}
-        <svg
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-          }}
-        >
+        <svg>
           <defs>
             <mask id="circleMask">
               <rect width="100%" height="100%" fill="white" />

@@ -1,0 +1,44 @@
+.container {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10000;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.title {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+.description {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.logoutBtn {
+  width: 100%;
+  padding: 12px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.footer {
+  margin: 15px 0 0 0;
+  font-size: 12px;
+  opacity: 0.7;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 15px;
+}
+

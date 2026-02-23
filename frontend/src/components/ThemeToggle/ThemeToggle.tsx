@@ -3,6 +3,7 @@
 import { useTheme } from '@/contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import './ThemeToggle.css';
+import styles from './ThemeToggle.module.css';
 
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -15,7 +16,7 @@ export default function ThemeToggle() {
   // Don't render anything until mounted to avoid SSR mismatch
   if (!mounted) {
     return (
-      <div className="theme-toggle" style={{ opacity: 0.5 }}>
+      <div className={`theme-toggle ${styles.toggleLoading}`}>
         <div className="theme-toggle-track">
           <div className="theme-toggle-thumb" />
         </div>
