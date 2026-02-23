@@ -2,7 +2,6 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useTheme } from '@/contexts/ThemeContext';
 import MessageAudioPlayer from '@/components/MessageAudioPlayer/MessageAudioPlayer';
 import { useTTS } from '@/hooks/useTTS';
 import styles from './MessageBubble.module.css';
@@ -66,13 +65,9 @@ const REACTIONS = ['❤️', '😂', '😯', '😢', '😡', '👍'];
 
 interface ContextMenuState {
   message: Message;
-  /** bubble rect relative to the OVERLAY container (scroll div) */
-  relTop: number;
-  bubbleW: number;
-  bubbleH: number;
   isSent: boolean;
-  borderRadius: string;
-  bgColor: string;
+  radiusClass: string;
+  bubbleToneClass: string;
 }
 
 // ─── Reaction Badge ───────────────────────────────────────────────────────────
@@ -101,12 +96,7 @@ function ReactionBadge({ reactions, isSent, currentUserId }: {
 
   return (
     <div
-      className={styles.reactionBadge}
-      style={{
-        bottom: '-14px',
-        left:  isSent ? '6px'  : 'unset',
-        right: isSent ? 'unset' : '6px',
-      }}
+      className={`${styles.reactionBadge} ${isSent ? styles.reactionBadgeSent : styles.reactionBadgeReceived}`}
       onClick={e => { e.stopPropagation(); setShowTip(v => !v); }}
     >
       {groups.map(g => (
@@ -116,8 +106,7 @@ function ReactionBadge({ reactions, isSent, currentUserId }: {
       ))}
       {showTip && (
         <div
-          className={styles.reactionTooltip}
-          style={{ [isSent ? 'left' : 'right']: 0 }}
+          className={`${styles.reactionTooltip} ${isSent ? styles.reactionTooltipSent : styles.reactionTooltipReceived}`}
         >
           {tipLines}
         </div>
@@ -130,28 +119,25 @@ function ReactionBadge({ reactions, isSent, currentUserId }: {
 
 function MessageContextMenu({
   state,
-  containerH,
-  containerW,
   onReaction,
   onReply,
   onUnsend,
   onClose,
 }: {
   state: ContextMenuState;
-  containerH: number;
-  containerW: number;
   onReaction: (emoji: string) => void;
   onReply: () => void;
   onUnsend: () => void;
   onClose: () => void;
 }) {
-  const { message, relTop, bubbleW, bubbleH, isSent, borderRadius, bgColor } = state;
+  const { message, isSent } = state;
   const [closing, setClosing] = useState(false);
 
   const handleClose = useCallback(() => {
     if (closing) return;
     setClosing(true);
-  }, [closing]);
+    window.setTimeout(onClose, 260);
+  }, [closing, onClose]);
 
   const handleAnimationEnd = useCallback((e: React.AnimationEvent) => {
     if (closing && e.animationName.includes('bubbleSlideOut')) onClose();
@@ -176,35 +162,23 @@ function MessageContextMenu({
 
   const isAudio = message.type === 'audio' || (message.type === 'file' && message.fileType?.startsWith('audio/'));
 
-  const PAD = 12;
-
-  // Cloned bubble width: same as real bubble, capped to container
-  const clonedW = Math.min(bubbleW, containerW - PAD * 2);
-
-  // Menu: compact, never wider than 220px
-  const menuW = Math.min(220, containerW - PAD * 2);
-
-  // Slide animation delta — use relTop as approximation for entry animation
-  // (exact value doesn't matter much, it's just the slide-in offset)
-  const fromY = relTop - containerH / 2;
-
   return (
     <div
       data-ctx-menu
       className={`${styles.contextOverlay} ${closing ? styles.contextOverlayClosing : ''}`}
       onClick={handleClose}
+      onWheel={handleClose}
+      onTouchMove={handleClose}
     >
       {/* Flex column stack — CSS handles equal gaps, no height estimation */}
       <div
-        className={styles.contextStack}
-        style={{ justifyContent: 'center' }}
+        className={`${styles.contextStack} ${styles.contextStackCentered}`}
         onClick={e => e.stopPropagation()}
       >
 
         {/* ── Reactions pill ── */}
         <div
-          className={`${styles.reactionsRowOuter} ${closing ? styles.reactionsRowOuterClosing : ''}`}
-          style={{ justifyContent: isSent ? 'flex-end' : 'flex-start' }}
+          className={`${styles.reactionsRowOuter} ${isSent ? styles.reactionsRowOuterSent : styles.reactionsRowOuterReceived} ${closing ? styles.reactionsRowOuterClosing : ''}`}
         >
           <div className={styles.reactionsRow}>
             {REACTIONS.map(emoji => (
@@ -218,30 +192,22 @@ function MessageContextMenu({
 
         {/* ── Cloned bubble ── */}
         <div
-          className={`${styles.clonedBubble} ${closing ? styles.clonedBubbleClosing : ''}`}
-          style={{
-            alignSelf: isSent ? 'flex-end' : 'flex-start',
-            width: clonedW,
-            borderRadius,
-            backgroundColor: bgColor,
-            ['--bubble-from-y' as string]: `${fromY}px`,
-            ['--bubble-to-y'   as string]: `${fromY}px`,
-          }}
+          className={`${styles.clonedBubble} ${state.radiusClass} ${state.bubbleToneClass} ${isSent ? styles.clonedBubbleSent : styles.clonedBubbleReceived} ${closing ? styles.clonedBubbleClosing : ''}`}
           onAnimationEnd={handleAnimationEnd}
         >
           {isAudio ? (
-            <div style={{ color: '#fff', padding: '8px 12px', fontSize: 13 }}>
-              <i className="fas fa-microphone" style={{ marginRight: 6 }} /> Voice message
+            <div className={styles.clonedVoice}>
+              <i className={`fas fa-microphone ${styles.clonedVoiceIcon}`} /> Voice message
             </div>
           ) : message.type === 'image' && message.fileUrl ? (
             <img src={message.fileUrl} alt={message.fileName || 'Image'}
-              style={{ width: '100%', borderRadius, display: 'block', pointerEvents: 'none' }} />
+              className={styles.clonedImage} />
           ) : (
             <>
-              <div style={{ color: '#fff', fontSize: 14, padding: '5px 11px 2px', wordBreak: 'break-word' }}>
+              <div className={styles.clonedText}>
                 {message.content}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, padding: '0 11px 5px', textAlign: isSent ? 'right' : 'left' }}>
+              <div className={`${styles.clonedTimestamp} ${isSent ? styles.clonedTimestampSent : styles.clonedTimestampReceived}`}>
                 {message.timestamp.toLocaleTimeString()}
               </div>
             </>
@@ -250,19 +216,15 @@ function MessageContextMenu({
 
         {/* ── Action menu ── */}
         <div
-          className={`${styles.actionMenu} ${closing ? styles.actionMenuClosing : ''}`}
-          style={{
-            alignSelf: isSent ? 'flex-end' : 'flex-start',
-            width: menuW,
-          }}
+          className={`${styles.actionMenu} ${isSent ? styles.actionMenuSent : styles.actionMenuReceived} ${closing ? styles.actionMenuClosing : ''}`}
         >
           <button className={styles.actionItem} onClick={() => { onReply(); handleClose(); }}>
-            <i className="fas fa-reply" style={{ marginRight: 10, opacity: 0.7 }} /> Reply
+            <i className={`fas fa-reply ${styles.actionIcon}`} /> Reply
           </button>
           {isSent && (
             <button className={`${styles.actionItem} ${styles.actionItemDanger}`}
               onClick={() => { onUnsend(); handleClose(); }}>
-              <i className="fas fa-trash" style={{ marginRight: 10, opacity: 0.7 }} /> Unsend
+              <i className={`fas fa-trash ${styles.actionIcon}`} /> Unsend
             </button>
           )}
         </div>
@@ -291,8 +253,6 @@ export default function MessageBubble({
   onReplyQuoteClick,
   overlayContainerRef,
 }: MessageBubbleProps) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
   const defaultRef = useRef<HTMLDivElement>(null);
   const endRef = messagesEndRef || defaultRef;
   const { speak, speakingId, supported: ttsSupported } = useTTS();
@@ -300,6 +260,7 @@ export default function MessageBubble({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const scrollToMessage = (messageId: string) => {
     // Find the message element within the scroll container (or document)
@@ -316,45 +277,46 @@ export default function MessageBubble({
   const longPressTarget = useRef<HTMLElement | null>(null);
 
   const getStatusInfo = (status: Message['status'], type?: Message['type']) => {
-    let statusColor = '#94a3b8'; let statusText = 'Pending';
-    if (status === 'queued')     { statusColor = '#f59e0b'; statusText = 'Queued'; }
-    else if (status === 'sending')   { statusColor = '#3b82f6'; statusText = 'Sending'; }
-    else if (status === 'sent')      { statusColor = '#10b981'; statusText = 'Sent'; }
-    else if (status === 'delivered') { statusColor = '#10b981'; statusText = 'Delivered'; }
+    let statusClass = styles.statusPending; let statusText = 'Pending';
+    if (status === 'queued')     { statusClass = styles.statusQueued; statusText = 'Queued'; }
+    else if (status === 'sending')   { statusClass = styles.statusSending; statusText = 'Sending'; }
+    else if (status === 'sent')      { statusClass = styles.statusSent; statusText = 'Sent'; }
+    else if (status === 'delivered') { statusClass = styles.statusDelivered; statusText = 'Delivered'; }
     else if (status === 'read') {
-      statusColor = '#3b82f6';
+      statusClass = styles.statusRead;
       statusText = type === 'audio' ? 'Listened' : (type === 'image' || type === 'file') ? 'Viewed' : 'Read';
-    } else if (status === 'failed')  { statusColor = '#ef4444'; statusText = 'Failed'; }
-    return { statusColor, statusText };
+    } else if (status === 'failed')  { statusClass = styles.statusFailed; statusText = 'Failed'; }
+    return { statusClass, statusText };
   };
 
-  const getBorderRadius = (isSent: boolean, gPrev: boolean, gNext: boolean): string => {
+  const getBubbleToneClass = (isSent: boolean, status: Message['status']) => {
+    if (!isSent) return styles.bubbleReceived;
+    return status === 'queued' ? styles.bubbleSentQueued : styles.bubbleSent;
+  };
+
+  const getBubbleRadiusClass = (isSent: boolean, gPrev: boolean, gNext: boolean) => {
     if (isSent) {
-      if (gPrev && gNext) return '12px 4px 4px 12px';
-      if (gPrev) return '12px 4px 12px 12px';
-      if (gNext) return '12px 12px 4px 12px';
-      return '12px';
-    } else {
-      if (gPrev && gNext) return '4px 12px 12px 4px';
-      if (gPrev) return '4px 12px 12px 12px';
-      if (gNext) return '12px 12px 12px 4px';
-      return '12px';
+      if (gPrev && gNext) return styles.bubbleRadiusSentBoth;
+      if (gPrev) return styles.bubbleRadiusSentPrev;
+      if (gNext) return styles.bubbleRadiusSentNext;
+      return styles.bubbleRadiusSentSolo;
     }
+    if (gPrev && gNext) return styles.bubbleRadiusReceivedBoth;
+    if (gPrev) return styles.bubbleRadiusReceivedPrev;
+    if (gNext) return styles.bubbleRadiusReceivedNext;
+    return styles.bubbleRadiusReceivedSolo;
   };
 
   const openMenu = useCallback((
-    el: HTMLElement, msg: Message, isSent: boolean, borderRadius: string, bgColor: string,
+    msg: Message, isSent: boolean, radiusClass: string, bubbleToneClass: string,
   ) => {
-    const container = overlayContainerRef?.current;
-    if (!container) return;
-    const bubbleRect    = el.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    // Visual position of bubble top relative to the overlay container top
-    const relTop = bubbleRect.top - containerRect.top;
+    const portalReady = overlayContainerRef?.current || (typeof document !== 'undefined' ? document.body : null);
+    if (!portalReady) return;
     setContextMenu({
-      message: msg, relTop,
-      bubbleW: bubbleRect.width, bubbleH: bubbleRect.height,
-      isSent, borderRadius, bgColor,
+      message: msg,
+      isSent,
+      radiusClass,
+      bubbleToneClass,
     });
   }, [overlayContainerRef]);
 
@@ -363,8 +325,11 @@ export default function MessageBubble({
     msg: Message, isSent: boolean, borderRadius: string, bgColor: string,
   ) => {
     longPressTarget.current = e.currentTarget as HTMLElement;
+    if ('touches' in e && e.touches.length > 0) {
+      touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
     longPressTimer.current = setTimeout(() => {
-      if (longPressTarget.current) openMenu(longPressTarget.current, msg, isSent, borderRadius, bgColor);
+      if (longPressTarget.current) openMenu(msg, isSent, borderRadius, bgColor);
     }, 500);
   }, [openMenu]);
 
@@ -373,26 +338,33 @@ export default function MessageBubble({
     longPressTarget.current = null;
   }, []);
 
-  // Dimensions of the overlay container for layout maths
-  // overlayRef is the zero-padding absolute div = full chat pane dimensions
-  const overlayEl = overlayContainerRef?.current;
-  const containerW = overlayEl?.clientWidth  ?? 400;
-  const containerH = overlayEl?.clientHeight ?? 600;
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartPos.current || e.touches.length === 0) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartPos.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStartPos.current.y);
+    if (dx > 6 || dy > 6) cancelLongPress();
+  }, [cancelLongPress]);
+
+  const handleTouchEnd = useCallback(() => {
+    touchStartPos.current = null;
+    cancelLongPress();
+  }, [cancelLongPress]);
 
   // Portal target: the overlay div (pointer-events:none wrapper, overlay re-enables them)
+  const overlayEl = overlayContainerRef?.current;
   const portalTarget = overlayEl ?? (typeof document !== 'undefined' ? document.body : null);
 
   return (
     <div className={styles.messagesContainer}>
       {messages.map((msg, index) => {
         const isSent = msg.direction === 'sent';
-        const { statusColor, statusText } = getStatusInfo(msg.status, msg.type);
+        const { statusClass, statusText } = getStatusInfo(msg.status, msg.type);
         const prevMsg = index > 0 ? messages[index - 1] : null;
         const nextMsg = index < messages.length - 1 ? messages[index + 1] : null;
         const isGroupedWithPrev = !!(prevMsg && prevMsg.direction === msg.direction);
         const isGroupedWithNext = !!(nextMsg && nextMsg.direction === msg.direction);
-        const borderRadius = getBorderRadius(isSent, isGroupedWithPrev, isGroupedWithNext);
-        const bgColor = isSent ? (msg.status === 'queued' ? '#2563eb' : '#3b82f6') : '#f97316';
+        const radiusClass = getBubbleRadiusClass(isSent, isGroupedWithPrev, isGroupedWithNext);
+        const bubbleToneClass = getBubbleToneClass(isSent, msg.status);
 
         // Prefer displayName, fall back to username without @
         const senderDisplayName = msg.senderDisplayName || (msg.senderUsername || '').replace(/^@/, '') || 'Unknown';
@@ -400,46 +372,44 @@ export default function MessageBubble({
         const initials = senderDisplayName.slice(0, 2).toUpperCase() || '??';
 
         const hasReactions = (msg.reactions?.length ?? 0) > 0;
-        const bottomMargin = hasReactions
-          ? '22px'                           // always enough room for the badge
+        const wrapperMarginClass = hasReactions
+          ? styles.messageWrapperWithReactions
           : isGroupedWithNext
-          ? '1px'                            // tight grouping, no badge
-          : '8px';                           // last in group / solo
+          ? styles.messageWrapperGrouped
+          : styles.messageWrapperDefault;
+
+        const wrapperHighlightClass = highlightedMessageId === msg.id
+          ? styles.messageWrapperHighlighted
+          : '';
+
+        const bubbleColumnWidthClass = msg.type === 'audio'
+          ? styles.bubbleColumnAudio
+          : msg.type === 'image'
+          ? styles.bubbleColumnImage
+          : styles.bubbleColumnText;
+
+        const messageTextSpacingClass = !isGroupedWithNext
+          ? styles.messageTextLoose
+          : styles.messageTextTight;
 
         return (
           <div key={msg.id}
             data-message-id={msg.id}
-            className={styles.messageWrapper}
-            style={{
-              alignItems: isSent ? 'flex-end' : 'flex-start',
-              marginBottom: bottomMargin,
-              flexDirection: 'row',
-              display: 'flex',
-              justifyContent: isSent ? 'flex-end' : 'flex-start',
-              borderRadius: '8px',
-              transition: 'background-color 0.3s ease',
-              backgroundColor: highlightedMessageId === msg.id
-                ? 'rgba(147, 197, 253, 0.18)'
-                : 'transparent',
-            }}>
+            className={`${styles.messageWrapper} ${isSent ? styles.messageWrapperSent : styles.messageWrapperReceived} ${wrapperMarginClass} ${wrapperHighlightClass}`}>
 
             {/* Received: avatar column (left side) */}
             {!isSent && (
-              <div style={{ width: 28, flexShrink: 0, alignSelf: 'flex-end', marginRight: 6, marginBottom: 2 }}>
+              <div className={styles.avatarColumn}>
                 {/* Only show avatar on last bubble of a group (or solo) */}
                 {!isGroupedWithNext && (
                   msg.senderProfileImage ? (
                     <img
                       src={msg.senderProfileImage}
                       alt={senderDisplayName}
-                      style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
+                      className={styles.avatarImage}
                     />
                   ) : (
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%',
-                      backgroundColor: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '10px', fontWeight: 700, color: '#fff',
-                    }}>
+                    <div className={styles.avatarInitials}>
                       {initials}
                     </div>
                   )
@@ -448,97 +418,53 @@ export default function MessageBubble({
             )}
 
             {/* Bubble column */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: isSent ? 'flex-end' : 'flex-start', maxWidth: msg.type === 'audio' ? 'none' : msg.type === 'image' ? '300px' : '70%', minWidth: 0 }}>
+            <div className={`${styles.bubbleColumn} ${isSent ? styles.bubbleColumnSent : styles.bubbleColumnReceived} ${bubbleColumnWidthClass}`}>
 
               {/* Sender name — only on first bubble in a received group */}
               {!isSent && !isGroupedWithPrev && (
-                <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: '3px', paddingLeft: '4px' }}>
+                <span className={styles.senderName}>
                   {senderDisplayName}
                 </span>
               )}
 
               {/* ── Reply quote — above the bubble, outside it ── */}
               {msg.replyTo && (
-                <div style={{
-                  alignSelf: isSent ? 'flex-end' : 'flex-start',
-                  maxWidth: '100%',
-                  marginTop: '16px',
-                  marginBottom: '2px',
-                  paddingLeft: isSent ? '0' : '4px',
-                  paddingRight: isSent ? '4px' : '0',
-                  cursor: 'pointer',
-                }}
+                <div
+                  className={`${styles.replyQuoteWrapper} ${isSent ? styles.replyQuoteWrapperSent : styles.replyQuoteWrapperReceived}`}
                   onClick={() => scrollToMessage(msg.replyTo!.id)}
                 >
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'stretch',
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
-                    maxWidth: '100%',
-                    transition: 'background-color 0.15s',
-                  }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.1)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
-                  >
+                  <div className={styles.replyQuoteCard}>
                     {/* Accent bar */}
-                    <div style={{
-                      width: '3px',
-                      flexShrink: 0,
-                      backgroundColor: isSent ? '#93c5fd' : '#fdba74',
-                    }} />
-                    <div style={{ padding: '5px 10px', minWidth: 0 }}>
-                      <div style={{
-                        fontSize: '11px', fontWeight: 700,
-                        color: isSent ? '#93c5fd' : '#fdba74',
-                        marginBottom: '2px', whiteSpace: 'nowrap',
-                      }}>
+                    <div className={`${styles.replyQuoteAccent} ${isSent ? styles.replyQuoteAccentSent : styles.replyQuoteAccentReceived}`} />
+                    <div className={styles.replyQuoteContent}>
+                      <div className={`${styles.replyQuoteSender} ${isSent ? styles.replyQuoteSenderSent : styles.replyQuoteSenderReceived}`}>
                         {msg.replyTo.senderUsername === 'You'
                           ? 'You'
                           : msg.replyTo.senderDisplayName || msg.replyTo.senderUsername?.replace(/^@/, '') || 'Unknown'}
                       </div>
                       {msg.replyTo.type === 'audio' ? (
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          fontSize: '12px',
-                          color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
-                        }}>
-                          <i className="fas fa-microphone" style={{ fontSize: '11px', opacity: 0.8 }} />
+                        <div className={styles.replyQuoteMetaRow}>
+                          <i className={`fas fa-microphone ${styles.replyQuoteMetaIcon}`} />
                           <span>Voice message</span>
                           {msg.replyTo.duration != null && msg.replyTo.duration > 0 && (
-                            <span style={{ opacity: 0.6 }}>
+                            <span className={styles.replyQuoteDuration}>
                               {Math.floor(msg.replyTo.duration / 60)}:{String(Math.round(msg.replyTo.duration % 60)).padStart(2, '0')}
                             </span>
                           )}
-                          <i className="fas fa-play-circle" style={{ fontSize: '11px', opacity: 0.5, marginLeft: '2px' }} />
+                          <i className={`fas fa-play-circle ${styles.replyQuoteMetaIconSecondary}`} />
                         </div>
                       ) : msg.replyTo.type === 'image' ? (
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          fontSize: '12px',
-                          color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
-                        }}>
-                          <i className="fas fa-image" style={{ fontSize: '11px', opacity: 0.8 }} />
+                        <div className={styles.replyQuoteMetaRow}>
+                          <i className={`fas fa-image ${styles.replyQuoteMetaIcon}`} />
                           <span>Photo</span>
                         </div>
                       ) : msg.replyTo.type === 'file' ? (
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          fontSize: '12px',
-                          color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
-                        }}>
-                          <i className="fas fa-file" style={{ fontSize: '11px', opacity: 0.8 }} />
+                        <div className={styles.replyQuoteMetaRow}>
+                          <i className={`fas fa-file ${styles.replyQuoteMetaIcon}`} />
                           <span>{msg.replyTo.content || 'File'}</span>
                         </div>
                       ) : (
-                        <div style={{
-                          fontSize: '12px',
-                          color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.55)',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          maxWidth: '240px',
-                        }}>
+                        <div className={styles.replyQuoteText}>
                           {msg.replyTo.content}
                         </div>
                       )}
@@ -548,40 +474,24 @@ export default function MessageBubble({
               )}
 
               {/* Bubble + reaction badge */}
-              <div style={{ position: 'relative', display: 'inline-block', width: msg.type === 'audio' ? 'fit-content' : 'auto', maxWidth: '100%' }}>
+              <div className={`${styles.bubbleWrap} ${msg.type === 'audio' ? styles.bubbleWrapAudio : ''}`}>
 
                 {/* ── Unsent placeholder ── */}
                 {msg.unsent ? (
-                  <div style={{
-                    padding: '6px 12px',
-                    borderRadius,
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                    border: `1px dashed ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)'}`,
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                  }}>
-                    <i className="fas fa-ban" style={{ fontSize: '11px', opacity: 0.4 }} />
-                    <span style={{
-                      fontSize: '13px', fontStyle: 'italic',
-                      color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)',
-                    }}>
+                  <div className={`${styles.unsentBubble} ${radiusClass}`}>
+                    <i className={`fas fa-ban ${styles.unsentIcon}`} />
+                    <span className={styles.unsentText}>
                       {isSent ? 'You unsent this message' : `${senderDisplayName} unsent this message`}
                     </span>
                   </div>
                 ) : (
                   <div
-                    className={styles.messageBubble}
-                    style={{
-                      maxWidth: '100%',
-                      width: 'auto',
-                      padding: msg.type === 'audio' ? '2px' : (!msg.type || msg.type === 'text') ? '5px 11px' : '4px',
-                      borderRadius, backgroundColor: bgColor,
-                      userSelect: 'none', WebkitUserSelect: 'none',
-                    }}
-                    onContextMenu={e => { e.preventDefault(); openMenu(e.currentTarget, msg, isSent, borderRadius, bgColor); }}
-                    onTouchStart={e => startLongPress(e, msg, isSent, borderRadius, bgColor)}
-                    onTouchEnd={cancelLongPress}
-                    onTouchMove={cancelLongPress}
-                    onMouseDown={e => { if (e.button === 0) startLongPress(e, msg, isSent, borderRadius, bgColor); }}
+                    className={`${styles.messageBubble} ${radiusClass} ${bubbleToneClass} ${msg.type === 'audio' ? styles.bubblePaddingAudio : (!msg.type || msg.type === 'text') ? styles.bubblePaddingText : styles.bubblePaddingMedia}`}
+                    onContextMenu={e => { e.preventDefault(); openMenu(msg, isSent, radiusClass, bubbleToneClass); }}
+                    onTouchStart={e => startLongPress(e, msg, isSent, radiusClass, bubbleToneClass)}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchMove={handleTouchMove}
+                    onMouseDown={e => { if (e.button === 0) startLongPress(e, msg, isSent, radiusClass, bubbleToneClass); }}
                     onMouseUp={cancelLongPress}
                     onMouseLeave={cancelLongPress}
                   >
@@ -616,14 +526,13 @@ export default function MessageBubble({
                     )}
                     {/* Text */}
                     {(!msg.type || msg.type === 'text') && (
-                      <div style={{ position: 'relative' }}>
-                        <div className={styles.messageText}
-                          style={{ marginBottom: !isGroupedWithNext ? '4px' : '0', textAlign: isSent ? 'right' : 'left' }}>
+                      <div className={styles.messageTextWrapper}>
+                        <div className={`${styles.messageText} ${isSent ? styles.messageTextSent : styles.messageTextReceived} ${messageTextSpacingClass}`}>
                           {msg.content}
                         </div>
                         {false && ttsSupported && (
                           <button onClick={e => { e.stopPropagation(); speak(msg.id, msg.content); }}
-                            style={{ position: 'absolute', top: '50%', right: isSent ? 'unset' : '-2px', left: isSent ? '-2px' : 'unset', transform: 'translateY(-60%)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px', lineHeight: 1, color: speakingId === msg.id ? '#ffffff' : 'rgba(255,255,255,0.45)', fontSize: '11px' }}>
+                            className={`${styles.ttsButton} ${isSent ? styles.ttsButtonSent : styles.ttsButtonReceived} ${speakingId === msg.id ? styles.ttsButtonActive : styles.ttsButtonInactive}`}>
                             <i className={speakingId === msg.id ? 'fas fa-volume-up' : 'fas fa-volume-off'} />
                           </button>
                         )}
@@ -631,7 +540,7 @@ export default function MessageBubble({
                     )}
                     {/* Timestamp */}
                     {!isGroupedWithNext && msg.type !== 'audio' && !(msg.type === 'file' && msg.fileType?.startsWith('audio/')) && (
-                      <div className={styles.timestamp} style={{ padding: msg.type === 'image' || msg.type === 'file' ? '4px' : '0' }}>
+                      <div className={`${styles.timestamp} ${msg.type === 'image' || msg.type === 'file' ? styles.timestampWithMedia : ''}`}>
                         {msg.timestamp.toLocaleTimeString()}
                       </div>
                     )}
@@ -650,9 +559,9 @@ export default function MessageBubble({
 
             {/* Status */}
             {isSent && !isGroupedWithNext && (
-              <div className={styles.statusText} style={{ color: listeningMessageIds.has(msg.id) ? '#8b5cf6' : statusColor }}>
+              <div className={`${styles.statusText} ${statusClass} ${listeningMessageIds.has(msg.id) ? styles.statusListening : ''}`}>
                 {listeningMessageIds.has(msg.id)
-                  ? <><i className="fas fa-headphones" style={{ marginRight: '3px' }} />Listening...</>
+                  ? <><i className={`fas fa-headphones ${styles.statusIcon}`} />Listening...</>
                   : statusText}
               </div>
             )}
@@ -666,7 +575,7 @@ export default function MessageBubble({
       {/* Ghost Typing */}
       {recipientGhostText && (
         <div className={styles.ghostTypingWrapper}>
-          <div className={styles.ghostTypingBubble} style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', border: `1px dashed ${isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`, color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }}>
+          <div className={styles.ghostTypingBubble}>
             <div className={styles.ghostTypingText}>{recipientGhostText}</div>
           </div>
         </div>
@@ -674,18 +583,18 @@ export default function MessageBubble({
       {/* Typing */}
       {isRecipientTyping && !recipientGhostText && (
         <div className={styles.typingIndicatorWrapper}>
-          <div className={styles.typingIndicatorBubble} style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}>
-            <span className={styles.typingDot} style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)', animationName: styles.typingDot1 }} />
-            <span className={styles.typingDot} style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)', animationName: styles.typingDot2 }} />
-            <span className={styles.typingDot} style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)', animationName: styles.typingDot3 }} />
+          <div className={styles.typingIndicatorBubble}>
+            <span className={`${styles.typingDot} ${styles.typingDot1}`} />
+            <span className={`${styles.typingDot} ${styles.typingDot2}`} />
+            <span className={`${styles.typingDot} ${styles.typingDot3}`} />
           </div>
         </div>
       )}
       {/* Recording */}
       {isRecipientRecording && !isRecipientTyping && !recipientGhostText && (
         <div className={styles.typingIndicatorWrapper}>
-          <div className={styles.typingIndicatorBubble} style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <i className={`fas fa-microphone ${styles.recordingMic}`} style={{ color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)' }} />
+          <div className={`${styles.typingIndicatorBubble} ${styles.typingIndicatorRecording}`}>
+            <i className={`fas fa-microphone ${styles.recordingMic} ${styles.recordingMicIcon}`} />
           </div>
         </div>
       )}
@@ -696,8 +605,6 @@ export default function MessageBubble({
       {contextMenu && portalTarget && createPortal(
         <MessageContextMenu
           state={contextMenu}
-          containerH={containerH}
-          containerW={containerW}
           onReaction={emoji => onReaction?.(contextMenu.message.id, emoji)}
           onReply={() => onReply?.(contextMenu.message)}
           onUnsend={() => onUnsend?.(contextMenu.message.id)}

@@ -1,9 +1,12 @@
 /* Message Wrapper */
 .messageWrapper {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-width: 0;
   max-width: 100%;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+  touch-action: pan-y;
 }
 
 /* Messages Container */
@@ -15,6 +18,11 @@
 .messageBubble {
   color: #ffffff;
   min-width: 0;
+  max-width: 100%;
+  width: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
 }
 
 /* Message Text */
@@ -208,6 +216,7 @@
 
 .contextOverlayClosing {
   animation: overlayFadeOut 0.22s ease forwards;
+  pointer-events: none;
 }
 
 @keyframes overlayFadeIn {
@@ -318,35 +327,55 @@
   pointer-events: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   animation: bubbleSlideIn 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  max-width: calc(100% - 24px);
+  width: fit-content;
 }
 
-.clonedBubbleClosing {
-  animation: bubbleSlideOut 0.22s cubic-bezier(0.55, 0, 0.75, 0.05) forwards !important;
+.clonedBubbleSent {
+  align-self: flex-end;
 }
 
-@keyframes bubbleSlideIn {
-  from {
-    opacity: 0.5;
-    transform: translateY(var(--bubble-from-y, 0px)) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+.clonedBubbleReceived {
+  align-self: flex-start;
 }
 
-@keyframes bubbleSlideOut {
-  from {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  to {
-    opacity: 0.4;
-    transform: translateY(var(--bubble-to-y, 0px)) scale(0.96);
-  }
+.clonedVoice {
+  color: #ffffff;
+  padding: 8px 12px;
+  font-size: 13px;
 }
 
-/* ── Action Menu ──────────────────────────────────────────────────────────── */
+.clonedVoiceIcon {
+  margin-right: 6px;
+}
+
+.clonedImage {
+  width: 100%;
+  border-radius: inherit;
+  display: block;
+  pointer-events: none;
+}
+
+.clonedText {
+  color: #ffffff;
+  font-size: 14px;
+  padding: 5px 11px 2px;
+  word-break: break-word;
+}
+
+.clonedTimestamp {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  padding: 0 11px 5px;
+}
+
+.clonedTimestampSent {
+  text-align: right;
+}
+
+.clonedTimestampReceived {
+  text-align: left;
+}
 
 .actionMenu {
   flex-shrink: 0;
@@ -357,20 +386,15 @@
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
   pointer-events: all;
   animation: menuFadeUp 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+  width: min(220px, calc(100% - 24px));
 }
 
-.actionMenuClosing {
-  animation: menuFadeDown 0.18s ease-in forwards;
+.actionMenuSent {
+  align-self: flex-end;
 }
 
-@keyframes menuFadeUp {
-  from { opacity: 0; transform: translateY(8px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes menuFadeDown {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to   { opacity: 0; transform: translateY(6px) scale(0.97); }
+.actionMenuReceived {
+  align-self: flex-start;
 }
 
 .actionItem {
@@ -407,15 +431,472 @@
   background: rgba(239, 68, 68, 0.12);
 }
 
-/* ── Reaction Badge (absolute, overlapping bottom corner of bubble) ────────── */
+.actionIcon {
+  margin-right: 10px;
+  opacity: 0.7;
+}
+
+.typingDot1 {
+  animation-name: typingDot1;
+}
+
+.typingDot2 {
+  animation-name: typingDot2;
+}
+
+.typingDot3 {
+  animation-name: typingDot3;
+}
+
+.typingIndicatorRecording {
+  gap: 6px;
+}
+
+:global([data-theme='dark']) .ghostTypingBubble {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+:global([data-theme='light']) .ghostTypingBubble {
+  background-color: rgba(0, 0, 0, 0.03);
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.4);
+}
+
+:global([data-theme='dark']) .typingIndicatorBubble {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+:global([data-theme='light']) .typingIndicatorBubble {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+:global([data-theme='dark']) .typingDot {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+:global([data-theme='light']) .typingDot {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.recordingMicIcon {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+:global([data-theme='light']) .recordingMicIcon {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.messageWrapperSent {
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.messageWrapperReceived {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.messageWrapperWithReactions {
+  margin-bottom: 26px;
+}
+
+.messageWrapperGrouped {
+  margin-bottom: 1px;
+}
+
+.messageWrapperDefault {
+  margin-bottom: 8px;
+}
+
+.messageWrapperHighlighted {
+  background-color: rgba(147, 197, 253, 0.18);
+}
+
+.avatarColumn {
+  width: 28px;
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-right: 6px;
+  margin-bottom: 2px;
+}
+
+.avatarImage {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatarInitials {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #f97316;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.bubbleColumn {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bubbleColumnSent {
+  align-items: flex-end;
+}
+
+.bubbleColumnReceived {
+  align-items: flex-start;
+}
+
+.bubbleColumnAudio {
+  max-width: none;
+}
+
+.bubbleColumnImage {
+  max-width: 300px;
+}
+
+.bubbleColumnText {
+  max-width: 70%;
+}
+
+.senderName {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 3px;
+  padding-left: 4px;
+}
+
+.replyQuoteWrapper {
+  max-width: 100%;
+  margin-top: 16px;
+  margin-bottom: 2px;
+  cursor: pointer;
+}
+
+.replyQuoteWrapperSent {
+  align-self: flex-end;
+  padding-right: 4px;
+}
+
+.replyQuoteWrapperReceived {
+  align-self: flex-start;
+  padding-left: 4px;
+}
+
+.replyQuoteCard {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 100%;
+  transition: background-color 0.15s;
+}
+
+:global([data-theme='dark']) .replyQuoteCard {
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+:global([data-theme='dark']) .replyQuoteCard:hover {
+  background-color: rgba(255, 255, 255, 0.13);
+}
+
+:global([data-theme='light']) .replyQuoteCard {
+  background-color: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+:global([data-theme='light']) .replyQuoteCard:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.replyQuoteAccent {
+  width: 3px;
+  flex-shrink: 0;
+}
+
+.replyQuoteAccentSent {
+  background-color: #93c5fd;
+}
+
+.replyQuoteAccentReceived {
+  background-color: #fdba74;
+}
+
+.replyQuoteContent {
+  padding: 5px 10px;
+  min-width: 0;
+}
+
+.replyQuoteSender {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+.replyQuoteSenderSent {
+  color: #93c5fd;
+}
+
+.replyQuoteSenderReceived {
+  color: #fdba74;
+}
+
+.replyQuoteMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+:global([data-theme='dark']) .replyQuoteMetaRow {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+:global([data-theme='light']) .replyQuoteMetaRow {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.replyQuoteMetaIcon {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.replyQuoteMetaIconSecondary {
+  font-size: 11px;
+  opacity: 0.5;
+  margin-left: 2px;
+}
+
+.replyQuoteDuration {
+  opacity: 0.6;
+}
+
+.replyQuoteText {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+}
+
+:global([data-theme='dark']) .replyQuoteText {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+:global([data-theme='light']) .replyQuoteText {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.bubbleWrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  width: auto;
+}
+
+.bubbleWrapAudio {
+  width: fit-content;
+}
+
+.unsentBubble {
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+:global([data-theme='dark']) .unsentBubble {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+:global([data-theme='light']) .unsentBubble {
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 1px dashed rgba(0, 0, 0, 0.15);
+}
+
+.unsentIcon {
+  font-size: 11px;
+  opacity: 0.4;
+}
+
+.unsentText {
+  font-size: 13px;
+  font-style: italic;
+}
+
+:global([data-theme='dark']) .unsentText {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+:global([data-theme='light']) .unsentText {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.bubblePaddingText {
+  padding: 5px 11px;
+}
+
+.bubblePaddingMedia {
+  padding: 4px;
+}
+
+.bubblePaddingAudio {
+  padding: 2px;
+}
+
+.bubbleSent {
+  background-color: #3b82f6;
+}
+
+.bubbleSentQueued {
+  background-color: #2563eb;
+}
+
+.bubbleReceived {
+  background-color: #f97316;
+}
+
+.bubbleRadiusSentSolo {
+  border-radius: 12px;
+}
+
+.bubbleRadiusSentPrev {
+  border-radius: 12px 4px 12px 12px;
+}
+
+.bubbleRadiusSentNext {
+  border-radius: 12px 12px 4px 12px;
+}
+
+.bubbleRadiusSentBoth {
+  border-radius: 12px 4px 4px 12px;
+}
+
+.bubbleRadiusReceivedSolo {
+  border-radius: 12px;
+}
+
+.bubbleRadiusReceivedPrev {
+  border-radius: 4px 12px 12px 12px;
+}
+
+.bubbleRadiusReceivedNext {
+  border-radius: 12px 12px 12px 4px;
+}
+
+.bubbleRadiusReceivedBoth {
+  border-radius: 4px 12px 12px 4px;
+}
+
+.messageTextWrapper {
+  position: relative;
+}
+
+.messageTextSent {
+  text-align: right;
+}
+
+.messageTextReceived {
+  text-align: left;
+}
+
+.messageTextLoose {
+  margin-bottom: 4px;
+}
+
+.messageTextTight {
+  margin-bottom: 0;
+}
+
+.ttsButton {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-60%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+  font-size: 11px;
+}
+
+.ttsButtonSent {
+  left: -2px;
+}
+
+.ttsButtonReceived {
+  right: -2px;
+}
+
+.ttsButtonActive {
+  color: #ffffff;
+}
+
+.ttsButtonInactive {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.timestampWithMedia {
+  padding: 4px;
+}
+
+.statusPending {
+  color: #94a3b8;
+}
+
+.statusQueued {
+  color: #f59e0b;
+}
+
+.statusSending {
+  color: #3b82f6;
+}
+
+.statusSent {
+  color: #10b981;
+}
+
+.statusDelivered {
+  color: #10b981;
+}
+
+.statusRead {
+  color: #3b82f6;
+}
+
+.statusFailed {
+  color: #ef4444;
+}
+
+.statusListening {
+  color: #8b5cf6;
+}
+
+.statusIcon {
+  margin-right: 3px;
+}
 
 .reactionBadge {
   position: absolute;
-  /* top/bottom/left/right set via inline style */
+  bottom: -15px;
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 1px 5px;
+  padding: 2px 6px;
   background: #1e293b;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
@@ -423,13 +904,13 @@
   cursor: pointer;
   z-index: 2;
   animation: badgePopIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Prevent long-press from triggering on the badge */
   pointer-events: all;
+  line-height: 1;
 }
 
 .reactionEmoji {
   font-size: 13px;
-  line-height: 1.3;
+  line-height: 1.05;
   display: inline-flex;
   align-items: center;
   gap: 1px;
@@ -442,24 +923,30 @@
   line-height: 1;
 }
 
-/* Tooltip shown on click */
-.reactionTooltip {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  white-space: nowrap;
-  background: rgba(15, 23, 42, 0.95);
-  color: #e2e8f0;
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  pointer-events: none;
-  animation: badgePopIn 0.15s ease;
-  z-index: 10;
+.reactionBadgeSent {
+  left: 6px;
 }
 
-@keyframes badgePopIn {
-  from { opacity: 0; transform: scale(0.5); }
-  to   { opacity: 1; transform: scale(1); }
+.reactionBadgeReceived {
+  right: 6px;
+}
+
+.reactionTooltipSent {
+  left: 0;
+}
+
+.reactionTooltipReceived {
+  right: 0;
+}
+
+.contextStackCentered {
+  justify-content: center;
+}
+
+.reactionsRowOuterSent {
+  justify-content: flex-end;
+}
+
+.reactionsRowOuterReceived {
+  justify-content: flex-start;
 }
