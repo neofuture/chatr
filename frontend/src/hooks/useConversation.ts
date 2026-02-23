@@ -34,11 +34,12 @@ export function useConversation() {
   const [isRecipientListeningToMyAudio, setIsRecipientListeningToMyAudio] = useState<string | null>(null);
   const [listeningMessageIds, setListeningMessageIds] = useState<Set<string>>(new Set());
   const [activeAudioMessageId, setActiveAudioMessageId] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [filePreviews, setFilePreviews] = useState<(string | null)[]>([]);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [userPresence, setUserPresence] = useState<Record<string, PresenceInfo>>({});
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [conversations, setConversations] = useState<Record<string, ConversationSummary>>({});
 
   // ── Refs ─────────────────────────────────────────────
@@ -128,6 +129,8 @@ export function useConversation() {
           reactions: m.reactions ?? [],
           replyTo: m.replyTo ?? undefined,
           unsent: !!m.unsent,
+          edited: !!m.edited,
+          editedAt: m.editedAt ? new Date(m.editedAt) : undefined,
         }));
 
         if (!cancelled) {
@@ -368,6 +371,18 @@ export function useConversation() {
       }
     };
 
+    const onEdited = (data: any) => {
+      addLog('received', 'message:edited', data);
+      if (data.messageId && data.content !== undefined) {
+        setMessages(prev => prev.map(m =>
+          m.id === data.messageId
+            ? { ...m, content: data.content, edited: true, editedAt: new Date(data.editedAt || Date.now()) }
+            : m
+        ));
+        updateCachedMessage(data.messageId, { content: data.content, edited: true });
+      }
+    };
+
     const baseEvents = ['connect', 'disconnect', 'connect_error', 'error'];
     const baseHandlers: Record<string, (d: any) => void> = {};
     baseEvents.forEach(ev => { baseHandlers[ev] = (d: any) => addLog('received', ev, d); socket.on(ev, baseHandlers[ev]); });
@@ -383,6 +398,7 @@ export function useConversation() {
     socket.on('presence:response', onPresenceResponse);
     socket.on('message:reaction', onReaction);
     socket.on('message:unsent', onUnsent);
+    socket.on('message:edited', onEdited);
 
     return () => {
       baseEvents.forEach(ev => socket.off(ev, baseHandlers[ev]));
@@ -398,6 +414,7 @@ export function useConversation() {
       socket.off('presence:response', onPresenceResponse);
       socket.off('message:reaction', onReaction);
       socket.off('message:unsent', onUnsent);
+      socket.off('message:edited', onEdited);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (userTypingTimeoutRef.current) clearTimeout(userTypingTimeoutRef.current);
     };
@@ -421,6 +438,11 @@ export function useConversation() {
 
   // ── Send text message ────────────────────────────────
   const handleMessageSend = () => {
+    // If we're editing, commit the edit instead of sending a new message
+    if (editingMessage) {
+      handleEditMessage(testMessage);
+      return;
+    }
     if (!testRecipientId) { showToast('Select a recipient', 'error'); return; }
     if (!testMessage) return;
     if (isUserTyping && socket && effectivelyOnline) {
@@ -485,6 +507,11 @@ export function useConversation() {
     setTestMessage('');
   };
 
+  // ── Emoji insert ─────────────────────────────────────
+  const handleEmojiInsert = (emoji: string) => {
+    setTestMessage(prev => prev + emoji);
+  };
+
   // ── Typing input ─────────────────────────────────────
   const handleMessageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -531,51 +558,114 @@ export function useConversation() {
 
   // ── File handling ────────────────────────────────────
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { showToast('File too large (max 10MB)', 'error'); return; }
-    setSelectedFile(file);
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setFilePreviewUrl(ev.target?.result as string);
-      reader.readAsDataURL(file);
-    } else setFilePreviewUrl(null);
+    const newFiles = Array.from(e.target.files ?? []);
+    if (!newFiles.length) return;
+
+    const oversized = newFiles.filter(f => f.size > 10 * 1024 * 1024);
+    if (oversized.length) {
+      showToast(`${oversized.map(f => f.name).join(', ')} exceed 10 MB limit`, 'error');
+      return;
+    }
+
+    // Append to staged files; capture offset = current staged count
+    setSelectedFiles(prev => {
+      const offset = prev.length;
+      // Generate previews now that we know the offset
+      newFiles.forEach((file, idx) => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            setFilePreviews(p => {
+              const next = [...p];
+              next[offset + idx] = ev.target?.result as string;
+              return next;
+            });
+          };
+          reader.readAsDataURL(file);
+        } else {
+          setFilePreviews(p => {
+            const next = [...p];
+            next[offset + idx] = null;
+            return next;
+          });
+        }
+      });
+      return [...prev, ...newFiles];
+    });
+
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
   };
 
-  const cancelFileSelection = () => { setSelectedFile(null); setFilePreviewUrl(null); };
+  const cancelFileSelection = (index?: number) => {
+    if (index === undefined) {
+      // Clear all
+      setSelectedFiles([]);
+      setFilePreviews([]);
+    } else {
+      setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+      setFilePreviews(prev => prev.filter((_, i) => i !== index));
+    }
+  };
 
   const sendFile = async () => {
-    if (!selectedFile || !testRecipientId || !socket || !effectivelyOnline) return;
+    if (!selectedFiles.length || !testRecipientId || !socket || !effectivelyOnline) return;
     setUploadingFile(true);
     const token = localStorage.getItem('token');
     try {
-      const isAudio = selectedFile.type.startsWith('audio/');
-      const msgType = selectedFile.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : 'file';
-      const fd = new FormData();
-      fd.append('file', selectedFile); fd.append('recipientId', testRecipientId); fd.append('type', msgType);
-      const res = await fetch(`${API}/api/messages/upload`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
-      if (!res.ok) { showToast('Upload failed', 'error'); return; }
-      const data = await res.json();
-      const msg: Message = {
-        id: data.messageId || Date.now().toString(), content: isAudio ? 'Voice message' : selectedFile.name,
-        senderId: currentUserId, recipientId: testRecipientId, direction: 'sent', status: 'sent',
-        timestamp: new Date(), type: msgType, fileUrl: data.fileUrl,
-        fileName: selectedFile.name, fileSize: selectedFile.size, fileType: selectedFile.type, waveformData: data.waveform,
-      };
-      setMessages(prev => [...prev, msg]);
-      addLog('sent', 'file:upload', { type: msgType, fileName: selectedFile.name, fileSize: selectedFile.size, messageId: data.messageId });
-      socket.emit('message:send', { recipientId: testRecipientId, content: msg.content, type: msgType, fileUrl: data.fileUrl, fileName: selectedFile.name, fileSize: selectedFile.size, fileType: selectedFile.type, waveform: data.waveform, messageId: data.messageId });
-      showToast(`${msgType.charAt(0).toUpperCase() + msgType.slice(1)} sent`, 'success');
-      if (isAudio && data.messageId) {
-        const mid = data.messageId;
-        extractWaveformFromFile(selectedFile).then(({ waveform, duration }) => {
-          setMessages(prev => prev.map(m => m.id === mid ? { ...m, waveformData: waveform, duration } : m));
-          fetch(`${API}/api/messages/${mid}/waveform`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ waveform, duration }) }).catch(console.error);
-        }).catch(console.error);
+      // Upload each file in sequence
+      for (const file of selectedFiles) {
+        const isAudio = file.type.startsWith('audio/');
+        const msgType = file.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : 'file';
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('recipientId', testRecipientId);
+        fd.append('type', msgType);
+        const res = await fetch(`${API}/api/messages/upload`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        if (!res.ok) { showToast(`Upload failed for ${file.name}`, 'error'); continue; }
+        const data = await res.json();
+        const msg: Message = {
+          id: data.messageId || Date.now().toString(),
+          content: isAudio ? 'Voice message' : file.name,
+          senderId: currentUserId, recipientId: testRecipientId,
+          direction: 'sent', status: 'sent', timestamp: new Date(),
+          type: msgType, fileUrl: data.fileUrl,
+          fileName: file.name, fileSize: file.size, fileType: file.type,
+          waveformData: data.waveform,
+        };
+        setMessages(prev => [...prev, msg]);
+        addLog('sent', 'file:upload', { type: msgType, fileName: file.name, fileSize: file.size, messageId: data.messageId });
+        socket.emit('message:send', {
+          recipientId: testRecipientId, content: msg.content,
+          type: msgType, fileUrl: data.fileUrl,
+          fileName: file.name, fileSize: file.size, fileType: file.type,
+          waveform: data.waveform, messageId: data.messageId,
+        });
+        if (isAudio && data.messageId) {
+          const mid = data.messageId;
+          extractWaveformFromFile(file).then(({ waveform, duration }) => {
+            setMessages(prev => prev.map(m => m.id === mid ? { ...m, waveformData: waveform, duration } : m));
+            fetch(`${API}/api/messages/${mid}/waveform`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ waveform, duration }),
+            }).catch(console.error);
+          }).catch(console.error);
+        }
       }
+      const count = selectedFiles.length;
+      showToast(count === 1 ? 'File sent' : `${count} files sent`, 'success');
       cancelFileSelection();
-    } catch (err) { console.error(err); showToast('Failed to send file', 'error'); }
-    finally { setUploadingFile(false); }
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to send files', 'error');
+    } finally {
+      setUploadingFile(false);
+    }
   };
 
   // ── Voice recording ──────────────────────────────────
@@ -725,6 +815,45 @@ export function useConversation() {
     ));
   }, [addLog, showToast]);
 
+  // ── Edit message ─────────────────────────────────────
+  const handleStartEdit = useCallback((msg: Message) => {
+    setEditingMessage(msg);
+    setTestMessage(msg.content);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessage(null);
+    setTestMessage('');
+  }, []);
+
+  /** Commit the edit — called in place of handleMessageSend when editingMessage is set */
+  const handleEditMessage = useCallback((newContent: string) => {
+    const msg = editingMessage;
+    if (!msg || !newContent.trim()) return;
+    const s = socketRef.current;
+    const o = effectivelyOnlineRef.current;
+    if (!s || !o) { showToast('Not connected', 'error'); return; }
+    const trimmed = newContent.trim();
+    addLog('sent', 'message:edit', { messageId: msg.id, content: trimmed });
+    s.emit('message:edit', { messageId: msg.id, content: trimmed });
+    // Optimistic update
+    const now = new Date();
+    setMessages(prev => prev.map(m =>
+      m.id === msg.id ? { ...m, content: trimmed, edited: true, editedAt: now } : m
+    ));
+    updateCachedMessage(msg.id, { content: trimmed, edited: true });
+    setEditingMessage(null);
+    setTestMessage('');
+  }, [editingMessage, addLog, showToast]);
+
+  /** Press Up in empty input → start editing the last sent text message */
+  const editLastSentMessage = useCallback(() => {
+    const lastSent = [...messagesRef.current]
+      .reverse()
+      .find(m => m.direction === 'sent' && (!m.type || m.type === 'text') && !m.unsent);
+    if (lastSent) handleStartEdit(lastSent);
+  }, [handleStartEdit]);
+
   // ── Log helpers ──────────────────────────────────────
   const clearLogs = () => { setLogs([]); addLog('info', 'logs:cleared', {}); };
   const clearMessages = () => { setMessages([]); addLog('info', 'messages:cleared', {}); };
@@ -769,7 +898,7 @@ export function useConversation() {
     isRecipientRecording, isRecipientListeningToMyAudio,
     listeningMessageIds,
     activeAudioMessageId,
-    selectedFile, filePreviewUrl, uploadingFile,
+    selectedFiles, filePreviews, uploadingFile,
     effectivelyOnline,
     userPresence,
     // Refs for render
@@ -777,6 +906,7 @@ export function useConversation() {
     // Handlers
     handleMessageSend,
     handleMessageInputChange,
+    handleEmojiInsert,
     handleFileSelect,
     cancelFileSelection,
     sendFile,
@@ -789,6 +919,11 @@ export function useConversation() {
     handleReply: (msg: Message) => setReplyingTo(msg),
     clearReply: () => setReplyingTo(null),
     replyingTo,
+    editingMessage,
+    handleStartEdit,
+    handleCancelEdit,
+    handleEditMessage,
+    editLastSentMessage,
     handleTypingStart,
     handleTypingStop,
     handlePresenceUpdate,

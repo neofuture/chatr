@@ -85,17 +85,17 @@
 
 /* Username status icons */
 .usernameChecking {
-  color: #f97316;
+  color: var(--color-orange-500);
   font-size: 1rem;
 }
 
 .usernameAvailable {
-  color: #22c55e;
+  color: var(--color-green-500);
   font-size: 1.25rem;
 }
 
 .usernameUnavailable {
-  color: #ef4444;
+  color: var(--color-red-500);
   font-size: 1.25rem;
 }
 

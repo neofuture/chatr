@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import MessageBubble, { type Message } from './MessageBubble';
 import { useRef } from 'react';
 
@@ -115,6 +115,226 @@ describe('MessageBubble', () => {
       };
       render(<Wrapper messages={[imageMsg]} />);
       expect(screen.getByRole('img')).toBeInTheDocument();
+    });
+
+    it('renders file messages with open/download link', () => {
+      const fileMsg: Message = {
+        ...sentMsg,
+        type: 'file',
+        fileUrl: '/files/doc.pdf',
+        fileName: 'doc.pdf',
+        fileSize: 2048,
+      };
+      render(<Wrapper messages={[fileMsg]} />);
+      // PDF is previewable → "Open doc.pdf", non-previewable would be "Download …"
+      const link = screen.getByRole('link', { name: /doc\.pdf/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', '/files/doc.pdf');
+    });
+
+    it('non-previewable file has download attribute', () => {
+      const fileMsg: Message = {
+        ...sentMsg,
+        type: 'file',
+        fileUrl: '/files/archive.zip',
+        fileName: 'archive.zip',
+        fileSize: 102400,
+        fileType: 'application/zip',
+      };
+      render(<Wrapper messages={[fileMsg]} />);
+      const link = screen.getByRole('link', { name: /archive\.zip/i });
+      expect(link).toHaveAttribute('download');
+    });
+
+    it('PDF file does not have download attribute (opens inline)', () => {
+      const fileMsg: Message = {
+        ...sentMsg,
+        type: 'file',
+        fileUrl: '/files/report.pdf',
+        fileName: 'report.pdf',
+        fileType: 'application/pdf',
+      };
+      render(<Wrapper messages={[fileMsg]} />);
+      const link = screen.getByRole('link', { name: /open report\.pdf/i });
+      expect(link).not.toHaveAttribute('download');
+    });
+
+    it('video file does not have download attribute', () => {
+      const fileMsg: Message = {
+        ...sentMsg,
+        type: 'file',
+        fileUrl: '/files/clip.mp4',
+        fileName: 'clip.mp4',
+        fileType: 'video/mp4',
+      };
+      render(<Wrapper messages={[fileMsg]} />);
+      const link = screen.getByRole('link', { name: /open clip\.mp4/i });
+      expect(link).not.toHaveAttribute('download');
+    });
+
+    it('renders unsent placeholder', () => {
+      const unsentMsg: Message = { ...sentMsg, unsent: true };
+      render(<Wrapper messages={[unsentMsg]} />);
+      expect(screen.getByText(/you unsent this message/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('each message has role="article"', () => {
+      render(<Wrapper messages={[sentMsg, receivedMsg]} />);
+      const articles = screen.getAllByRole('article');
+      expect(articles.length).toBe(2);
+    });
+
+    it('message article has descriptive aria-label with content', () => {
+      render(<Wrapper />);
+      const article = screen.getByRole('article');
+      const label = article.getAttribute('aria-label') ?? '';
+      expect(label).toMatch(/hello there/i);
+    });
+
+    it('message article aria-label includes sender name for sent messages', () => {
+      render(<Wrapper />);
+      const article = screen.getByRole('article');
+      const label = article.getAttribute('aria-label') ?? '';
+      expect(label).toMatch(/you/i);
+    });
+
+    it('received message article aria-label includes sender name', () => {
+      const recvWithName: Message = { ...receivedMsg, senderDisplayName: 'Alice' };
+      render(<Wrapper messages={[recvWithName]} />);
+      const articles = screen.getAllByRole('article');
+      const receivedArticle = articles.find(a =>
+        /alice/i.test(a.getAttribute('aria-label') ?? ''),
+      );
+      expect(receivedArticle).toBeInTheDocument();
+    });
+
+    it('message bubble has tabIndex=0', () => {
+      render(<Wrapper />);
+      const article = screen.getByRole('article');
+      const focusable = article.querySelector('[tabindex="0"]');
+      expect(focusable).toBeInTheDocument();
+    });
+
+    it('avatar column is aria-hidden', () => {
+      render(<Wrapper messages={[receivedMsg]} />);
+      const article = screen.getAllByRole('article')[0];
+      const avatarCol = article.querySelector('[aria-hidden="true"]');
+      expect(avatarCol).toBeInTheDocument();
+    });
+
+    it('typing indicator is aria-hidden', () => {
+      render(<Wrapper isRecipientTyping={true} />);
+      // The typing wrapper should be aria-hidden since the live region handles SR
+      const hiddenEl = document.querySelector('[aria-hidden="true"]');
+      expect(hiddenEl).toBeInTheDocument();
+    });
+
+    it('recording indicator is aria-hidden', () => {
+      render(<Wrapper isRecipientRecording={true} />);
+      const hiddenEl = document.querySelector('[aria-hidden="true"]');
+      expect(hiddenEl).toBeInTheDocument();
+    });
+
+    it('image message has descriptive alt text', () => {
+      const imageMsg: Message = {
+        ...sentMsg,
+        type: 'image',
+        fileUrl: '/images/test.jpg',
+        fileName: 'photo.jpg',
+      };
+      render(<Wrapper messages={[imageMsg]} />);
+      const img = screen.getByRole('img');
+      expect(img).toHaveAttribute('alt', 'photo.jpg');
+    });
+
+    it('image with no fileName falls back to "Shared image" alt', () => {
+      const imageMsg: Message = {
+        ...sentMsg,
+        type: 'image',
+        fileUrl: '/images/test.jpg',
+      };
+      render(<Wrapper messages={[imageMsg]} />);
+      const img = screen.getByRole('img');
+      expect(img).toHaveAttribute('alt', 'Shared image');
+    });
+  });
+
+  describe('Keyboard interactions', () => {
+    it('pressing Enter on a bubble calls openMenu (renders context menu)', () => {
+      render(<Wrapper currentUserId="user1" onReaction={jest.fn()} onReply={jest.fn()} onUnsend={jest.fn()} />);
+      const article = screen.getByRole('article');
+      const bubble = article.querySelector('[tabindex="0"]') as HTMLElement;
+      fireEvent.keyDown(bubble, { key: 'Enter' });
+      // Context menu should appear
+      expect(screen.getByRole('dialog', { name: /message actions/i })).toBeInTheDocument();
+    });
+
+    it('pressing Space on a bubble opens the context menu', () => {
+      render(<Wrapper currentUserId="user1" onReaction={jest.fn()} onReply={jest.fn()} onUnsend={jest.fn()} />);
+      const article = screen.getByRole('article');
+      const bubble = article.querySelector('[tabindex="0"]') as HTMLElement;
+      fireEvent.keyDown(bubble, { key: ' ' });
+      expect(screen.getByRole('dialog', { name: /message actions/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('Reactions', () => {
+    it('renders reaction badge when message has reactions', () => {
+      const msgWithReaction: Message = {
+        ...sentMsg,
+        reactions: [{ userId: 'user1', username: 'alice', emoji: '❤️' }],
+      };
+      render(<Wrapper messages={[msgWithReaction]} currentUserId="user1" />);
+      // ReactionBadge renders the emoji
+      expect(screen.getByText('❤️')).toBeInTheDocument();
+    });
+
+    it('reaction badge has role="button" and aria-label', () => {
+      const msgWithReaction: Message = {
+        ...sentMsg,
+        reactions: [{ userId: 'user2', username: 'bob', emoji: '😂' }],
+      };
+      render(<Wrapper messages={[msgWithReaction]} currentUserId="user1" />);
+      const badge = screen.getByRole('button', { name: /reactions:/i });
+      expect(badge).toBeInTheDocument();
+    });
+
+    it('reaction badge is keyboard accessible', () => {
+      const msgWithReaction: Message = {
+        ...sentMsg,
+        reactions: [{ userId: 'user1', username: 'alice', emoji: '👍' }],
+      };
+      render(<Wrapper messages={[msgWithReaction]} currentUserId="user1" />);
+      const badge = screen.getByRole('button', { name: /reactions:/i });
+      expect(badge).toHaveAttribute('tabindex', '0');
+    });
+
+    it('pressing Enter on reaction badge toggles tooltip', () => {
+      const msgWithReaction: Message = {
+        ...sentMsg,
+        reactions: [{ userId: 'user1', username: 'alice', emoji: '❤️' }],
+      };
+      render(<Wrapper messages={[msgWithReaction]} currentUserId="user1" />);
+      const badge = screen.getByRole('button', { name: /reactions:/i });
+      fireEvent.keyDown(badge, { key: 'Enter' });
+      expect(screen.getByRole('tooltip')).toBeInTheDocument();
+    });
+  });
+
+  describe('Reply quote', () => {
+    it('renders reply quote above the bubble', () => {
+      const msgWithReply: Message = {
+        ...sentMsg,
+        replyTo: {
+          id: '0',
+          content: 'Original message',
+          senderUsername: 'bob',
+        },
+      };
+      render(<Wrapper messages={[msgWithReply]} />);
+      expect(screen.getByText('Original message')).toBeInTheDocument();
     });
   });
 });

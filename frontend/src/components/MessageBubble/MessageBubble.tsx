@@ -32,6 +32,8 @@ export interface Message {
   duration?: number;
   reactions?: MessageReaction[];
   unsent?: boolean;
+  edited?: boolean;
+  editedAt?: Date;
   replyTo?: {
     id: string;
     content: string;
@@ -55,6 +57,7 @@ interface MessageBubbleProps {
   activeAudioMessageId?: string | null;
   onReaction?: (messageId: string, emoji: string) => void;
   onReply?: (message: Message) => void;
+  onEdit?: (message: Message) => void;
   onUnsend?: (messageId: string) => void;
   onReplyQuoteClick?: (messageId: string) => void;
   /** The fixed-height scroll container — the overlay will portal into this */
@@ -92,20 +95,25 @@ function ReactionBadge({ reactions, isSent, currentUserId }: {
   if (groups.length === 0) return null;
 
   // Tooltip: "You, Alice reacted ❤️" etc
-  const tipLines = groups.map(g => `${g.names.join(', ')} ${g.emoji}`).join(' · ');
+  const tipLines = groups.map(g => `${g.names.join(', ')} reacted ${g.emoji}`).join('; ');
 
   return (
     <div
       className={`${styles.reactionBadge} ${isSent ? styles.reactionBadgeSent : styles.reactionBadgeReceived}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`Reactions: ${tipLines}. Press to toggle details.`}
       onClick={e => { e.stopPropagation(); setShowTip(v => !v); }}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowTip(v => !v); } }}
     >
       {groups.map(g => (
-        <span key={g.emoji} className={styles.reactionEmoji}>
+        <span key={g.emoji} className={styles.reactionEmoji} aria-hidden="true">
           {g.emoji}{g.count > 1 && <span className={styles.reactionCount}>{g.count}</span>}
         </span>
       ))}
       {showTip && (
         <div
+          role="tooltip"
           className={`${styles.reactionTooltip} ${isSent ? styles.reactionTooltipSent : styles.reactionTooltipReceived}`}
         >
           {tipLines}
@@ -121,12 +129,14 @@ function MessageContextMenu({
   state,
   onReaction,
   onReply,
+  onEdit,
   onUnsend,
   onClose,
 }: {
   state: ContextMenuState;
   onReaction: (emoji: string) => void;
   onReply: () => void;
+  onEdit: () => void;
   onUnsend: () => void;
   onClose: () => void;
 }) {
@@ -144,20 +154,26 @@ function MessageContextMenu({
   }, [closing, onClose]);
 
   useEffect(() => {
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose();
+    };
+    const clickHandler = (e: MouseEvent | TouchEvent) => {
+      const el = e.target as HTMLElement;
+      if (el.closest('[data-ctx-menu]')) return;
+      // Small delay so the open-trigger click doesn't immediately re-close
+      setTimeout(handleClose, 60);
+    };
+    document.addEventListener('keydown', keyHandler);
     const id = setTimeout(() => {
-      const handler = (e: MouseEvent | TouchEvent) => {
-        const el = e.target as HTMLElement;
-        if (el.closest('[data-ctx-menu]')) return;
-        handleClose();
-      };
-      document.addEventListener('mousedown', handler);
-      document.addEventListener('touchstart', handler);
-      return () => {
-        document.removeEventListener('mousedown', handler);
-        document.removeEventListener('touchstart', handler);
-      };
+      document.addEventListener('mousedown', clickHandler);
+      document.addEventListener('touchstart', clickHandler);
     }, 60);
-    return () => clearTimeout(id);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener('keydown', keyHandler);
+      document.removeEventListener('mousedown', clickHandler);
+      document.removeEventListener('touchstart', clickHandler);
+    };
   }, [handleClose]);
 
   const isAudio = message.type === 'audio' || (message.type === 'file' && message.fileType?.startsWith('audio/'));
@@ -165,6 +181,9 @@ function MessageContextMenu({
   return (
     <div
       data-ctx-menu
+      role="dialog"
+      aria-modal="true"
+      aria-label="Message actions"
       className={`${styles.contextOverlay} ${closing ? styles.contextOverlayClosing : ''}`}
       onClick={handleClose}
       onWheel={handleClose}
@@ -183,6 +202,7 @@ function MessageContextMenu({
           <div className={styles.reactionsRow}>
             {REACTIONS.map(emoji => (
               <button key={emoji} className={styles.reactionBtn}
+                aria-label={`React with ${emoji}`}
                 onClick={() => { onReaction(emoji); handleClose(); }}>
                 {emoji}
               </button>
@@ -218,13 +238,22 @@ function MessageContextMenu({
         <div
           className={`${styles.actionMenu} ${isSent ? styles.actionMenuSent : styles.actionMenuReceived} ${closing ? styles.actionMenuClosing : ''}`}
         >
-          <button className={styles.actionItem} onClick={() => { onReply(); handleClose(); }}>
-            <i className={`fas fa-reply ${styles.actionIcon}`} /> Reply
+          <button className={styles.actionItem} onClick={() => { onReply(); handleClose(); }}
+            aria-label="Reply to this message">
+            <i className={`fas fa-reply ${styles.actionIcon}`} aria-hidden="true" /> Reply
           </button>
+          {isSent && !message.unsent && (!message.type || message.type === 'text') && (
+            <button className={styles.actionItem}
+              onClick={() => { onEdit(); handleClose(); }}
+              aria-label="Edit this message">
+              <i className={`fas fa-pen ${styles.actionIcon}`} aria-hidden="true" /> Edit
+            </button>
+          )}
           {isSent && (
             <button className={`${styles.actionItem} ${styles.actionItemDanger}`}
-              onClick={() => { onUnsend(); handleClose(); }}>
-              <i className={`fas fa-trash ${styles.actionIcon}`} /> Unsend
+              onClick={() => { onUnsend(); handleClose(); }}
+              aria-label="Unsend this message">
+              <i className={`fas fa-trash ${styles.actionIcon}`} aria-hidden="true" /> Unsend
             </button>
           )}
         </div>
@@ -249,6 +278,7 @@ export default function MessageBubble({
   activeAudioMessageId,
   onReaction,
   onReply,
+  onEdit,
   onUnsend,
   onReplyQuoteClick,
   overlayContainerRef,
@@ -395,22 +425,28 @@ export default function MessageBubble({
         return (
           <div key={msg.id}
             data-message-id={msg.id}
+            role="article"
+            aria-label={`${isSent ? 'You' : senderDisplayName}: ${msg.unsent ? 'message unsent' : msg.type === 'audio' ? 'voice message' : msg.type === 'image' ? `image: ${msg.fileName || 'photo'}` : msg.type === 'file' ? `file: ${msg.fileName || 'file'}` : msg.content}. ${msg.timestamp.toLocaleTimeString()}${isSent ? `. Status: ${statusText}` : ''}`}
             className={`${styles.messageWrapper} ${isSent ? styles.messageWrapperSent : styles.messageWrapperReceived} ${wrapperMarginClass} ${wrapperHighlightClass}`}>
 
             {/* Received: avatar column (left side) */}
             {!isSent && (
-              <div className={styles.avatarColumn}>
+              <div className={styles.avatarColumn} aria-hidden="true">
                 {/* Only show avatar on last bubble of a group (or solo) */}
                 {!isGroupedWithNext && (
                   msg.senderProfileImage ? (
-                    <img
-                      src={msg.senderProfileImage}
-                      alt={senderDisplayName}
-                      className={styles.avatarImage}
-                    />
+                    <div className={styles.avatarImageRing}>
+                      <img
+                        src={msg.senderProfileImage}
+                        alt=""
+                        className={styles.avatarImage}
+                      />
+                    </div>
                   ) : (
-                    <div className={styles.avatarInitials}>
-                      {initials}
+                    <div className={styles.avatarImageRing}>
+                      <div className={styles.avatarInitials}>
+                        {initials}
+                      </div>
                     </div>
                   )
                 )}
@@ -487,6 +523,10 @@ export default function MessageBubble({
                 ) : (
                   <div
                     className={`${styles.messageBubble} ${radiusClass} ${bubbleToneClass} ${msg.type === 'audio' ? styles.bubblePaddingAudio : (!msg.type || msg.type === 'text') ? styles.bubblePaddingText : styles.bubblePaddingMedia}`}
+                    tabIndex={0}
+                    role="group"
+                    aria-label="Message options: hold or press Enter"
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMenu(msg, isSent, radiusClass, bubbleToneClass); } }}
                     onContextMenu={e => { e.preventDefault(); openMenu(msg, isSent, radiusClass, bubbleToneClass); }}
                     onTouchStart={e => startLongPress(e, msg, isSent, radiusClass, bubbleToneClass)}
                     onTouchEnd={handleTouchEnd}
@@ -498,9 +538,9 @@ export default function MessageBubble({
                     {/* Image */}
                     {msg.type === 'image' && msg.fileUrl && (
                       <div>
-                        <img src={msg.fileUrl} alt={msg.fileName || 'Image'} className={styles.messageImage}
+                        <img src={msg.fileUrl} alt={msg.fileName || 'Shared image'} className={styles.messageImage}
                           onClick={() => { if (onImageClick) onImageClick(msg.fileUrl!, msg.fileName || ''); }} />
-                        {msg.fileName && <div className={styles.imageFileName}><i className="fas fa-camera" /> {msg.fileName}</div>}
+                        {msg.fileName && <div className={styles.imageFileName}><i className="fas fa-camera" aria-hidden="true" /> {msg.fileName}</div>}
                       </div>
                     )}
                     {/* Audio */}
@@ -514,22 +554,78 @@ export default function MessageBubble({
                       />
                     )}
                     {/* File */}
-                    {msg.type === 'file' && !msg.fileType?.startsWith('audio/') && msg.fileUrl && (
-                      <a href={msg.fileUrl} download={msg.fileName} target="_blank" rel="noopener noreferrer" className={styles.fileLink}>
-                        <span className={styles.fileIcon}><i className="fas fa-file" /></span>
-                        <div className={styles.fileInfo}>
-                          <div className={styles.fileName}>{msg.fileName || 'File'}</div>
-                          {msg.fileSize && <div className={styles.fileSize}>{(msg.fileSize / 1024).toFixed(2)} KB</div>}
-                        </div>
-                        <span className={styles.downloadIcon}><i className="fas fa-download" /></span>
-                      </a>
-                    )}
+                    {msg.type === 'file' && !msg.fileType?.startsWith('audio/') && msg.fileUrl && (() => {
+                      const ft = msg.fileType ?? '';
+                      const fn = (msg.fileName ?? '').toLowerCase();
+
+                      // Determine icon + accent colour
+                      type FileKind = 'pdf' | 'video' | 'zip' | 'word' | 'excel' | 'ppt' | 'txt' | 'audio' | 'generic';
+                      let kind: FileKind = 'generic';
+                      if (ft === 'application/pdf' || fn.endsWith('.pdf'))                      kind = 'pdf';
+                      else if (ft.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm)$/.test(fn)) kind = 'video';
+                      else if (ft.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|aac|flac)$/.test(fn)) kind = 'audio';
+                      else if (ft.includes('zip') || ft.includes('archive') || /\.(zip|rar|7z|tar|gz)$/.test(fn)) kind = 'zip';
+                      else if (ft.includes('word') || /\.(doc|docx)$/.test(fn))                kind = 'word';
+                      else if (ft.includes('excel') || ft.includes('spreadsheet') || /\.(xls|xlsx|csv)$/.test(fn)) kind = 'excel';
+                      else if (ft.includes('powerpoint') || ft.includes('presentation') || /\.(ppt|pptx)$/.test(fn)) kind = 'ppt';
+                      else if (ft.includes('text') || fn.endsWith('.txt'))                     kind = 'txt';
+
+                      const iconMap: Record<FileKind, { icon: string; colour: string; label: string }> = {
+                        pdf:     { icon: 'fas fa-file-pdf',     colour: '#ef4444', label: 'PDF'   },
+                        video:   { icon: 'fas fa-file-video',   colour: '#f59e0b', label: 'VIDEO' },
+                        audio:   { icon: 'fad fa-waveform-lines', colour: '#a855f7', label: 'AUDIO' },
+                        zip:     { icon: 'fas fa-file-archive', colour: '#f97316', label: 'ZIP'   },
+                        word:    { icon: 'fas fa-file-word',    colour: '#3b82f6', label: 'DOC'   },
+                        excel:   { icon: 'fas fa-file-excel',   colour: '#22c55e', label: 'XLS'   },
+                        ppt:     { icon: 'fas fa-file-powerpoint', colour: '#f97316', label: 'PPT' },
+                        txt:     { icon: 'fas fa-file-alt',     colour: '#94a3b8', label: 'TXT'   },
+                        generic: { icon: 'fas fa-file',         colour: '#3b82f6', label: 'FILE'  },
+                      };
+                      const { icon, colour, label } = iconMap[kind];
+
+                      // Previewable in browser — open in new tab without forcing download
+                      const canPreview = kind === 'pdf' || kind === 'video' || kind === 'audio';
+                      const sizeKb = msg.fileSize ? `${(msg.fileSize / 1024).toFixed(1)} KB` : null;
+
+                      return (
+                        <a
+                          href={msg.fileUrl}
+                          {...(!canPreview ? { download: msg.fileName } : {})}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.fileLink}
+                          aria-label={`${canPreview ? 'Open' : 'Download'} ${msg.fileName || 'file'}${sizeKb ? `, ${sizeKb}` : ''}`}
+                        >
+                          {/* Icon badge */}
+                          <span className={styles.fileIcon} aria-hidden="true" style={{ color: colour }}>
+                            <i className={icon} />
+                            <span className={styles.fileIconBadge} style={{ backgroundColor: colour }}>{label}</span>
+                          </span>
+
+                          {/* File info */}
+                          <div className={styles.fileInfo}>
+                            <div className={styles.fileName}>{msg.fileName || 'File'}</div>
+                            {sizeKb && <div className={styles.fileSize}>{sizeKb}</div>}
+                          </div>
+
+                          {/* Action icon */}
+                          <span className={styles.downloadIcon} aria-hidden="true">
+                            <i className={canPreview ? 'fas fa-eye' : 'fas fa-download'} />
+                          </span>
+                        </a>
+                      );
+                    })()}
                     {/* Text */}
                     {(!msg.type || msg.type === 'text') && (
                       <div className={styles.messageTextWrapper}>
                         <div className={`${styles.messageText} ${isSent ? styles.messageTextSent : styles.messageTextReceived} ${messageTextSpacingClass}`}>
                           {msg.content}
                         </div>
+                        {msg.edited && !msg.unsent && (
+                          <span className={styles.editedMarker} aria-label="edited">
+                            <i className="fas fa-pen" aria-hidden="true" /> edited
+                          </span>
+                        )}
                         {false && ttsSupported && (
                           <button onClick={e => { e.stopPropagation(); speak(msg.id, msg.content); }}
                             className={`${styles.ttsButton} ${isSent ? styles.ttsButtonSent : styles.ttsButtonReceived} ${speakingId === msg.id ? styles.ttsButtonActive : styles.ttsButtonInactive}`}>
@@ -559,9 +655,10 @@ export default function MessageBubble({
 
             {/* Status */}
             {isSent && !isGroupedWithNext && (
-              <div className={`${styles.statusText} ${statusClass} ${listeningMessageIds.has(msg.id) ? styles.statusListening : ''}`}>
+              <div className={`${styles.statusText} ${statusClass} ${listeningMessageIds.has(msg.id) ? styles.statusListening : ''}`}
+                aria-label={listeningMessageIds.has(msg.id) ? 'Recipient is listening' : `Message ${statusText.toLowerCase()}`}>
                 {listeningMessageIds.has(msg.id)
-                  ? <><i className={`fas fa-headphones ${styles.statusIcon}`} />Listening...</>
+                  ? <><i className={`fas fa-headphones ${styles.statusIcon}`} aria-hidden="true" />Listening...</>
                   : statusText}
               </div>
             )}
@@ -574,7 +671,7 @@ export default function MessageBubble({
 
       {/* Ghost Typing */}
       {recipientGhostText && (
-        <div className={styles.ghostTypingWrapper}>
+        <div className={styles.ghostTypingWrapper} aria-hidden="true">
           <div className={styles.ghostTypingBubble}>
             <div className={styles.ghostTypingText}>{recipientGhostText}</div>
           </div>
@@ -582,7 +679,7 @@ export default function MessageBubble({
       )}
       {/* Typing */}
       {isRecipientTyping && !recipientGhostText && (
-        <div className={styles.typingIndicatorWrapper}>
+        <div className={styles.typingIndicatorWrapper} aria-hidden="true">
           <div className={styles.typingIndicatorBubble}>
             <span className={`${styles.typingDot} ${styles.typingDot1}`} />
             <span className={`${styles.typingDot} ${styles.typingDot2}`} />
@@ -592,9 +689,9 @@ export default function MessageBubble({
       )}
       {/* Recording */}
       {isRecipientRecording && !isRecipientTyping && !recipientGhostText && (
-        <div className={styles.typingIndicatorWrapper}>
+        <div className={styles.typingIndicatorWrapper} aria-hidden="true">
           <div className={`${styles.typingIndicatorBubble} ${styles.typingIndicatorRecording}`}>
-            <i className={`fas fa-microphone ${styles.recordingMic} ${styles.recordingMicIcon}`} />
+            <i className={`fas fa-microphone ${styles.recordingMic} ${styles.recordingMicIcon}`} aria-hidden="true" />
           </div>
         </div>
       )}
@@ -607,6 +704,7 @@ export default function MessageBubble({
           state={contextMenu}
           onReaction={emoji => onReaction?.(contextMenu.message.id, emoji)}
           onReply={() => onReply?.(contextMenu.message)}
+          onEdit={() => onEdit?.(contextMenu.message)}
           onUnsend={() => onUnsend?.(contextMenu.message.id)}
           onClose={() => setContextMenu(null)}
         />,

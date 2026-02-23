@@ -34,12 +34,13 @@ model User {
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
-  sentMessages      Message[]         @relation("Sender")
-  receivedMessages  Message[]         @relation("Recipient")
+  sentMessages      Message[]            @relation("Sender")
+  receivedMessages  Message[]            @relation("Recipient")
   groupMemberships  GroupMember[]
   groupsOwned       Group[]
-  sentGroupMessages GroupMessage[]    @relation("GroupSender")
+  sentGroupMessages GroupMessage[]       @relation("GroupSender")
   messageReactions  MessageReaction[]
+  messageEdits      MessageEditHistory[]
 }
 
 model Message {
@@ -68,6 +69,10 @@ model Message {
   // Soft delete for unsend
   deletedAt DateTime?
 
+  // Edit tracking
+  edited   Boolean   @default(false)
+  editedAt DateTime?
+
   // Reply-to snapshot (stores orignal message snapshot so it survives unsend/delete)
   replyToId         String?
   replyToContent    String?
@@ -75,10 +80,25 @@ model Message {
   replyToType       String? // type of the original message (text/audio/image/file)
   replyToDuration   Float? // duration in seconds for audio replies
 
-  reactions MessageReaction[]
+  reactions   MessageReaction[]
+  editHistory MessageEditHistory[]
 
   @@index([senderId])
   @@index([recipientId])
+}
+
+// Immutable audit log — one row per edit, never deleted
+model MessageEditHistory {
+  id              String   @id @default(uuid())
+  messageId       String
+  message         Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  editedById      String
+  editedBy        User     @relation(fields: [editedById], references: [id], onDelete: Cascade)
+  previousContent String // the content BEFORE this edit
+  editedAt        DateTime @default(now())
+
+  @@index([messageId])
+  @@index([editedById])
 }
 
 model MessageReaction {

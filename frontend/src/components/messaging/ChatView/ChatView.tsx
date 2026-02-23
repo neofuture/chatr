@@ -33,6 +33,7 @@ export interface ChatViewProps {
   onReaction?: (messageId: string, emoji: string) => void;
   onUnsend?: (messageId: string) => void;
   onReply?: (message: import('@/components/MessageBubble').Message) => void;
+  onEdit?: (message: import('@/components/MessageBubble').Message) => void;
   currentUserId?: string;
 }
 
@@ -53,10 +54,20 @@ export default function ChatView({
   onReaction,
   onUnsend,
   onReply,
+  onEdit,
   currentUserId,
 }: ChatViewProps) {
   const scrollRef  = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Derive a live-region status for screen readers
+  const liveStatus = isRecipientRecording
+    ? 'Recipient is recording a voice message'
+    : isRecipientTyping
+    ? 'Recipient is typing'
+    : recipientGhostText
+    ? `Recipient is typing: ${recipientGhostText}`
+    : '';
 
   return (
     <div className={styles.container}>
@@ -64,36 +75,63 @@ export default function ChatView({
       {/* Header */}
       {(showClearButton || queuedCount > 0) && (
         <div
+          role="toolbar"
+          aria-label="Conversation controls"
           className={`${styles.header} ${isDark ? styles['header--dark'] : styles['header--light']}`}
         >
           <div>
-            <span className={styles.headerTitle}><i className="fas fa-comments" /> Messages</span>
-            <span className={styles.headerCount}>({messages.length})</span>
+            <span className={styles.headerTitle}>
+              <i className="fas fa-comments" aria-hidden="true" /> Messages
+            </span>
+            <span className={styles.headerCount} aria-label={`${messages.length} messages`}>
+              ({messages.length})
+            </span>
             {queuedCount > 0 && (
-              <span className={styles.queuedBadge}>
+              <span className={styles.queuedBadge} aria-label={`${queuedCount} messages queued`}>
                 {queuedCount} queued
               </span>
             )}
           </div>
           {showClearButton && onClear && (
-            <button onClick={onClear} className={styles.clearButton}>
-              <i className="fas fa-trash" /> Clear
+            <button
+              onClick={onClear}
+              className={styles.clearButton}
+              aria-label="Clear all messages"
+            >
+              <i className="fas fa-trash" aria-hidden="true" /> Clear
             </button>
           )}
         </div>
       )}
+
+      {/* Polite live region — announces typing/recording to screen readers */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className={styles.srOnly}
+      >
+        {liveStatus}
+      </div>
 
       {/* Message list */}
       <div
         ref={scrollRef}
         data-chat-scroll
         data-messages-scroll
+        role="log"
+        aria-label="Messages"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-busy={isRecipientTyping || isRecipientRecording}
         className={styles.messageList}
       >
         {messages.length === 0 ? (
-          <div className={styles.emptyState}>
+          <div className={styles.emptyState} role="status" aria-label="No messages yet">
             <div className={styles.emptyStateInner}>
-              <div className={styles.emptyStateIcon}><i className="fas fa-comments" /></div>
+              <div className={styles.emptyStateIcon} aria-hidden="true">
+                <i className="fas fa-comments" />
+              </div>
               <div className={styles.emptyStateText}>No messages yet</div>
             </div>
           </div>
@@ -112,6 +150,7 @@ export default function ChatView({
             onReaction={onReaction}
             onUnsend={onUnsend}
             onReply={onReply}
+            onEdit={onEdit}
             currentUserId={currentUserId}
           />
         )}
@@ -121,6 +160,7 @@ export default function ChatView({
       <div
         ref={overlayRef}
         className={styles.overlay}
+        aria-hidden="true"
       />
     </div>
   );

@@ -68,6 +68,7 @@ export interface CachedMessage {
   reactions: any[];
   replyTo: any | null;
   unsent: boolean;
+  edited?: boolean;
 }
 
 // Dexie database class
@@ -107,6 +108,16 @@ export class ChatrDB extends Dexie {
 
     // Version 4 — add cachedMessages for conversation persistence
     this.version(4).stores({
+      messages: 'id, senderId, recipientId, groupId, createdAt, synced',
+      users: 'id, username',
+      groups: 'id, name',
+      profileImages: 'userId, synced, uploadedAt',
+      coverImages: 'userId, synced, uploadedAt',
+      cachedMessages: 'id, conversationKey, timestamp',
+    });
+
+    // Version 5 — add edited flag to cachedMessages (no new index needed)
+    this.version(5).stores({
       messages: 'id, senderId, recipientId, groupId, createdAt, synced',
       users: 'id, username',
       groups: 'id, name',

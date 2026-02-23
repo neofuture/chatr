@@ -92,5 +92,87 @@ describe('ChatView', () => {
       expect(screen.getByText('Second message')).toBeInTheDocument();
     });
   });
+
+  describe('Accessibility', () => {
+    it('message list has role="log"', () => {
+      render(<Wrapper />);
+      expect(screen.getByRole('log')).toBeInTheDocument();
+    });
+
+    it('message list has aria-label="Messages"', () => {
+      render(<Wrapper />);
+      expect(screen.getByRole('log', { name: /messages/i })).toBeInTheDocument();
+    });
+
+    it('message list has aria-live="polite"', () => {
+      render(<Wrapper />);
+      const log = screen.getByRole('log');
+      expect(log).toHaveAttribute('aria-live', 'polite');
+    });
+
+    it('message list is aria-busy when recipient is typing', () => {
+      render(<Wrapper isRecipientTyping={true} />);
+      const log = screen.getByRole('log');
+      expect(log).toHaveAttribute('aria-busy', 'true');
+    });
+
+    it('message list is aria-busy when recipient is recording', () => {
+      render(<Wrapper isRecipientRecording={true} />);
+      const log = screen.getByRole('log');
+      expect(log).toHaveAttribute('aria-busy', 'true');
+    });
+
+    it('message list is not aria-busy when idle', () => {
+      render(<Wrapper isRecipientTyping={false} isRecipientRecording={false} />);
+      const log = screen.getByRole('log');
+      expect(log).toHaveAttribute('aria-busy', 'false');
+    });
+
+    it('renders a live status region', () => {
+      render(<Wrapper />);
+      const region = document.querySelector('[role="status"][aria-live="polite"]');
+      expect(region).toBeInTheDocument();
+    });
+
+    it('live region announces typing status', () => {
+      render(<Wrapper isRecipientTyping={true} />);
+      const region = document.querySelector('[role="status"][aria-live="polite"]');
+      expect(region?.textContent).toMatch(/typing/i);
+    });
+
+    it('live region announces recording status', () => {
+      render(<Wrapper isRecipientRecording={true} />);
+      const region = document.querySelector('[role="status"][aria-live="polite"]');
+      expect(region?.textContent).toMatch(/recording/i);
+    });
+
+    it('live region is empty when idle', () => {
+      render(<Wrapper isRecipientTyping={false} isRecipientRecording={false} recipientGhostText="" />);
+      const region = document.querySelector('[role="status"][aria-live="polite"]');
+      expect(region?.textContent).toBe('');
+    });
+
+    it('empty state has accessible role', () => {
+      render(<Wrapper messages={[]} />);
+      expect(screen.getByRole('status', { name: /no messages yet/i })).toBeInTheDocument();
+    });
+
+    it('clear button has aria-label', () => {
+      render(<Wrapper showClearButton={true} onClear={jest.fn()} />);
+      expect(screen.getByRole('button', { name: /clear all messages/i })).toBeInTheDocument();
+    });
+
+    it('header toolbar has aria-label', () => {
+      render(<Wrapper showClearButton={true} onClear={jest.fn()} />);
+      expect(screen.getByRole('toolbar', { name: /conversation controls/i })).toBeInTheDocument();
+    });
+
+    it('overlay is aria-hidden', () => {
+      const { container } = render(<Wrapper />);
+      // The overlay div should be aria-hidden
+      const overlay = container.querySelector('[aria-hidden="true"]');
+      expect(overlay).toBeInTheDocument();
+    });
+  });
 });
 

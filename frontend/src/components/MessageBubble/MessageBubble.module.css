@@ -72,34 +72,64 @@
 .fileLink {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
+  gap: 10px;
+  padding: 10px 12px;
   text-decoration: none;
   color: #ffffff;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.22);
+  border-radius: 10px;
+  min-width: 200px;
+  transition: background-color 0.15s;
+}
+
+.fileLink:hover {
+  background-color: rgba(0, 0, 0, 0.35);
 }
 
 .fileIcon {
-  font-size: 24px;
+  position: relative;
+  font-size: 26px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 36px;
+}
+
+.fileIconBadge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fff;
+  line-height: 1.4;
 }
 
 .fileInfo {
   flex: 1;
+  min-width: 0;
 }
 
 .fileName {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fileSize {
   font-size: 11px;
-  opacity: 0.7;
+  opacity: 0.65;
+  margin-top: 2px;
 }
 
 .downloadIcon {
-  font-size: 16px;
+  font-size: 15px;
+  opacity: 0.75;
+  flex-shrink: 0;
 }
 
 /* Ghost Typing Bubble */
@@ -350,10 +380,33 @@
 }
 
 .clonedImage {
-  width: 100%;
-  border-radius: inherit;
   display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  border-radius: inherit;
   pointer-events: none;
+}
+
+/* ── Message Image (in the live chat thread) ─────────────────────────────── */
+/* Show the full image — no height cap, no cropping */
+.messageImage {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  border-radius: inherit;
+  cursor: pointer;
+}
+
+.imageFileName {
+  font-size: 11px;
+  padding: 4px 8px;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
 }
 
 .clonedText {
@@ -515,32 +568,45 @@
 }
 
 .avatarColumn {
-  width: 28px;
+  width: 44px;
   flex-shrink: 0;
   align-self: flex-end;
   margin-right: 6px;
   margin-bottom: 2px;
 }
 
+/* Gradient border ring wrapper for avatar image */
+.avatarImageRing {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-orange-500), var(--color-red-500));
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .avatarImage {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
 }
 
 .avatarInitials {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background-color: #f97316;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-white);
+  background-color: var(--color-slate-700);
 }
 
 .bubbleColumn {
@@ -712,10 +778,10 @@
 }
 
 .unsentBubble {
-  padding: 6px 12px;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 :global([data-theme='dark']) .unsentBubble {
@@ -804,6 +870,16 @@
 
 .messageTextWrapper {
   position: relative;
+}
+
+.editedMarker {
+  display: block;
+  font-size: 10px;
+  opacity: 0.55;
+  font-style: italic;
+  margin-top: 2px;
+  text-align: right;
+  letter-spacing: 0.02em;
 }
 
 .messageTextSent {

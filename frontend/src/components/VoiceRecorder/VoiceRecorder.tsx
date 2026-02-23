@@ -10,9 +10,11 @@ interface VoiceRecorderProps {
   onRecordingStart?: () => void;
   onRecordingStop?: () => void;
   disabled?: boolean;
+  /** Render as a small round icon button instead of a full-width button */
+  compact?: boolean;
 }
 
-export default function VoiceRecorder({ onRecordingComplete, onRecordingStart, onRecordingStop, disabled = false }: VoiceRecorderProps) {
+export default function VoiceRecorder({ onRecordingComplete, onRecordingStart, onRecordingStop, disabled = false, compact = false }: VoiceRecorderProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -351,15 +353,36 @@ export default function VoiceRecorder({ onRecordingComplete, onRecordingStart, o
   return (
     <>
       {/* Trigger Button */}
-      <Button
-        variant="red"
-        fullWidth
-        onClick={startRecording}
-        disabled={disabled}
-        icon={<i className="fas fa-microphone"></i>}
-      >
-        Record Voice Message
-      </Button>
+      {compact ? (
+        <button
+          onClick={startRecording}
+          disabled={disabled}
+          title="Record voice message"
+          style={{
+            width: '38px', height: '38px', borderRadius: '50%', border: 'none',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            backgroundColor: isRecording
+              ? 'rgba(239,68,68,0.15)'
+              : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+            color: isRecording ? '#ef4444' : (isDark ? '#94a3b8' : '#64748b'),
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '16px', transition: 'background-color 0.15s',
+            opacity: disabled ? 0.5 : 1,
+          }}
+        >
+          <i className={isRecording ? 'fas fa-microphone-slash' : 'fas fa-microphone'} />
+        </button>
+      ) : (
+        <Button
+          variant="red"
+          fullWidth
+          onClick={startRecording}
+          disabled={disabled}
+          icon={<i className="fas fa-microphone"></i>}
+        >
+          Record Voice Message
+        </Button>
+      )}
 
       {/* Recording Modal */}
       {isModalOpen && (

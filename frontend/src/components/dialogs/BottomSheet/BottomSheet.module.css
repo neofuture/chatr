@@ -10,7 +10,7 @@
 .backdrop {
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--overlay-black-50);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   transition: opacity 300ms ease-in-out;
@@ -28,7 +28,7 @@
   position: relative;
   width: 100%;
   background-color: var(--bg-secondary);
-  box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 -10px 50px var(--overlay-black-50);
   transition: transform 300ms ease-out, border-top-left-radius 300ms ease-out, border-top-right-radius 300ms ease-out;
   display: flex;
   flex-direction: column;

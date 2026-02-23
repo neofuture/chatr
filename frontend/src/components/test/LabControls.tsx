@@ -7,30 +7,18 @@ export interface LabControlsProps {
   isDark: boolean;
   effectivelyOnline: boolean;
   manualOffline: boolean;
-  uploadingFile: boolean;
-  testMessage: string;
   testRecipientId: string;
   ghostTypingEnabled: boolean;
-  selectedFile: File | null;
-  filePreviewUrl: string | null;
   isUserTyping: boolean;
   isRecipientTyping: boolean;
   isRecipientRecording: boolean;
   isRecipientListeningToMyAudio: string | null;
   onManualOfflineChange: (val: boolean) => void;
-  onMessageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onMessageSend: () => void;
   onGhostTypingToggle: (val: boolean) => void;
   onTypingStart: () => void;
   onTypingStop: () => void;
   onPresenceUpdate: (status: 'online' | 'away') => void;
   onPresenceRequest: () => void;
-  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onFileSend: () => void;
-  onFileCancelSelection: () => void;
-  onVoiceRecording: (blob: Blob, waveform: number[]) => void;
-  onVoiceRecordingStart: () => void;
-  onVoiceRecordingStop: () => void;
 }
 
 export default function LabControls(props: LabControlsProps) {
@@ -49,27 +37,14 @@ export default function LabControls(props: LabControlsProps) {
       <LabActionControls
         isDark={props.isDark}
         effectivelyOnline={props.effectivelyOnline}
-        uploadingFile={props.uploadingFile}
-        testMessage={props.testMessage}
         testRecipientId={props.testRecipientId}
         ghostTypingEnabled={props.ghostTypingEnabled}
-        selectedFile={props.selectedFile}
-        filePreviewUrl={props.filePreviewUrl}
-        onMessageChange={props.onMessageChange}
-        onMessageSend={props.onMessageSend}
         onGhostTypingToggle={props.onGhostTypingToggle}
         onTypingStart={props.onTypingStart}
         onTypingStop={props.onTypingStop}
         onPresenceUpdate={props.onPresenceUpdate}
         onPresenceRequest={props.onPresenceRequest}
-        onFileSelect={props.onFileSelect}
-        onFileSend={props.onFileSend}
-        onFileCancelSelection={props.onFileCancelSelection}
-        onVoiceRecording={props.onVoiceRecording}
-        onVoiceRecordingStart={props.onVoiceRecordingStart}
-        onVoiceRecordingStop={props.onVoiceRecordingStop}
       />
     </div>
   );
 }
-

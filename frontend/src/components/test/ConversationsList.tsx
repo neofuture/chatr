@@ -133,22 +133,31 @@ export default function ConversationsList({ isDark, availableUsers, selectedUser
                   transition: 'background-color 0.15s',
                 }}
               >
-                {/* Avatar with presence dot */}
+                {/* Avatar with gradient ring + presence dot */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                  {user.profileImage ? (
-                    <img src={user.profileImage} alt={displayName}
-                      style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
-                  ) : (
-                    <div style={{
-                      width: '40px', height: '40px', borderRadius: '50%',
-                      backgroundColor: isDark ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.15)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '15px', fontWeight: '700', color: '#3b82f6',
-                    }}>{initials}</div>
-                  )}
+                  {/* Gradient ring */}
                   <div style={{
-                    position: 'absolute', bottom: '0px', right: '0px',
-                    width: '12px', height: '12px', borderRadius: '50%',
+                    width: '50px', height: '50px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #f97316, #ef4444)',
+                    padding: '3px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {user.profileImage ? (
+                      <img src={user.profileImage} alt={displayName}
+                        style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div style={{
+                        width: '44px', height: '44px', borderRadius: '50%',
+                        backgroundColor: isDark ? '#334155' : 'rgba(59,130,246,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '16px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#3b82f6',
+                      }}>{initials}</div>
+                    )}
+                  </div>
+                  {/* Presence dot */}
+                  <div style={{
+                    position: 'absolute', bottom: '1px', right: '1px',
+                    width: '13px', height: '13px', borderRadius: '50%',
                     backgroundColor: dotColour,
                     border: `2px solid ${isDark ? '#0f172a' : '#f8fafc'}`,
                     transition: 'background-color 0.3s',

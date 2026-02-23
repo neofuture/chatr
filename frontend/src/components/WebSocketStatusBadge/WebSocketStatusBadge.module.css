@@ -86,15 +86,15 @@
 }
 
 .statusConnected {
-  color: #10b981;
+  color: var(--color-green-700);
 }
 
 .statusConnecting {
-  color: #f97316;
+  color: var(--color-orange-500);
 }
 
 .statusDisconnected {
-  color: #ef4444;
+  color: var(--color-red-500);
 }
 
 .statusHint {
@@ -138,11 +138,11 @@
 }
 
 .logItemEventSent {
-  color: #3b82f6;
+  color: var(--color-blue-500);
 }
 
 .logItemEventReceived {
-  color: #10b981;
+  color: var(--color-green-700);
 }
 
 .logItemTime {

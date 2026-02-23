@@ -9,8 +9,6 @@ import ConversationsList from '@/components/test/ConversationsList';
 import ConversationsColumn from '@/components/test/ConversationsColumn';
 import SystemLogsModal from '@/components/test/SystemLogsModal';
 import DragHandle from '@/components/test/DragHandle';
-import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
-
 const MIN_W = 220;
 const MAX_W = 700;
 const DEFAULT_W = 350;
@@ -71,30 +69,43 @@ export default function TestPage() {
     isDark,
     effectivelyOnline: lab.effectivelyOnline,
     manualOffline: lab.manualOffline,
-    uploadingFile: lab.uploadingFile,
-    testMessage: lab.testMessage,
     testRecipientId: lab.testRecipientId,
     ghostTypingEnabled: lab.ghostTypingEnabled,
-    selectedFile: lab.selectedFile,
-    filePreviewUrl: lab.filePreviewUrl,
     isUserTyping: lab.isUserTyping,
     isRecipientTyping: lab.isRecipientTyping,
     isRecipientRecording: lab.isRecipientRecording,
     isRecipientListeningToMyAudio: lab.isRecipientListeningToMyAudio,
     onManualOfflineChange: lab.setManualOffline,
-    onMessageChange: lab.handleMessageInputChange,
-    onMessageSend: lab.handleMessageSend,
     onGhostTypingToggle: lab.handleGhostTypingToggle,
     onTypingStart: lab.handleTypingStart,
     onTypingStop: lab.handleTypingStop,
     onPresenceUpdate: lab.handlePresenceUpdate,
     onPresenceRequest: lab.handlePresenceRequest,
+  };
+
+  const conversationColumnProps = {
+    effectivelyOnline: lab.effectivelyOnline,
+    uploadingFile: lab.uploadingFile,
+    testMessage: lab.testMessage,
+    testRecipientId: lab.testRecipientId,
+    selectedFile: null,
+    selectedFiles: lab.selectedFiles,
+    filePreviewUrl: null,
+    filePreviews: lab.filePreviews,
+    onMessageChange: lab.handleMessageInputChange,
+    onMessageSend: lab.handleMessageSend,
+    onEmojiInsert: lab.handleEmojiInsert,
     onFileSelect: lab.handleFileSelect,
     onFileSend: lab.sendFile,
     onFileCancelSelection: lab.cancelFileSelection,
+    onFileCancelOne: (index: number) => lab.cancelFileSelection(index),
     onVoiceRecording: lab.handleVoiceRecording,
     onVoiceRecordingStart: lab.handleAudioRecordingStart,
     onVoiceRecordingStop: lab.handleAudioRecordingStop,
+    editingMessage: lab.editingMessage,
+    onStartEdit: lab.handleStartEdit,
+    onCancelEdit: lab.handleCancelEdit,
+    onEditLastSent: lab.editLastSentMessage,
   };
 
   const TAB_BAR_H = 56;
@@ -215,6 +226,7 @@ export default function TestPage() {
                 replyingTo={lab.replyingTo}
                 clearReply={lab.clearReply}
                 currentUserId={lab.currentUserId}
+                {...conversationColumnProps}
               />
             </div>
           )}
@@ -298,6 +310,7 @@ export default function TestPage() {
             replyingTo={lab.replyingTo}
             clearReply={lab.clearReply}
             currentUserId={lab.currentUserId}
+            {...conversationColumnProps}
           />
         </div>
 

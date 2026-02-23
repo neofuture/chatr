@@ -1,7 +1,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay-black-40);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 10500;
@@ -35,7 +35,7 @@
   -webkit-backdrop-filter: blur(20px);
   border-radius: 1rem;
   border: 1px solid var(--border-color);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 60px var(--overlay-black-60);
   overflow: hidden;
 }
 
@@ -75,11 +75,11 @@
 }
 
 .actionBtn:hover {
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--overlay-blue-10);
 }
 
 .actionBtnDestructive {
-  color: #ef4444;
+  color: var(--color-red-500);
   font-weight: 600;
 }
 

@@ -39,6 +39,7 @@ export function toCached(msg: Message, currentUserId: string): CachedMessage {
     reactions: msg.reactions ?? [],
     replyTo: msg.replyTo ?? null,
     unsent: msg.unsent ?? false,
+    edited: msg.edited ?? false,
   };
 }
 
@@ -65,6 +66,7 @@ export function fromCached(c: CachedMessage, currentUserId: string): Message {
     reactions: c.reactions ?? [],
     replyTo: c.replyTo ?? undefined,
     unsent: c.unsent,
+    edited: c.edited ?? false,
   };
 }
 

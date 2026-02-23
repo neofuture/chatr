@@ -1,32 +1,17 @@
 'use client';
 
-import { useRef } from 'react';
-import Input from '@/components/form-controls/Input/Input';
 import Button from '@/components/form-controls/Button/Button';
-import VoiceRecorder from '@/components/VoiceRecorder';
 
 interface Props {
   isDark: boolean;
   effectivelyOnline: boolean;
-  uploadingFile: boolean;
-  testMessage: string;
   testRecipientId: string;
   ghostTypingEnabled: boolean;
-  selectedFile: File | null;
-  filePreviewUrl: string | null;
-  onMessageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onMessageSend: () => void;
   onGhostTypingToggle: (val: boolean) => void;
   onTypingStart: () => void;
   onTypingStop: () => void;
   onPresenceUpdate: (status: 'online' | 'away') => void;
   onPresenceRequest: () => void;
-  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onFileSend: () => void;
-  onFileCancelSelection: () => void;
-  onVoiceRecording: (blob: Blob, waveform: number[]) => void;
-  onVoiceRecordingStart: () => void;
-  onVoiceRecordingStop: () => void;
 }
 
 function SectionTitle({ icon, label }: { icon: string; label: string }) {
@@ -38,20 +23,12 @@ function SectionTitle({ icon, label }: { icon: string; label: string }) {
 }
 
 export default function LabActionControls({
-  isDark, effectivelyOnline, uploadingFile,
-  testMessage, testRecipientId, ghostTypingEnabled,
-  selectedFile, filePreviewUrl,
-  onMessageChange, onMessageSend,
+  isDark, effectivelyOnline, testRecipientId, ghostTypingEnabled,
   onGhostTypingToggle, onTypingStart, onTypingStop,
   onPresenceUpdate, onPresenceRequest,
-  onFileSelect, onFileSend, onFileCancelSelection,
-  onVoiceRecording, onVoiceRecordingStart, onVoiceRecordingStop,
 }: Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-
 
       {/* ── Ghost Typing Toggle ───────────────────────── */}
       {testRecipientId && (
@@ -78,67 +55,6 @@ export default function LabActionControls({
         </div>
       )}
 
-      {/* ── Send Message ──────────────────────────────── */}
-      <div style={{ marginBottom: '20px' }}>
-        <SectionTitle icon="fas fa-comments" label="Message Test" />
-        <Input
-          type="text" value={testMessage} onChange={onMessageChange}
-          placeholder="Type test message"
-          onKeyDown={(e) => { if (e.key === 'Enter') onMessageSend(); }}
-          style={{ marginBottom: '8px' }}
-        />
-        <Button variant="orange" fullWidth onClick={onMessageSend} disabled={!effectivelyOnline}>Send Message</Button>
-        <div style={{ marginTop: '10px' }}>
-          <input ref={fileInputRef} type="file" onChange={onFileSelect} style={{ display: 'none' }}
-            accept="image/*,.pdf,.doc,.docx,.txt,.zip,.mp3,.wav,.ogg,.m4a,audio/*" />
-          <Button variant="blue" fullWidth onClick={() => fileInputRef.current?.click()}
-            disabled={!effectivelyOnline || uploadingFile} icon={<i className="fas fa-paperclip" />}>
-            {uploadingFile ? 'Uploading...' : 'Attach File/Image'}
-          </Button>
-        </div>
-        {selectedFile && (
-          <div style={{
-            marginTop: '12px', padding: '12px', borderRadius: '8px',
-            backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)',
-            border: '1px solid #3b82f6',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>
-                <i className="fas fa-paperclip" /> {selectedFile.name}
-              </div>
-              <button onClick={onFileCancelSelection} style={{ padding: '4px 8px', borderRadius: '4px', border: 'none', backgroundColor: '#ef4444', color: '#fff', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>✕</button>
-            </div>
-            <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '8px' }}>
-              {(selectedFile.size / 1024).toFixed(2)} KB · {selectedFile.type || 'Unknown type'}
-            </div>
-            {filePreviewUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={filePreviewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '6px', marginBottom: '8px', objectFit: 'contain' }} />
-            )}
-            <Button variant="green" fullWidth onClick={onFileSend} disabled={uploadingFile || !effectivelyOnline}>
-              {uploadingFile ? 'Sending...' : 'Send File'}
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Voice Message ────────────────────────────── */}
-      <div style={{ marginBottom: '20px' }}>
-        <SectionTitle icon="fas fa-microphone" label="Voice Message" />
-        <VoiceRecorder
-          onRecordingComplete={onVoiceRecording}
-          disabled={!effectivelyOnline || uploadingFile || !testRecipientId}
-          onRecordingStart={onVoiceRecordingStart}
-          onRecordingStop={onVoiceRecordingStop}
-        />
-        {!testRecipientId && (
-          <div style={{ marginTop: '8px', padding: '8px', borderRadius: '6px', fontSize: '12px', textAlign: 'center',
-            backgroundColor: isDark ? 'rgba(251,191,36,0.1)' : 'rgba(251,191,36,0.1)',
-            color: isDark ? '#fbbf24' : '#d97706',
-          }}>Select a recipient first</div>
-        )}
-      </div>
-
       {/* ── Typing Indicators ───────────────────────── */}
       <div style={{ marginBottom: '20px' }}>
         <SectionTitle icon="fas fa-keyboard" label="Typing Indicators" />
@@ -160,4 +76,3 @@ export default function LabActionControls({
     </div>
   );
 }
-

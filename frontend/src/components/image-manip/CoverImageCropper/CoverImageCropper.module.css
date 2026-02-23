@@ -53,7 +53,7 @@
   bottom: 0;
   border: 3px solid white;
   pointer-events: none;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 9999px var(--overlay-black-60);
 }
 
 .zoomControls {
@@ -87,7 +87,7 @@
   border-radius: 50%;
   background: white;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px var(--overlay-black-30);
 }
 
 .zoomSlider::-moz-range-thumb {
@@ -97,7 +97,7 @@
   background: white;
   cursor: pointer;
   border: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px var(--overlay-black-30);
 }
 
 .actions {
@@ -119,30 +119,30 @@
 }
 
 .cancelButton.dark {
-  background-color: #374151;
-  color: white;
+  background-color: var(--color-grey-800);
+  color: var(--color-white);
 }
 
 .cancelButton.light {
-  background-color: #e5e7eb;
-  color: #1f2937;
+  background-color: var(--color-grey-200);
+  color: var(--color-grey-900);
 }
 
 .uploadButton {
   composes: button;
-  color: white;
+  color: var(--color-white);
 }
 
 .uploadButton.dark {
-  background-color: #f97316;
+  background-color: var(--color-orange-500);
 }
 
 .uploadButton.light {
-  background-color: #3b82f6;
+  background-color: var(--color-blue-500);
 }
 
 .uploadButton:disabled {
-  background-color: #666;
+  background-color: var(--color-grey-disabled);
   cursor: not-allowed;
 }
 

@@ -476,6 +476,58 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
+    // ── Edit message ─────────────────────────────────────────────────────────
+    socket.on('message:edit', async (data: { messageId: string; content: string }) => {
+      try {
+        const { messageId, content } = data;
+        if (!messageId || !content?.trim()) return;
+
+        // Fetch the current message — only the sender may edit
+        const existing = await prisma.message.findUnique({
+          where: { id: messageId },
+          select: { senderId: true, recipientId: true, content: true, deletedAt: true, type: true }
+        });
+
+        if (!existing) { socket.emit('error', { message: 'Message not found' }); return; }
+        if (existing.senderId !== userId) { socket.emit('error', { message: 'Not authorised to edit this message' }); return; }
+        if (existing.deletedAt) { socket.emit('error', { message: 'Cannot edit an unsent message' }); return; }
+        if (existing.type !== 'text') { socket.emit('error', { message: 'Only text messages can be edited' }); return; }
+
+        const trimmed = content.trim();
+        const now = new Date();
+
+        // Write the audit-history row FIRST (previousContent = what it was before)
+        await (prisma as any).messageEditHistory.create({
+          data: {
+            messageId,
+            editedById: userId,
+            previousContent: existing.content,
+            editedAt: now,
+          }
+        });
+
+        // Update the message
+        await prisma.message.update({
+          where: { id: messageId },
+          data: { content: trimmed, edited: true, editedAt: now }
+        });
+
+        // Notify both sender and recipient
+        const payload = {
+          messageId,
+          content: trimmed,
+          editedAt: now.toISOString(),
+        };
+        io.to(`user:${existing.senderId}`).emit('message:edited', payload);
+        io.to(`user:${existing.recipientId}`).emit('message:edited', payload);
+
+        console.log(`✏️  Message ${messageId} edited by ${username}`);
+      } catch (error) {
+        console.error('❌ Error editing message:', error);
+        socket.emit('error', { message: 'Failed to edit message' });
+      }
+    });
+
     // ==================== TYPING INDICATORS ====================
 
     socket.on('typing:start', (data: { recipientId?: string; groupId?: string }) => {

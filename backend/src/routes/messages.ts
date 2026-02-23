@@ -92,6 +92,8 @@ router.get('/history', authenticateToken as any, async (req: AuthenticatedReques
       recipientId: m.recipientId,
       content: m.deletedAt ? '' : m.content,
       unsent: !!m.deletedAt,
+      edited: !m.deletedAt && !!m.edited,
+      editedAt: !m.deletedAt && m.editedAt ? m.editedAt : null,
       type: m.deletedAt ? 'text' : m.type,
       status: m.status,
       isRead: m.isRead,
@@ -136,6 +138,48 @@ router.get('/conversations', (req, res) => {
   // - Include last message preview
   // - Include unread count
   res.status(501).json({ message: 'Get conversations not implemented yet' });
+});
+
+// GET /api/messages/:id/edits - Retrieve full edit-history audit trail (both parties, legal record)
+router.get('/:id/edits', authenticateToken as any, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Only the sender or recipient may view the history
+    const message = await prisma.message.findUnique({
+      where: { id },
+      select: { senderId: true, recipientId: true }
+    });
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+    if (message.senderId !== userId && message.recipientId !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const history = await (prisma as any).messageEditHistory.findMany({
+      where: { messageId: id },
+      orderBy: { editedAt: 'asc' },
+      include: { editedBy: { select: { id: true, username: true, displayName: true } } }
+    });
+
+    res.json({
+      messageId: id,
+      edits: history.map((h: any) => ({
+        id: h.id,
+        previousContent: h.previousContent,
+        editedAt: h.editedAt,
+        editedBy: {
+          id: h.editedBy.id,
+          username: h.editedBy.username,
+          displayName: h.editedBy.displayName ?? null,
+        }
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching edit history:', error);
+    res.status(500).json({ error: 'Failed to fetch edit history' });
+  }
 });
 
 // PATCH /api/messages/:id/waveform - Update waveform after client-side analysis
