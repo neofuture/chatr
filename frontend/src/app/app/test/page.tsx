@@ -9,6 +9,7 @@ import ConversationsList from '@/components/test/ConversationsList';
 import ConversationsColumn from '@/components/test/ConversationsColumn';
 import SystemLogsModal from '@/components/test/SystemLogsModal';
 import DragHandle from '@/components/test/DragHandle';
+import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 
 const MIN_W = 220;
 const MAX_W = 700;
@@ -240,6 +241,7 @@ export default function TestPage() {
       backgroundColor: isDark ? '#0f172a' : '#f8fafc', overflow: 'hidden',
       userSelect: anyDragging ? 'none' : 'auto',
     }}>
+
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
         {/* ── Col 1: Test Controls ────────────────────── */}

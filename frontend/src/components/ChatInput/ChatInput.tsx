@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
+import styles from './ChatInput.module.css';
 
 interface ChatInputProps {
   recipientId: string;
@@ -12,13 +12,11 @@ interface ChatInputProps {
 
 export default function ChatInput({ recipientId, onMessageSent }: ChatInputProps) {
   const { socket, connected } = useWebSocket();
-  const { theme } = useTheme();
   const { showToast } = useToast();
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isDark = theme === 'dark';
 
   // Auto-resize textarea
   useEffect(() => {
@@ -131,14 +129,7 @@ export default function ChatInput({ recipientId, onMessageSent }: ChatInputProps
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-end',
-      gap: '12px',
-      padding: '16px 20px',
-      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.9)',
-      borderTop: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-    }}>
+    <div className={styles.container}>
       {/* Text Input */}
       <textarea
         ref={textareaRef}
@@ -147,84 +138,22 @@ export default function ChatInput({ recipientId, onMessageSent }: ChatInputProps
         onKeyDown={handleKeyPress}
         placeholder="Type a message..."
         disabled={sending || !connected}
-        style={{
-          flex: 1,
-          minHeight: '40px',
-          maxHeight: '120px',
-          padding: '10px 16px',
-          borderRadius: '20px',
-          border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}`,
-          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#ffffff',
-          color: isDark ? '#ffffff' : '#000000',
-          fontSize: '15px',
-          fontFamily: 'inherit',
-          resize: 'none',
-          outline: 'none',
-          transition: 'border-color 0.2s',
-        }}
-        onFocus={(e) => {
-          e.target.style.borderColor = '#f97316';
-        }}
-        onBlur={(e) => {
-          e.target.style.borderColor = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
-          handleTypingStop();
-        }}
+        className={styles.textarea}
+        onBlur={handleTypingStop}
       />
 
       {/* Send Button */}
       <button
         onClick={handleSendMessage}
         disabled={!message.trim() || sending || !connected}
-        style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          border: 'none',
-          backgroundColor: (!message.trim() || sending || !connected)
-            ? (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)')
-            : '#f97316',
-          color: '#ffffff',
-          fontSize: '18px',
-          cursor: (!message.trim() || sending || !connected) ? 'not-allowed' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.2s',
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) => {
-          if (message.trim() && !sending && connected) {
-            e.currentTarget.style.backgroundColor = '#ea580c';
-            e.currentTarget.style.transform = 'scale(1.05)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (message.trim() && !sending && connected) {
-            e.currentTarget.style.backgroundColor = '#f97316';
-            e.currentTarget.style.transform = 'scale(1)';
-          }
-        }}
+        className={styles.sendBtn}
       >
         {sending ? (
-          <div style={{
-            width: '16px',
-            height: '16px',
-            border: '2px solid rgba(255, 255, 255, 0.3)',
-            borderTopColor: '#ffffff',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }} />
+          <div className={styles.spinner} />
         ) : (
           <i className="fas fa-paper-plane"></i>
         )}
       </button>
-
-      {/* Add keyframe animation for spinner */}
-      <style jsx>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

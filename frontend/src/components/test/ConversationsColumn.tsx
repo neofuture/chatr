@@ -1,6 +1,7 @@
 'use client';
 
 import ChatView from '@/components/messaging/ChatView';
+import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 import type { Message } from '@/components/MessageBubble';
 
 interface Props {
@@ -60,7 +61,9 @@ export default function ConversationsColumn({
             }}>{messageQueue.length} queued</span>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          {/* Theme toggle */}
+          <ThemeToggle />
           {/* System logs button */}
           <button onClick={onOpenLogs} title="System Logs" style={{
             padding: '5px 10px', borderRadius: '5px', border: 'none', cursor: 'pointer', fontSize: '12px',
