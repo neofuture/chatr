@@ -104,7 +104,7 @@ export default function ConversationsList({ isDark, availableUsers, selectedUser
             const convo = conversations[user.id];
             const unread = convo?.unreadCount ?? 0;
             const displayName = user.displayName || user.username.replace(/^@/, '');
-            const initials = displayName.slice(0, 2).toUpperCase();
+            const initials = displayName.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0].toUpperCase()).join('') || displayName.slice(0, 2).toUpperCase();
 
             // Subtitle: last message or presence
             let subtitle = '';

@@ -6,6 +6,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { type Message, type MessageReaction } from '@/components/MessageBubble';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
 import type { LogEntry, AvailableUser, PresenceStatus, PresenceInfo, ConversationSummary } from '@/components/test/types';
+import { loadCachedMessages, cacheMessages, cacheMessage, updateCachedMessage, replaceCachedMessageId } from '@/lib/messageCache';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -58,6 +59,11 @@ export function useConversation() {
   useEffect(() => { effectivelyOnlineRef.current = effectivelyOnline; }, [effectivelyOnline]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
+  // Persist selected recipient
+  useEffect(() => {
+    if (testRecipientId) localStorage.setItem('chatr:lastRecipient', testRecipientId);
+  }, [testRecipientId]);
+
   // ── Logging ──────────────────────────────────────────
   const addLog = useCallback((type: LogEntry['type'], event: string, data: any) => {
     setLogs(prev => [{ id: Date.now().toString() + Math.random(), type, event, data, timestamp: new Date() }, ...prev].slice(0, 500));
@@ -73,8 +79,71 @@ export function useConversation() {
       setCurrentUsername(user.username || '');
       setCurrentDisplayName(user.displayName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : '') || (user.username || '').replace(/^@/, ''));
       addLog('info', 'user:loaded', { userId: user.id, username: user.username, displayName: user.displayName });
+      // Restore last selected conversation
+      const lastRecipient = localStorage.getItem('chatr:lastRecipient');
+      if (lastRecipient) setTestRecipientId(lastRecipient);
     } catch (e) { addLog('error', 'user:parse-failed', { error: e }); }
   }, [addLog]);
+
+  // ── Load conversation from cache then server ─────────
+  useEffect(() => {
+    if (!currentUserId || !testRecipientId) return;
+    let cancelled = false;
+    const token = localStorage.getItem('token');
+
+    const run = async () => {
+      // 1. Show cached messages instantly
+      const cached = await loadCachedMessages(currentUserId, testRecipientId);
+      if (!cancelled && cached.length > 0) {
+        setMessages(cached);
+        addLog('info', 'cache:loaded', { count: cached.length, userId: testRecipientId });
+      }
+
+      // 2. Fetch fresh from server (requires auth)
+      if (!token) return;
+      try {
+        const res = await fetch(`${API}/api/messages/history?otherUserId=${testRecipientId}&limit=50`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const mapped: Message[] = (data.messages || []).map((m: any) => ({
+          id: m.id,
+          content: m.content,
+          senderId: m.senderId,
+          senderUsername: m.senderUsername,
+          senderDisplayName: m.senderDisplayName ?? null,
+          senderProfileImage: m.senderProfileImage ?? null,
+          recipientId: m.recipientId,
+          direction: m.senderId === currentUserId ? 'sent' : 'received',
+          status: m.status || 'sent',
+          timestamp: new Date(m.createdAt || m.timestamp),
+          type: m.type || 'text',
+          fileUrl: m.fileUrl,
+          fileName: m.fileName,
+          fileSize: m.fileSize,
+          fileType: m.fileType,
+          waveformData: m.waveform,
+          duration: m.duration,
+          reactions: m.reactions ?? [],
+          replyTo: m.replyTo ?? undefined,
+          unsent: !!m.unsent,
+        }));
+
+        if (!cancelled) {
+          setMessages(mapped);
+          // Write server response back to cache (server wins)
+          await cacheMessages(mapped, currentUserId);
+          addLog('info', 'history:loaded', { count: mapped.length, userId: testRecipientId });
+        }
+      } catch (err) {
+        addLog('error', 'history:load-failed', { error: err, userId: testRecipientId });
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [currentUserId, testRecipientId, addLog]);
 
   // ── Fetch users ──────────────────────────────────────
   useEffect(() => {
@@ -89,13 +158,18 @@ export function useConversation() {
         const data = await res.json();
         const others: AvailableUser[] = data.users
           .filter((u: any) => u.id !== currentUserId && u.emailVerified)
-          .map((u: any) => ({
-            id: u.id,
-            username: u.username,
-            displayName: u.displayName ?? null,
-            profileImage: u.profileImage ?? null,
-            email: u.email || 'No email',
-          }));
+          .map((u: any) => {
+            const fullName = u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : (u.firstName || u.lastName || null);
+            return {
+              id: u.id,
+              username: u.username,
+              firstName: u.firstName ?? null,
+              lastName: u.lastName ?? null,
+              displayName: u.displayName || fullName || null,
+              profileImage: u.profileImage ?? null,
+              email: u.email || 'No email',
+            };
+          });
         setAvailableUsers(others);
         addLog('info', 'users:loaded', { count: others.length });
         if (others.length > 0) {
@@ -169,17 +243,30 @@ export function useConversation() {
         setMessages(prev => [...prev, newMsg]);
         if (data.type !== 'audio') socket.emit('message:read', data.id);
       } else if (!testRecipientIdRef.current) {
-        // No conversation open — auto-select this sender
         setTestRecipientId(data.senderId);
         setMessages([newMsg]);
       }
+      // Always cache the received message
+      cacheMessage(newMsg, currentUserId);
     };
 
     const onSent = (data: any) => {
       addLog('received', 'message:sent', data);
       setMessages(prev => prev.map(m => {
-        if (m.recipientId === data.recipientId && m.status === 'sending') return { ...m, id: data.id || m.id, status: data.status || 'sent' };
-        if (m.id === data.id && m.status === 'sent') return { ...m, status: data.status || 'delivered' };
+        if (m.recipientId === data.recipientId && m.status === 'sending') {
+          const updated = { ...m, id: data.id || m.id, status: data.status || 'sent' };
+          // Replace temp ID with real ID in cache
+          if (data.id && data.id !== m.id) {
+            replaceCachedMessageId(m.id, data.id, { status: updated.status });
+          } else if (data.id) {
+            updateCachedMessage(data.id, { status: updated.status });
+          }
+          return updated;
+        }
+        if (m.id === data.id && m.status === 'sent') {
+          updateCachedMessage(data.id, { status: data.status || 'delivered' });
+          return { ...m, status: data.status || 'delivered' };
+        }
         return m;
       }));
     };
@@ -267,6 +354,7 @@ export function useConversation() {
             ? { ...m, reactions: (data.reactions as MessageReaction[]) ?? [] }
             : m
         ));
+        updateCachedMessage(data.messageId, { reactions: data.reactions ?? [] });
       }
     };
 
@@ -276,6 +364,7 @@ export function useConversation() {
         setMessages(prev => prev.map(m =>
           m.id === data.messageId ? { ...m, unsent: true, reactions: [] } : m
         ));
+        updateCachedMessage(data.messageId, { unsent: true, reactions: [] });
       }
     };
 
@@ -365,6 +454,7 @@ export function useConversation() {
       replyTo: replyToSnapshot,
     };
     setMessages(prev => [...prev, msg]);
+    cacheMessage(msg, currentUserId);
     setReplyingTo(null);
     // Update conversation summary
     setConversations(prev => ({
@@ -661,45 +751,9 @@ export function useConversation() {
   };
   const handleRecipientChange = (id: string) => {
     setTestRecipientId(id);
-    setMessages([]);
-    // Clear unread for this conversation
+    setMessages([]); // cleared immediately; useEffect loads cache then server
     setConversations(prev => prev[id] ? { ...prev, [id]: { ...prev[id], unreadCount: 0 } } : prev);
     addLog('info', 'recipient:selected', { userId: id });
-    // Load message history
-    const token = localStorage.getItem('token');
-    if (!token || !id) return;
-    fetch(`${API}/api/messages/history?otherUserId=${id}&limit=50`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(data => {
-        const currentId = JSON.parse(localStorage.getItem('user') || '{}').id || '';
-        const mapped: Message[] = (data.messages || []).map((m: any) => ({
-          id: m.id,
-          content: m.content,
-          senderId: m.senderId,
-          senderUsername: m.senderUsername,
-          recipientId: m.recipientId,
-          direction: m.senderId === currentId ? 'sent' : 'received',
-          status: m.status || 'sent',
-          timestamp: new Date(m.createdAt || m.timestamp),
-          type: m.type || 'text',
-          fileUrl: m.fileUrl,
-          fileName: m.fileName,
-          fileSize: m.fileSize,
-          fileType: m.fileType,
-          waveformData: m.waveform,
-          duration: m.duration,
-          reactions: m.reactions ?? [],
-          replyTo: m.replyTo ?? undefined,
-          senderProfileImage: m.senderProfileImage ?? null,
-          senderDisplayName: m.senderDisplayName ?? null,
-          unsent: !!m.unsent,
-        }));
-        setMessages(mapped);
-        addLog('info', 'history:loaded', { count: mapped.length, userId: id });
-      })
-      .catch(err => addLog('error', 'history:load-failed', { error: err, userId: id }));
   };
 
   return {

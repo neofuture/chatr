@@ -58,34 +58,29 @@ export default function ChatView({
   const overlayRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div style={{
-      flex: 1, minHeight: 0,
-      display: 'flex', flexDirection: 'column', overflow: 'hidden',
-      position: 'relative',
-    }}>
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+
       {/* Header */}
       {(showClearButton || queuedCount > 0) && (
         <div style={{
-          minHeight: '48px', flexShrink: 0, padding: '8px 20px',
+          minHeight: 48, flexShrink: 0, padding: '8px 20px',
           backgroundColor: isDark ? '#1e293b' : '#ffffff',
           borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div>
-            <span style={{ fontWeight: '600' }}><i className="fas fa-comments" /> Messages</span>
-            <span style={{ marginLeft: '8px', fontSize: '14px', opacity: 0.7 }}>({messages.length})</span>
+            <span style={{ fontWeight: 600 }}><i className="fas fa-comments" /> Messages</span>
+            <span style={{ marginLeft: 8, fontSize: 14, opacity: 0.7 }}>({messages.length})</span>
             {queuedCount > 0 && (
-              <span style={{
-                marginLeft: '8px', fontSize: '12px', padding: '2px 8px',
-                backgroundColor: '#f59e0b', color: '#fff', borderRadius: '12px', fontWeight: '600',
-              }}>{queuedCount} queued</span>
+              <span style={{ marginLeft: 8, fontSize: 12, padding: '2px 8px', backgroundColor: '#f59e0b', color: '#fff', borderRadius: 12, fontWeight: 600 }}>
+                {queuedCount} queued
+              </span>
             )}
           </div>
           {showClearButton && onClear && (
-            <button onClick={onClear} style={{
-              padding: '6px 12px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-              backgroundColor: '#ef4444', color: '#fff', fontSize: '14px',
-            }}><i className="fas fa-trash" /> Clear</button>
+            <button onClick={onClear} style={{ padding: '6px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', backgroundColor: '#ef4444', color: '#fff', fontSize: 14 }}>
+              <i className="fas fa-trash" /> Clear
+            </button>
           )}
         </div>
       )}
@@ -94,6 +89,7 @@ export default function ChatView({
       <div
         ref={scrollRef}
         data-chat-scroll
+        data-messages-scroll
         style={{
           flex: '1 1 0', height: 0, overflowY: 'auto', overflowX: 'hidden',
           padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px',
@@ -103,8 +99,8 @@ export default function ChatView({
         {messages.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', opacity: 0.6 }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}><i className="fas fa-comments" /></div>
-              <div style={{ fontSize: '14px' }}>No messages yet</div>
+              <div style={{ fontSize: 32, marginBottom: 8 }}><i className="fas fa-comments" /></div>
+              <div style={{ fontSize: 14 }}>No messages yet</div>
             </div>
           </div>
         ) : (
@@ -127,20 +123,10 @@ export default function ChatView({
         )}
       </div>
 
-      {/*
-        Overlay target — zero padding, sits exactly over the message list.
-        Portal renders into here so it's clipped to the chat pane with no offset issues.
-        pointer-events:none by default; the context menu overlay re-enables them on itself.
-      */}
+      {/* Overlay — portal target for context menu, must be position:absolute over scroll div */}
       <div
         ref={overlayRef}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          overflow: 'hidden',
-          zIndex: 100,
-        }}
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 100 }}
       />
     </div>
   );

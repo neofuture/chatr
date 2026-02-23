@@ -57,6 +57,7 @@ interface MessageBubbleProps {
   onReaction?: (messageId: string, emoji: string) => void;
   onReply?: (message: Message) => void;
   onUnsend?: (messageId: string) => void;
+  onReplyQuoteClick?: (messageId: string) => void;
   /** The fixed-height scroll container — the overlay will portal into this */
   overlayContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -287,6 +288,7 @@ export default function MessageBubble({
   onReaction,
   onReply,
   onUnsend,
+  onReplyQuoteClick,
   overlayContainerRef,
 }: MessageBubbleProps) {
   const { theme } = useTheme();
@@ -296,7 +298,21 @@ export default function MessageBubble({
   const { speak, speakingId, supported: ttsSupported } = useTTS();
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scrollToMessage = (messageId: string) => {
+    // Find the message element within the scroll container (or document)
+    const container = overlayContainerRef?.current ?? endRef.current?.closest('[data-messages-scroll]') ?? document.body;
+    const el = (container as HTMLElement).querySelector?.(`[data-message-id="${messageId}"]`) as HTMLElement | null
+      ?? document.querySelector(`[data-message-id="${messageId}"]`) as HTMLElement | null;
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedMessageId(messageId);
+    setTimeout(() => setHighlightedMessageId(null), 1800);
+    // Also call parent callback if provided
+    if (onReplyQuoteClick) onReplyQuoteClick(messageId);
+  };
   const longPressTarget = useRef<HTMLElement | null>(null);
 
   const getStatusInfo = (status: Message['status'], type?: Message['type']) => {
@@ -391,13 +407,20 @@ export default function MessageBubble({
           : '8px';                           // last in group / solo
 
         return (
-          <div key={msg.id} className={styles.messageWrapper}
+          <div key={msg.id}
+            data-message-id={msg.id}
+            className={styles.messageWrapper}
             style={{
               alignItems: isSent ? 'flex-end' : 'flex-start',
               marginBottom: bottomMargin,
               flexDirection: 'row',
               display: 'flex',
               justifyContent: isSent ? 'flex-end' : 'flex-start',
+              borderRadius: '8px',
+              transition: 'background-color 0.3s ease',
+              backgroundColor: highlightedMessageId === msg.id
+                ? 'rgba(147, 197, 253, 0.18)'
+                : 'transparent',
             }}>
 
             {/* Received: avatar column (left side) */}
@@ -425,7 +448,7 @@ export default function MessageBubble({
             )}
 
             {/* Bubble column */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: isSent ? 'flex-end' : 'flex-start', maxWidth: msg.type === 'audio' ? 'none' : msg.type === 'image' ? '300px' : '70%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: isSent ? 'flex-end' : 'flex-start', maxWidth: msg.type === 'audio' ? 'none' : msg.type === 'image' ? '300px' : '70%', minWidth: 0 }}>
 
               {/* Sender name — only on first bubble in a received group */}
               {!isSent && !isGroupedWithPrev && (
@@ -443,7 +466,10 @@ export default function MessageBubble({
                   marginBottom: '2px',
                   paddingLeft: isSent ? '0' : '4px',
                   paddingRight: isSent ? '4px' : '0',
-                }}>
+                  cursor: 'pointer',
+                }}
+                  onClick={() => scrollToMessage(msg.replyTo!.id)}
+                >
                   <div style={{
                     display: 'inline-flex',
                     alignItems: 'stretch',
@@ -452,7 +478,11 @@ export default function MessageBubble({
                     backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                     border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
                     maxWidth: '100%',
-                  }}>
+                    transition: 'background-color 0.15s',
+                  }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.backgroundColor = isDark ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.1)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
+                  >
                     {/* Accent bar */}
                     <div style={{
                       width: '3px',
@@ -482,6 +512,7 @@ export default function MessageBubble({
                               {Math.floor(msg.replyTo.duration / 60)}:{String(Math.round(msg.replyTo.duration % 60)).padStart(2, '0')}
                             </span>
                           )}
+                          <i className="fas fa-play-circle" style={{ fontSize: '11px', opacity: 0.5, marginLeft: '2px' }} />
                         </div>
                       ) : msg.replyTo.type === 'image' ? (
                         <div style={{

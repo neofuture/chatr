@@ -93,6 +93,10 @@ router.get('/', authenticateToken, async (req, res) => {
         email: true,
         emailVerified: true,
         createdAt: true,
+        displayName: true,
+        firstName: true,
+        lastName: true,
+        profileImage: true,
       },
       orderBy: {
         username: 'asc',

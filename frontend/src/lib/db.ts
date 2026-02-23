@@ -46,6 +46,30 @@ export interface CoverImage {
   thumbnail?: Blob;        // Optional smaller thumbnail version
 }
 
+// Full message cache for conversations
+export interface CachedMessage {
+  id: string;
+  conversationKey: string;  // `${userId}:${otherUserId}` — sorted so A:B === B:A
+  senderId: string;
+  senderUsername: string;
+  senderDisplayName: string | null;
+  senderProfileImage: string | null;
+  recipientId: string;
+  content: string;
+  type: string;
+  status: string;
+  timestamp: number;        // epoch ms — easier to index/sort than Date
+  fileUrl: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  fileType: string | null;
+  waveformData: number[] | null;
+  duration: number | null;
+  reactions: any[];
+  replyTo: any | null;
+  unsent: boolean;
+}
+
 // Dexie database class
 export class ChatrDB extends Dexie {
   messages!: Table<OfflineMessage>;
@@ -53,6 +77,7 @@ export class ChatrDB extends Dexie {
   groups!: Table<OfflineGroup>;
   profileImages!: Table<ProfileImage>;
   coverImages!: Table<CoverImage>;
+  cachedMessages!: Table<CachedMessage>;
 
   constructor() {
     super('chatr');
@@ -78,6 +103,16 @@ export class ChatrDB extends Dexie {
       groups: 'id, name',
       profileImages: 'userId, synced, uploadedAt',
       coverImages: 'userId, synced, uploadedAt',
+    });
+
+    // Version 4 — add cachedMessages for conversation persistence
+    this.version(4).stores({
+      messages: 'id, senderId, recipientId, groupId, createdAt, synced',
+      users: 'id, username',
+      groups: 'id, name',
+      profileImages: 'userId, synced, uploadedAt',
+      coverImages: 'userId, synced, uploadedAt',
+      cachedMessages: 'id, conversationKey, timestamp',
     });
   }
 }
