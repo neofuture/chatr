@@ -4,20 +4,20 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
+import { useLog } from '@/contexts/LogContext';
 import { type Message, type MessageReaction } from '@/components/MessageBubble';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
-import type { LogEntry, AvailableUser, PresenceStatus, PresenceInfo, ConversationSummary } from '@/components/test/types';
+import type { AvailableUser, PresenceStatus, PresenceInfo, ConversationSummary } from '@/components/test/types';
 import { loadCachedMessages, cacheMessages, cacheMessage, updateCachedMessage, replaceCachedMessageId } from '@/lib/messageCache';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
 export function useConversation() {
   const { socket, connected, connecting, disconnect, reconnect } = useWebSocket();
   const { showToast } = useToast();
   const { settings, setSetting } = useUserSettings();
+  const { logs, addLog, clearLogs, copyLogs } = useLog();
 
   // ── State ────────────────────────────────────────────
-  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageQueue, setMessageQueue] = useState<Message[]>([]);
   const [testRecipientId, setTestRecipientId] = useState('');
@@ -73,10 +73,6 @@ export function useConversation() {
     if (testRecipientId) localStorage.setItem('chatr:lastRecipient', testRecipientId);
   }, [testRecipientId]);
 
-  // ── Logging ──────────────────────────────────────────
-  const addLog = useCallback((type: LogEntry['type'], event: string, data: any) => {
-    setLogs(prev => [{ id: Date.now().toString() + Math.random(), type, event, data, timestamp: new Date() }, ...prev].slice(0, 500));
-  }, []);
 
   // ── Load user ────────────────────────────────────────
   useEffect(() => {
@@ -895,12 +891,7 @@ export function useConversation() {
   }, [handleStartEdit]);
 
   // ── Log helpers ──────────────────────────────────────
-  const clearLogs = () => { setLogs([]); addLog('info', 'logs:cleared', {}); };
   const clearMessages = () => { setMessages([]); addLog('info', 'messages:cleared', {}); };
-  const copyLogs = () => {
-    navigator.clipboard.writeText(logs.map(l => `[${l.timestamp.toLocaleTimeString()}] [${l.type.toUpperCase()}] ${l.event}: ${JSON.stringify(l.data)}`).join('\n'));
-    showToast('Logs copied', 'success');
-  };
   const handleManualOfflineChange = (val: boolean) => {
     setManualOffline(val);
     if (val) {

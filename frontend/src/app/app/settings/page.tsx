@@ -4,9 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
+import { usePanels } from '@/contexts/PanelContext';
+import { useLog } from '@/contexts/LogContext';
 import { version } from '@/version';
 import ProfileImageUploader from '@/components/image-manip/ProfileImageUploader/ProfileImageUploader';
 import CoverImageUploader from '@/components/image-manip/CoverImageUploader/CoverImageUploader';
+import LogViewerPanel from '@/components/LogViewerPanel/LogViewerPanel';
 import styles from './settings.module.css';
 
 function getCurrentUserId(): string {
@@ -59,6 +62,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { settings, setSetting } = useUserSettings();
+  const { openPanel } = usePanels();
+  const { logs } = useLog();
   const [userId] = useState<string>(getCurrentUserId);
 
   const isDark = theme === 'dark';
@@ -67,6 +72,10 @@ export default function SettingsPage() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     router.push('/');
+  };
+
+  const handleOpenLogs = () => {
+    openPanel('log-viewer', <LogViewerPanel />, 'System Logs', 'left', undefined, undefined, true);
   };
 
   return (
@@ -128,6 +137,20 @@ export default function SettingsPage() {
             <span className={styles.rowDesc}>App version</span>
             <span className={styles.versionBadge}>{version}</span>
           </div>
+        </SettingsSection>
+
+        {/* ── Developer ── */}
+        <SettingsSection title="Developer">
+          <SettingsRow
+            icon="fad fa-list-alt"
+            label="System logs"
+            description={`${logs.length} event${logs.length !== 1 ? 's' : ''} recorded`}
+            control={
+              <button className={styles.btnChevron} onClick={handleOpenLogs}>
+                <i className="fas fa-chevron-right" />
+              </button>
+            }
+          />
         </SettingsSection>
 
         {/* ── Account ── */}

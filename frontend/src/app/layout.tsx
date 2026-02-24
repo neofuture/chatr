@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import { PresenceProvider } from '@/contexts/PresenceContext';
 import { UserSettingsProvider } from '@/contexts/UserSettingsContext';
+import { LogProvider } from '@/contexts/LogContext';
 import PanelContainer from '@/components/panels/PanelContainer/PanelContainer';
 import ToastContainer from '@/components/ToastContainer/ToastContainer';
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog/ConfirmationDialog';
@@ -69,6 +70,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <RoutePreloader />
         <ThemeProvider>
+          <LogProvider>
           <UserSettingsProvider>
           <WebSocketProvider>
             <PresenceProvider>
@@ -85,6 +87,7 @@ export default function RootLayout({
             </PresenceProvider>
           </WebSocketProvider>
           </UserSettingsProvider>
+          </LogProvider>
         </ThemeProvider>
       </body>
     </html>
