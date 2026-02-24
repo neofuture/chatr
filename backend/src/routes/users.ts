@@ -110,6 +110,113 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/users/search?q=query - Search users by username/displayName
+router.get('/search', authenticateToken as any, async (req: any, res: any) => {
+  try {
+    const currentUserId = req.user?.userId;
+    const q = (req.query.q as string || '').trim();
+
+    if (!q) return res.json({ users: [] });
+
+    const users = await prisma.user.findMany({
+      where: {
+        emailVerified: true,
+        id: { not: currentUserId },
+        OR: [
+          { username:    { contains: q, mode: 'insensitive' } },
+          { displayName: { contains: q, mode: 'insensitive' } },
+          { firstName:   { contains: q, mode: 'insensitive' } },
+          { lastName:    { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        firstName: true,
+        lastName: true,
+        profileImage: true,
+        lastSeen: true,
+      },
+      take: 30,
+    });
+
+    res.json({ users });
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/users/conversations - All users the current user has messaged, with last message + unread count
+// Also returns all other verified users (so you can start new conversations)
+router.get('/conversations', authenticateToken as any, async (req: any, res: any) => {
+  try {
+    const currentUserId = req.user?.userId;
+    if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Get all verified users except self
+    const allUsers = await prisma.user.findMany({
+      where: { emailVerified: true, id: { not: currentUserId } },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        firstName: true,
+        lastName: true,
+        profileImage: true,
+        lastSeen: true,
+      },
+    });
+
+    // For each user, get the most recent message and unread count
+    const withMessages = await Promise.all(
+      allUsers.map(async (user) => {
+        const lastMessage = await prisma.message.findFirst({
+          where: {
+            deletedAt: null,
+            OR: [
+              { senderId: currentUserId, recipientId: user.id },
+              { senderId: user.id,       recipientId: currentUserId },
+            ],
+          },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            content: true,
+            type: true,
+            createdAt: true,
+            senderId: true,
+            isRead: true,
+            fileType: true,
+          },
+        });
+
+        const unreadCount = await prisma.message.count({
+          where: {
+            senderId: user.id,
+            recipientId: currentUserId,
+            isRead: false,
+            deletedAt: null,
+          },
+        });
+
+        return {
+          ...user,
+          lastMessage: lastMessage ?? null,
+          unreadCount,
+          lastMessageAt: lastMessage?.createdAt ?? null,
+        };
+      })
+    );
+
+    res.json({ conversations: withMessages });
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../../uploads/profiles');
 if (!fs.existsSync(uploadsDir)) {
@@ -297,22 +404,29 @@ router.get('/suggest-username', async (req, res) => {
   }
 });
 
-// GET /api/users/search?q=username - Search users by username
-router.get('/search', (req, res) => {
-  // TODO: Implement user search
-  // - Search by @username
-  // - Return paginated results
-  // - Exclude current user
-  res.status(501).json({ message: 'User search not implemented yet' });
-});
-
-// GET /api/users/:username - Get user profile
-router.get('/:username', (req, res) => {
-  // TODO: Implement get user profile
-  // - Get user by username
-  // - Return public profile info
-  // - Include online status
-  res.status(501).json({ message: 'Get user profile not implemented yet' });
+// GET /api/users/:username - Get user profile by username
+router.get('/:username', authenticateToken as any, async (req: any, res: any) => {
+  try {
+    const { username } = req.params;
+    // Guard against catching named routes
+    if (['search', 'conversations', 'me', 'check-username', 'suggest-username'].includes(username)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: {
+        id: true, username: true, displayName: true,
+        firstName: true, lastName: true,
+        profileImage: true, coverImage: true,
+        lastSeen: true, emailVerified: true,
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user });
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 /**

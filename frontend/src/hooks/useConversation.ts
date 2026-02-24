@@ -175,6 +175,33 @@ export function useConversation() {
           });
         setAvailableUsers(others);
         addLog('info', 'users:loaded', { count: others.length });
+
+        // Pre-populate conversation summaries so the list sorts correctly on load
+        try {
+          const convRes = await fetch(`${API}/api/users/conversations`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (convRes.ok) {
+            const convData = await convRes.json();
+            const summaries: Record<string, any> = {};
+            (convData.conversations || []).forEach((c: any) => {
+              if (c.lastMessage) {
+                summaries[c.id] = {
+                  userId: c.id,
+                  lastMessage: c.lastMessage.content || (c.lastMessage.type === 'audio' ? '🎤 Voice message' : c.lastMessage.type === 'image' ? '📷 Image' : '📎 File'),
+                  lastMessageAt: new Date(c.lastMessageAt),
+                  unreadCount: c.unreadCount ?? 0,
+                  lastSenderId: c.lastMessage.senderId,
+                };
+              }
+            });
+            setConversations(summaries);
+            addLog('info', 'conversations:preloaded', { count: Object.keys(summaries).length });
+          }
+        } catch (e) {
+          addLog('error', 'conversations:preload-error', { error: e });
+        }
+
         if (others.length > 0) {
           setTestRecipientId(prev => prev || others[0].id);
           // Request initial presence for all users
@@ -282,10 +309,15 @@ export function useConversation() {
     const onTyping = (data: any) => {
       addLog('received', 'typing:status', data);
       if (data.userId !== testRecipientId) return;
-      setIsRecipientTyping(data.isTyping);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      if (data.isTyping) typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 3000);
-      else if (ghostTypingEnabled) setRecipientGhostText('');
+      if (data.isTyping) {
+        setIsRecipientTyping(true);
+        // Fallback: clear after 6s if no further events arrive (heartbeat is every 2s)
+        typingTimeoutRef.current = setTimeout(() => setIsRecipientTyping(false), 6000);
+      } else {
+        setIsRecipientTyping(false);
+        if (ghostTypingEnabled) setRecipientGhostText('');
+      }
     };
 
     const onGhost = (data: any) => {

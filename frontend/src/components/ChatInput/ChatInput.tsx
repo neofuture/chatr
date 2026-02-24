@@ -16,7 +16,9 @@ export default function ChatInput({ recipientId, onMessageSent }: ChatInputProps
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef   = useRef<NodeJS.Timeout | null>(null);
+  const typingHeartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef        = useRef(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -31,21 +33,31 @@ export default function ChatInput({ recipientId, onMessageSent }: ChatInputProps
     if (!socket || !connected) return;
 
     try {
-      socket.emit('typing:start', { recipientId });
+      // Only emit typing:start if we weren't already typing (avoids redundant events)
+      if (!isTypingRef.current) {
+        socket.emit('typing:start', { recipientId });
+        isTypingRef.current = true;
 
-      // Clear existing timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
+        // Heartbeat: re-emit typing:start every 2s so the receiver never times out
+        // while the user is actively typing
+        const scheduleHeartbeat = () => {
+          typingHeartbeatRef.current = setTimeout(() => {
+            if (!isTypingRef.current) return;
+            try { socket.emit('typing:start', { recipientId }); } catch { /* ignore */ }
+            scheduleHeartbeat();
+          }, 2000);
+        };
+        scheduleHeartbeat();
       }
 
-      // Auto-stop after 3 seconds
+      // (Re-)arm the inactivity stop — 3s of no keystrokes stops the indicator
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
-        try {
-          socket.emit('typing:stop', { recipientId });
-        } catch (err) {
-          console.warn('⚠️  Failed to emit typing:stop', err);
-        }
+        isTypingRef.current = false;
+        if (typingHeartbeatRef.current) clearTimeout(typingHeartbeatRef.current);
+        try { socket.emit('typing:stop', { recipientId }); } catch { /* ignore */ }
       }, 3000);
+
     } catch (error) {
       console.warn('⚠️  Failed to emit typing:start', error);
     }
@@ -54,9 +66,9 @@ export default function ChatInput({ recipientId, onMessageSent }: ChatInputProps
   const handleTypingStop = () => {
     if (!socket || !connected) return;
 
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    isTypingRef.current = false;
+    if (typingTimeoutRef.current)   clearTimeout(typingTimeoutRef.current);
+    if (typingHeartbeatRef.current) clearTimeout(typingHeartbeatRef.current);
 
     try {
       socket.emit('typing:stop', { recipientId });

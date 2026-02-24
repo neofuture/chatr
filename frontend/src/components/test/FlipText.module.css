@@ -1,0 +1,26 @@
+@keyframes rolodex-out {
+  0%   { transform: rotateX(0deg);   opacity: 1; }
+  100% { transform: rotateX(90deg);  opacity: 0; }
+}
+
+@keyframes rolodex-in {
+  0%   { transform: rotateX(-90deg); opacity: 0; }
+  100% { transform: rotateX(0deg);   opacity: 1; }
+}
+
+.out {
+  animation: rolodex-out 0.25s ease-in forwards;
+  transform-origin: center bottom;
+}
+
+.in {
+  animation: rolodex-in 0.25s ease-out forwards;
+  transform-origin: center bottom;
+}
+
+.text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+

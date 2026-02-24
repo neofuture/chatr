@@ -97,21 +97,35 @@ export default function ChatView({
 
   const isActive = isRecipientTyping || isRecipientRecording || !!recipientGhostText;
 
-  // Scroll to reveal indicator when it appears; scroll back when it disappears
+  // Only scroll for the indicator if we actually scrolled to show it
+  const scrolledForIndicator = useRef(false);
+
+  // Scroll to reveal indicator only if user is near the bottom already
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
 
     if (isActive && !wasActiveRef.current) {
       wasActiveRef.current = true;
-      setTimeout(() => {
-        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-      }, 32);
+      // Only scroll if within 200px of the bottom — user is effectively at the bottom
+      const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (distFromBottom <= 20) {
+        scrolledForIndicator.current = true;
+        setTimeout(() => {
+          el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        }, 32);
+      } else {
+        scrolledForIndicator.current = false;
+      }
     } else if (!isActive && wasActiveRef.current) {
       wasActiveRef.current = false;
-      setTimeout(() => {
-        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-      }, 300);
+      // Only scroll back if we scrolled to show the indicator in the first place
+      if (scrolledForIndicator.current) {
+        scrolledForIndicator.current = false;
+        setTimeout(() => {
+          el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        }, 300);
+      }
     }
   }, [isActive]);
 

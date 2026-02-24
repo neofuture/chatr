@@ -14,7 +14,8 @@
     "test:export": "node src/scripts/export-test-results.js",
     "cleanup-images": "node src/scripts/cleanup-images.js",
     "generate-docs": "node src/scripts/generate-api-docs.js",
-    "debug-auth": "node src/scripts/debug-websocket-auth.js"
+    "debug-auth": "node src/scripts/debug-websocket-auth.js",
+    "seed:users": "ts-node --project tsconfig.seed.json prisma/seed-test-users.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.995.0",
