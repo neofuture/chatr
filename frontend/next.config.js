@@ -7,10 +7,9 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   outputFileTracingRoot: path.join(__dirname, '../'),
-  experimental: {
-    outputFileTracingRoot: path.join(__dirname, '../'),
-  },
 }
 
 module.exports = nextConfig
+
+
 
