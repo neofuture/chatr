@@ -66,6 +66,34 @@ interface MessageBubbleProps {
 
 const REACTIONS = ['❤️', '😂', '😯', '😢', '😡', '👍'];
 
+// ─── Emoji-only detection ─────────────────────────────────────────────────────
+// Returns the number of emojis if the string contains ONLY 1–3 emojis (and nothing else).
+// Returns 0 otherwise.
+// Matches emoji sequences including ZWJ sequences, variation selectors, skin tones, flags
+const EMOJI_REGEX = /(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:\uFE0F|\uFE0E)?(?:[\u{1F3FB}-\u{1F3FF}])?(?:\u200D(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:\uFE0F)?(?:[\u{1F3FB}-\u{1F3FF}])?)*|[\u{1F1E0}-\u{1F1FF}]{2}/gu;
+
+function getEmojiOnlyCount(text: string): 0 | 1 | 2 | 3 {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  // Use a simple approach: match all grapheme clusters that are emoji
+  // and check the remainder is empty
+  const matches = Array.from(trimmed.matchAll(EMOJI_REGEX));
+  if (matches.length === 0 || matches.length > 3) return 0;
+  // Strip matched emojis + ZWJ + variation selector chars — nothing should remain
+  const stripped = trimmed
+    .replace(EMOJI_REGEX, '')
+    .replace(/[\u200d\ufe0f\u20e3\u{1F3FB}-\u{1F3FF}]/gu, '')
+    .trim();
+  if (stripped.length > 0) return 0;
+  return matches.length as 1 | 2 | 3;
+}
+
+const EMOJI_FONT_SIZE: Record<1 | 2 | 3, string> = {
+  1: '4em',
+  2: '3em',
+  3: '2em',
+};
+
 interface ContextMenuState {
   message: Message;
   isSent: boolean;
@@ -520,7 +548,51 @@ export default function MessageBubble({
                       {isSent ? 'You unsent this message' : `${senderDisplayName} unsent this message`}
                     </span>
                   </div>
-                ) : (
+                ) : (() => {
+                  // ── Emoji-only naked display (1–3 emojis, text type only) ──
+                  const emojiCount = (!msg.type || msg.type === 'text') && !msg.replyTo
+                    ? getEmojiOnlyCount(msg.content)
+                    : 0;
+
+                  if (emojiCount > 0) {
+                    return (
+                      <div
+                        className={`${styles.emojiOnlyBubble} ${isSent ? styles.emojiOnlySent : styles.emojiOnlyReceived}`}
+                        tabIndex={0}
+                        role="group"
+                        aria-label="Message options: hold or press Enter"
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMenu(msg, isSent, radiusClass, bubbleToneClass); } }}
+                        onContextMenu={e => { e.preventDefault(); openMenu(msg, isSent, radiusClass, bubbleToneClass); }}
+                        onTouchStart={e => startLongPress(e, msg, isSent, radiusClass, bubbleToneClass)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchMove}
+                        onMouseDown={e => { if (e.button === 0) startLongPress(e, msg, isSent, radiusClass, bubbleToneClass); }}
+                        onMouseUp={cancelLongPress}
+                        onMouseLeave={cancelLongPress}
+                      >
+                        <span
+                          className={styles.emojiOnlyText}
+                          style={{ fontSize: EMOJI_FONT_SIZE[emojiCount as 1 | 2 | 3] }}
+                          aria-label={msg.content}
+                        >
+                          {msg.content}
+                        </span>
+                        {!isGroupedWithNext && (
+                          <div className={`${styles.timestamp} ${styles.emojiOnlyTimestamp}`}>
+                            {msg.timestamp.toLocaleTimeString()}
+                            {msg.edited && !msg.unsent && (
+                              <span className={styles.editedMarker} aria-label="edited">
+                                {' '}<i className="fas fa-pen" aria-hidden="true" /> edited
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // ── Normal bubble ──
+                  return (
                   <div
                     className={`${styles.messageBubble} ${radiusClass} ${bubbleToneClass} ${msg.type === 'audio' ? styles.bubblePaddingAudio : (!msg.type || msg.type === 'text') ? styles.bubblePaddingText : styles.bubblePaddingMedia}`}
                     tabIndex={0}
@@ -641,7 +713,8 @@ export default function MessageBubble({
                       </div>
                     )}
                   </div>
-                )}{/* end unsent ternary */}
+                  ); // end normal bubble
+                })()} {/* end unsent/emoji/normal IIFE */}
 
                 {/* Reaction badge — absolute, overlapping bottom corner */}
                 {(msg.reactions?.length ?? 0) > 0 && (

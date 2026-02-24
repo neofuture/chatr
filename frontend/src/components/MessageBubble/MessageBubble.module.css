@@ -1,3 +1,41 @@
+/* ── Emoji-only naked display ─────────────────────────────────────────────── */
+.emojiOnlyBubble {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+  cursor: default;
+  line-height: 1.1;
+}
+
+.emojiOnlySent {
+  align-items: flex-end;
+}
+
+.emojiOnlyReceived {
+  align-items: flex-start;
+}
+
+.emojiOnlyText {
+  line-height: 1.1;
+  display: block;
+  /* font-size is set inline based on emoji count */
+}
+
+.emojiOnlyTimestamp {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.6;
+  /* override any bubble-specific positioning */
+  position: static !important;
+  background: none !important;
+}
+
 /* Message Wrapper */
 .messageWrapper {
   display: flex;
