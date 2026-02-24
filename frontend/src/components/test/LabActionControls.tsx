@@ -1,31 +1,15 @@
 'use client';
 
-import Button from '@/components/form-controls/Button/Button';
-
 interface Props {
   isDark: boolean;
-  effectivelyOnline: boolean;
   testRecipientId: string;
   ghostTypingEnabled: boolean;
   onGhostTypingToggle: (val: boolean) => void;
-  onTypingStart: () => void;
-  onTypingStop: () => void;
-  onPresenceUpdate: (status: 'online' | 'away') => void;
-  onPresenceRequest: () => void;
-}
-
-function SectionTitle({ icon, label }: { icon: string; label: string }) {
-  return (
-    <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <i className={icon} /> {label}
-    </h3>
-  );
 }
 
 export default function LabActionControls({
-  isDark, effectivelyOnline, testRecipientId, ghostTypingEnabled,
-  onGhostTypingToggle, onTypingStart, onTypingStop,
-  onPresenceUpdate, onPresenceRequest,
+  isDark, testRecipientId, ghostTypingEnabled,
+  onGhostTypingToggle,
 }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
@@ -55,24 +39,6 @@ export default function LabActionControls({
         </div>
       )}
 
-      {/* ── Typing Indicators ───────────────────────── */}
-      <div style={{ marginBottom: '20px' }}>
-        <SectionTitle icon="fas fa-keyboard" label="Typing Indicators" />
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="blue" onClick={onTypingStart} disabled={!effectivelyOnline} style={{ flex: 1 }}>Start</Button>
-          <Button variant="purple" onClick={onTypingStop} disabled={!effectivelyOnline} style={{ flex: 1 }}>Stop</Button>
-        </div>
-      </div>
-
-      {/* ── Presence ────────────────────────────────── */}
-      <div style={{ marginBottom: '20px' }}>
-        <SectionTitle icon="fas fa-user-circle" label="Presence" />
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-          <Button variant="green" onClick={() => onPresenceUpdate('online')} disabled={!effectivelyOnline} style={{ flex: 1 }}>Online</Button>
-          <Button variant="orange" onClick={() => onPresenceUpdate('away')} disabled={!effectivelyOnline} style={{ flex: 1 }}>Away</Button>
-        </div>
-        <Button variant="purple" fullWidth onClick={onPresenceRequest} disabled={!effectivelyOnline}>Request Status</Button>
-      </div>
     </div>
   );
 }

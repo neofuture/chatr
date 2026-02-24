@@ -6,6 +6,76 @@ import MessageAudioPlayer from '@/components/MessageAudioPlayer/MessageAudioPlay
 import { useTTS } from '@/hooks/useTTS';
 import styles from './MessageBubble.module.css';
 
+/** Mounts children, animates in on show, animates height+opacity out before unmounting */
+function AnimatedIndicator({ visible, children }: { visible: boolean; children: React.ReactNode }) {
+  const [rendered, setRendered] = useState(false);
+  const [entering, setEntering] = useState(false);
+  const [height, setHeight] = useState<number | 'auto'>('auto');
+  const innerRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    if (visible) {
+      // Mount first with opacity 0
+      setHeight('auto');
+      setEntering(false);
+      setRendered(true);
+      // Next frame: measure then trigger enter
+      timerRef.current = setTimeout(() => {
+        setEntering(true);
+      }, 16);
+    } else {
+      if (!rendered) return;
+      // Capture current height so we can animate it to 0
+      if (innerRef.current) {
+        setHeight(innerRef.current.offsetHeight);
+      }
+      setEntering(false);
+      // After a frame with explicit height set, animate to 0
+      timerRef.current = setTimeout(() => {
+        setHeight(0);
+        // Unmount after transition completes
+        timerRef.current = setTimeout(() => {
+          setRendered(false);
+          setHeight('auto');
+        }, 300);
+      }, 16);
+    }
+
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!rendered) return null;
+
+  const isCollapsing = typeof height === 'number';
+
+  return (
+    <div
+      style={{
+        height: isCollapsing ? height : 'auto',
+        overflow: 'hidden',
+        transition: isCollapsing ? 'height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease' : undefined,
+        opacity: isCollapsing ? (height === 0 ? 0 : 1) : undefined,
+      }}
+    >
+      <div
+        ref={innerRef}
+        style={{
+          transform: entering ? 'translateY(0)' : 'translateY(12px)',
+          opacity: entering ? 1 : 0,
+          transition: entering
+            ? 'transform 0.28s cubic-bezier(0.34, 1.3, 0.64, 1), opacity 0.2s ease'
+            : undefined,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export interface MessageReaction {
   userId: string;
   username: string;
@@ -69,21 +139,21 @@ const REACTIONS = ['❤️', '😂', '😯', '😢', '😡', '👍'];
 // ─── Emoji-only detection ─────────────────────────────────────────────────────
 // Returns the number of emojis if the string contains ONLY 1–3 emojis (and nothing else).
 // Returns 0 otherwise.
-// Matches emoji sequences including ZWJ sequences, variation selectors, skin tones, flags
-const EMOJI_REGEX = /(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:\uFE0F|\uFE0E)?(?:[\u{1F3FB}-\u{1F3FF}])?(?:\u200D(?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:\uFE0F)?(?:[\u{1F3FB}-\u{1F3FF}])?)*|[\u{1F1E0}-\u{1F1FF}]{2}/gu;
+// Covers: basic emoji, ZWJ sequences, skin-tone modifiers, variation selectors, flags (regional indicators)
+// Each alternative matches ONE emoji glyph (possibly with skin-tone/ZWJ/variation-selector suffixes).
+// The key: no outer `+` — each emoji is a separate match so we can count them.
+// eslint-disable-next-line no-misleading-character-class
+const EMOJI_REGEX = /(?:[\u{1F1E0}-\u{1F1FF}]{2}|[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]|[\u{1F780}-\u{1F7FF}]|[\u{1F800}-\u{1F8FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{2600}-\u{26FF}][\uFE0F]?|[\u{2700}-\u{27BF}][\uFE0F]?)(?:[\u{1F3FB}-\u{1F3FF}])?(?:\u200D(?:[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{2600}-\u{26FF}][\uFE0F]?)(?:[\u{1F3FB}-\u{1F3FF}])?)*[\uFE0F]?/gu;
 
 function getEmojiOnlyCount(text: string): 0 | 1 | 2 | 3 {
   const trimmed = text.trim();
   if (!trimmed) return 0;
-  // Use a simple approach: match all grapheme clusters that are emoji
+  // Match all emoji sequences
   // and check the remainder is empty
   const matches = Array.from(trimmed.matchAll(EMOJI_REGEX));
   if (matches.length === 0 || matches.length > 3) return 0;
-  // Strip matched emojis + ZWJ + variation selector chars — nothing should remain
-  const stripped = trimmed
-    .replace(EMOJI_REGEX, '')
-    .replace(/[\u200d\ufe0f\u20e3\u{1F3FB}-\u{1F3FF}]/gu, '')
-    .trim();
+  // Strip all matched emoji sequences — nothing non-emoji should remain
+  const stripped = trimmed.replace(EMOJI_REGEX, '').trim();
   if (stripped.length > 0) return 0;
   return matches.length as 1 | 2 | 3;
 }
@@ -426,8 +496,11 @@ export default function MessageBubble({
 
         // Prefer displayName, fall back to username without @
         const senderDisplayName = msg.senderDisplayName || (msg.senderUsername || '').replace(/^@/, '') || 'Unknown';
-        // Initials for avatar fallback
-        const initials = senderDisplayName.slice(0, 2).toUpperCase() || '??';
+        // Initials for avatar fallback — first letter of first + last word (e.g. "Carl Fearby" → "CF")
+        const nameParts = senderDisplayName.trim().split(/\s+/);
+        const initials = nameParts.length >= 2
+          ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+          : senderDisplayName.slice(0, 2).toUpperCase() || '??';
 
         const hasReactions = (msg.reactions?.length ?? 0) > 0;
         const wrapperMarginClass = hasReactions
@@ -743,15 +816,16 @@ export default function MessageBubble({
       })}
 
       {/* Ghost Typing */}
-      {recipientGhostText && (
+      <AnimatedIndicator visible={!!recipientGhostText && !isRecipientTyping && !isRecipientRecording}>
         <div className={styles.ghostTypingWrapper} aria-hidden="true">
           <div className={styles.ghostTypingBubble}>
             <div className={styles.ghostTypingText}>{recipientGhostText}</div>
           </div>
         </div>
-      )}
+      </AnimatedIndicator>
+
       {/* Typing */}
-      {isRecipientTyping && !recipientGhostText && (
+      <AnimatedIndicator visible={isRecipientTyping && !recipientGhostText}>
         <div className={styles.typingIndicatorWrapper} aria-hidden="true">
           <div className={styles.typingIndicatorBubble}>
             <span className={`${styles.typingDot} ${styles.typingDot1}`} />
@@ -759,15 +833,16 @@ export default function MessageBubble({
             <span className={`${styles.typingDot} ${styles.typingDot3}`} />
           </div>
         </div>
-      )}
+      </AnimatedIndicator>
+
       {/* Recording */}
-      {isRecipientRecording && !isRecipientTyping && !recipientGhostText && (
+      <AnimatedIndicator visible={isRecipientRecording && !isRecipientTyping && !recipientGhostText}>
         <div className={styles.typingIndicatorWrapper} aria-hidden="true">
           <div className={`${styles.typingIndicatorBubble} ${styles.typingIndicatorRecording}`}>
             <i className={`fas fa-microphone ${styles.recordingMic} ${styles.recordingMicIcon}`} aria-hidden="true" />
           </div>
         </div>
-      )}
+      </AnimatedIndicator>
 
       <div ref={endRef} />
 

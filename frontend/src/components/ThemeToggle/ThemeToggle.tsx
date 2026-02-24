@@ -5,22 +5,23 @@ import { useState, useEffect } from 'react';
 import './ThemeToggle.css';
 import styles from './ThemeToggle.module.css';
 
-export default function ThemeToggle() {
+interface ThemeToggleProps {
+  showLabel?: boolean;
+}
+
+export default function ThemeToggle({ showLabel = true }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
-  // Don't render anything until mounted to avoid SSR mismatch
   if (!mounted) {
     return (
       <div className={`theme-toggle ${styles.toggleLoading}`}>
         <div className="theme-toggle-track">
           <div className="theme-toggle-thumb" />
         </div>
-        <span className="theme-toggle-label">Loading...</span>
+        {showLabel && <span className="theme-toggle-label">Loading...</span>}
       </div>
     );
   }
@@ -52,7 +53,7 @@ export default function ThemeToggle() {
           )}
         </div>
       </div>
-      <span className="theme-toggle-label">{theme === 'dark' ? 'Dark' : 'Light'} Mode</span>
+      {showLabel && <span className="theme-toggle-label">{theme === 'dark' ? 'Dark' : 'Light'} Mode</span>}
     </button>
   );
 }

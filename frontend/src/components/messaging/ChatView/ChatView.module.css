@@ -67,7 +67,8 @@
   height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px;
+  overflow-anchor: none;
+  padding: 12px 12px 24px;
   display: flex;
   flex-direction: column;
   gap: 8px;

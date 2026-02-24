@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect, useLayoutEffect } from 'react';
 import MessageBubble, { type Message } from '@/components/MessageBubble';
 import styles from './ChatView.module.css';
 
@@ -57,8 +57,63 @@ export default function ChatView({
   onEdit,
   currentUserId,
 }: ChatViewProps) {
-  const scrollRef  = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const scrollRef      = useRef<HTMLDivElement>(null);
+  const overlayRef     = useRef<HTMLDivElement>(null);
+  const wasActiveRef   = useRef(false);
+  const userScrolledUp = useRef(false);
+  // true once we've successfully snapped to a bottom that has real content
+  const hasSnapped     = useRef(false);
+
+  // Every time messages change, scroll to bottom before the browser paints
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || userScrolledUp.current) return;
+
+    if (!hasSnapped.current) {
+      // Snap instantly — no animation — until we've landed at the real bottom
+      el.scrollTop = el.scrollHeight;
+      // Only mark as snapped once there's actually content to scroll to
+      if (el.scrollHeight > el.clientHeight + 4) {
+        hasSnapped.current = true;
+      }
+    } else {
+      // Already seen the bottom — smooth scroll for new incoming messages
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
+  // Track manual scroll up/down
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+      userScrolledUp.current = dist > 80;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const isActive = isRecipientTyping || isRecipientRecording || !!recipientGhostText;
+
+  // Scroll to reveal indicator when it appears; scroll back when it disappears
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    if (isActive && !wasActiveRef.current) {
+      wasActiveRef.current = true;
+      setTimeout(() => {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      }, 32);
+    } else if (!isActive && wasActiveRef.current) {
+      wasActiveRef.current = false;
+      setTimeout(() => {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      }, 300);
+    }
+  }, [isActive]);
 
   // Derive a live-region status for screen readers
   const liveStatus = isRecipientRecording

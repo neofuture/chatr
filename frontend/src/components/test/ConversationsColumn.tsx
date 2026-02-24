@@ -52,6 +52,8 @@ interface Props {
   onVoiceRecording: (blob: Blob, waveform: number[]) => void;
   onVoiceRecordingStart: () => void;
   onVoiceRecordingStop: () => void;
+  ghostTypingEnabled: boolean;
+  onGhostTypingToggle: (val: boolean) => void;
 }
 
 export default function ConversationsColumn({
@@ -65,6 +67,7 @@ export default function ConversationsColumn({
   selectedFiles, filePreviews,
   onMessageChange, onMessageSend, onEmojiInsert, onFileSelect, onFileSend, onFileCancelSelection, onFileCancelOne,
   onVoiceRecording, onVoiceRecordingStart, onVoiceRecordingStop,
+  ghostTypingEnabled, onGhostTypingToggle,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef     = useRef<HTMLInputElement>(null);
@@ -102,8 +105,27 @@ export default function ConversationsColumn({
           )}
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-          {/* Theme toggle */}
-          <ThemeToggle />
+          {/* Ghost Typing toggle */}
+          <label title="Ghost Typing" style={{
+            display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer',
+            fontSize: '12px', opacity: ghostTypingEnabled ? 1 : 0.5,
+            color: ghostTypingEnabled ? '#8b5cf6' : 'inherit',
+          }}>
+            <i className="fas fa-ghost" />
+            <span style={{ fontSize: '11px', fontWeight: '600' }}>Ghost</span>
+            <div style={{ position: 'relative', display: 'inline-block', width: '32px', height: '18px' }}>
+              <input type="checkbox" checked={ghostTypingEnabled} onChange={(e) => onGhostTypingToggle(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+              <span style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'pointer',
+                backgroundColor: ghostTypingEnabled ? '#8b5cf6' : '#94a3b8',
+                transition: '0.2s', borderRadius: '18px',
+              }}>
+                <span style={{ position: 'absolute', height: '13px', width: '13px', left: ghostTypingEnabled ? '16px' : '2px', bottom: '2px', backgroundColor: 'white', transition: '0.2s', borderRadius: '50%' }} />
+              </span>
+            </div>
+          </label>
+          {/* Theme toggle (no label) */}
+          <ThemeToggle showLabel={false} />
           {/* System logs button */}
           <button onClick={onOpenLogs} title="System Logs" style={{
             padding: '5px 10px', borderRadius: '5px', border: 'none', cursor: 'pointer', fontSize: '12px',

@@ -1,7 +1,5 @@
 'use client';
 
-import { version } from '@/version';
-
 interface Props {
   isDark: boolean;
   effectivelyOnline: boolean;
@@ -20,31 +18,12 @@ export default function ConnectionStatus({
 }: Props) {
   return (
     <div style={{
-      marginBottom: '20px', padding: '16px',
+      marginBottom: '16px', padding: '12px',
       backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
       borderRadius: '8px',
       border: `2px solid ${effectivelyOnline ? '#10b981' : '#ef4444'}`,
     }}>
-      {/* API Config */}
-      <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}` }}>
-        <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px', opacity: 0.7 }}>
-          <i className="fas fa-cog" style={{ marginRight: '6px' }} />API CONFIGURATION
-        </div>
-        {[
-          { label: 'API URL', value: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001 (default)' },
-          { label: 'WS URL',  value: process.env.NEXT_PUBLIC_WS_URL  || 'http://localhost:3001 (default)' },
-          { label: 'App',     value: process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr (default)' },
-          { label: 'Version', value: version },
-          { label: 'Env',     value: process.env.NODE_ENV || 'unknown' },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ display: 'flex', gap: '8px', fontSize: '11px', marginBottom: '4px', fontFamily: 'monospace' }}>
-            <span style={{ opacity: 0.5, minWidth: '60px' }}>{label}:</span>
-            <span style={{ color: value.includes('default') ? '#f59e0b' : '#10b981', wordBreak: 'break-all' }}>{value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Connection dot */}
+      {/* Connection status */}
       <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px', opacity: 0.7 }}>CONNECTION STATUS</div>
       <div style={{
         display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px',
@@ -108,4 +87,3 @@ export default function ConnectionStatus({
     </div>
   );
 }
-

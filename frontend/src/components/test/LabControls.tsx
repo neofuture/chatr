@@ -36,14 +36,9 @@ export default function LabControls(props: LabControlsProps) {
       />
       <LabActionControls
         isDark={props.isDark}
-        effectivelyOnline={props.effectivelyOnline}
         testRecipientId={props.testRecipientId}
         ghostTypingEnabled={props.ghostTypingEnabled}
         onGhostTypingToggle={props.onGhostTypingToggle}
-        onTypingStart={props.onTypingStart}
-        onTypingStop={props.onTypingStop}
-        onPresenceUpdate={props.onPresenceUpdate}
-        onPresenceRequest={props.onPresenceRequest}
       />
     </div>
   );

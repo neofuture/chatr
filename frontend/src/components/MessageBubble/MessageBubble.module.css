@@ -194,8 +194,8 @@
   display: flex;
   justify-content: flex-start;
   margin-bottom: 4px;
-  animation: fadeIn 0.3s ease-in;
 }
+
 
 .typingIndicatorBubble {
   padding: 10px 14px;

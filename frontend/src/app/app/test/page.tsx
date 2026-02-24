@@ -9,6 +9,7 @@ import ConversationsList from '@/components/test/ConversationsList';
 import ConversationsColumn from '@/components/test/ConversationsColumn';
 import SystemLogsModal from '@/components/test/SystemLogsModal';
 import DragHandle from '@/components/test/DragHandle';
+import ApiConfigFloat from '@/components/test/ApiConfigFloat';
 const MIN_W = 220;
 const MAX_W = 700;
 const DEFAULT_W = 350;
@@ -59,9 +60,8 @@ export default function TestPage() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const left = useDragHandle(DEFAULT_W);
   const mid = useDragHandle(DEFAULT_W);
-  const anyDragging = left.dragging || mid.dragging;
+  const anyDragging = mid.dragging;
 
   const lab = useConversation();
 
@@ -106,6 +106,19 @@ export default function TestPage() {
     onStartEdit: lab.handleStartEdit,
     onCancelEdit: lab.handleCancelEdit,
     onEditLastSent: lab.editLastSentMessage,
+    ghostTypingEnabled: lab.ghostTypingEnabled,
+    onGhostTypingToggle: lab.handleGhostTypingToggle,
+  };
+
+  const apiConfigProps = {
+    isDark,
+    effectivelyOnline: lab.effectivelyOnline,
+    manualOffline: lab.manualOffline,
+    isUserTyping: lab.isUserTyping,
+    isRecipientTyping: lab.isRecipientTyping,
+    isRecipientRecording: lab.isRecipientRecording,
+    isRecipientListeningToMyAudio: lab.isRecipientListeningToMyAudio,
+    onManualOfflineChange: lab.setManualOffline,
   };
 
   const TAB_BAR_H = 56;
@@ -256,19 +269,10 @@ export default function TestPage() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-        {/* ── Col 1: Test Controls ────────────────────── */}
-        <div style={{
-          width: `${left.width}px`, minWidth: `${left.width}px`, flexShrink: 0,
-          height: '100%', padding: '20px',
-          backgroundColor: isDark ? '#1e293b' : '#ffffff',
-          overflowY: 'auto', overflowX: 'hidden',
-        }}>
-          <LabControls {...labControlsProps} />
-        </div>
+        {/* ── Floating API Config ─────────────────────── */}
+        <ApiConfigFloat {...apiConfigProps} />
 
-        <DragHandle isDark={isDark} isDragging={left.dragging} onMouseDown={left.onMouseDown} />
-
-        {/* ── Col 2: Conversations List ───────────────── */}
+        {/* ── Col 1: Conversations List ───────────────── */}
         <div style={{
           width: `${mid.width}px`, minWidth: `${mid.width}px`, flexShrink: 0,
           height: '100%', overflow: 'hidden',
@@ -287,7 +291,7 @@ export default function TestPage() {
 
         <DragHandle isDark={isDark} isDragging={mid.dragging} onMouseDown={mid.onMouseDown} />
 
-        {/* ── Col 3: Message Thread ───────────────────── */}
+        {/* ── Col 2: Message Thread ───────────────────── */}
         <div style={{ flex: 1, minWidth: 0, height: '100%', overflow: 'hidden' }}>
           <ConversationsColumn
             isDark={isDark}
