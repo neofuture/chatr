@@ -25,13 +25,14 @@ SCRIPT="./deployAWS.sh"
 TARGET="${1:-}"
 
 case "$TARGET" in
-  backend|frontend|docs|"")
+  backend|frontend|docs|storybook|"")
     ;;  # valid
   *)
-    printf "${BOLD}Usage:${NC} bash aws.sh [backend|frontend|docs]\n\n"
+    printf "${BOLD}Usage:${NC} bash aws.sh [backend|frontend|docs|storybook]\n\n"
     echo "  (no arg)   Full deploy — all 7 steps"
     echo "  backend    Rebuild & restart backend only"
     echo "  frontend   Rebuild & restart frontend only"
+    echo "  storybook  Build & restart Storybook only"
     echo "  docs       Sync Documentation folder only"
     exit 1
     ;;

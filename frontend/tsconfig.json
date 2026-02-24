@@ -7,7 +7,10 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "types": ["jest", "@testing-library/jest-dom"],
+    "types": [
+      "jest",
+      "@testing-library/jest-dom"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -19,6 +22,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "strict": true,
+    "noUnusedLocals": false,
     "noEmit": true,
     /* Path mapping */
     "baseUrl": ".",

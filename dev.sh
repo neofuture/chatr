@@ -10,9 +10,11 @@ pkill -9 -f "npm run dev" 2>/dev/null
 pkill -9 -f "next dev" 2>/dev/null
 pkill -9 -f "tsx watch" 2>/dev/null
 pkill -9 -f "prisma studio" 2>/dev/null
+pkill -9 -f "storybook dev" 2>/dev/null
 lsof -ti:3000 | xargs kill -9 2>/dev/null
 lsof -ti:3001 | xargs kill -9 2>/dev/null
 lsof -ti:5555 | xargs kill -9 2>/dev/null
+lsof -ti:6006 | xargs kill -9 2>/dev/null
 sleep 1
 
 # Check Docker
@@ -52,20 +54,22 @@ FRONTEND_PID=$!
 (cd "$SCRIPT_DIR/backend" && npx prisma studio) &
 PRISMA_PID=$!
 
+(cd "$SCRIPT_DIR/frontend" && npx storybook dev -p 6006 --no-open > /tmp/storybook.log 2>&1 &)
+STORYBOOK_PID=$!
+
 echo ""
 echo "✓ Servers started"
 echo "  Frontend:  http://localhost:3000"
 echo "  Backend:   http://localhost:3001"
 echo "  API Docs:  http://localhost:3001/api/docs"
 echo "  Database:  http://localhost:5555"
+echo "  Storybook: http://localhost:6006 (logs: /tmp/storybook.log)"
 echo ""
 echo "Press Ctrl+C to stop"
 echo ""
 
 # Trap Ctrl+C
-trap 'echo ""; echo "Stopping..."; kill $BACKEND_PID $FRONTEND_PID $PRISMA_PID 2>/dev/null; echo "Stopping database containers..."; docker-compose down; exit 0' INT TERM
+trap 'echo ""; echo "Stopping..."; kill $BACKEND_PID $FRONTEND_PID $PRISMA_PID 2>/dev/null; pkill -f "storybook dev" 2>/dev/null; echo "Stopping database containers..."; docker-compose down; exit 0' INT TERM
 
 # Wait
 wait $BACKEND_PID $FRONTEND_PID $PRISMA_PID
-
-
