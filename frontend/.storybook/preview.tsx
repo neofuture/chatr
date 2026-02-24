@@ -1,6 +1,6 @@
 import type { Preview } from '@storybook/react';
 import '../src/app/globals.css';
-import * as React from 'react';
+import React from 'react';
 
 // Load Font Awesome so icons render in all stories
 const link = document.createElement('link');
@@ -30,6 +30,27 @@ const preview: Preview = {
     },
     layout: 'fullscreen',
   },
+  globalTypes: {
+    theme: {
+      name: 'Theme',
+      description: 'Global theme for components',
+      defaultValue: 'dark',
+      toolbar: {
+        icon: 'mirror',
+        items: [
+          { value: 'dark', title: 'Dark' },
+          { value: 'light', title: 'Light' },
+        ],
+      },
+    },
+  },
+  decorators: [
+    (Story, context) => (
+      <div data-theme={context.globals.theme} style={{ minHeight: '100vh' }}>
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export default preview;
