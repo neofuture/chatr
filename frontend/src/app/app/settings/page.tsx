@@ -54,7 +54,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <>
+    <div style={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
       {/* Full-width Cover Image at top */}
       <div style={{ width: '100%', marginBottom: '2rem' }}>
         <CoverImageUploader userId={userId} isDark={isDark} />
@@ -349,6 +349,6 @@ export default function SettingsPage() {
           Logout
         </button>
       </div>
-    </>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import Lightbox from '@/components/Lightbox/Lightbox';
 import { useConversation } from '@/hooks/useConversation';
 import LabControls from '@/components/test/LabControls';
-import ConversationsList from '@/components/test/ConversationsList';
+import ConversationsList from '@/components/messaging/ConversationsList';
 import ConversationsColumn from '@/components/test/ConversationsColumn';
 import SystemLogsModal from '@/components/test/SystemLogsModal';
 import DragHandle from '@/components/test/DragHandle';
@@ -133,7 +133,7 @@ export default function TestPage() {
   if (isMobile) {
     return (
       <div style={{
-        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+        height: '100%', width: '100%', display: 'flex', flexDirection: 'column',
         backgroundColor: isDark ? '#0f172a' : '#f8fafc', overflow: 'hidden',
       }}>
         {/* Title bar */}
@@ -262,7 +262,7 @@ export default function TestPage() {
   // ── Desktop layout ───────────────────────────────────
   return (
     <div style={{
-      position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+      height: '100%', width: '100%', display: 'flex', flexDirection: 'column',
       backgroundColor: isDark ? '#0f172a' : '#f8fafc', overflow: 'hidden',
       userSelect: anyDragging ? 'none' : 'auto',
     }}>

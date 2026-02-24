@@ -14,7 +14,7 @@ export default function Template({ children }: { children: React.ReactNode }) {
         opacity: { duration: 0.4 }
       }}
       style={{
-        flex: 1,
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         width: '100%',

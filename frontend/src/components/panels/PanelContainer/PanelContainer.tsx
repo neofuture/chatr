@@ -3,6 +3,7 @@
 import { usePanels, ActionIcon } from '@/contexts/PanelContext';
 import { useEffect, useState } from 'react';
 import { getProfileImageURL } from '@/lib/profileImageService';
+import PanelFooter from '@/components/PanelFooter/PanelFooter';
 import styles from './PanelContainer.module.css';
 
 interface PanelProps {
@@ -18,9 +19,10 @@ interface PanelProps {
   profileImage?: string;
   fullWidth?: boolean;
   actionIcons?: ActionIcon[];
+  footer?: React.ReactNode;
 }
 
-function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, titlePosition = 'center', subTitle, profileImage, fullWidth = false, actionIcons }: PanelProps) {
+function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, titlePosition = 'center', subTitle, profileImage, fullWidth = false, actionIcons, footer }: PanelProps) {
   const { closePanel } = usePanels();
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentProfileImage, setCurrentProfileImage] = useState<string | undefined>(profileImage);
@@ -108,6 +110,7 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
       {/* Panel */}
       <div
         className="auth-panel"
+        data-fullwidth={fullWidth ? 'true' : undefined}
         style={{
           zIndex,
           transform,
@@ -166,6 +169,9 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
 
         {/* Content */}
         <div className="auth-panel-content">{children}</div>
+
+        {/* Footer — injected by the caller */}
+        {footer && <PanelFooter>{footer}</PanelFooter>}
       </div>
     </>
   );
@@ -192,6 +198,7 @@ export default function PanelContainer() {
           profileImage={panel.profileImage}
           fullWidth={panel.fullWidth}
           actionIcons={panel.actionIcons}
+          footer={panel.footer}
         >
           {panel.component}
         </Panel>

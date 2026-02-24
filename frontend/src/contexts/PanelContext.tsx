@@ -12,6 +12,7 @@ interface Panel {
   id: string;
   title: string;
   component: ReactNode;
+  footer?: ReactNode;
   level: number;
   isClosing?: boolean;
   titlePosition?: 'center' | 'left' | 'right';
@@ -23,7 +24,7 @@ interface Panel {
 
 interface PanelContextType {
   panels: Panel[];
-  openPanel: (id: string, component: ReactNode, title?: string, titlePosition?: 'center' | 'left' | 'right', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[]) => void;
+  openPanel: (id: string, component: ReactNode, title?: string, titlePosition?: 'center' | 'left' | 'right', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[], footer?: ReactNode) => void;
   closePanel: (id: string) => void;
   closeTopPanel: () => void;
   closeAllPanels: () => void;
@@ -44,7 +45,7 @@ export function PanelProvider({ children }: { children: ReactNode }) {
     ? Math.max(...nonClosingPanels.map(p => p.level))
     : -1;
 
-  const openPanel = (id: string, component: ReactNode, title?: string, titlePosition: 'center' | 'left' | 'right' = 'center', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[]) => {
+  const openPanel = (id: string, component: ReactNode, title?: string, titlePosition: 'center' | 'left' | 'right' = 'center', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[], footer?: ReactNode) => {
     setPanels((prev) => {
       // Check if panel already exists
       const existsIndex = prev.findIndex((p) => p.id === id);
@@ -61,6 +62,7 @@ export function PanelProvider({ children }: { children: ReactNode }) {
           profileImage,
           fullWidth,
           actionIcons,
+          footer,
           // Don't update id or level
         };
         return newPanels;
@@ -77,7 +79,8 @@ export function PanelProvider({ children }: { children: ReactNode }) {
         subTitle,
         profileImage,
         fullWidth,
-        actionIcons
+        actionIcons,
+        footer
       }];
     });
   };
@@ -150,4 +153,3 @@ export function usePanels() {
   }
   return context;
 }
-

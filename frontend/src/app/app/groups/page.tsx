@@ -12,10 +12,10 @@ export default function GroupsPage() {
 
   return (
     <div style={{
+      height: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flex: 1,
       padding: '20px'
     }}>
       <div style={{ textAlign: 'center' }}>

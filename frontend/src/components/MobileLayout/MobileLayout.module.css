@@ -76,50 +76,9 @@
 
 .content {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  position: relative;
 }
 
-.bottomNav {
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 0 16px;
-  flex-shrink: 0;
-  z-index: 100;
-}
-
-.navLink {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  text-decoration: none;
-  cursor: pointer;
-  padding: 8px;
-  min-width: 60px;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.navProfileImg {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-  pointer-events: none;
-}
-
-.navIcon {
-  font-size: 24px;
-  pointer-events: none;
-}
-
-.navLabel {
-  font-size: 10px;
-  font-weight: bold;
-  pointer-events: none;
-}
 

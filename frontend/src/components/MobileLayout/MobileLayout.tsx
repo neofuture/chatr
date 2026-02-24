@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import BurgerMenu from '@/components/BurgerMenu/BurgerMenu';
-import { getProfileImageURL } from '@/lib/profileImageService';
+import BottomNav from '@/components/BottomNav/BottomNav';
 import type { User } from '@/types';
 import styles from './MobileLayout.module.css';
 
@@ -22,12 +21,10 @@ interface MobileLayoutProps {
 
 export default function MobileLayout({ children, title, onPanelDemo, headerAction }: MobileLayoutProps) {
   const { theme: themeMode } = useTheme();
-  const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [profileImageUrl, setProfileImageUrl] = useState('/profile/default-profile.jpg');
 
   const isDark = themeMode === 'dark';
 
@@ -68,41 +65,6 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
     return () => clearTimeout(timer);
   }, [router]);
 
-  // Load profile image and set up listener
-  useEffect(() => {
-    const loadProfileImage = async () => {
-      if (user?.id) {
-        try {
-          const url = await getProfileImageURL(user.id);
-          console.log('[MobileLayout] Loaded profile image:', url);
-          if (url) {
-            // Add timestamp to force cache refresh
-            const timestamp = new Date().getTime();
-            const urlWithTimestamp = url.includes('?') ? `${url}&t=${timestamp}` : `${url}?t=${timestamp}`;
-            setProfileImageUrl(urlWithTimestamp);
-          }
-        } catch (error) {
-          console.error('[MobileLayout] Failed to load profile image:', error);
-        }
-      }
-    };
-
-    // Load initially
-    loadProfileImage();
-
-    // Listen for profile image updates
-    const handleProfileImageUpdate = (event: Event) => {
-      console.log('[MobileLayout] Profile image update event received');
-      loadProfileImage();
-    };
-
-    window.addEventListener('profileImageUpdated', handleProfileImageUpdate);
-
-    return () => {
-      window.removeEventListener('profileImageUpdated', handleProfileImageUpdate);
-    };
-  }, [user?.id]);
-
   // Show loading screen while checking auth
   if (isLoading || (!isAuthenticated && !user)) {
     return (
@@ -132,21 +94,10 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
     border: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(15, 23, 42, 0.2)',
     text: isDark ? 'white' : '#0f172a',
     contentText: isDark ? '#93c5fd' : '#475569',
-    menuText: isDark ? '#93c5fd' : '#64748b',
-    activeText: '#f97316'
   };
 
-
-  const menuItems = [
-    { name: 'CHATS', href: '/app', icon: 'fa-comments', type: 'icon' },
-    { name: 'GROUPS', href: '/app/groups', icon: 'fa-users', type: 'icon' },
-    { name: 'UPDATES', href: '/app/updates', icon: 'fa-newspaper', type: 'icon' },
-    { name: 'TEST', href: '/app/test', icon: 'fa-flask', type: 'icon' },
-    { name: 'USER', href: '/app/settings', icon: profileImageUrl, type: 'image' },
-  ];
-
   return (
-    <div className={styles.root} style={{ backgroundColor: theme.bg }}>
+    <div className={styles.root} style={{ backgroundColor: theme.bg, overflow: 'hidden' }}>
       {/* Title Bar - Fixed at Top */}
       <div
         className={styles.header}
@@ -195,49 +146,12 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
       </div>
 
       {/* Content Area */}
-      <div className={styles.content} style={{ color: theme.contentText, overflowY: 'auto' }}>
+      <div className={styles.content} style={{ color: theme.contentText }}>
         {children}
       </div>
 
-      {/* Bottom Menu - Fixed at Bottom */}
-      <div
-        className={styles.bottomNav}
-        style={{ backgroundColor: theme.headerBg, borderTop: `1px solid ${theme.border}` }}
-      >
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link key={item.name} href={item.href} className={styles.navLink}>
-              {item.type === 'image' ? (
-                <motion.img
-                  key={item.icon}
-                  src={item.icon}
-                  alt={item.name}
-                  animate={{ scale: isActive ? 1.1 : 1, opacity: isActive ? 1 : 0.8 }}
-                  transition={{ duration: 0.3 }}
-                  className={styles.navProfileImg}
-                  style={{
-                    border: isActive ? `2px solid ${theme.activeText}` : `2px solid ${theme.menuText}`,
-                  }}
-                />
-              ) : (
-                <motion.i
-                  className={`fad ${item.icon} ${styles.navIcon}`}
-                  animate={{ scale: isActive ? 1.15 : 1, color: isActive ? theme.activeText : theme.menuText }}
-                  transition={{ duration: 0.3 }}
-                />
-              )}
-              <motion.span
-                animate={{ color: isActive ? theme.activeText : theme.menuText }}
-                transition={{ duration: 0.3 }}
-                className={styles.navLabel}
-              >
-                {item.name}
-              </motion.span>
-            </Link>
-          );
-        })}
-      </div>
+      {/* Bottom Menu */}
+      <BottomNav />
     </div>
   );
 }

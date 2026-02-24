@@ -1,106 +1,89 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import ConversationList from '@/components/messaging/ConversationList/ConversationList';
-import { ConversationUser } from '@/hooks/useConversationList';
-import ChatMessageList from '@/components/ChatMessageList/ChatMessageList';
-import { useTheme } from '@/contexts/ThemeContext';
+import ConversationsList from "@/components/messaging/ConversationsList";
+import PanelFooter from "@/components/PanelFooter/PanelFooter";
+import { useConversation } from "@/hooks/useConversation";
+import { useTheme } from "@/contexts/ThemeContext";
+import { usePanels } from "@/contexts/PanelContext";
+import type { AvailableUser, PresenceInfo, PresenceStatus } from "@/components/test/types";
+
+const PRESENCE_COLOUR: Record<PresenceStatus, string> = {
+  online:  '#10b981',
+  away:    '#f97316',
+  offline: '#64748b',
+};
+
+function formatLastSeen(date: Date | null): string {
+  if (!date) return 'Offline';
+  const now = Date.now();
+  const diff = Math.floor((now - date.getTime()) / 1000);
+  if (diff < 60)    return `Last seen ${diff}s ago`;
+  if (diff < 300)   return `Last seen ${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `Last seen at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  return `Last seen ${date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function ChatPanel() {
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* message area — empty for now */}
+      <div style={{ flex: 1 }} />
+    </div>
+  );
+}
 
 export default function AppPage() {
   const { theme } = useTheme();
-  const isDark = theme === 'dark';
-  const [currentUserId, setCurrentUserId] = useState('');
-  const [activeUser, setActiveUser] = useState<ConversationUser | null>(null);
+  const isDark = theme === "dark";
+  const lab = useConversation();
+  const { openPanel } = usePanels();
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('user');
-      if (raw && raw !== 'undefined') {
-        const u = JSON.parse(raw);
-        setCurrentUserId(u.id ?? '');
-      }
-    } catch { /* ignore */ }
-  }, []);
+  const handleSelectUser = (id: string) => {
+    const user: AvailableUser | undefined = lab.availableUsers.find(u => u.id === id);
+    if (!user) return;
 
-  if (!currentUserId) return null;
+    lab.handleRecipientChange(id);
 
-  if (activeUser) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        overflow: 'hidden',
-      }}>
-        {/* Back header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '10px 16px',
-          borderBottom: `1px solid ${isDark ? 'rgba(99,102,241,0.2)' : 'rgba(0,0,0,0.08)'}`,
-          flexShrink: 0,
-          background: isDark ? '#1e293b' : '#ffffff',
-        }}>
-          <button
-            onClick={() => setActiveUser(null)}
-            aria-label="Back to conversations"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: isDark ? '#93c5fd' : '#6366f1',
-              fontSize: 18,
-              padding: 4,
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <i className="far fa-arrow-left" />
-          </button>
-          {activeUser.profileImage ? (
-            <img
-              src={activeUser.profileImage}
-              alt={activeUser.displayName ?? activeUser.username}
-              style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }}
-            />
-          ) : (
-            <div style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'linear-gradient(135deg,#6366f1,#f97316)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontWeight: 700, fontSize: 13,
-            }}>
-              {((activeUser.firstName?.[0] ?? '') + (activeUser.lastName?.[0] ?? '')).toUpperCase() ||
-                (activeUser.displayName ?? activeUser.username).slice(0, 2).toUpperCase()}
-            </div>
-          )}
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 15, color: isDark ? '#ffffff' : '#0f172a' }}>
-              {activeUser.displayName ?? activeUser.username}
-            </div>
-            <div style={{ fontSize: 12, color: isDark ? '#93c5fd' : '#6366f1' }}>
-              {activeUser.username}
-            </div>
-          </div>
-        </div>
+    const displayName = user.displayName || user.username;
+    const presence: PresenceInfo = lab.userPresence[id] ?? { status: 'offline', lastSeen: null };
 
-        {/* Chat */}
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <ChatMessageList
-            recipientId={activeUser.id}
-            recipientUsername={activeUser.username}
-            currentUserId={currentUserId}
-          />
-        </div>
-      </div>
+    const subtitle = presence.status === 'online' ? 'Online'
+      : presence.status === 'away' ? 'Away'
+      : formatLastSeen(presence.lastSeen);
+
+    openPanel(
+      `chat-${id}`,
+      <ChatPanel />,
+      displayName,
+      'left',
+      subtitle,
+      user.profileImage ?? undefined,
+      true,
+      undefined,
+      <PanelFooter />,
     );
-  }
+  };
 
+  if (!lab.currentUserId) return null;
+
+  const H = "calc(100dvh - 56px - 80px)";
+  const border = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const surface = isDark ? "#1e293b" : "#ffffff";
+  const textPrimary = isDark ? "#f1f5f9" : "#0f172a";
+  const textMuted = isDark ? "#94a3b8" : "#64748b";
+
+  // ── Conversation list ──────────────────────────────────────────────────
   return (
-    <ConversationList
-      currentUserId={currentUserId}
-      onSelectUser={setActiveUser}
-    />
+    <div style={{ height: '100%', display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <ConversationsList
+        isDark={isDark}
+        availableUsers={lab.availableUsers}
+        selectedUserId={lab.testRecipientId}
+        userPresence={lab.userPresence}
+        conversations={lab.conversations}
+        currentUserId={lab.currentUserId}
+        onSelectUser={handleSelectUser}
+      />
+    </div>
   );
 }
