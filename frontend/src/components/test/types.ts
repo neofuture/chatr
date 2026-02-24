@@ -21,6 +21,8 @@ export type PresenceStatus = 'online' | 'away' | 'offline';
 export interface PresenceInfo {
   status: PresenceStatus;
   lastSeen: Date | null;
+  /** User has chosen to hide their online status */
+  hidden?: boolean;
 }
 
 export interface ConversationSummary {

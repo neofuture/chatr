@@ -6,6 +6,8 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { ConfirmationProvider } from '@/contexts/ConfirmationContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
+import { PresenceProvider } from '@/contexts/PresenceContext';
+import { UserSettingsProvider } from '@/contexts/UserSettingsContext';
 import PanelContainer from '@/components/panels/PanelContainer/PanelContainer';
 import ToastContainer from '@/components/ToastContainer/ToastContainer';
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog/ConfirmationDialog';
@@ -67,7 +69,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <RoutePreloader />
         <ThemeProvider>
+          <UserSettingsProvider>
           <WebSocketProvider>
+            <PresenceProvider>
             <ToastProvider>
               <PanelProvider>
                 <ConfirmationProvider>
@@ -78,7 +82,9 @@ export default function RootLayout({
                 </ConfirmationProvider>
               </PanelProvider>
             </ToastProvider>
+            </PresenceProvider>
           </WebSocketProvider>
+          </UserSettingsProvider>
         </ThemeProvider>
       </body>
     </html>

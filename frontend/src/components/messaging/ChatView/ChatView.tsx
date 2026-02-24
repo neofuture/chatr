@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useLayoutEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import MessageBubble, { type Message } from '@/components/MessageBubble';
 import styles from './ChatView.module.css';
 
@@ -61,25 +61,39 @@ export default function ChatView({
   const overlayRef     = useRef<HTMLDivElement>(null);
   const wasActiveRef   = useRef(false);
   const userScrolledUp = useRef(false);
-  // true once we've successfully snapped to a bottom that has real content
-  const hasSnapped     = useRef(false);
+  const hasInitialSnap = useRef(false);
 
-  // Every time messages change, scroll to bottom before the browser paints
-  useLayoutEffect(() => {
+  // ResizeObserver — fires whenever the scroll container changes size.
+  // This catches both the panel slide-in animation completing (container
+  // grows from 0 to full height) and images loading (content grows taller).
+  // We snap on every resize until the user manually scrolls up.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(() => {
+      if (!userScrolledUp.current) {
+        el.scrollTop = el.scrollHeight;
+        if (!hasInitialSnap.current && el.scrollHeight > el.clientHeight + 4) {
+          hasInitialSnap.current = true;
+        }
+      }
+    });
+
+    observer.observe(el);
+    // Also observe the inner content div so height changes from new messages trigger it
+    const inner = el.firstElementChild;
+    if (inner) observer.observe(inner);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // When new messages arrive after initial load, smooth scroll to bottom
+  useEffect(() => {
+    if (!hasInitialSnap.current) return; // still in initial load phase
     const el = scrollRef.current;
     if (!el || userScrolledUp.current) return;
-
-    if (!hasSnapped.current) {
-      // Snap instantly — no animation — until we've landed at the real bottom
-      el.scrollTop = el.scrollHeight;
-      // Only mark as snapped once there's actually content to scroll to
-      if (el.scrollHeight > el.clientHeight + 4) {
-        hasSnapped.current = true;
-      }
-    } else {
-      // Already seen the bottom — smooth scroll for new incoming messages
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    }
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 

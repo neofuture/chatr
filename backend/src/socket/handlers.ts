@@ -16,6 +16,7 @@ interface UserPresence {
   socketId: string;
   status: 'online' | 'away' | 'offline';
   lastSeen: Date;
+  hideOnlineStatus: boolean;
 }
 
 // In-memory store for user presence (replace with Redis in production)
@@ -66,7 +67,7 @@ export function setupSocketHandlers(io: Server) {
     }
   });
 
-  io.on('connection', (socket: AuthenticatedSocket) => {
+  io.on('connection', async (socket: AuthenticatedSocket) => {
     const userId = socket.userId!;
     const username = socket.username!;
     const displayName = socket.displayName ?? null;
@@ -74,27 +75,42 @@ export function setupSocketHandlers(io: Server) {
 
     console.log(`🔌 User connected: ${username} (${socket.id})`);
 
+    // Load the user's online-status preference from DB
+    let hideOnlineStatus = false;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { showOnlineStatus: true },
+      });
+      hideOnlineStatus = user ? !user.showOnlineStatus : false;
+    } catch (e) {
+      console.error('❌ Error loading showOnlineStatus:', e);
+    }
+
     // Store user connection
     userSockets.set(userId, socket.id);
     userPresence.set(userId, {
       userId,
       socketId: socket.id,
       status: 'online',
-      lastSeen: new Date()
+      lastSeen: new Date(),
+      hideOnlineStatus,
     });
 
     // Join user to their personal room
     socket.join(`user:${userId}`);
 
-    // Notify user's contacts they're online
-    socket.broadcast.emit('user:status', {
-      userId,
-      username,
-      status: 'online',
-      timestamp: new Date()
-    });
+    // Only broadcast online if the user allows it
+    if (!hideOnlineStatus) {
+      socket.broadcast.emit('user:status', {
+        userId,
+        username,
+        status: 'online',
+        timestamp: new Date()
+      });
+    }
 
-    // Send user their current presence info
+    // Send user their current presence info (always show themselves as online)
     socket.emit('presence:update', {
       status: 'online',
       onlineUsers: Array.from(userPresence.values()).map(p => ({
@@ -640,27 +656,81 @@ export function setupSocketHandlers(io: Server) {
         presence.lastSeen = new Date();
         userPresence.set(userId, presence);
 
-        // Broadcast status to contacts
-        socket.broadcast.emit('user:status', {
-          userId,
-          username,
-          status,
-          timestamp: new Date()
-        });
+        // Only broadcast if user allows it
+        if (!presence.hideOnlineStatus) {
+          socket.broadcast.emit('user:status', {
+            userId,
+            username,
+            status,
+            timestamp: new Date()
+          });
+        }
       }
     });
 
-    socket.on('presence:request', (userIds: string[]) => {
+    socket.on('presence:request', async (userIds: string[]) => {
+      // For users not in the in-memory map (offline / server restarted),
+      // fall back to the lastSeen stored in the database.
+      const unknownIds = userIds.filter(id => !userPresence.has(id));
+
+      let dbLastSeen: Record<string, Date | null> = {};
+      if (unknownIds.length > 0) {
+        try {
+          const rows = await prisma.user.findMany({
+            where: { id: { in: unknownIds } },
+            select: { id: true, lastSeen: true },
+          });
+          rows.forEach(r => { dbLastSeen[r.id] = r.lastSeen; });
+        } catch (e) {
+          console.error('❌ Error fetching lastSeen from DB:', e);
+        }
+      }
+
       const presenceData = userIds.map(id => {
         const presence = userPresence.get(id);
+        const hidden = presence?.hideOnlineStatus ?? false;
         return {
           userId: id,
-          status: presence?.status || 'offline',
-          lastSeen: presence?.lastSeen || null
+          status: hidden ? 'offline' : (presence?.status || 'offline'),
+          lastSeen: presence?.lastSeen || dbLastSeen[id] || null,
+          hidden,
         };
       });
 
       socket.emit('presence:response', presenceData);
+    });
+
+    // Update user settings that affect socket behaviour
+    socket.on('settings:update', async (data: { showOnlineStatus?: boolean }) => {
+      if (typeof data.showOnlineStatus === 'boolean') {
+        const hide = !data.showOnlineStatus;
+        const presence = userPresence.get(userId);
+        if (presence) {
+          presence.hideOnlineStatus = hide;
+          userPresence.set(userId, presence);
+        }
+
+        // Persist to DB
+        try {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { showOnlineStatus: data.showOnlineStatus },
+          });
+        } catch (e) {
+          console.error('❌ Error updating showOnlineStatus:', e);
+        }
+
+        // Broadcast new effective status to everyone else
+        const effectiveStatus = hide ? 'offline' : (presence?.status || 'online');
+        socket.broadcast.emit('user:status', {
+          userId,
+          username,
+          status: effectiveStatus,
+          hidden: hide,
+          lastSeen: hide ? new Date() : null,
+          timestamp: new Date(),
+        });
+      }
     });
 
     // ==================== DISCONNECT ====================
@@ -679,13 +749,15 @@ export function setupSocketHandlers(io: Server) {
       // Remove from active sockets
       userSockets.delete(userId);
 
-      // Notify contacts
-      socket.broadcast.emit('user:status', {
-        userId,
-        username,
-        status: 'offline',
-        lastSeen: new Date()
-      });
+      // Only broadcast offline if the user was showing their status
+      if (!presence?.hideOnlineStatus) {
+        socket.broadcast.emit('user:status', {
+          userId,
+          username,
+          status: 'offline',
+          lastSeen: new Date()
+        });
+      }
 
       // Update user's last seen in database
       try {

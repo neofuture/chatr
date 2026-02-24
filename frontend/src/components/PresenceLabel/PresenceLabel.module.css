@@ -1,0 +1,21 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: inherit;
+  line-height: 1;
+}
+
+.dot {
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+  transition: background-color 0.3s ease;
+}
+
+.label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+

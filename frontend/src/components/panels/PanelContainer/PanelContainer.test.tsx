@@ -1,7 +1,12 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PanelProvider, usePanels } from '@/contexts/PanelContext';
+import { PresenceProvider } from '@/contexts/PresenceContext';
 import PanelContainer from './PanelContainer';
+
+jest.mock('@/contexts/WebSocketContext', () => ({
+  useWebSocket: () => ({ socket: null, connected: false, connecting: false }),
+}));
 
 // Test component that uses the panel hook
 function TestComponent() {
@@ -95,10 +100,12 @@ function TestComponent() {
 describe('PanelContainer Component', () => {
   const renderWithProvider = () => {
     return render(
-      <PanelProvider>
-        <TestComponent />
-        <PanelContainer />
-      </PanelProvider>
+      <PresenceProvider>
+        <PanelProvider>
+          <TestComponent />
+          <PanelContainer />
+        </PanelProvider>
+      </PresenceProvider>
     );
   };
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { type Message, type MessageReaction } from '@/components/MessageBubble';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
 import type { LogEntry, AvailableUser, PresenceStatus, PresenceInfo, ConversationSummary } from '@/components/test/types';
@@ -13,6 +14,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 export function useConversation() {
   const { socket, connected, connecting, disconnect, reconnect } = useWebSocket();
   const { showToast } = useToast();
+  const { settings, setSetting } = useUserSettings();
 
   // ── State ────────────────────────────────────────────
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -28,7 +30,7 @@ export function useConversation() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [isRecipientTyping, setIsRecipientTyping] = useState(false);
   const [isUserTyping, setIsUserTyping] = useState(false);
-  const [ghostTypingEnabled, setGhostTypingEnabled] = useState(false);
+  const ghostTypingEnabled = settings.ghostTypingEnabled;
   const [recipientGhostText, setRecipientGhostText] = useState('');
   const [isRecipientRecording, setIsRecipientRecording] = useState(false);
   const [isRecipientListeningToMyAudio, setIsRecipientListeningToMyAudio] = useState<string | null>(null);
@@ -59,6 +61,12 @@ export function useConversation() {
   useEffect(() => { testRecipientIdRef.current = testRecipientId; }, [testRecipientId]);
   useEffect(() => { effectivelyOnlineRef.current = effectivelyOnline; }, [effectivelyOnline]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  // Sync showOnlineStatus setting to backend whenever it changes or socket connects
+  useEffect(() => {
+    if (!socket || !connected) return;
+    socket.emit('settings:update', { showOnlineStatus: settings.showOnlineStatus });
+  }, [socket, connected, settings.showOnlineStatus]);
 
   // Persist selected recipient
   useEffect(() => {
@@ -750,7 +758,7 @@ export function useConversation() {
     socket.emit('presence:request', [testRecipientId]); showToast('Presence requested', 'success');
   };
   const handleGhostTypingToggle = (val: boolean) => {
-    setGhostTypingEnabled(val);
+    setSetting('ghostTypingEnabled', val);
     if (!val) {
       setRecipientGhostText('');
       if (socket && effectivelyOnline && testRecipientId) {

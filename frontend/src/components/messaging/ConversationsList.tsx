@@ -1,27 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { AvailableUser, PresenceInfo, PresenceStatus, ConversationSummary } from '@/components/test/types';
-import FlipText from '@/components/test/FlipText';
+import type { AvailableUser, PresenceInfo, ConversationSummary } from '@/components/test/types';import FlipText from '@/components/test/FlipText';
+import PresenceLabel, { formatPresence } from '@/components/PresenceLabel/PresenceLabel';
+import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 
-const PRESENCE_COLOUR: Record<PresenceStatus, string> = {
-  online:  '#10b981',
-  away:    '#f97316',
-  offline: '#64748b',
-};
-
-
-function formatLastSeen(date: Date | null): string {
-  if (!date) return 'Offline';
-  const now = Date.now();
-  const diff = Math.floor((now - date.getTime()) / 1000);
-  if (diff < 60)   return `Last seen ${diff}s ago`;
-  if (diff < 300)  return `Last seen ${Math.floor(diff / 60)}m ago`;
-  // 5 min – 24 h: show actual time
-  if (diff < 86400) return `Last seen at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  // over 24 h: show date + time
-  return `Last seen ${date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-}
 
 function formatTime(date: Date): string {
   const now = new Date();
@@ -133,21 +116,21 @@ export default function ConversationsList({ isDark, availableUsers, selectedUser
           filtered.map(user => {
             const isSelected = user.id === selectedUserId;
             const info: PresenceInfo = userPresence[user.id] ?? { status: 'offline', lastSeen: null };
-            const dotColour = PRESENCE_COLOUR[info.status];
             const convo = conversations[user.id];
             const unread = convo?.unreadCount ?? 0;
             const displayName = user.displayName || user.username.replace(/^@/, '');
-            const initials = displayName.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0].toUpperCase()).join('') || displayName.slice(0, 2).toUpperCase();
 
-            // Subtitle: flip between last message and presence every 5s
-            let subtitle = '';
-            if (convo && !showPresence) {
+            // Subtitle: if user hides status, only ever show last message, never presence
+            // Otherwise flip between last message and presence every 5s
+            let subtitleText = '';
+            let subtitleIsPresence = false;
+            const isHidden = !!info.hidden;
+            if (convo && (isHidden || !showPresence)) {
               const prefix = convo.lastSenderId === currentUserId ? 'You: ' : '';
-              subtitle = prefix + convo.lastMessage;
-            } else {
-              subtitle = info.status === 'online' ? 'Online'
-                : info.status === 'away' ? 'Away'
-                : formatLastSeen(info.lastSeen);
+              subtitleText = prefix + convo.lastMessage;
+            } else if (!isHidden) {
+              subtitleText = formatPresence(info);
+              subtitleIsPresence = true;
             }
 
             return (
@@ -166,35 +149,12 @@ export default function ConversationsList({ isDark, availableUsers, selectedUser
                   transition: 'background-color 0.15s',
                 }}
               >
-                {/* Avatar with gradient ring + presence dot */}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <div style={{
-                    width: '50px', height: '50px', borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #f97316, #ef4444)',
-                    padding: '3px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {user.profileImage ? (
-                      <img src={user.profileImage} alt={displayName}
-                        style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
-                    ) : (
-                      <div style={{
-                        width: '44px', height: '44px', borderRadius: '50%',
-                        backgroundColor: isDark ? '#334155' : 'rgba(59,130,246,0.15)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '16px', fontWeight: '700', color: isDark ? '#f1f5f9' : '#3b82f6',
-                      }}>{initials}</div>
-                    )}
-                  </div>
-                  {/* Presence dot */}
-                  <div style={{
-                    position: 'absolute', bottom: '1px', right: '1px',
-                    width: '13px', height: '13px', borderRadius: '50%',
-                    backgroundColor: dotColour,
-                    border: `2px solid ${isDark ? '#0f172a' : '#f8fafc'}`,
-                    transition: 'background-color 0.3s',
-                  }} />
-                </div>
+                <PresenceAvatar
+                  displayName={displayName}
+                  profileImage={user.profileImage}
+                  info={info}
+                  size={50}
+                />
 
                 {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -207,25 +167,25 @@ export default function ConversationsList({ isDark, availableUsers, selectedUser
                       {displayName}
                     </div>
                     {convo && (
-                      <div style={{ fontSize: '11px', color: isDark ? 'rgba(148,163,184,0.6)' : 'rgba(100,116,139,0.7)', flexShrink: 0 }}>
+                      <div style={{ fontSize: '11px', color: isDark ? '#f1f5f9' : '#0f172a', flexShrink: 0 }}>
                         {formatTime(convo.lastMessageAt)}
                       </div>
                     )}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                     <FlipText
-                      value={subtitle}
+                      value={subtitleText}
                       style={{
                         flex: 1,
                         minWidth: 0,
                         fontSize: '12px',
-                        color: unread > 0
-                          ? (isDark ? '#f1f5f9' : '#0f172a')
-                          : convo
-                          ? (isDark ? 'rgba(148,163,184,0.7)' : 'rgba(100,116,139,0.8)')
-                          : dotColour,
+                        color: isDark ? '#f1f5f9' : '#0f172a',
                         fontWeight: unread > 0 ? '500' : 'normal',
                       }}
+                      renderValue={subtitleIsPresence
+                        ? () => <PresenceLabel info={info} showDot={false} />
+                        : undefined
+                      }
                     />
                     {unread > 0 && (
                       <div style={{

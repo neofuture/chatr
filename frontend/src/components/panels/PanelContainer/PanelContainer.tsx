@@ -3,8 +3,61 @@
 import { usePanels, ActionIcon } from '@/contexts/PanelContext';
 import { useEffect, useState } from 'react';
 import { getProfileImageURL } from '@/lib/profileImageService';
+import { usePresence } from '@/contexts/PresenceContext';
+import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
+import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PanelFooter from '@/components/PanelFooter/PanelFooter';
 import styles from './PanelContainer.module.css';
+
+/** For chat panels, shows live PresenceAvatar; falls back to plain img for others. */
+function PresenceAvatarForPanel({ panelId, profileImage, title }: { panelId: string; profileImage?: string | null; title: string }) {
+  const { getPresence } = usePresence();
+  const userId = panelId.startsWith('chat-') ? panelId.slice(5) : null;
+  if (!userId) return profileImage ? <img src={profileImage} alt={title} /> : null;
+  const info = getPresence(userId);
+  return <PresenceAvatar displayName={title} profileImage={profileImage} info={info} size={36} />;
+}
+
+/** Renders the subtitle row, or nothing when user hides their status */
+function PanelSubTitle({ panelId, staticSubTitle }: { panelId: string; staticSubTitle?: string }) {
+  const { getPresence } = usePresence();
+  const userId = panelId.startsWith('chat-') ? panelId.slice(5) : null;
+
+  // Non-chat panel: show static subtitle if provided
+  if (!userId) {
+    if (!staticSubTitle) return null;
+    return (
+      <div className={styles.titleSub}>
+        <span className={styles.titleSubText}>{staticSubTitle}</span>
+      </div>
+    );
+  }
+
+  const info = getPresence(userId);
+  // Hidden user: no subtitle at all so the title line vertically centres
+  if (info.hidden) return null;
+
+  return (
+    <div className={styles.titleSub}>
+      <span className={styles.titleSubText}>
+        <PresenceLabel info={info} showDot={false} />
+      </span>
+    </div>
+  );
+}
+
+/** For chat panels (id = "chat-<userId>"), shows live presence from context.
+ *  Returns null when the user is hiding their status so the title centres vertically. */
+function LiveSubTitle({ panelId, staticSubTitle }: { panelId: string; staticSubTitle?: string }) {
+  const { getPresence } = usePresence();
+  const userId = panelId.startsWith('chat-') ? panelId.slice(5) : null;
+
+  if (!userId) return <>{staticSubTitle || ''}</>;
+
+  const info = getPresence(userId);
+  if (info.hidden) return null;
+  return <PresenceLabel info={info} showDot={false} />;
+}
 
 interface PanelProps {
   id: string;
@@ -19,7 +72,7 @@ interface PanelProps {
   profileImage?: string;
   fullWidth?: boolean;
   actionIcons?: ActionIcon[];
-  footer?: React.ReactNode;
+  footer?: () => React.ReactNode;
 }
 
 function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, titlePosition = 'center', subTitle, profileImage, fullWidth = false, actionIcons, footer }: PanelProps) {
@@ -131,26 +184,31 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
           </button>
           <div
             className={`auth-panel-title ${titlePosition === 'center' ? styles.titleBlockCenter : styles.titleBlockLeft} ${styles.titleBlock}`}
-            style={{ gap: currentProfileImage ? '0.75rem' : (subTitle ? '0.125rem' : '0') }}
+            style={{ gap: '0.75rem' }}
           >
-            {currentProfileImage && (
-              <img
-                src={currentProfileImage}
-                alt="Profile"
-                className={styles.profileImg}
-              />
-            )}
+            {(() => {
+              const userId = id.startsWith('chat-') ? id.slice(5) : null;
+              if (userId) {
+                // Always render for chat panels — PresenceAvatar shows initials when no image
+                return (
+                  <PresenceAvatarForPanel panelId={id} profileImage={currentProfileImage} title={title} />
+                );
+              }
+              // Non-chat panels: only show image if one is provided
+              if (currentProfileImage) {
+                return (
+                  <img
+                    src={currentProfileImage}
+                    alt="Profile"
+                    className={styles.profileImg}
+                  />
+                );
+              }
+              return null;
+            })()}
             <div className={styles.titleText}>
               <span className={styles.titleName}>{title}</span>
-              <div
-                className={styles.titleSub}
-                style={{ height: subTitle ? '14px' : '0px', opacity: subTitle ? 0.7 : 0 }}
-              >
-                <span
-                  className={styles.titleSubText}
-                  style={{ transform: subTitle ? 'translateY(0)' : 'translateY(-5px)' }}
-                >{subTitle || ' '}</span>
-              </div>
+              <PanelSubTitle panelId={id} staticSubTitle={subTitle} />
             </div>
           </div>
           <div className={styles.actions}>
@@ -171,7 +229,7 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
         <div className="auth-panel-content">{children}</div>
 
         {/* Footer — injected by the caller */}
-        {footer && <PanelFooter>{footer}</PanelFooter>}
+        {footer && <PanelFooter>{footer()}</PanelFooter>}
       </div>
     </>
   );
@@ -198,8 +256,7 @@ export default function PanelContainer() {
           profileImage={panel.profileImage}
           fullWidth={panel.fullWidth}
           actionIcons={panel.actionIcons}
-          footer={panel.footer}
-        >
+          footer={panel.footer}        >
           {panel.component}
         </Panel>
       ))}

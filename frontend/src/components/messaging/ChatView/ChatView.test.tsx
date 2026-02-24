@@ -3,6 +3,13 @@ import { useRef } from 'react';
 import ChatView from './ChatView';
 import type { Message } from '@/components/MessageBubble';
 
+// jsdom doesn't implement ResizeObserver
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 jest.mock('@/components/MessageBubble', () => ({
   __esModule: true,
   default: ({ messages }: { messages: any[] }) => (

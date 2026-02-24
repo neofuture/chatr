@@ -13,6 +13,11 @@
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
   --safe-area-inset-left: env(safe-area-inset-left);
 
+  /* Presence */
+  --presence-online:  #10b981;
+  --presence-away:    #f97316;
+  --presence-offline: #64748b;
+
   /* ── Raw palette ─────────────────────────────────────── */
 
   /* Blue */
@@ -1642,6 +1647,14 @@ h1 {
 /* Default padding for non-fullWidth panels (auth flows, settings, etc.) */
 .auth-panel:not([data-fullwidth="true"]) .auth-panel-content {
   padding: 2rem 1.5rem;
+}
+
+/* Full-width panels (chat) — let children manage their own scroll */
+.auth-panel[data-fullwidth="true"] .auth-panel-content {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
 }
 
 
