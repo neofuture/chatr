@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { AvailableUser, PresenceInfo, ConversationSummary } from '@/components/test/types';import FlipText from '@/components/test/FlipText';
+import type { AvailableUser, PresenceInfo, ConversationSummary } from '@/components/test/types';
+import FlipText from '@/components/FlipText/FlipText';
 import PresenceLabel, { formatPresence } from '@/components/PresenceLabel/PresenceLabel';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 

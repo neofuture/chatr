@@ -361,6 +361,7 @@ export function useConversation() {
           [data.userId]: {
             status: data.status as PresenceStatus,
             lastSeen: data.lastSeen ? new Date(data.lastSeen) : null,
+            hidden: !!data.hidden,
           },
         }));
       }
@@ -368,7 +369,7 @@ export function useConversation() {
 
     const onPresenceResponse = (data: any) => {
       addLog('received', 'presence:response', data);
-      // Backend returns an array: [{ userId, status, lastSeen }]
+      // Backend returns an array: [{ userId, status, lastSeen, hidden }]
       if (Array.isArray(data)) {
         setUserPresence(prev => {
           const next = { ...prev };
@@ -377,6 +378,7 @@ export function useConversation() {
               next[entry.userId] = {
                 status: (entry.status ?? 'offline') as PresenceStatus,
                 lastSeen: entry.lastSeen ? new Date(entry.lastSeen) : null,
+                hidden: !!entry.hidden,
               };
             }
           });

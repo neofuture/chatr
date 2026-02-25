@@ -101,9 +101,13 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
   // ── Unsend ────────────────────────────────────────────
   const handleUnsend = useCallback((messageId: string) => {
     if (!socket || !connected) return;
-    socket.emit('message:unsend', { messageId, recipientId });
-    setMessages(prev => prev.filter(m => m.id !== messageId));
-  }, [socket, connected, recipientId]);
+    // Backend expects messageId as a plain string, not an object
+    socket.emit('message:unsend', messageId);
+    // Optimistically mark as unsent (renders placeholder bubble, matches history API)
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, unsent: true, content: '' } : m
+    ));
+  }, [socket, connected]);
 
   // ── Lightbox ──────────────────────────────────────────
   const openLightbox = useCallback((url: string, name: string) => {
@@ -120,26 +124,59 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
   useEffect(() => {
     if (!socket || !recipientId || !currentUserId) return;
 
-    const onMessage = (data: Message & { tempId?: string }) => {
+    const mapSocketMessage = (data: any, dir: 'sent' | 'received'): Message => ({
+      ...data,
+      direction: dir,
+      senderId: data.senderId,
+      recipientId: data.recipientId,
+      timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+      // Map socket field names → MessageBubble field names
+      waveformData: data.waveformData ?? data.waveform ?? undefined,
+      duration: data.duration ?? data.audioDuration ?? undefined,
+    });
+
+    const onMessageReceived = (data: any) => {
       const isForUs =
         (data.senderId === recipientId && data.recipientId === currentUserId) ||
         (data.senderId === currentUserId && data.recipientId === recipientId);
       if (!isForUs) return;
 
+      const msg = mapSocketMessage(data, data.senderId === currentUserId ? 'sent' : 'received');
+
       setMessages(prev => {
-        if (data.tempId) {
-          const idx = prev.findIndex(m => m.id === data.tempId);
-          if (idx !== -1) {
-            const updated = [...prev];
-            updated[idx] = { ...data, direction: data.senderId === currentUserId ? 'sent' : 'received' };
-            replaceCachedMessageId(data.tempId, data.id).catch(console.error);
-            return updated;
-          }
-        }
         if (prev.find(m => m.id === data.id)) return prev;
-        const msg = { ...data, direction: data.senderId === currentUserId ? 'sent' : 'received' } as Message;
         cacheMessage(msg, currentUserId).catch(console.error);
         return [...prev, msg];
+      });
+    };
+
+    const onMessageSent = (data: any) => {
+      setMessages(prev => {
+        const confirmed = mapSocketMessage(data, 'sent');
+
+        // Don't add if already present by real ID
+        if (prev.find(m => m.id === data.id)) return prev;
+
+        // Find the LAST temp message belonging to this user and replace it
+        let tempIdx = -1;
+        for (let i = prev.length - 1; i >= 0; i--) {
+          if (prev[i].id.startsWith('temp-') && prev[i].senderId === currentUserId) {
+            tempIdx = i;
+            break;
+          }
+        }
+
+        if (tempIdx !== -1) {
+          const updated = [...prev];
+          replaceCachedMessageId(updated[tempIdx].id, data.id).catch(console.error);
+          updated[tempIdx] = confirmed;
+          cacheMessage(confirmed, currentUserId).catch(console.error);
+          return updated;
+        }
+
+        // No temp found — just append
+        cacheMessage(confirmed, currentUserId).catch(console.error);
+        return [...prev, confirmed];
       });
     };
 
@@ -154,7 +191,10 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
     };
 
     const onMessageUnsent = ({ messageId }: { messageId: string }) => {
-      setMessages(prev => prev.filter(m => m.id !== messageId));
+      setMessages(prev => prev.map(m =>
+        m.id === messageId ? { ...m, unsent: true, content: '' } : m
+      ));
+      updateCachedMessage(messageId, { unsent: true, content: '' }).catch(console.error);
     };
 
     const onReaction = ({ messageId, emoji, userId, username }: { messageId: string; emoji: string; userId: string; username: string }) => {
@@ -169,54 +209,60 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
       }));
     };
 
-    const onTypingStart = ({ senderId }: { senderId: string }) => {
+    const onTypingStatus = ({ userId: senderId, isTyping }: { userId: string; isTyping: boolean }) => {
       if (senderId !== recipientId) return;
-      setIsRecipientTyping(true);
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-      typingTimerRef.current = setTimeout(() => setIsRecipientTyping(false), 5000);
+      if (isTyping) {
+        setIsRecipientTyping(true);
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(() => setIsRecipientTyping(false), 5000);
+      } else {
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        setIsRecipientTyping(false);
+      }
     };
 
-    const onTypingStop = ({ senderId }: { senderId: string }) => {
+    const onAudioRecording = ({ userId: senderId, isRecording }: { userId: string; isRecording: boolean }) => {
       if (senderId !== recipientId) return;
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-      setIsRecipientTyping(false);
+      if (isRecording) {
+        setIsRecipientRecording(true);
+        if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+        recordingTimerRef.current = setTimeout(() => setIsRecipientRecording(false), 30000);
+      } else {
+        if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+        setIsRecipientRecording(false);
+      }
     };
 
-    const onRecordingStart = ({ senderId }: { senderId: string }) => {
-      if (senderId !== recipientId) return;
-      setIsRecipientRecording(true);
-      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
-      recordingTimerRef.current = setTimeout(() => setIsRecipientRecording(false), 30000);
+    const onAudioWaveform = ({ messageId, waveform, duration }: { messageId: string; waveform: number[]; duration: number }) => {
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, waveformData: waveform, duration }
+          : m
+      ));
+      updateCachedMessage(messageId, { waveformData: waveform, duration }).catch(console.error);
     };
 
-    const onRecordingStop = ({ senderId }: { senderId: string }) => {
-      if (senderId !== recipientId) return;
-      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
-      setIsRecipientRecording(false);
-    };
-
-    socket.on('message:received', onMessage);
-    socket.on('message:sent', onMessage);
+    socket.on('message:received', onMessageReceived);
+    socket.on('message:sent', onMessageSent);
     socket.on('message:status', onMessageStatus);
     socket.on('message:edited', onMessageEdited);
     socket.on('message:unsent', onMessageUnsent);
     socket.on('message:reaction', onReaction);
-    socket.on('typing:start', onTypingStart);
-    socket.on('typing:stop', onTypingStop);
-    socket.on('recording:start', onRecordingStart);
-    socket.on('recording:stop', onRecordingStop);
+    socket.on('typing:status', onTypingStatus);
+    socket.on('audio:recording', onAudioRecording);
+    socket.on('audio:waveform', onAudioWaveform);
 
     return () => {
-      socket.off('message:received', onMessage);
-      socket.off('message:sent', onMessage);
+      socket.off('message:received', onMessageReceived);
+      socket.off('message:sent', onMessageSent);
       socket.off('message:status', onMessageStatus);
       socket.off('message:edited', onMessageEdited);
       socket.off('message:unsent', onMessageUnsent);
       socket.off('message:reaction', onReaction);
-      socket.off('typing:start', onTypingStart);
-      socket.off('typing:stop', onTypingStop);
-      socket.off('recording:start', onRecordingStart);
-      socket.off('recording:stop', onRecordingStop);
+      socket.off('typing:status', onTypingStatus);
+      socket.off('audio:recording', onAudioRecording);
+      socket.off('audio:waveform', onAudioWaveform);
+      socket.off('audio:recording', onAudioRecording);
     };
   }, [socket, recipientId, currentUserId]);
 
@@ -230,12 +276,17 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
-      .then((data: Message[] | null) => {
-        if (!data) return;
-        const mapped = data.map(m => ({
+      .then((res: any) => {
+        if (!res) return;
+        // API returns { messages, hasMore } or legacy flat array
+        const raw: any[] = Array.isArray(res) ? res : (res.messages ?? []);
+        const mapped = raw.map((m: any) => ({
           ...m,
           direction: m.senderId === currentUserId ? 'sent' : 'received',
-          timestamp: new Date(m.timestamp),
+          timestamp: new Date(m.timestamp ?? m.createdAt),
+          // Map API field names → MessageBubble field names
+          waveformData: m.waveformData ?? m.waveform ?? undefined,
+          duration: m.duration ?? m.audioDuration ?? undefined,
         })) as Message[];
         setMessages(mapped);
         cacheMessages(mapped, currentUserId).catch(console.error);

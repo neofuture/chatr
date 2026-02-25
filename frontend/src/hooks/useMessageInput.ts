@@ -121,17 +121,26 @@ export function useMessageInput({
       } : undefined,
     };
 
+    // Add optimistic message FIRST, then emit — prevents race condition
+    // where message:sent arrives before the temp message is in state
+    onMessageSent?.(msg);
+    onCancelReply?.();
+    setMessage('');
+
     socket.emit('message:send', {
       recipientId,
       content: trimmed,
       type: 'text',
-      replyTo: replyingTo ? { id: replyingTo.id, content: replyingTo.content, senderId: replyingTo.senderId } : undefined,
-      messageId: tempId,
+      replyTo: replyingTo ? {
+        id: replyingTo.id,
+        content: replyingTo.content,
+        senderDisplayName: replyingTo.senderDisplayName,
+        senderUsername: replyingTo.senderUsername,
+        type: replyingTo.type,
+        duration: replyingTo.duration,
+      } : undefined,
+      // No messageId — backend creates the record
     });
-
-    onMessageSent?.(msg);
-    onCancelReply?.();
-    setMessage('');
   }, [socket, effectivelyOnline, recipientId, message, editingMessage, currentUserId, replyingTo, showToast, emitTypingStop, onMessageSent, onEditSaved, onCancelEdit, onCancelReply]);
 
   // ── Emoji insert ─────────────────────────────────────
@@ -309,13 +318,13 @@ export function useMessageInput({
 
   const handleVoiceRecordingStart = useCallback(() => {
     if (socket && recipientId && effectivelyOnline) {
-      socket.emit('recording:start', { recipientId });
+      socket.emit('audio:recording', { recipientId, isRecording: true });
     }
   }, [socket, recipientId, effectivelyOnline]);
 
   const handleVoiceRecordingStop = useCallback(() => {
     if (socket && recipientId) {
-      socket.emit('recording:stop', { recipientId });
+      socket.emit('audio:recording', { recipientId, isRecording: false });
     }
   }, [socket, recipientId]);
 

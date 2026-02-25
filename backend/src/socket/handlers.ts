@@ -217,6 +217,7 @@ export function setupSocketHandlers(io: Server) {
           io.to(`user:${data.recipientId}`).emit('message:received', {
             id: message.id,
             senderId: userId,
+            recipientId: data.recipientId,
             senderUsername: username,
             senderDisplayName: displayName,
             senderProfileImage: profileImage,
@@ -243,11 +244,19 @@ export function setupSocketHandlers(io: Server) {
         // Confirm to sender
         socket.emit('message:sent', {
           id: message.id,
+          senderId: userId,
           recipientId: data.recipientId,
           content: message.content,
+          type: message.type,
           timestamp: message.createdAt,
           status: recipientSocketId ? 'delivered' : 'sent',
           replyTo: replyToPayload,
+          fileUrl: message.fileUrl,
+          fileName: message.fileName,
+          fileSize: message.fileSize,
+          fileType: message.fileType,
+          waveform: (message.audioWaveform as number[] | null) || null,
+          duration: message.audioDuration,
         });
 
       } catch (error) {
