@@ -1,17 +1,19 @@
 # Components
 
-All reusable UI components are located in `frontend/src/components/`. Each component lives in its own folder with an `index.md` reference document.
+All reusable UI components are located in `frontend/src/components/`. Each component lives in its own folder with an `index.md` reference document. Every component also has a Storybook story.
 
 ## Structure
 
 ```mermaid
 graph LR
+    messaging --> ConversationsList
+    messaging --> ConversationView
     messaging --> ChatView
+    messaging --> MessageInput
     messaging --> MessageBubble
     messaging --> MessageAudioPlayer
+    messaging --> EmojiPicker
     messaging --> VoiceRecorder
-    messaging --> ChatInput
-    messaging --> ChatMessageList
 ```
 
 ```mermaid
@@ -50,18 +52,22 @@ graph LR
     forms --> LoginVerification
     forms --> EmailVerification
     forms --> ForgotPassword
+    forms --> Demo2FA
 ```
 
 ```mermaid
 graph LR
     panels --> PanelContainer
     panels --> AuthPanel
+    panels --> DemoPanels
 ```
 
 ```mermaid
 graph LR
     layout --> AppLayout
     layout --> MobileLayout
+    layout --> BottomNav
+    layout --> PanelFooter
     layout --> BackgroundBlobs
 ```
 
@@ -70,29 +76,18 @@ graph LR
     utility --> Logo
     utility --> ThemeToggle
     utility --> ToastContainer
-    utility --> ConnectionIndicator
     utility --> BurgerMenu
     utility --> RoutePreloader
+    utility --> PresenceAvatar
+    utility --> PresenceLabel
+    utility --> FlipText
+    utility --> LogViewerPanel
+    utility --> MermaidDiagram
 ```
 
 ```mermaid
 graph LR
-    test --> LabControls
-    test --> LabActionControls
-    test --> LabMessages
-    test --> LabSystemLogs
-    test --> ConversationsList
-    test --> ConversationsColumn
-    test --> SystemLogsModal
-    test --> DragHandle
-```
-
-```mermaid
-graph LR
-    demo --> Demo2FA
     demo --> BottomSheetDemo
-    demo --> WebSocketDemo
-    demo --> WebSocketDebug
     demo --> DemoPanels
 ```
 
@@ -100,13 +95,12 @@ graph LR
 
 | Folder | Description |
 |---|---|
-| [messaging](./messaging/index.md) | Message display, audio, voice recording, chat input |
-| [form-controls](./form-controls/index.md) | Inputs, selects, sliders, date pickers |
-| [dialogs](./dialogs/index.md) | Bottom sheet, confirmation dialog, lightbox |
-| [image-manip](./image-manip/index.md) | Profile and cover image upload and crop |
-| [forms](./forms/index.md) | Auth forms — login, register, verification |
-| [panels](./panels/index.md) | Slide-in panel system |
-| [layout](./layout/index.md) | App shell — desktop and mobile layouts |
-| [utility](./utility/index.md) | Logo, theme toggle, toasts, connection indicator |
-| [test](./test/index.md) | Test Lab components — conversations, messages, logs |
-| [demo](./demo/index.md) | Dev/demo-only components |
+| [messaging](./Messaging/index.md) | Conversations, messages, audio, emoji, voice recording, chat input |
+| [form-controls](./Form-Controls/index.md) | Inputs, selects, sliders, date pickers |
+| [dialogs](./Dialogs/index.md) | Bottom sheet, confirmation dialog, lightbox |
+| [image-manip](./Image-Manip/index.md) | Profile and cover image upload and crop |
+| [forms](./Forms/index.md) | Auth forms — login, register, verification, 2FA |
+| [panels](./Panels/index.md) | Slide-in panel system |
+| [layout](./Layout/index.md) | App shell — desktop layout, mobile layout, nav bars |
+| [utility](./Utility/index.md) | Logo, theme toggle, toasts, presence, flip text, log viewer |
+| [demo](./Demo/index.md) | Dev/demo components — bottom sheets, panels |

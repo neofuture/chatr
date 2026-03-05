@@ -1,0 +1,62 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.row:hover {
+  background: var(--bg-input);
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friendBadge {
+  font-size: 9px;
+  font-weight: 600;
+  color: #22c55e;
+  border: 1px solid #22c55e;
+  border-radius: 4px;
+  padding: 1px 4px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}

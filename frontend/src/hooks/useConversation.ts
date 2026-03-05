@@ -7,7 +7,7 @@ import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { useLog } from '@/contexts/LogContext';
 import { type Message, type MessageReaction } from '@/components/MessageBubble';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
-import type { AvailableUser, PresenceStatus, PresenceInfo, ConversationSummary } from '@/components/test/types';
+import type { AvailableUser, PresenceStatus, PresenceInfo, ConversationSummary } from '@/types/types.ts';
 import { loadCachedMessages, cacheMessages, cacheMessage, updateCachedMessage, replaceCachedMessageId } from '@/lib/messageCache';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';

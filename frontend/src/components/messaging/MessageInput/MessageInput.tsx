@@ -16,6 +16,8 @@ export interface MessageInputProps {
   onCancelReply?: () => void;
   onCancelEdit?: () => void;
   onEditLastSent?: () => void;
+  conversationStatus?: 'pending' | 'accepted';
+  disabled?: boolean;
 }
 
 export default function MessageInput({
@@ -28,6 +30,8 @@ export default function MessageInput({
   onCancelReply,
   onCancelEdit,
   onEditLastSent,
+  conversationStatus,
+  disabled = false,
 }: MessageInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,9 +77,10 @@ export default function MessageInput({
     // handled externally via editingMessage prop — the hook resets on send
   }, [editingMessage]);
 
+  const canSend = effectivelyOnline && !disabled;
   const inputBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
   const inputBorder = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
-  const sendBg = effectivelyOnline ? '#f97316' : '#64748b';
+  const sendBg = canSend ? '#f97316' : '#64748b';
 
   return (
     <div style={{ flexShrink: 0, width: '100%' }}>
@@ -228,9 +233,9 @@ export default function MessageInput({
               {' · '}{(selectedFiles.reduce((s, f) => s + f.size, 0) / 1024).toFixed(1)} KB
             </span>
             <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={sendFiles} disabled={uploadingFile || !effectivelyOnline} style={{
+              <button onClick={sendFiles} disabled={uploadingFile || !canSend} style={{
                 padding: '6px 14px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                backgroundColor: effectivelyOnline ? '#22c55e' : '#64748b', color: '#fff',
+                backgroundColor: canSend ? '#22c55e' : '#64748b', color: '#fff',
                 fontSize: '12px', fontWeight: '600',
               }}>
                 {uploadingFile
@@ -274,7 +279,7 @@ export default function MessageInput({
             <VoiceRecorder
               compact
               onRecordingComplete={handleVoiceRecording}
-              disabled={!effectivelyOnline || uploadingFile}
+              disabled={!canSend || uploadingFile}
               onRecordingStart={handleVoiceRecordingStart}
               onRecordingStop={handleVoiceRecordingStop}
             />
@@ -290,11 +295,11 @@ export default function MessageInput({
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={!effectivelyOnline || uploadingFile}
+              disabled={!canSend || uploadingFile}
               title="Attach file"
               style={{
                 flexShrink: 0, width: '38px', height: '38px', borderRadius: '50%', border: 'none',
-                cursor: effectivelyOnline ? 'pointer' : 'not-allowed',
+                cursor: canSend ? 'pointer' : 'not-allowed',
                 backgroundColor: inputBg,
                 color: isDark ? '#94a3b8' : '#64748b',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px',
@@ -322,11 +327,12 @@ export default function MessageInput({
                 }
               }}
               placeholder={
-                editingMessage ? 'Edit your message…'
+                disabled ? "You can't reply to this conversation"
+                : editingMessage ? 'Edit your message…'
                 : effectivelyOnline ? 'Message…'
                 : 'Offline — reconnecting…'
               }
-              disabled={!effectivelyOnline}
+              disabled={!canSend}
               style={{
                 flex: 1, padding: '9px 14px', borderRadius: '20px', fontSize: '14px',
                 backgroundColor: editingMessage
@@ -335,7 +341,7 @@ export default function MessageInput({
                 border: `1px solid ${editingMessage ? '#f97316' : inputBorder}`,
                 color: isDark ? '#f1f5f9' : '#0f172a',
                 outline: 'none',
-                opacity: effectivelyOnline ? 1 : 0.5,
+                opacity: canSend ? 1 : 0.5,
                 transition: 'border-color 0.15s, background-color 0.15s',
               }}
             />
@@ -372,15 +378,15 @@ export default function MessageInput({
             {/* Send / Save-edit button */}
             <button
               onClick={handleSend}
-              disabled={!effectivelyOnline || !message.trim()}
+              disabled={!canSend || !message.trim()}
               title={editingMessage ? 'Save edit' : 'Send message'}
               style={{
                 flexShrink: 0, width: '38px', height: '38px', borderRadius: '50%', border: 'none',
-                cursor: effectivelyOnline && message.trim() ? 'pointer' : 'not-allowed',
-                backgroundColor: effectivelyOnline && message.trim()
+                cursor: canSend && message.trim() ? 'pointer' : 'not-allowed',
+                backgroundColor: canSend && message.trim()
                   ? (editingMessage ? '#f97316' : sendBg)
                   : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'),
-                color: effectivelyOnline && message.trim() ? '#fff' : (isDark ? '#64748b' : '#94a3b8'),
+                color: canSend && message.trim() ? '#fff' : (isDark ? '#64748b' : '#94a3b8'),
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px',
                 transition: 'background-color 0.15s',
               }}

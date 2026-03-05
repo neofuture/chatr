@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useCallback, useRef, useState, ReactNode } from 'react';
-import type { LogEntry } from '@/components/test/types';
+import type { LogEntry } from '@/types/types.ts';
 
 interface LogContextValue {
   logs: LogEntry[];

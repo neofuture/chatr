@@ -1797,6 +1797,23 @@ h1 {
   color: var(--color-white);
 }
 
+.toast-clickable {
+  cursor: pointer;
+}
+
+.toast-clickable:hover {
+  filter: brightness(1.1);
+}
+
+.toast-action {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.75;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* Toast Types */
 .toast-success {
   background: var(--overlay-green-20) !important;
@@ -1839,6 +1856,17 @@ h1 {
 
 .toast-warning .toast-icon {
   background: var(--overlay-orange-40);
+  color: white;
+}
+
+.toast-newmessage {
+  background: var(--overlay-green-20) !important;
+  border-color: var(--overlay-green-50);
+  backdrop-filter: blur(10px);
+}
+
+.toast-newmessage .toast-icon {
+  background: var(--overlay-green-40);
   color: white;
 }
 

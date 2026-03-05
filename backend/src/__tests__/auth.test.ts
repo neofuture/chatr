@@ -18,6 +18,18 @@ jest.mock('../services/sms', () => ({
   formatPhoneNumber: jest.fn().mockImplementation(phone => phone),
 }));
 
+// Mock Redis to bypass rate limiting and verification code storage in tests
+jest.mock('../lib/redis', () => ({
+  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 999, retryAfter: 0 }),
+  storeVerificationCode: jest.fn().mockResolvedValue(undefined),
+  getVerificationCode: jest.fn().mockResolvedValue(null),
+  deleteVerificationCode: jest.fn().mockResolvedValue(undefined),
+  blacklistToken: jest.fn().mockResolvedValue(undefined),
+  isTokenBlacklisted: jest.fn().mockResolvedValue(false),
+}));
+
+const redisModule = require('../lib/redis');
+
 // Create Express app for testing
 const app = express();
 app.use(express.json());
@@ -28,8 +40,14 @@ const prisma = new PrismaClient();
 
 describe('Auth Routes', () => {
   beforeEach(() => {
-    // Clear all mocks before each test
     jest.clearAllMocks();
+    // Re-apply Redis mock implementations (resetMocks clears them)
+    (redisModule.checkRateLimit as jest.Mock).mockResolvedValue({ allowed: true, remaining: 999, retryAfter: 0 });
+    (redisModule.storeVerificationCode as jest.Mock).mockResolvedValue(undefined);
+    (redisModule.getVerificationCode as jest.Mock).mockResolvedValue(null);
+    (redisModule.deleteVerificationCode as jest.Mock).mockResolvedValue(undefined);
+    (redisModule.blacklistToken as jest.Mock).mockResolvedValue(undefined);
+    (redisModule.isTokenBlacklisted as jest.Mock).mockResolvedValue(false);
   });
 
   afterAll(async () => {

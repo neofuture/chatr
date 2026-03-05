@@ -1,14 +1,43 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import { sendVerificationEmail, sendLoginVerificationEmail, sendPasswordResetEmail } from '../services/email';
 import { sendPhoneVerificationSMS, sendLoginVerificationSMS, validatePhoneNumber, formatPhoneNumber } from '../services/sms';
+import {
+  checkRateLimit,
+  storeVerificationCode,
+  getVerificationCode,
+  deleteVerificationCode,
+  blacklistToken,
+  isTokenBlacklisted,
+} from '../lib/redis';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Rate-limit middleware factory
+function rateLimit(prefix: string, maxAttempts: number, windowSeconds: number) {
+  return async (req: Request, res: Response, next: Function) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const key = `${prefix}:${ip}`;
+    try {
+      const result = await checkRateLimit(key, maxAttempts, windowSeconds);
+      res.setHeader('X-RateLimit-Remaining', result.remaining);
+      if (!result.allowed) {
+        return res.status(429).json({
+          error: 'Too many attempts. Please try again later.',
+          retryAfter: result.retryAfter,
+        });
+      }
+    } catch (_) { /* Redis down — allow request through */ }
+    next();
+  };
+}
 
 /**
  * @swagger
@@ -57,8 +86,8 @@ const prisma = new PrismaClient();
  *       409:
  *         description: Email or username already exists
  */
-// POST /api/auth/register - User registration
-router.post('/register', async (req: Request, res: Response) => {
+// POST /api/auth/register - User registration (5 attempts per 15 min per IP)
+router.post('/register', rateLimit('register', 5, 900), async (req: Request, res: Response) => {
   try {
     console.log('\n🔵 === REGISTRATION REQUEST START ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
@@ -264,7 +293,9 @@ router.post('/register', async (req: Request, res: Response) => {
       });
     }
 
-    // Send verification messages
+    // Store verification code in Redis (15 min TTL — auto-expires)
+    await storeVerificationCode('email', user.id, verificationCode).catch(() => {});
+
     console.log(`Verification code for user ${user.id}: ${verificationCode}`);
 
     // Send email verification (if email provided)
@@ -348,8 +379,8 @@ router.post('/register', async (req: Request, res: Response) => {
  *       401:
  *         description: Invalid credentials or 2FA code
  */
-// POST /api/auth/login - User login
-router.post('/login', async (req: Request, res: Response) => {
+// POST /api/auth/login - User login (10 attempts per 15 min per IP)
+router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Response) => {
   try {
     const { email, password, loginVerificationCode, verificationMethod } = req.body;
 
@@ -437,20 +468,27 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // If loginVerificationCode is provided, verify it
     if (loginVerificationCode) {
-      // Check if code matches and hasn't expired
-      if (!user.loginVerificationCode || !user.loginVerificationExpiry) {
-        return res.status(400).json({ error: 'No verification code found. Please log in again.' });
+      // Check Redis first, fall back to DB
+      let loginCodeValid = false;
+      const redisLoginCode = await getVerificationCode('login', user.id).catch(() => null);
+      if (redisLoginCode) {
+        loginCodeValid = redisLoginCode.code === loginVerificationCode;
+      } else {
+        if (!user.loginVerificationCode || !user.loginVerificationExpiry) {
+          return res.status(400).json({ error: 'No verification code found. Please log in again.' });
+        }
+        if (new Date() > user.loginVerificationExpiry) {
+          return res.status(401).json({ error: 'Verification code has expired. Please log in again.' });
+        }
+        loginCodeValid = user.loginVerificationCode === loginVerificationCode;
       }
 
-      if (user.loginVerificationCode !== loginVerificationCode) {
+      if (!loginCodeValid) {
         return res.status(401).json({ error: 'Invalid verification code' });
       }
 
-      if (new Date() > user.loginVerificationExpiry) {
-        return res.status(401).json({ error: 'Verification code has expired. Please log in again.' });
-      }
-
-      // Clear the verification code after successful verification
+      // Clear the verification code
+      await deleteVerificationCode('login', user.id).catch(() => {});
       await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -492,7 +530,8 @@ router.post('/login', async (req: Request, res: Response) => {
     // Set expiry to 15 minutes from now
     const verificationExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Store verification code and method
+    // Store in both Redis (primary, auto-expires) and DB (fallback)
+    await storeVerificationCode('login', user.id, verificationCode, { method }).catch(() => {});
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -716,10 +755,29 @@ router.post('/2fa/verify', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/logout - User logout
-router.post('/logout', (req, res) => {
-  // TODO: Implement logout
-  res.status(501).json({ message: 'Logout not implemented yet' });
+// POST /api/auth/logout - User logout (blacklist the JWT in Redis)
+router.post('/logout', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(400).json({ error: 'No token provided' });
+
+    // Hash the token for storage (don't store raw JWTs)
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Decode to get the expiry so we only blacklist until it naturally expires
+    const decoded = jwt.decode(token) as { exp?: number } | null;
+    const expiresIn = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 7 * 24 * 60 * 60;
+
+    if (expiresIn > 0) {
+      await blacklistToken(tokenHash, expiresIn);
+    }
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 /**
@@ -772,17 +830,24 @@ router.post('/verify-email', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email already verified' });
     }
 
-    // Check if code matches
-    if (user.emailVerificationCode !== code) {
+    // Check Redis first for verification code, fall back to DB
+    let codeValid = false;
+    const redisCode = await getVerificationCode('email', userId).catch(() => null);
+    if (redisCode) {
+      codeValid = redisCode.code === code;
+    } else {
+      // Fallback to DB columns
+      codeValid = user.emailVerificationCode === code;
+      if (codeValid && user.verificationExpiry && user.verificationExpiry < new Date()) {
+        return res.status(401).json({ error: 'Verification code expired. Please request a new one.' });
+      }
+    }
+
+    if (!codeValid) {
       return res.status(401).json({ error: 'Invalid verification code' });
     }
 
-    // Check if code expired
-    if (!user.verificationExpiry || user.verificationExpiry < new Date()) {
-      return res.status(401).json({ error: 'Verification code expired. Please request a new one.' });
-    }
-
-    // Mark email as verified
+    // Mark email as verified and clear DB columns
     await prisma.user.update({
       where: { id: userId },
       data: {
@@ -791,6 +856,9 @@ router.post('/verify-email', async (req: Request, res: Response) => {
         verificationExpiry: null,
       },
     });
+
+    // Clear Redis code
+    await deleteVerificationCode('email', userId).catch(() => {});
 
     // If no phone number, skip phone verification — issue token immediately
     if (!user.phoneNumber) {
@@ -821,9 +889,10 @@ router.post('/verify-email', async (req: Request, res: Response) => {
 
     // User has a phone number — send phone verification code
     const phoneCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const phoneExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const phoneExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Store phone verification code
+    // Store in both Redis (primary, auto-expires) and DB (fallback)
+    await storeVerificationCode('phone', userId, phoneCode).catch(() => {});
     await prisma.user.update({
       where: { id: userId },
       data: {
@@ -933,14 +1002,20 @@ router.post('/verify-phone', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Phone already verified' });
     }
 
-    // Check if code matches
-    if (user.phoneVerificationCode !== code) {
-      return res.status(401).json({ error: 'Invalid verification code' });
+    // Check Redis first, fall back to DB
+    let phoneCodeValid = false;
+    const redisPhoneCode = await getVerificationCode('phone', userId).catch(() => null);
+    if (redisPhoneCode) {
+      phoneCodeValid = redisPhoneCode.code === code;
+    } else {
+      phoneCodeValid = user.phoneVerificationCode === code;
+      if (phoneCodeValid && user.verificationExpiry && user.verificationExpiry < new Date()) {
+        return res.status(401).json({ error: 'Verification code expired. Please request a new one.' });
+      }
     }
 
-    // Check if code expired
-    if (!user.verificationExpiry || user.verificationExpiry < new Date()) {
-      return res.status(401).json({ error: 'Verification code expired. Please request a new one.' });
+    if (!phoneCodeValid) {
+      return res.status(401).json({ error: 'Invalid verification code' });
     }
 
     // Mark phone as verified
@@ -952,6 +1027,7 @@ router.post('/verify-phone', async (req: Request, res: Response) => {
         verificationExpiry: null,
       },
     });
+    await deleteVerificationCode('phone', userId).catch(() => {});
 
     // Generate JWT token - user is now fully registered
     const token = jwt.sign(
@@ -1000,8 +1076,8 @@ router.post('/verify-phone', async (req: Request, res: Response) => {
  *       200:
  *         description: Reset email sent (or user not found - same response for security)
  */
-// POST /api/auth/forgot-password - Request password reset
-router.post('/forgot-password', async (req: Request, res: Response) => {
+// POST /api/auth/forgot-password - Request password reset (3 attempts per 15 min per IP)
+router.post('/forgot-password', rateLimit('forgot-pw', 3, 900), async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
 
@@ -1028,7 +1104,8 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     // Set expiry to 15 minutes from now
     const resetExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Store reset code and expiry
+    // Store in both Redis (primary, auto-expires) and DB (fallback)
+    await storeVerificationCode('reset', user.id, resetCode).catch(() => {});
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -1037,8 +1114,6 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       },
     });
 
-    // TODO: Send password reset email
-    // For now, just log it (replace with actual email service later)
     console.log(`Password reset code for ${email}: ${resetCode}`);
 
     // Send password reset email via Mailtrap

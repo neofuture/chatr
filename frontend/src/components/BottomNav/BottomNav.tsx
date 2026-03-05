@@ -8,10 +8,15 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { getProfileImageURL } from '@/lib/profileImageService';
 import styles from './BottomNav.module.css';
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 export default function BottomNav() {
   const { theme: themeMode } = useTheme();
   const pathname = usePathname();
   const [profileImageUrl, setProfileImageUrl] = useState('/profile/default-profile.jpg');
+  const [firstName, setFirstName] = useState('ME');
+  const [pendingRequests, setPendingRequests] = useState(0);
+  const [unreadChats, setUnreadChats] = useState(0);
 
   const isDark = themeMode === 'dark';
 
@@ -30,6 +35,8 @@ export default function BottomNav() {
           const user = JSON.parse(userStr);
           const url = await getProfileImageURL(user.id);
           if (url) setProfileImageUrl(url);
+          const name = user.firstName || user.displayName?.split(' ')[0] || user.username?.replace(/^@/, '') || 'ME';
+          setFirstName(name.toUpperCase());
         }
       } catch {}
     };
@@ -41,12 +48,68 @@ export default function BottomNav() {
     return () => window.removeEventListener('profileImageUpdated', handler);
   }, []);
 
+  // Fetch unread chat count on mount + poll, and respond instantly to local updates
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await fetch(`${API}/api/users/conversations`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const total = (data.conversations ?? []).reduce(
+            (sum: number, c: any) => sum + (c.unreadCount ?? 0), 0
+          );
+          setUnreadChats(total);
+        }
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+
+    const onUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail.total === 'number') {
+        setUnreadChats(detail.total);
+      } else {
+        setTimeout(fetchUnread, 500);
+      }
+    };
+    window.addEventListener('chatr:unread-changed', onUpdate);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('chatr:unread-changed', onUpdate);
+    };
+  }, []);
+
+  // Poll for incoming friend requests to show badge
+  useEffect(() => {
+    const fetchPending = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await fetch(`${API}/api/friends/requests/incoming`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPendingRequests(data.requests?.length ?? 0);
+        }
+      } catch {}
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const menuItems = [
-    { name: 'CHATS',   href: '/app',          icon: 'fa-comments',   type: 'icon' },
+    { name: 'CHATS',   href: '/app',          icon: 'fa-comments',   type: 'icon', badge: unreadChats },
+    { name: 'FRIENDS', href: '/app/friends',  icon: 'fa-user-group', type: 'icon', badge: pendingRequests },
     { name: 'GROUPS',  href: '/app/groups',   icon: 'fa-users',      type: 'icon' },
-    { name: 'UPDATES', href: '/app/updates',  icon: 'fa-newspaper',  type: 'icon' },
-    { name: 'TEST',    href: '/app/test',      icon: 'fa-flask',      type: 'icon' },
-    { name: 'USER',    href: '/app/settings', icon: profileImageUrl, type: 'image' },
+    { name: firstName,  href: '/app/settings', icon: profileImageUrl, type: 'image' },
   ];
 
   return (
@@ -55,7 +118,7 @@ export default function BottomNav() {
       style={{ backgroundColor: theme.headerBg, borderTop: `1px solid ${theme.border}` }}
     >
       {menuItems.map((item) => {
-        const isActive = pathname === item.href;
+        const isActive = pathname === item.href || (item.href !== '/app' && pathname.startsWith(item.href));
         return (
           <Link key={item.name} href={item.href} className={styles.navLink}>
             {item.type === 'image' ? (
@@ -71,11 +134,25 @@ export default function BottomNav() {
                 }}
               />
             ) : (
-              <motion.i
-                className={`fad ${item.icon} ${styles.navIcon}`}
-                animate={{ scale: isActive ? 1.15 : 1, color: isActive ? theme.activeText : theme.menuText }}
-                transition={{ duration: 0.3 }}
-              />
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <motion.i
+                  className={`fad ${item.icon} ${styles.navIcon}`}
+                  animate={{ scale: isActive ? 1.15 : 1, color: isActive ? theme.activeText : theme.menuText }}
+                  transition={{ duration: 0.3 }}
+                />
+                {(item as any).badge > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -6,
+                    background: '#ef4444', color: '#fff',
+                    borderRadius: '999px', fontSize: 9, fontWeight: 700,
+                    minWidth: 14, height: 14, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+                    lineHeight: 1,
+                  }}>
+                    {(item as any).badge > 99 ? '99+' : (item as any).badge}
+                  </span>
+                )}
+              </div>
             )}
             <motion.span
               animate={{ color: isActive ? theme.activeText : theme.menuText }}

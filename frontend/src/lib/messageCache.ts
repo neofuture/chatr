@@ -113,6 +113,15 @@ export async function deleteCachedMessage(id: string): Promise<void> {
   await db.cachedMessages.delete(id);
 }
 
+/** Clear all cached messages for a conversation */
+export async function clearCachedConversation(
+  currentUserId: string,
+  otherUserId: string
+): Promise<void> {
+  const key = conversationKey(currentUserId, otherUserId);
+  await db.cachedMessages.where('conversationKey').equals(key).delete();
+}
+
 /** Replace temp optimistic ID with the real server ID after send confirmation */
 export async function replaceCachedMessageId(
   tempId: string,

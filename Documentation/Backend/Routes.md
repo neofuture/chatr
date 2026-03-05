@@ -9,6 +9,8 @@ All Express route files live in `backend/src/routes/`.
 | `messages.ts` | `/api/messages` | Message history, conversations list |
 | `groups.ts` | `/api/groups` | Group CRUD, membership, group messages |
 | `file-upload.ts` | `/api/messages/upload` | File and image message upload |
+| `friends.ts` | `/api/friends` | Friend requests, friend list, search, accept/decline, block/unblock |
+| `conversations.ts` | `/api/conversations` | Message request management (accept, decline, nuke) |
 
 ---
 
@@ -91,6 +93,35 @@ See [File Upload](./File_Upload.md) for full detail.
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `POST` | `/upload` | ✅ | Upload file, image or audio — returns URL + waveform data for audio |
+
+---
+
+## Friends Routes — `/api/friends`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/` | ✅ | List accepted friends |
+| `GET` | `/requests/incoming` | ✅ | Incoming friend requests |
+| `GET` | `/requests/outgoing` | ✅ | Outgoing friend requests |
+| `GET` | `/search` | ✅ | Search users to add as friends |
+| `GET` | `/blocked` | ✅ | List blocked users |
+| `POST` | `/request` | ✅ | Send a friend request |
+| `POST` | `/:friendshipId/accept` | ✅ | Accept a friend request |
+| `POST` | `/:friendshipId/decline` | ✅ | Decline or cancel a request |
+| `DELETE` | `/:friendshipId` | ✅ | Remove a friend |
+| `POST` | `/:targetUserId/block` | ✅ | Block a user |
+| `POST` | `/:targetUserId/unblock` | ✅ | Unblock a user |
+
+---
+
+## Conversation Routes — `/api/conversations`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/:id/accept` | ✅ | Accept a message request |
+| `POST` | `/:id/decline` | ✅ | Decline a message request (deletes messages) |
+| `POST` | `/:id/nuke` | ✅ | Full conversation reset (deletes conversation + messages) |
+| `POST` | `/nuke-by-user/:recipientId` | ✅ | Nuke by participant IDs |
 
 ---
 

@@ -38,7 +38,9 @@ export default function AppLayout({
   let title = "Chats";
   let headerAction;
 
-  if (pathname === "/app/groups") {
+  if (pathname === "/app/friends") {
+    title = "Friends";
+  } else if (pathname === "/app/groups") {
     title = "Groups";
   } else if (pathname === "/app/updates") {
     title = "Updates";
@@ -50,7 +52,7 @@ export default function AppLayout({
     // Chats page (default)
     headerAction = {
       icon: "far fa-pen-to-square",
-      onClick: () => alert("New Chat clicked!"),
+      onClick: () => window.dispatchEvent(new CustomEvent('chatr:compose')),
     };
   }
 

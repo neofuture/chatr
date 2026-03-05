@@ -1,7 +1,7 @@
 'use client';
 
 import { usePanels, ActionIcon } from '@/contexts/PanelContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { getProfileImageURL } from '@/lib/profileImageService';
 import { usePresence } from '@/contexts/PresenceContext';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
@@ -9,13 +9,22 @@ import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PanelFooter from '@/components/PanelFooter/PanelFooter';
 import styles from './PanelContainer.module.css';
 
+/** True when we have no real presence data (suppress "last seen a while ago") */
+function shouldHidePresence(info: import('@/types/types').PresenceInfo): boolean {
+  return !!info.hidden || (info.status === 'offline' && !info.lastSeen);
+}
+
 /** For chat panels, shows live PresenceAvatar; falls back to plain img for others. */
 function PresenceAvatarForPanel({ panelId, profileImage, title }: { panelId: string; profileImage?: string | null; title: string }) {
   const { getPresence } = usePresence();
   const userId = panelId.startsWith('chat-') ? panelId.slice(5) : null;
   if (!userId) return profileImage ? <img src={profileImage} alt={title} /> : null;
   const info = getPresence(userId);
-  return <PresenceAvatar displayName={title} profileImage={profileImage} info={info} size={36} />;
+  // When presence is unknown/hidden, render avatar without status dot
+  const effectiveInfo = shouldHidePresence(info)
+    ? { status: 'offline' as const, lastSeen: null, hidden: true }
+    : info;
+  return <PresenceAvatar displayName={title} profileImage={profileImage} info={effectiveInfo} size={36} />;
 }
 
 /** Renders the subtitle row, or nothing when user hides their status */
@@ -34,8 +43,7 @@ function PanelSubTitle({ panelId, staticSubTitle }: { panelId: string; staticSub
   }
 
   const info = getPresence(userId);
-  // Hidden user: no subtitle at all so the title line vertically centres
-  if (info.hidden) return null;
+  if (shouldHidePresence(info)) return null;
 
   return (
     <div className={styles.titleSub}>
@@ -55,7 +63,7 @@ function LiveSubTitle({ panelId, staticSubTitle }: { panelId: string; staticSubT
   if (!userId) return <>{staticSubTitle || ''}</>;
 
   const info = getPresence(userId);
-  if (info.hidden) return null;
+  if (shouldHidePresence(info)) return null;
   return <PresenceLabel info={info} showDot={false} />;
 }
 
@@ -79,6 +87,8 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
   const { closePanel } = usePanels();
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentProfileImage, setCurrentProfileImage] = useState<string | undefined>(profileImage);
+  const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Load actual user profile image if a generic marker is provided
   useEffect(() => {
@@ -112,10 +122,23 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
   // Is this panel covered by another panel? Use effectiveMaxLevel to exclude closing panels
   const isCovered = level < effectiveMaxLevel;
 
+  // Click-outside to close submenu
+  useEffect(() => {
+    if (openMenuIndex === null) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuIndex(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openMenuIndex]);
+
   // Initial slide-in animation
   useEffect(() => {
     if (isClosing) {
       setIsAnimating(false);
+      setOpenMenuIndex(null);
       return;
     }
 
@@ -211,16 +234,46 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
               <PanelSubTitle panelId={id} staticSubTitle={subTitle} />
             </div>
           </div>
-          <div className={styles.actions}>
+          <div className={styles.actions} ref={menuRef}>
             {actionIcons && actionIcons.map((action, index) => (
-              <button
-                key={index}
-                onClick={action.onClick}
-                aria-label={action.label}
-                className={styles.actionBtn}
-              >
-                <i className={action.icon}></i>
-              </button>
+              action.submenu && action.submenu.length > 0 ? (
+                <div key={index} className={styles.menuWrap}>
+                  <button
+                    onClick={() => setOpenMenuIndex(openMenuIndex === index ? null : index)}
+                    aria-label={action.label || 'Menu'}
+                    aria-expanded={openMenuIndex === index}
+                    className={styles.actionBtn}
+                  >
+                    <i className={action.icon}></i>
+                  </button>
+                  {openMenuIndex === index && (
+                    <div className={styles.submenu}>
+                      {action.submenu.map((item, i) => (
+                        <button
+                          key={i}
+                          className={`${styles.submenuItem} ${item.variant === 'danger' ? styles.submenuItemDanger : ''}`}
+                          onClick={() => {
+                            item.onClick();
+                            setOpenMenuIndex(null);
+                          }}
+                        >
+                          <i className={item.icon} />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  key={index}
+                  onClick={action.onClick}
+                  aria-label={action.label}
+                  className={styles.actionBtn}
+                >
+                  <i className={action.icon}></i>
+                </button>
+              )
             ))}
           </div>
         </div>

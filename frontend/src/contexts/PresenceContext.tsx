@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 
 export type PresenceStatus = 'online' | 'away' | 'offline';
@@ -16,15 +16,25 @@ interface PresenceContextType {
   userPresence: Record<string, PresenceInfo>;
   getPresence: (userId: string) => PresenceInfo;
   requestPresence: (userIds: string[]) => void;
+  /** IDs whose presence should be suppressed (shown as offline/hidden) */
+  setSuppressedIds: (ids: Set<string>) => void;
 }
+
+const HIDDEN_PRESENCE: PresenceInfo = { status: 'offline', lastSeen: null, hidden: true };
 
 const PresenceContext = createContext<PresenceContextType | undefined>(undefined);
 
 export function PresenceProvider({ children }: { children: ReactNode }) {
   const { socket, connected } = useWebSocket();
   const [userPresence, setUserPresence] = useState<Record<string, PresenceInfo>>({});
+  const suppressedRef = useRef<Set<string>>(new Set());
+
+  const setSuppressedIds = useCallback((ids: Set<string>) => {
+    suppressedRef.current = ids;
+  }, []);
 
   const getPresence = useCallback((userId: string): PresenceInfo => {
+    if (suppressedRef.current.has(userId)) return HIDDEN_PRESENCE;
     return userPresence[userId] ?? { status: 'offline', lastSeen: null };
   }, [userPresence]);
 
@@ -39,6 +49,8 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
 
     const onUserStatus = (data: any) => {
       if (data.userId && data.status) {
+        // Ignore broadcast updates for suppressed users
+        if (suppressedRef.current.has(data.userId)) return;
         setUserPresence(prev => ({
           ...prev,
           [data.userId]: {
@@ -77,7 +89,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   }, [socket]);
 
   return (
-    <PresenceContext.Provider value={{ userPresence, getPresence, requestPresence }}>
+    <PresenceContext.Provider value={{ userPresence, getPresence, requestPresence, setSuppressedIds }}>
       {children}
     </PresenceContext.Provider>
   );
@@ -88,4 +100,3 @@ export function usePresence() {
   if (!ctx) throw new Error('usePresence must be used within a PresenceProvider');
   return ctx;
 }
-

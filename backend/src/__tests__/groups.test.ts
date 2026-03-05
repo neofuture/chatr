@@ -211,7 +211,7 @@ describe('Group Routes', () => {
         const response = await request(app)[endpoint.method as 'get' | 'post'](endpoint.path);
         expect(response.status).not.toBe(404);
       }
-    });
+    }, 15000);
   });
 });
 

@@ -145,6 +145,28 @@ Returns all verified users (excluding the authenticated user).
 
 ---
 
+### GET `/api/users/conversations` 🔒
+Returns the authenticated user's conversation list with partner details and friendship status.
+
+**Response `200`**
+```json
+[
+  {
+    "id": "uuid",
+    "username": "@johndoe",
+    "email": "user@example.com",
+    "profileImage": "/uploads/profiles/...",
+    "coverImage": "/uploads/covers/...",
+    "conversationId": "uuid",
+    "conversationStatus": "accepted",
+    "isInitiator": true,
+    "isFriend": true
+  }
+]
+```
+
+---
+
 ### GET `/api/users/check-username?username=johndoe`
 Check if a username is available.
 
@@ -160,8 +182,34 @@ Returns an array of available username suggestions based on the provided name.
 
 ---
 
-### GET `/api/users/search?q=john`
-Search users by username. *(Note: currently a stub — returns 501)*
+### GET `/api/users/search?q=john` 🔒
+Search users by username. Results are sorted with friends first. Each result includes friendship status.
+
+**Response `200`**
+```json
+[
+  {
+    "id": "uuid",
+    "username": "@johndoe",
+    "email": "user@example.com",
+    "profileImage": "/uploads/profiles/...",
+    "isFriend": true,
+    "friendship": {
+      "id": "uuid",
+      "status": "ACCEPTED",
+      "iRequested": false
+    }
+  },
+  {
+    "id": "uuid",
+    "username": "@janedoe",
+    "email": "jane@example.com",
+    "profileImage": null,
+    "isFriend": false,
+    "friendship": null
+  }
+]
+```
 
 ---
 
@@ -180,6 +228,8 @@ Get a user's public profile by username (include the `@` prefix).
 ### POST `/api/users/profile-image` 🔒
 Upload a profile image. Accepts `multipart/form-data` with field `profileImage`.
 
+Invalidates the Redis conversation cache for all conversations involving the user and broadcasts a `user:profileUpdate` event via Socket.io to all connected users.
+
 ---
 
 ### DELETE `/api/users/profile-image` 🔒
@@ -194,6 +244,167 @@ Upload a cover image. Accepts `multipart/form-data` with field `coverImage`.
 
 ### DELETE `/api/users/cover-image` 🔒
 Remove the authenticated user's cover image.
+
+---
+
+## Friends — `/api/friends`
+
+All friends endpoints require authentication (🔒).
+
+### GET `/api/friends` 🔒
+Get the authenticated user's accepted friends list.
+
+**Response `200`**
+```json
+{
+  "friends": [
+    {
+      "friendshipId": "uuid",
+      "since": "2026-03-01T10:00:00Z",
+      "user": {
+        "id": "uuid",
+        "username": "@johndoe",
+        "profileImage": "/uploads/profiles/..."
+      }
+    }
+  ]
+}
+```
+
+---
+
+### GET `/api/friends/requests/incoming` 🔒
+Get incoming (pending) friend requests.
+
+**Response `200`**
+```json
+{
+  "requests": [
+    {
+      "friendshipId": "uuid",
+      "createdAt": "2026-03-01T10:00:00Z",
+      "user": {
+        "id": "uuid",
+        "username": "@janedoe",
+        "profileImage": "/uploads/profiles/..."
+      }
+    }
+  ]
+}
+```
+
+---
+
+### GET `/api/friends/requests/outgoing` 🔒
+Get outgoing (pending) friend requests sent by the authenticated user.
+
+**Response `200`**
+```json
+{
+  "requests": [
+    {
+      "friendshipId": "uuid",
+      "createdAt": "2026-03-01T10:00:00Z",
+      "user": {
+        "id": "uuid",
+        "username": "@bobsmith",
+        "profileImage": null
+      }
+    }
+  ]
+}
+```
+
+---
+
+### GET `/api/friends/search?q=john` 🔒
+Search users to add as friends. Requires a minimum of 2 characters. Returns users with their friendship status attached.
+
+---
+
+### POST `/api/friends/request` 🔒
+Send a friend request. If the target user has already sent a request to the authenticated user, the friendship is automatically accepted.
+
+**Body**
+```json
+{ "addresseeId": "uuid" }
+```
+
+**Response `201`**
+```json
+{ "friendship": { "id": "uuid", "status": "PENDING" } }
+```
+
+---
+
+### POST `/api/friends/:friendshipId/accept` 🔒
+Accept a pending friend request. Only the addressee (the user who received the request) may accept.
+
+**Response `200`**
+```json
+{ "friendship": { "id": "uuid", "status": "ACCEPTED" } }
+```
+
+---
+
+### POST `/api/friends/:friendshipId/decline` 🔒
+Decline or cancel a pending friend request. Either party (requester or addressee) can call this. Deletes the friendship row.
+
+**Response `200`**
+```json
+{ "success": true }
+```
+
+---
+
+### DELETE `/api/friends/:friendshipId` 🔒
+Remove an accepted friend. Deletes the friendship row.
+
+**Response `200`**
+```json
+{ "success": true }
+```
+
+---
+
+### POST `/api/friends/:targetUserId/block` 🔒
+Block a user. If an existing friendship exists it is removed, and a blocked friendship row is created.
+
+**Response `200`**
+```json
+{ "success": true }
+```
+
+---
+
+### POST `/api/friends/:targetUserId/unblock` 🔒
+Unblock a previously blocked user.
+
+**Response `200`**
+```json
+{ "success": true }
+```
+
+---
+
+### GET `/api/friends/blocked` 🔒
+Get the authenticated user's list of blocked users.
+
+**Response `200`**
+```json
+{
+  "blocked": [
+    {
+      "friendshipId": "uuid",
+      "user": {
+        "id": "uuid",
+        "username": "@blockeduser",
+        "profileImage": null
+      }
+    }
+  ]
+}
+```
 
 ---
 
@@ -243,11 +454,6 @@ Retrieve message history between two users.
 
 > For **unsent** messages: `content` is `""`, `unsent` is `true`, file/audio fields are `null`, `edited` is `false`.
 > For **edited** messages: `edited` is `true`, `editedAt` is an ISO timestamp.
-
----
-
-### GET `/api/messages/conversations`
-Get a list of recent conversations. *(Note: currently a stub — returns 501)*
 
 ---
 
@@ -325,6 +531,50 @@ Update waveform data after client-side audio analysis. Triggers `audio:waveform`
   "waveform": [0.12, 0.34, 0.87],
   "duration": 12.4
 }
+```
+
+---
+
+## Conversations — `/api/conversations`
+
+All conversations endpoints require authentication (🔒).
+
+### POST `/api/conversations/:id/accept` 🔒
+Accept a message request (pending conversation). Invalidates the Redis conversation cache for both participants and emits a `conversation:accepted` Socket.io event to the initiator.
+
+**Response `200`**
+```json
+{ "success": true }
+```
+
+---
+
+### POST `/api/conversations/:id/decline` 🔒
+Decline a message request. Deletes all messages between the two participants, invalidates the Redis conversation cache, and emits a `conversation:declined` Socket.io event to the initiator.
+
+**Response `200`**
+```json
+{ "success": true }
+```
+
+---
+
+### POST `/api/conversations/:id/nuke` 🔒
+Full reset of a conversation. Deletes the conversation record and all associated messages, invalidates the Redis conversation cache, and emits a `conversation:declined` Socket.io event to both participants.
+
+**Response `200`**
+```json
+{ "success": true }
+```
+
+---
+
+### POST `/api/conversations/nuke-by-user/:recipientId` 🔒
+Nuke a conversation by participant IDs. Used when the `conversationId` is not known on the client. Performs the same cleanup as the `/nuke` endpoint. Emits `conversation:declined` with `conversationId: null`.
+
+**Response `200`**
+```json
+{ "success": true }
 ```
 
 ---

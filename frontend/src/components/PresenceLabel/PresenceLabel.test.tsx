@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import PresenceLabel, { formatPresence } from './PresenceLabel';
-import type { PresenceInfo } from '@/components/test/types';
+import type { PresenceInfo } from '@/types/types.ts';
 
 const online:  PresenceInfo = { status: 'online',  lastSeen: null };
 const away:    PresenceInfo = { status: 'away',    lastSeen: null };

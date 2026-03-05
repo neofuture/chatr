@@ -35,13 +35,17 @@ model User {
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
-  sentMessages      Message[]            @relation("Sender")
-  receivedMessages  Message[]            @relation("Recipient")
-  groupMemberships  GroupMember[]
-  groupsOwned       Group[]
-  sentGroupMessages GroupMessage[]       @relation("GroupSender")
-  messageReactions  MessageReaction[]
-  messageEdits      MessageEditHistory[]
+  sentMessages       Message[]            @relation("Sender")
+  receivedMessages   Message[]            @relation("Recipient")
+  groupMemberships   GroupMember[]
+  groupsOwned        Group[]
+  sentGroupMessages  GroupMessage[]       @relation("GroupSender")
+  messageReactions   MessageReaction[]
+  messageEdits       MessageEditHistory[]
+  friendRequestsSent Friendship[]         @relation("FriendRequests")
+  friendRequestsRcvd Friendship[]         @relation("FriendAddressees")
+  conversationsAsA   Conversation[]       @relation("ConversationUserA")
+  conversationsAsB   Conversation[]       @relation("ConversationUserB")
 }
 
 model Message {
@@ -155,4 +159,36 @@ model GroupMember {
   @@unique([userId, groupId])
   @@index([userId])
   @@index([groupId])
+}
+
+model Conversation {
+  id           String   @id @default(uuid())
+  participantA String
+  participantB String
+  initiatorId  String
+  status       String   @default("pending") // "pending" | "accepted"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userA User @relation("ConversationUserA", fields: [participantA], references: [id], onDelete: Cascade)
+  userB User @relation("ConversationUserB", fields: [participantB], references: [id], onDelete: Cascade)
+
+  @@unique([participantA, participantB])
+  @@index([participantA])
+  @@index([participantB])
+}
+
+model Friendship {
+  id          String   @id @default(uuid())
+  requesterId String
+  requester   User     @relation("FriendRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String
+  addressee   User     @relation("FriendAddressees", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      String   @default("pending") // "pending" | "accepted" | "blocked"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
 }

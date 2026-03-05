@@ -135,35 +135,35 @@ Output: `frontend/test-results.json`, `backend/test-results.json`
 
 ## Test Lab (Developer Tool)
 
-The `/app/test` page is a full WebSocket playground for manually testing the messaging stack without needing two browser sessions.
+The `/app/test` page is a WebSocket playground for manually testing the messaging stack. It uses the `useConversation` hook which manages all messaging state, socket events, presence polling, and conversation summaries.
 
 ```mermaid
 graph LR
     subgraph TestLab["/app/test — Developer Test Lab"]
-        Config["Config Panel<br/>API URL · WS URL · User"]
-        Controls["Controls<br/>Send text · File · Audio · Voice"]
+        UserSelect["User Selector<br/>All registered users"]
+        MessageThread["Message Thread<br/>Full conversation with MessageBubble"]
+        InputBar["Input Bar<br/>Text · File · Voice · Emoji"]
         Indicators["Indicators<br/>Typing · Recording · Ghost text · Presence"]
-        Logs["System Logs<br/>All socket events + payloads"]
-        Messages["Message Preview<br/>Renders MessageBubble component"]
+        Logs["LogViewerPanel<br/>All socket events + payloads"]
     end
-    Config --> WS[Socket.io Server]
-    Controls --> WS
+    UserSelect --> WS[Socket.io Server]
+    InputBar --> WS
     WS --> Logs
-    WS --> Messages
+    WS --> MessageThread
 ```
 
 **Features:**
-- WebSocket connection status + config display (API URL, WS URL, Node env)
 - User selector (loads all registered users from `GET /api/users`)
 - Send text, file, image, audio, and voice messages
+- Full conversation history with message caching (IndexedDB)
 - Typing indicator buttons (start/stop)
 - Ghost typing mode — real-time keystroke broadcast
 - Presence toggle (go online/offline manually)
-- Scrollable system log with full event name + payload for every socket event
+- Presence polling every 10 seconds
+- `LogViewerPanel` with full event name + payload for every socket event
 - Message bubble preview using the production `MessageBubble` component
-- Audio waveform visualisation testing
-- Lightbox image viewer testing
+- Audio waveform visualisation
+- Lightbox image viewer
+- Emoji reactions, edit, unsend, reply
 
 This page is only accessible to authenticated users and is not linked from the main navigation.
-
-

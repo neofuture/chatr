@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import { useLog } from '@/contexts/LogContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import type { LogEntry } from '@/components/test/types';
+import type { LogEntry } from '@/types/types.ts';
 import styles from './LogViewerPanel.module.css';
 
 const TYPE_META: Record<LogEntry['type'], { label: string; cls: string; icon: string }> = {

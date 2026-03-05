@@ -1,154 +1,134 @@
 # WebSocket Events
 
-Chatr uses Socket.io for all real-time communication. The server runs on the same port as the REST API (`3001`).
+Chatr uses [Socket.IO](https://socket.io) for all real-time communication. All connections are authenticated via JWT.
 
 ## Connection
 
-```javascript
+```js
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:3001', {
+const socket = io(process.env.NEXT_PUBLIC_WS_URL, {
   auth: { token: '<jwt>' }
 });
 ```
 
-The JWT token is validated on every connection attempt via middleware. Invalid or expired tokens result in a `connect_error` event.
+JWT is validated on every connection attempt via middleware. Invalid or expired tokens result in a `connect_error` event.
 
 On successful connection the server:
 1. Adds the socket to the user's personal room: `user:{userId}`
-2. Broadcasts `user:status` (online) to all other connected users
-3. Sends `presence:update` back to the connecting client with the current online user list
+2. Stores the user's presence in Redis
+3. Computes `getConnectedUserIds()` to determine which users should receive this user's presence updates (friends, accepted conversations, and both sides of pending conversations)
+4. Broadcasts `user:status` (online) only to connected users (scoped, not global) — unless the user has hidden their online status
+5. Sends `presence:update` back to the connecting client with the current online user list
+
+> **Presence suppression:** The initiator of a pending message request does NOT receive presence updates for the recipient until the request is accepted. The recipient CAN see the initiator's status.
 
 ---
 
 ## Client → Server Events
 
 ### `message:send`
-Send a direct message or deliver a pre-created file/audio message.
+Send a direct message or deliver a pre-created file/audio message. The server calls `getOrCreateConversation` to ensure a `Conversation` record exists. If the conversation is pending and the sender is NOT the initiator (i.e. replying to a message request), the conversation is auto-accepted.
 
 ```json
 {
   "recipientId": "uuid",
   "content": "Hello",
-  "type": "text",
+  "type": "text | image | file | audio",
   "fileUrl": "/uploads/...",
   "fileName": "voice.webm",
   "fileSize": 48200,
   "fileType": "audio/webm",
   "waveform": [0.1, 0.4, 0.9],
   "duration": 12.4,
-  "messageId": "uuid"
+  "messageId": "uuid",
+  "replyTo": {
+    "id": "uuid",
+    "content": "Original message",
+    "senderDisplayName": "Alice",
+    "senderUsername": "alice",
+    "type": "text",
+    "duration": null
+  }
 }
 ```
 
 > `messageId` is optional — pass it when the message was already created via `POST /api/messages/upload` to avoid duplicate DB records.
 
----
-
-### `message:received`
-Acknowledge receipt of a message (triggers `delivered` status).
-
-```json
-"uuid"
-```
-*(passes the `messageId` string directly)*
+> `message:status` (delivered/read) is suppressed when the conversation status is `pending`.
 
 ---
 
 ### `message:unsend`
-Soft-delete a sent message. Only the sender may unsend.
+Soft-delete a sent message. Only the sender may unsend. Pass the `messageId` as a plain string.
 
-```json
-"messageId"
 ```
-*(passes the `messageId` string directly)*
+"uuid"
+```
 
 ---
 
 ### `message:edit`
-Edit the content of a previously sent text message. Only the sender may edit; only `text` type; cannot edit an unsent message.
+Edit the content of a sent message. Only the sender may edit. Edit history is preserved in the database for legal/audit purposes.
 
 ```json
 {
   "messageId": "uuid",
-  "content": "Corrected message text"
+  "content": "Updated text",
+  "recipientId": "uuid"
 }
 ```
 
 ---
 
-### `message:unsent`
-Delivered to both sender and recipient when a message is unsent. Both clients render a placeholder.
+### `message:react`
+Toggle an emoji reaction on a message.
 
 ```json
 {
   "messageId": "uuid",
-  "senderDisplayName": "John"
+  "emoji": "👍"
 }
 ```
-
----
-
-### `message:edited`
-Delivered to both sender and recipient when a message is edited. Clients update the message content and show the `✏ edited` marker.
-
-```json
-{
-  "messageId": "uuid",
-  "content": "Corrected message text",
-  "editedAt": "2026-02-23T10:00:00Z"
-}
-```
-
----
-
-### `message:reaction`
-Mark a message as read.
-
-```json
-"uuid"
-```
-*(passes the `messageId` string directly)*
 
 ---
 
 ### `typing:start`
-Notify recipient that the user has started typing.
+Notify the recipient that the current user has started typing.
 
 ```json
-{ "recipientId": "uuid" }
-```
-Or for a group:
-```json
-{ "groupId": "uuid" }
+{
+  "recipientId": "uuid"
+}
 ```
 
 ---
 
 ### `typing:stop`
-Notify recipient that the user has stopped typing.
+Notify the recipient that the current user has stopped typing.
 
 ```json
-{ "recipientId": "uuid" }
-```
-Or for a group:
-```json
-{ "groupId": "uuid" }
+{
+  "recipientId": "uuid"
+}
 ```
 
 ---
 
 ### `audio:recording`
-Notify recipient that the user has started or stopped recording a voice note.
+Notify the recipient that the current user is recording (or has stopped recording) a voice note.
 
 ```json
-{ "recipientId": "uuid", "isRecording": true }
+{
+  "recipientId": "uuid",
+  "isRecording": true
+}
 ```
 
 ---
 
 ### `audio:listening`
-Notify sender that the recipient is listening to an audio message. When `isEnded: true` the message is automatically marked as read in the database.
+Notify the sender that the recipient is listening to (or has finished) a voice message.
 
 ```json
 {
@@ -161,61 +141,53 @@ Notify sender that the recipient is listening to an audio message. When `isEnded
 
 ---
 
-### `ghost:typing`
-Send real-time keystroke text to recipient (ghost typing feature).
-
-```json
-{ "recipientId": "uuid", "text": "Hello wor..." }
-```
-
----
-
 ### `presence:update`
-Update the authenticated user's presence status.
+Update the current user's presence status.
 
 ```json
-"online"
+"online" | "away"
 ```
-or `"away"` *(string value only)*
 
 ---
 
 ### `presence:request`
-Request presence status for a list of user IDs.
+Request the presence data for a list of users.
 
 ```json
-["uuid1", "uuid2", "uuid3"]
+["uuid", "uuid", "uuid"]
 ```
 
 ---
 
-### `group:join`
-Join a Socket.io group room (user must already be a DB member of the group).
-
-```json
-"groupId"
-```
-*(passes the `groupId` string directly)*
-
----
-
-### `group:leave`
-Leave a Socket.io group room.
-
-```json
-"groupId"
-```
-
----
-
-### `group:message:send`
-Send a message to a group channel.
+### `settings:update`
+Persist a user setting change (e.g. show/hide online status).
 
 ```json
 {
-  "groupId": "uuid",
-  "content": "Hey everyone",
-  "type": "text"
+  "showOnlineStatus": true
+}
+```
+
+---
+
+### `ghost:typing`
+Send a "ghost typing" preview — the typed text is shown live on the recipient's screen without being sent. Suppressed if the conversation is pending.
+
+```json
+{
+  "recipientId": "uuid",
+  "text": "I'm typing this..."
+}
+```
+
+---
+
+### `profile:imageUpdated`
+Notify the server that the current user has uploaded a new profile image. Updates the server-side profile image reference for subsequent outgoing messages.
+
+```json
+{
+  "profileImage": "/uploads/profiles/new-image.jpg"
 }
 ```
 
@@ -224,91 +196,153 @@ Send a message to a group channel.
 ## Server → Client Events
 
 ### `message:received`
-Delivered to the recipient when a new message arrives.
+Delivered to the **recipient** when a new direct message arrives.
 
 ```json
 {
   "id": "uuid",
   "senderId": "uuid",
-  "senderUsername": "@johndoe",
+  "recipientId": "uuid",
+  "senderUsername": "alice",
+  "senderDisplayName": "Alice",
+  "senderProfileImage": "/profile/alice.jpg",
   "content": "Hello",
   "type": "text",
-  "timestamp": "2026-02-21T12:00:00Z",
+  "timestamp": "2026-02-25T12:00:00Z",
   "status": "delivered",
   "fileUrl": null,
   "fileName": null,
   "fileSize": null,
   "fileType": null,
   "waveform": null,
-  "duration": null
+  "duration": null,
+  "replyTo": null
 }
 ```
 
 ---
 
 ### `message:sent`
-Confirmation to the sender that their message was processed.
+Delivered to the **sender** as confirmation after a message is saved to the database.
 
 ```json
 {
   "id": "uuid",
+  "senderId": "uuid",
   "recipientId": "uuid",
   "content": "Hello",
-  "timestamp": "2026-02-21T12:00:00Z",
-  "status": "delivered"
+  "type": "text",
+  "timestamp": "2026-02-25T12:00:00Z",
+  "status": "delivered | sent",
+  "fileUrl": null,
+  "waveform": null,
+  "duration": null,
+  "replyTo": null
 }
 ```
 
 ---
 
 ### `message:status`
-Delivered to the sender when a message status changes (delivered / read).
+Notifies the sender of a status change on one of their messages.
 
 ```json
 {
   "messageId": "uuid",
-  "status": "read",
-  "timestamp": "2026-02-21T12:00:00Z"
+  "status": "delivered | read | listening | listened"
+}
+```
+
+---
+
+### `message:unsent`
+Notifies **both parties** that a message has been soft-deleted.
+
+```json
+{
+  "messageId": "uuid",
+  "senderDisplayName": "Alice"
+}
+```
+
+---
+
+### `message:edited`
+Notifies **both parties** that a message has been edited.
+
+```json
+{
+  "messageId": "uuid",
+  "content": "Updated text",
+  "editedAt": "2026-02-25T12:05:00Z"
+}
+```
+
+---
+
+### `message:reaction`
+Notifies **both parties** of a reaction change.
+
+```json
+{
+  "messageId": "uuid",
+  "userId": "uuid",
+  "username": "alice",
+  "emoji": "👍",
+  "reactions": [
+    { "userId": "uuid", "username": "alice", "emoji": "👍" }
+  ]
 }
 ```
 
 ---
 
 ### `typing:status`
-Delivered to the recipient (or group members) when typing state changes.
+Notifies the recipient that the other user's typing state has changed.
 
 ```json
 {
   "userId": "uuid",
-  "username": "@johndoe",
+  "username": "alice",
   "isTyping": true,
-  "type": "direct",
-  "groupId": null
+  "type": "direct"
 }
 ```
 
 ---
 
 ### `audio:recording`
-Delivered to the recipient when the sender starts or stops recording a voice note.
+Notifies the recipient that the other user has started or stopped recording a voice note.
 
 ```json
 {
   "userId": "uuid",
-  "username": "@johndoe",
+  "username": "alice",
   "isRecording": true
 }
 ```
 
 ---
 
-### `audio:listening`
-Delivered to the sender when the recipient interacts with an audio message.
+### `audio:waveform`
+Pushed to **both parties** after a voice message's waveform has been analysed and stored.
 
 ```json
 {
-  "userId": "uuid",
-  "username": "@johndoe",
+  "messageId": "uuid",
+  "waveform": [0.1, 0.4, 0.9, 0.3],
+  "duration": 12.4
+}
+```
+
+---
+
+### `audio:listening`
+Notifies the sender that the recipient has started or finished listening to a voice message.
+
+```json
+{
+  "listenerId": "uuid",
   "messageId": "uuid",
   "isListening": true,
   "isEnded": false
@@ -317,36 +351,22 @@ Delivered to the sender when the recipient interacts with an audio message.
 
 ---
 
-### `ghost:typing`
-Delivered to the recipient with the sender's current typed text.
-
-```json
-{
-  "userId": "uuid",
-  "username": "@johndoe",
-  "text": "Hello wor...",
-  "type": "direct"
-}
-```
-
----
-
 ### `user:status`
-Broadcast to all connected users when someone connects, disconnects, or changes status.
+Broadcast to **connected users only** (friends, accepted conversations, pending conversation participants) when someone connects or disconnects. Only sent if the user has not hidden their online status. The initiator of a pending message request will NOT receive this event for the recipient.
 
 ```json
 {
   "userId": "uuid",
-  "username": "@johndoe",
-  "status": "online",
-  "timestamp": "2026-02-21T12:00:00Z"
+  "username": "alice",
+  "status": "online | offline",
+  "timestamp": "2026-02-25T12:00:00Z"
 }
 ```
 
 ---
 
 ### `presence:update`
-Sent to the connecting client on initial connection with the full online user list.
+Sent to the connecting client on login, and to all clients when a user's status changes.
 
 ```json
 {
@@ -359,98 +379,96 @@ Sent to the connecting client on initial connection with the full online user li
 
 ---
 
-### `presence:response`
-Response to `presence:request` with presence data for the requested user IDs.
+### `presence:data`
+Response to a `presence:request`, containing requested users' presence data.
 
 ```json
-[
-  { "userId": "uuid", "status": "online", "lastSeen": "2026-02-21T12:00:00Z" },
-  { "userId": "uuid2", "status": "offline", "lastSeen": "2026-02-21T11:30:00Z" }
-]
+{
+  "users": [
+    {
+      "userId": "uuid",
+      "status": "online | offline",
+      "lastSeen": "2026-02-25T12:00:00Z",
+      "hideOnlineStatus": false
+    }
+  ]
+}
 ```
 
 ---
 
-### `group:message:received`
-Delivered to all members of a group room when a new group message arrives.
+### `ghost:typing`
+Delivers a live text preview from the sender to the recipient.
 
 ```json
 {
-  "id": "uuid",
-  "groupId": "uuid",
   "senderId": "uuid",
-  "senderUsername": "@johndoe",
-  "content": "Hey everyone",
-  "type": "text",
-  "timestamp": "2026-02-21T12:00:00Z"
+  "senderUsername": "alice",
+  "text": "I'm typing this..."
 }
 ```
 
 ---
 
-### `group:user:joined`
-Delivered to group room members when a user joins.
+### `conversation:accepted`
+Sent to the **initiator** when their message request is accepted (either by the recipient clicking Accept or by the recipient replying).
 
 ```json
 {
-  "groupId": "uuid",
-  "userId": "uuid",
-  "username": "@johndoe",
-  "timestamp": "2026-02-21T12:00:00Z"
+  "conversationId": "uuid",
+  "acceptedBy": "uuid"
 }
 ```
 
 ---
 
-### `group:user:left`
-Delivered to group room members when a user leaves.
+### `conversation:declined`
+Sent when a conversation is declined or nuked. For decline, sent to the **initiator**. For nuke, sent to **both participants**. `conversationId` may be `null` when nuking by participant IDs.
 
 ```json
 {
-  "groupId": "uuid",
+  "conversationId": "uuid | null",
+  "declinedBy": "uuid",
+  "otherUserId": "uuid"
+}
+```
+
+---
+
+### `friend:notify`
+Sent to the relevant user when a friend request action occurs (request sent, accepted, etc.).
+
+```json
+{
+  "type": "request | accepted | declined",
+  "friendship": {
+    "id": "uuid",
+    "requesterId": "uuid",
+    "addresseeId": "uuid",
+    "status": "pending | accepted"
+  }
+}
+```
+
+---
+
+### `user:profileUpdate`
+Broadcast to connected users when someone updates their profile image.
+
+```json
+{
   "userId": "uuid",
-  "username": "@johndoe",
-  "timestamp": "2026-02-21T12:00:00Z"
+  "profileImage": "/uploads/profiles/new-image.jpg"
 }
 ```
 
 ---
 
 ### `error`
-Delivered to the client when an operation fails.
+Emitted to the client when a socket operation fails.
 
 ```json
-{ "message": "Failed to send message" }
-```
-
----
-
-## Authentication Flow
-
-```
-Client                         Server
-  │                              │
-  ├─ connect (auth.token=jwt) ──►│ validate JWT → find user in DB
-  │◄─ connect_error ─────────────┤ (if invalid)
-  │◄─ presence:update ───────────┤ (if valid) — sends online user list
-  │◄─ [other clients get user:status: online]
-  │
-  ├─ disconnect ────────────────►│ marks user offline, updates lastSeen
-  │◄─ [other clients get user:status: offline]
-```
-
-## Message Lifecycle
-
-```
-Sender                         Server                        Recipient
-  │                              │                              │
-  ├─ message:send ──────────────►│ save to DB                   │
-  │                              ├─ message:received ──────────►│
-  │◄─ message:sent ──────────────┤ (status: delivered)          │
-  │                              │◄─ message:received ──────────┤
-  │                              │ update status: delivered      │
-  │◄─ message:status (delivered)─┤                              │
-  │                              │◄─ message:read ──────────────┤
-  │                              │ update status: read           │
-  │◄─ message:status (read) ─────┤                              │
+{
+  "message": "Error description"
+}
 ```

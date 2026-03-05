@@ -2,10 +2,19 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 
+export interface ActionSubmenuItem {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  variant?: 'default' | 'danger';
+}
+
 export interface ActionIcon {
   icon: string;
   onClick: () => void;
   label?: string;
+  /** When set, clicking the button opens a dropdown with these items instead of calling onClick */
+  submenu?: ActionSubmenuItem[];
 }
 
 interface Panel {

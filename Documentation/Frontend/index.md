@@ -2,7 +2,7 @@
 
 ## Overview
 
-The frontend is a Next.js 15 application using the App Router with React 19 and TypeScript. All authenticated pages live under `/app/app/` and are protected by `AppLayout` which enforces JWT authentication. The app supports light/dark themes, offline message queuing via IndexedDB, real-time messaging via Socket.io, and a comprehensive component library.
+The frontend is a Next.js 16 application using the App Router with React 19 and TypeScript. All authenticated pages live under `/app/app/` and are protected by `AppLayout` which enforces JWT authentication. The app supports light/dark themes, offline message queuing via IndexedDB, real-time messaging via Socket.io, message requests, friend management, and a comprehensive component library.
 
 ---
 
@@ -18,8 +18,8 @@ graph TD
     root --> emailpreview["/email-preview"]
     root --> app["/app — requires auth"]
 
-    app --> apphome["/app — Main chat"]
-    app --> chatdemo["/app/chat-demo — Chat prototype"]
+    app --> apphome["/app — Chats + Message Requests"]
+    app --> friends["/app/friends — Friend management"]
     app --> settings["/app/settings — Profile, Cover, 2FA"]
     app --> groups["/app/groups — Group chat"]
     app --> updates["/app/updates — Changelog"]
@@ -39,7 +39,10 @@ graph TD
     ToastProvider --> ConfirmationProvider
     ConfirmationProvider --> PanelProvider
     PanelProvider --> WebSocketProvider
-    WebSocketProvider --> PageContent["Page Content"]
+    WebSocketProvider --> PresenceProvider
+    PresenceProvider --> UserSettingsProvider
+    UserSettingsProvider --> LogProvider
+    LogProvider --> PageContent["Page Content"]
 ```
 
 ### WebSocketContext
@@ -55,15 +58,13 @@ const { socket, connected, connecting, disconnect, reconnect } = useWebSocket();
 | `socket` | `Socket \| null` | Raw Socket.io instance |
 | `connected` | `boolean` | Whether the socket is currently connected |
 | `connecting` | `boolean` | Whether a connection attempt is in progress |
-| `disconnect` | `() => void` | Manually close the socket (e.g. manual offline mode) |
+| `disconnect` | `() => void` | Manually close the socket |
 | `reconnect` | `() => void` | Reconnect after a manual disconnect |
 
 **Reconnection config:**
 - `reconnectionDelay`: 1000ms
 - `reconnectionDelayMax`: 5000ms
 - `reconnectionAttempts`: 5
-
-Automatically connects on mount and disconnects on unmount. The `disconnect` / `reconnect` methods are used by the Test Lab's manual offline toggle to simulate going offline — this emits `presence:update: offline` to the server before dropping the connection so presence is correctly recorded.
 
 ### ThemeContext
 
@@ -78,13 +79,14 @@ CSS custom properties are applied to `:root` based on the active theme. Dark mod
 
 ### ToastContext
 
-Queue-based notification system. Toasts auto-dismiss after a configurable duration. Hovering a toast pauses the timer.
+Queue-based notification system. Toasts auto-dismiss after a configurable duration. Hovering a toast pauses the timer. Supports custom titles and multiple toast types.
 
 ```typescript
 const { showToast } = useToast();
 showToast('Message sent', 'success', 4000);
-// type: 'success' | 'error' | 'warning' | 'info'
+// type: 'success' | 'error' | 'warning' | 'info' | 'newmessage'
 // duration: milliseconds (default 4000)
+// optional title parameter for custom toast titles
 ```
 
 ### PanelContext
@@ -127,6 +129,22 @@ const result = await showConfirmation({
 // result === true if Delete was clicked, false if Cancel
 ```
 
+### PresenceContext
+
+Manages real-time presence state for all users. Tracks online/offline/away status and `lastSeen` timestamps. Supports suppressed IDs to hide presence for pending outgoing message requests.
+
+```typescript
+const { getPresence, setSuppressedIds } = usePresence();
+```
+
+### LogContext
+
+Provides WebSocket event logging for the developer tools panel. Captures all emitted and received socket events with timestamps and payloads.
+
+### UserSettingsContext
+
+Manages user preference state such as `showOnlineStatus`. Reads from and persists to the server via socket events.
+
 ---
 
 ## Hooks
@@ -146,10 +164,22 @@ Monitors online/offline status. When the app comes back online, it processes the
 ## Key Components
 
 ### AppLayout
-Authentication guard component wrapping all `/app/*` pages. On mount it reads `localStorage` for `token` and `user`. If either is missing, the user is immediately redirected to `/`. Also renders the navigation sidebar and header.
+Authentication guard component wrapping all `/app/*` pages. On mount it reads `localStorage` for `token` and `user`. If either is missing, the user is immediately redirected to `/`. Also renders the `BottomNav` navigation and a header with a "New Chat" button.
+
+### ConversationsList
+Scrollable list of conversations with tabbed views for "Chats" and "Message Requests". Supports local search by message content. Shows presence indicators, unread counts, friend badges, and "incoming request" markers. Dispatches `chatr:compose` custom events to open the New Chat panel.
+
+### ConversationView
+Panel wrapper for a single conversation. Renders `ChatView` and `MessageInput`. Displays an accept/decline bar for incoming message requests. Includes a floating "Nuke" button for testing conversation resets. Tracks conversation status dynamically via socket events.
+
+### NewChatPanel
+User search interface for initiating new conversations. Fetches users via `GET /api/users/search` with friends prioritised first. Presence is hidden for non-friend search results.
+
+### FriendsPanel
+Tabbed panel for managing friendships: Friends list, incoming/outgoing requests, and blocked users. Supports accept/decline/cancel friend request actions.
 
 ### MessageBubble
-Renders a complete conversation thread. Accepts an array of messages and handles all types:
+Renders individual message bubbles. Handles all types:
 
 | Type | Rendering |
 |------|-----------|
@@ -190,27 +220,17 @@ flowchart LR
 
 Uses WebM/Opus on Chrome, MP4/AAC on Safari. Real-time waveform rendered via `AnalyserNode` → `getByteTimeDomainData`.
 
-### ChatInput
-Message compose bar. Supports:
-- Text input with Enter-to-send
-- File attachment picker
-- Image attachment picker
-- Voice recording button (opens VoiceRecorder modal)
-- Ghost typing — sends keystrokes in real-time to recipient via `ghost:typing` event
-
 ### Lightbox
 Full-screen image viewer overlay. Opens on clicking an image message. Supports keyboard `Escape` to close.
 
-### ConnectionIndicator
-Visual indicator for WebSocket connection state. Shows `connecting`, `connected`, or `disconnected` states. Used within authenticated layouts.
-
-> **Note:** The `WebSocketStatusBadge` floating developer overlay has been removed from the app. Connection status is now surfaced through the presence system in the Test Lab.
+### BottomNav
+Bottom navigation menu with tabs for Chats, Friends, Groups, Updates, and User profile. Shows the user's first name on the User tab. Displays an unread message count badge on the Chats tab.
 
 ---
 
 ## Offline Support
 
-Chatr uses Dexie (an IndexedDB wrapper) to queue messages when the network is unavailable.
+Chatr uses Dexie (an IndexedDB wrapper) to queue messages when the network is unavailable and to cache conversation message history locally.
 
 ```mermaid
 flowchart TD
@@ -237,12 +257,7 @@ messages: {
 
 ## Versioning
 
-Current version stored in `src/version.ts`:
-```typescript
-export const version = '0.0.26';
-```
-
-Auto-incremented by `scripts/increment-version.js` via the `post-commit` git hook on every commit. The hook is installed by `npm install` (via `prepare` script → `scripts/install-hooks.js`).
+Current version stored in `src/version.ts`. Auto-incremented by `scripts/increment-version.js` via the `post-commit` git hook on every commit. The hook is installed by `npm install` (via `prepare` script → `scripts/install-hooks.js`).
 
 ---
 
@@ -281,9 +296,12 @@ All contexts in `src/contexts/`. See [Contexts](./Contexts/index.md) for full de
 |---|---|---|
 | `WebSocketContext` | `useWebSocket()` | Socket.io lifecycle — connect, disconnect, reconnect |
 | `ThemeContext` | `useTheme()` | Light/dark preference — persisted to `localStorage` |
-| `ToastContext` | `useToast()` | Queue-based toast notifications |
+| `ToastContext` | `useToast()` | Queue-based toast notifications with custom types and titles |
 | `ConfirmationContext` | `useConfirmation()` | Promise-based confirmation dialogs |
-| `PanelContext` | `usePanel()` | Stacked slide-in panel system |
+| `PanelContext` | `usePanels()` | Stacked slide-in panel system |
+| `PresenceContext` | `usePresence()` | User presence state, suppression for message requests |
+| `LogContext` | `useLogs()` | WebSocket event logging for dev tools |
+| `UserSettingsContext` | `useUserSettings()` | User preferences (e.g. showOnlineStatus) |
 
 ---
 
@@ -295,7 +313,13 @@ Custom hooks in `src/hooks/`. See [Hooks index](./Hooks/index.md) for full detai
 |---|---|
 | [`useAuth`](./Hooks/useAuth.md) | Auth state, login, logout — reads/writes `localStorage`, redirects via router |
 | [`useOfflineSync`](./Hooks/useOfflineSync.md) | Monitors `navigator.onLine`, auto-syncs IndexedDB-queued messages on reconnect |
-| [`useConversation`](./Hooks/useConversation.md) | Full messaging state machine — messages, presence, socket events, file/voice sending, manual offline mode |
+| [`useConversation`](./Hooks/useConversation.md) | Messaging state machine for the Test Lab — messages, presence, socket events |
+| `useConversationList` | Conversation list state — fetch, tabs, search, real-time updates, unread counts |
+| `useConversationView` | Single conversation state — message list, typing/recording indicators, lightbox, reply, edit |
+| `useMessageInput` | Text input, file selection, voice recording, typing indicators, send/edit/reply |
+| `useFriends` | Friend list, friend requests, accept/decline/cancel actions |
+| `useMessageToast` | Toast notifications for incoming messages with sender name and preview |
+| `useTTS` | Text-to-speech synthesis |
 
 ---
 
@@ -311,6 +335,7 @@ Utility modules in `src/lib/`. See [Lib](./Lib/index.md) for full detail.
 | `authUtils.ts` | Token save/clear with WebSocket reconnect trigger |
 | `profileImageService.ts` | Profile image URL resolver (IndexedDB → server → default) |
 | `coverImageService.ts` | Cover image URL resolver |
+| `messageCache.ts` | IndexedDB-backed message cache — store, retrieve, clear per conversation |
 
 ---
 
@@ -319,6 +344,5 @@ Utility modules in `src/lib/`. See [Lib](./Lib/index.md) for full detail.
 Shared TypeScript interfaces in `src/types/`. See [Types](./Types/index.md).
 
 ```typescript
-User · AuthResponse · Message · Group
+User · AuthResponse · Message · ConversationSummary · Group · PresenceInfo · ToastType
 ```
-

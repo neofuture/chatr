@@ -1,6 +1,6 @@
 'use client';
 
-import type { PresenceInfo } from '@/components/test/types';
+import type { PresenceInfo } from '@/types/types.ts';
 import styles from './PresenceLabel.module.css';
 
 export function formatPresence(info: PresenceInfo): string {

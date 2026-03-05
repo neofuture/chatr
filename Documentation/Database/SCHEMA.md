@@ -13,9 +13,13 @@ erDiagram
         String email UK
         String phoneNumber
         String username UK
+        String displayName
+        String firstName
+        String lastName
         String password
         String profileImage
         String coverImage
+        Boolean showOnlineStatus
         String twoFactorSecret
         Boolean twoFactorEnabled
         Boolean emailVerified
@@ -54,6 +58,33 @@ erDiagram
         DateTime editedAt
     }
 
+    MessageReaction {
+        String id PK
+        String messageId FK
+        String userId FK
+        String emoji
+        DateTime createdAt
+    }
+
+    Conversation {
+        String id PK
+        String participantA FK
+        String participantB FK
+        String initiatorId
+        String status
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
+    Friendship {
+        String id PK
+        String requesterId FK
+        String addresseeId FK
+        String status
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
     Group {
         String id PK
         String name
@@ -81,13 +112,19 @@ erDiagram
 
     User ||--o{ Message : "sends (Sender)"
     User ||--o{ Message : "receives (Recipient)"
+    User ||--o{ MessageReaction : "reacts"
+    User ||--o{ MessageEditHistory : "edits"
+    User ||--o{ Conversation : "participantA"
+    User ||--o{ Conversation : "participantB"
+    User ||--o{ Friendship : "requests"
+    User ||--o{ Friendship : "receives"
     User ||--o{ GroupMember : "belongs to"
     User ||--o{ Group : "owns"
     User ||--o{ GroupMessage : "sends"
-    User ||--o{ MessageEditHistory : "edits"
+    Message ||--o{ MessageReaction : "has"
+    Message ||--o{ MessageEditHistory : "history"
     Group ||--o{ GroupMember : "has"
     Group ||--o{ GroupMessage : "contains"
-    Message ||--o{ MessageEditHistory : "history"
 ```
 
 ## Models
@@ -101,10 +138,14 @@ Represents a registered account.
 | id | String (UUID) | PK | Unique identifier |
 | email | String | Unique, nullable | Email address |
 | phoneNumber | String | Nullable | E.164 format |
-| username | String | Unique | Display handle |
+| username | String | Unique | Display handle (prefixed with `@`) |
+| displayName | String | Nullable | User-chosen display name |
+| firstName | String | Nullable | First name |
+| lastName | String | Nullable | Last name |
 | password | String | — | bcrypt hash |
-| profileImage | String | Nullable | Relative URL path |
-| coverImage | String | Nullable | Relative URL path |
+| profileImage | String | Nullable | Relative URL path (local) or S3 URL |
+| coverImage | String | Nullable | Relative URL path (local) or S3 URL |
+| showOnlineStatus | Boolean | Default true | Whether this user's presence is visible to others |
 | twoFactorSecret | String | Nullable | TOTP secret |
 | twoFactorEnabled | Boolean | Default false | 2FA active flag |
 | emailVerified | Boolean | Default false | Email confirmed |
@@ -121,7 +162,7 @@ Represents a registered account.
 | createdAt | DateTime | Default now() | — |
 | updatedAt | DateTime | Auto-updated | — |
 
-**Relations:** `sentMessages`, `receivedMessages`, `groupMemberships`, `groupsOwned`, `sentGroupMessages`, `messageReactions`, `messageEdits`
+**Relations:** `sentMessages`, `receivedMessages`, `groupMemberships`, `groupsOwned`, `sentGroupMessages`, `messageReactions`, `messageEdits`, `friendRequestsSent`, `friendRequestsRcvd`, `conversationsAsA`, `conversationsAsB`
 
 ---
 
@@ -140,11 +181,11 @@ A direct message between two users.
 | isRead | Boolean | Default false | Read flag |
 | readAt | DateTime | Nullable | When read |
 | createdAt | DateTime | Default now() | — |
-| fileUrl | String | Nullable | Relative path to uploaded file |
+| fileUrl | String | Nullable | Relative path or S3 URL to uploaded file |
 | fileName | String | Nullable | Original filename |
 | fileSize | Int | Nullable | Bytes |
 | fileType | String | Nullable | MIME type |
-| audioWaveform | Json | Nullable | Array of amplitude values `[0..1]` × 100 bars |
+| audioWaveform | Json | Nullable | Array of amplitude values `[0..1]` x 100 bars |
 | audioDuration | Float | Nullable | Duration in seconds |
 | deletedAt | DateTime | Nullable | Set when unsent (soft-delete) |
 | edited | Boolean | Default false | Whether the message has been edited |
@@ -158,6 +199,8 @@ A direct message between two users.
 **Relations:** `reactions` (MessageReaction[]), `editHistory` (MessageEditHistory[])
 
 **Indexes:** `senderId`, `recipientId`
+
+**Cascade:** Deleting a User cascades to all their sent and received Messages.
 
 **Status lifecycle:**
 ```
@@ -180,6 +223,80 @@ Immutable audit log — one row is appended for **every edit**, storing the cont
 | editedAt | DateTime | Default now() | When the edit was applied |
 
 **Indexes:** `messageId`, `editedById`
+
+**Cascade:** Deleting a Message cascades to all its edit history rows.
+
+---
+
+### MessageReaction
+
+Emoji reactions on messages. One reaction per user per message (unique constraint on `[messageId, userId]`).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | String (UUID) | PK | — |
+| messageId | String | FK → Message | The reacted message |
+| userId | String | FK → User | The user who reacted |
+| emoji | String | — | The emoji character |
+| createdAt | DateTime | Default now() | — |
+
+**Unique constraint:** `[messageId, userId]`
+
+**Indexes:** `messageId`, `userId`
+
+**Cascade:** Deleting a Message cascades to all its reactions.
+
+---
+
+### Conversation
+
+Tracks the state of a direct message conversation between two users. Created automatically when the first message is sent. Used to manage message requests.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | String (UUID) | PK | — |
+| participantA | String | FK → User | First participant (normalised: lower UUID) |
+| participantB | String | FK → User | Second participant |
+| initiatorId | String | — | The user who sent the first message |
+| status | String | Default `pending` | `pending` or `accepted` |
+| createdAt | DateTime | Default now() | — |
+| updatedAt | DateTime | Auto-updated | — |
+
+**Unique constraint:** `[participantA, participantB]`
+
+**Indexes:** `participantA`, `participantB`
+
+**Cascade:** Deleting a User cascades to all their Conversations.
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending : First message sent
+    pending --> accepted : Recipient replies or clicks Accept
+    pending --> deleted : Recipient declines or nuke
+    accepted --> deleted : Nuke conversation
+    deleted --> [*]
+```
+
+---
+
+### Friendship
+
+Tracks friendship relationships between users.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | String (UUID) | PK | — |
+| requesterId | String | FK → User | User who sent the friend request |
+| addresseeId | String | FK → User | User who received the friend request |
+| status | String | Default `pending` | `pending`, `accepted`, or `blocked` |
+| createdAt | DateTime | Default now() | — |
+| updatedAt | DateTime | Auto-updated | — |
+
+**Unique constraint:** `[requesterId, addresseeId]`
+
+**Indexes:** `requesterId`, `addresseeId`
+
+**Cascade:** Deleting a User cascades to all their Friendships.
 
 ---
 
@@ -261,4 +378,3 @@ Prisma generates a type-safe client from the schema. Import it as:
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 ```
-

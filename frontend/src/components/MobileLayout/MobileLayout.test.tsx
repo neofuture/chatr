@@ -92,9 +92,9 @@ describe('MobileLayout', () => {
 
     await waitFor(() => {
       expect(screen.getByText('CHATS')).toBeInTheDocument();
+      expect(screen.getByText('FRIENDS')).toBeInTheDocument();
       expect(screen.getByText('GROUPS')).toBeInTheDocument();
-      expect(screen.getByText('UPDATES')).toBeInTheDocument();
-      expect(screen.getByText('USER')).toBeInTheDocument();
+      expect(screen.getByText('TESTUSER')).toBeInTheDocument();
     }, { timeout: 2000 });
   });
 

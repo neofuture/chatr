@@ -7,6 +7,10 @@ import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 import path from 'path';
+import { createAdapter } from '@socket.io/redis-adapter';
+
+// Redis
+import { connectRedis, disconnectRedis, isRedisConnected, redisPub, redisSub } from './lib/redis';
 
 // Import REST API routes
 import authRoutes from './routes/auth';
@@ -15,11 +19,15 @@ import messageRoutes from './routes/messages';
 import groupRoutes from './routes/groups';
 import emailTemplatesRoutes from './routes/email-templates';
 import fileUploadRoutes from './routes/file-upload';
+import friendRoutes from './routes/friends';
+import conversationRoutes from './routes/conversations';
 
 // Import Socket.io handlers
 import { setupSocketHandlers } from './socket/handlers';
 import { setSocketIO } from './routes/file-upload';
 import { setMessagesSocketIO } from './routes/messages';
+import { setConversationsSocketIO } from './routes/conversations';
+import { setUsersSocketIO } from './routes/users';
 
 dotenv.config();
 
@@ -34,9 +42,9 @@ const io = new Server(httpServer, {
 
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for Swagger UI
-  frameguard: false, // Disabled to allow email preview in iframe
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resource loading
+  contentSecurityPolicy: false,
+  frameguard: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:3000',
@@ -49,7 +57,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: origin ${origin} not allowed`));
@@ -58,9 +65,13 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Health check
+// Health check (includes Redis status)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    redis: isRedisConnected() ? 'connected' : 'disconnected',
+  });
 });
 
 // Swagger API Documentation — basic auth in production
@@ -93,35 +104,68 @@ app.use('/uploads', (req, res, next) => {
 }, express.static(path.join(__dirname, '../uploads')));
 
 // REST API Routes (HTTP)
-app.use('/api/auth', authRoutes);        // Registration, Login, Logout
-app.use('/api/users', userRoutes);       // User search, profiles
-app.use('/api/messages', messageRoutes); // Message history, conversations
-app.use('/api/messages', fileUploadRoutes); // File uploads
-app.use('/api/groups', groupRoutes);     // Group CRUD operations
-app.use('/api', emailTemplatesRoutes);   // Email template preview
-
-// WebSocket handlers (Real-time chat only)
-setupSocketHandlers(io);
-setSocketIO(io);
-setMessagesSocketIO(io);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/messages', fileUploadRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/friends', friendRoutes);
+app.use('/api/conversations', conversationRoutes);
+app.use('/api', emailTemplatesRoutes);
 
 const PORT = process.env.PORT || 3001;
 
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server: http://localhost:${PORT}`);
-  console.log(`📚 API Docs: http://localhost:${PORT}/api/docs`);
-  console.log(`📡 WebSocket: ws://localhost:${PORT}`);
+async function start() {
+  // Connect Redis first
+  try {
+    await connectRedis();
+    console.log('🔴 Redis ready');
+  } catch (err) {
+    console.error('⚠️  Redis connection failed — running without Redis:', (err as Error).message);
+  }
+
+  // Attach Socket.io Redis adapter for horizontal scaling
+  if (isRedisConnected()) {
+    io.adapter(createAdapter(redisPub, redisSub));
+    console.log('📡 Socket.io Redis adapter attached');
+  }
+
+  // WebSocket handlers (Real-time chat only)
+  setupSocketHandlers(io);
+  setSocketIO(io);
+  setMessagesSocketIO(io);
+  setConversationsSocketIO(io);
+  setUsersSocketIO(io);
+
+  httpServer.listen(PORT, () => {
+    console.log(`🚀 Server: http://localhost:${PORT}`);
+    console.log(`📚 API Docs: http://localhost:${PORT}/api/docs`);
+    console.log(`📡 WebSocket: ws://localhost:${PORT}`);
+  });
+}
+
+start().catch(err => {
+  console.error('❌ Failed to start server:', err);
+  process.exit(1);
 });
 
 // Graceful shutdown handling
-const gracefulShutdown = () => {
+const gracefulShutdown = async () => {
   console.log('🛑 Shutting down gracefully...');
+
+  // Disconnect Redis
+  try {
+    await disconnectRedis();
+    console.log('🔴 Redis disconnected');
+  } catch (e) {
+    console.error('⚠️  Error disconnecting Redis:', e);
+  }
+
   httpServer.close(() => {
     console.log('✅ Server closed');
     process.exit(0);
   });
 
-  // Force close after 10s if not closed
   setTimeout(() => {
     console.error('❌ Could not close connections in time, forcefully shutting down');
     process.exit(1);

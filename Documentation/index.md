@@ -1,6 +1,6 @@
 # Chatr — Technical Documentation
 
-Chatr is a real-time messaging platform built on a Node.js/Express backend and Next.js frontend, communicating over REST and WebSocket (Socket.io).
+Chatr is a real-time messaging platform built on a Node.js/Express backend and Next.js frontend, communicating over REST and WebSocket (Socket.io). It supports direct messaging with message requests, friend management, presence tracking, file/audio uploads, and offline message queuing.
 
 ## Documentation Structure
 
@@ -8,26 +8,25 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 |---------|-------------|
 | [Architecture](./Architecture/index.md) | System design, component diagram, data flow |
 | [AWS Infrastructure](./Architecture/AWS.md) | EC2, RDS, Redis, S3, Nginx — ports and config |
-| [API Reference](./API/REST_API.md) | All REST endpoints, request/response schemas |
-| [WebSocket](./WebSocket/EVENTS.md) | Socket.io events, payloads, connection lifecycle |
-| [Database](./Database/SCHEMA.md) | Prisma schema, models, indexes, migrations |
+| [API Reference](./API/Rest_Api.md) | All REST endpoints, request/response schemas |
+| [WebSocket](./WebSocket/Events.md) | Socket.io events, payloads, connection lifecycle |
+| [Database](./Database/Schema.md) | Prisma schema, models, indexes, migrations |
+| [Features](./Features/MESSAGING.md) | Messaging, message requests, presence, friends |
 | [Frontend](./Frontend/index.md) | Next.js structure, contexts, components |
-| [Contexts](./Frontend/Contexts/index.md) | WebSocketContext, ThemeContext, ToastContext, ConfirmationContext, PanelContext |
-| [Hooks](./Frontend/Hooks/index.md) | `useAuth`, `useOfflineSync`, `useConversation` |
-| [Lib](./Frontend/Lib/index.md) | api.ts, db.ts, offline.ts, auth helpers, image services |
+| [Contexts](./Frontend/Contexts/index.md) | WebSocket, Theme, Toast, Confirmation, Panel, Presence |
+| [Hooks](./Frontend/Hooks/index.md) | `useAuth`, `useConversationList`, `useFriends`, `useConversation` |
+| [Lib](./Frontend/Lib/index.md) | api.ts, db.ts, offline.ts, auth helpers, image services, messageCache |
 | [Types](./Frontend/Types/index.md) | Shared TypeScript interfaces |
-| [Test Lab](./Frontend/Components/test/index.md) | Dev Test Lab components and `useConversation` hook |
-| [Demo Components](./Frontend/Components/demo/index.md) | Dev/demo-only components — Demo2FA, WebSocketDemo, DemoPanels etc. |
-| [Features](./Features/Messaging.md) | Messaging, voice, file upload, presence |
+| [Demo Components](./Frontend/Components/Demo/index.md) | Dev/demo-only components — Demo2FA, BottomSheetDemo, DemoPanels |
 | [Backend](./Backend/index.md) | Backend overview, middleware, env vars |
-| [Routes](./Backend/Routes.md) | All Express route files — auth, users, messages, groups, file upload |
-| [Socket Handlers](./Backend/Socket_Handlers.md) | Socket.io event handlers, presence store, connection lifecycle |
+| [Routes](./Backend/Routes.md) | Express route files — auth, users, messages, friends, conversations |
+| [Socket Handlers](./Backend/Socket_Handlers.md) | Socket.io event handlers, Redis presence, conversation-aware broadcasting |
 | [Authentication](./Backend/Authentication.md) | JWT, SMS/email verification, 2FA |
-| [Services](./Backend/SERVICES.md) | Email (Mailtrap), SMS (SMS Works), Waveform |
-| [File Upload](./Backend/FILE_UPLOAD.md) | Multer config, upload flow, waveform strategy |
-| [Middleware](./Backend/MIDDLEWARE.md) | JWT auth middleware detail |
-| [Deployment](./Getting-Started/DEPLOYMENT.md) | AWS infrastructure, deploy script |
-| [Getting Started](./Getting-Started/LOCAL_SETUP.md) | Local development setup |
+| [Services](./Backend/Services.md) | Email (Mailtrap), SMS (SMS Works), Waveform |
+| [File Upload](./Backend/File_Upload.md) | Multer config, upload flow, waveform strategy |
+| [Middleware](./Backend/Middleware.md) | JWT auth middleware detail |
+| [Deployment](./Getting-Started/Deployment.md) | AWS infrastructure, deploy script |
+| [Getting Started](./Getting-Started/Local_Setup.md) | Local development setup |
 | [Testing](./Testing/index.md) | Test suite, Jest config, coverage |
 
 ## Quick Reference

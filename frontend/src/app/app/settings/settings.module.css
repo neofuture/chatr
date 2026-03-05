@@ -205,6 +205,80 @@
   transition: opacity 0.15s;
 }
 
+/* ── Blocked Users ── */
+.blockedRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.blockedRow:last-child {
+  border-bottom: none;
+}
+
+.blockedInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.blockedName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.blockedUsername {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unblockBtn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #3b82f6;
+  background: transparent;
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.unblockBtn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.emptyBlocked {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.emptyBlocked i {
+  font-size: 15px;
+}
+
 .logoutBtn:hover {
   opacity: 0.75;
 }

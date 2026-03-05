@@ -10,19 +10,15 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
   const startTimeRef = useRef<number>(Date.now());
   const remainingTimeRef = useRef<number>(toast.duration || 4000);
 
-  // Get title based on toast type
   const getTitle = () => {
+    if (toast.title) return toast.title;
     switch (toast.type) {
-      case 'success':
-        return 'Success';
-      case 'error':
-        return 'Error';
-      case 'info':
-        return 'Info';
-      case 'warning':
-        return 'Warning';
-      default:
-        return '';
+      case 'success': return 'Success';
+      case 'error':   return 'Error';
+      case 'info':    return 'Info';
+      case 'warning': return 'Warning';
+      case 'newmessage': return 'New Message';
+      default:        return '';
     }
   };
 
@@ -74,22 +70,33 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
 
   return (
     <div
-      className={`toast toast-${toast.type} ${isExiting ? 'toast-exit' : ''}`}
+      className={`toast toast-${toast.type} ${isExiting ? 'toast-exit' : ''} ${toast.onClick ? 'toast-clickable' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleMouseEnter}
       onTouchEnd={handleMouseLeave}
-      onClick={handleClose}
+      onClick={() => {
+        if (toast.onClick) {
+          toast.onClick();
+          handleClose();
+        } else {
+          handleClose();
+        }
+      }}
     >
       <div className="toast-icon">
         {toast.type === 'success' && <i className="fas fa-check"></i>}
         {toast.type === 'error' && <i className="fas fa-times"></i>}
         {toast.type === 'info' && <i className="fas fa-info-circle"></i>}
         {toast.type === 'warning' && <i className="fas fa-exclamation-triangle"></i>}
+        {toast.type === 'newmessage' && <i className="fas fa-comment"></i>}
       </div>
       <div className="toast-message">
         <div className="toast-title">{getTitle()}</div>
         <div className="toast-text">{toast.message}</div>
+        {toast.onClick && toast.actionLabel && (
+          <div className="toast-action">{toast.actionLabel}</div>
+        )}
       </div>
       <button
         className="toast-close"

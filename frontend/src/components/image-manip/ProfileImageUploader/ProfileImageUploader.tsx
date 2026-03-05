@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/contexts/ToastContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import {
   saveProfileImageLocally,
   uploadProfileImageToServer,
@@ -29,6 +30,7 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { showToast } = useToast();
+  const { socket } = useWebSocket();
 
   const closeMenu = () => {
     setIsClosing(true);
@@ -128,10 +130,14 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
           setImageUrl(serverUrl);
 
           // Notify again after server upload
-          console.log('[ProfileImageUploader] Dispatching profileImageUpdated event (server)');
           window.dispatchEvent(new CustomEvent('profileImageUpdated', {
             detail: { userId, url: serverUrl }
           }));
+
+          // Update socket-level profileImage so future messages use the new image
+          if (socket) {
+            socket.emit('profile:imageUpdated', { profileImage: serverUrl });
+          }
         } catch (uploadError: any) {
           console.error('[ProfileImageUploader] Server upload failed:', uploadError);
 

@@ -6,9 +6,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { usePanels } from '@/contexts/PanelContext';
 import { useLog } from '@/contexts/LogContext';
+import { useFriends } from '@/hooks/useFriends';
+import { useConfirmation } from '@/contexts/ConfirmationContext';
 import { version } from '@/version';
 import ProfileImageUploader from '@/components/image-manip/ProfileImageUploader/ProfileImageUploader';
 import CoverImageUploader from '@/components/image-manip/CoverImageUploader/CoverImageUploader';
+import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import LogViewerPanel from '@/components/LogViewerPanel/LogViewerPanel';
 import styles from './settings.module.css';
 
@@ -64,9 +67,26 @@ export default function SettingsPage() {
   const { settings, setSetting } = useUserSettings();
   const { openPanel } = usePanels();
   const { logs } = useLog();
+  const { blocked, unblockUser } = useFriends();
+  const { showConfirmation } = useConfirmation();
   const [userId] = useState<string>(getCurrentUserId);
 
   const isDark = theme === 'dark';
+
+  const handleUnblock = async (targetUserId: string, displayName: string) => {
+    const result = await showConfirmation({
+      title: 'Unblock User',
+      message: `Are you sure you want to unblock ${displayName}?`,
+      urgency: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Unblock', variant: 'destructive', value: true },
+      ],
+    });
+    if (result === true) {
+      await unblockUser(targetUserId);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -129,6 +149,41 @@ export default function SettingsPage() {
               />
             }
           />
+        </SettingsSection>
+
+        {/* ── Blocked Users ── */}
+        <SettingsSection title="Blocked Users">
+          {blocked.length === 0 ? (
+            <div className={styles.emptyBlocked}>
+              <i className="fad fa-user-check" />
+              <span>No blocked users</span>
+            </div>
+          ) : (
+            blocked.map((b) => {
+              const dn = b.user.displayName || b.user.username?.replace(/^@/, '') || 'Unknown';
+              return (
+                <div key={b.friendshipId} className={styles.blockedRow}>
+                  <PresenceAvatar
+                    profileImage={b.user.profileImage ?? null}
+                    displayName={dn}
+                    size={36}
+                    info={{ status: 'offline', lastSeen: null }}
+                    showDot={false}
+                  />
+                  <div className={styles.blockedInfo}>
+                    <span className={styles.blockedName}>{dn}</span>
+                    <span className={styles.blockedUsername}>{b.user.username}</span>
+                  </div>
+                  <button
+                    className={styles.unblockBtn}
+                    onClick={() => handleUnblock(b.user.id, dn)}
+                  >
+                    <i className="fas fa-lock-open" /> Unblock
+                  </button>
+                </div>
+              );
+            })
+          )}
         </SettingsSection>
 
         {/* ── About ── */}

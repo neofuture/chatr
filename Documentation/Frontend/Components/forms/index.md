@@ -8,4 +8,4 @@ Authentication and verification form components. All use `PanelContext` to open/
 | [LoginVerification](./LoginVerification/index.md) | 6-digit OTP entry to complete login |
 | [EmailVerification](./EmailVerification/index.md) | 6-digit OTP entry for email or phone verification |
 | [ForgotPassword](./ForgotPassword/index.md) | Password reset request form |
-
+| [Demo2FA](../Demo/Demo2FA/index.md) | Interactive 2FA code input demo (test code: `123456`) |

@@ -5,9 +5,15 @@ import path from 'path';
 import fs from 'fs';
 import { authenticateToken } from '../middleware/auth';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getCachedConversations, setCachedConversations, invalidateConversationCache } from '../lib/redis';
+import { getConnectedUserIds } from '../lib/conversation';
+import { Server } from 'socket.io';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+let _io: Server | null = null;
+export function setUsersSocketIO(io: Server) { _io = io; }
 
 // ── S3 (production only) ─────────────────────────────────────────────────────
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -111,6 +117,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // GET /api/users/search?q=query - Search users by username/displayName
+// Returns friendship info and sorts friends first
 router.get('/search', authenticateToken as any, async (req: any, res: any) => {
   try {
     const currentUserId = req.user?.userId;
@@ -141,23 +148,84 @@ router.get('/search', authenticateToken as any, async (req: any, res: any) => {
       take: 30,
     });
 
-    res.json({ users });
+    // Attach friendship status
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        OR: [
+          { requesterId: currentUserId, addresseeId: { in: users.map(u => u.id) } },
+          { addresseeId: currentUserId, requesterId: { in: users.map(u => u.id) } },
+        ],
+      },
+    });
+
+    const fsMap = new Map(friendships.map(f => {
+      const otherId = f.requesterId === currentUserId ? f.addresseeId : f.requesterId;
+      return [otherId, { id: f.id, status: f.status, iRequested: f.requesterId === currentUserId }];
+    }));
+
+    const result = users.map(u => ({
+      ...u,
+      friendship: fsMap.get(u.id) ?? null,
+      isFriend: fsMap.get(u.id)?.status === 'accepted',
+    }));
+
+    // Sort: friends first, then alphabetical
+    result.sort((a, b) => {
+      if (a.isFriend !== b.isFriend) return a.isFriend ? -1 : 1;
+      return (a.displayName || a.username).localeCompare(b.displayName || b.username);
+    });
+
+    res.json({ users: result });
   } catch (error) {
     console.error('Error searching users:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// GET /api/users/conversations - All users the current user has messaged, with last message + unread count
-// Also returns all other verified users (so you can start new conversations)
+// GET /api/users/conversations - Users we have actual conversations with, plus last message + unread count
+// Includes conversationId, conversationStatus, isInitiator, isFriend per entry
+// Cached in Redis for 30s — invalidated on new message/edit/unsend via socket handlers
 router.get('/conversations', authenticateToken as any, async (req: any, res: any) => {
   try {
     const currentUserId = req.user?.userId;
     if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Get all verified users except self
-    const allUsers = await prisma.user.findMany({
-      where: { emailVerified: true, id: { not: currentUserId } },
+    // Try Redis cache first
+    try {
+      const cached = await getCachedConversations(currentUserId);
+      if (cached) {
+        return res.json(JSON.parse(cached));
+      }
+    } catch (_) { /* cache miss or Redis down — fall through to DB */ }
+
+    // Find distinct user IDs we've exchanged messages with
+    const sentTo = await prisma.message.findMany({
+      where: { senderId: currentUserId },
+      select: { recipientId: true },
+      distinct: ['recipientId'],
+    });
+    const receivedFrom = await prisma.message.findMany({
+      where: { recipientId: currentUserId },
+      select: { senderId: true },
+      distinct: ['senderId'],
+    });
+
+    const conversationPartnerIds = [
+      ...new Set([
+        ...sentTo.map(m => m.recipientId),
+        ...receivedFrom.map(m => m.senderId),
+      ]),
+    ];
+
+    if (conversationPartnerIds.length === 0) {
+      const result = { conversations: [] };
+      setCachedConversations(currentUserId, JSON.stringify(result)).catch(() => {});
+      return res.json(result);
+    }
+
+    // Fetch only users we've actually messaged
+    const users = await prisma.user.findMany({
+      where: { id: { in: conversationPartnerIds } },
       select: {
         id: true,
         username: true,
@@ -169,9 +237,59 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
       },
     });
 
-    // For each user, get the most recent message and unread count
+    // Batch-fetch all Conversation rows for this user
+    const convos = await prisma.conversation.findMany({
+      where: {
+        OR: [
+          { participantA: currentUserId },
+          { participantB: currentUserId },
+        ],
+      },
+    });
+    const convoMap = new Map(convos.map(c => {
+      const otherId = c.participantA === currentUserId ? c.participantB : c.participantA;
+      return [otherId, c];
+    }));
+
+    // Batch-fetch friendships to mark isFriend
+    const friendships = await prisma.friendship.findMany({
+      where: {
+        status: 'accepted',
+        OR: [
+          { requesterId: currentUserId, addresseeId: { in: conversationPartnerIds } },
+          { addresseeId: currentUserId, requesterId: { in: conversationPartnerIds } },
+        ],
+      },
+    });
+    const friendIds = new Set(friendships.map(f =>
+      f.requesterId === currentUserId ? f.addresseeId : f.requesterId
+    ));
+    const friendshipIdMap = new Map<string, string>();
+    for (const f of friendships) {
+      const otherId = f.requesterId === currentUserId ? f.addresseeId : f.requesterId;
+      friendshipIdMap.set(otherId, f.id);
+    }
+
+    // Batch-fetch blocks (either direction) to mark isBlocked / blockedByMe
+    const blocks = await prisma.friendship.findMany({
+      where: {
+        status: 'blocked',
+        OR: [
+          { requesterId: currentUserId, addresseeId: { in: conversationPartnerIds } },
+          { addresseeId: currentUserId, requesterId: { in: conversationPartnerIds } },
+        ],
+      },
+      select: { requesterId: true, addresseeId: true },
+    });
+    const blockedByMeIds = new Set<string>();
+    const blockedMeIds = new Set<string>();
+    for (const b of blocks) {
+      if (b.requesterId === currentUserId) blockedByMeIds.add(b.addresseeId);
+      else blockedMeIds.add(b.requesterId);
+    }
+
     const withMessages = await Promise.all(
-      allUsers.map(async (user) => {
+      users.map(async (user) => {
         const lastMessage = await prisma.message.findFirst({
           where: {
             deletedAt: null,
@@ -201,16 +319,30 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
           },
         });
 
+        const convo = convoMap.get(user.id);
+
         return {
           ...user,
           lastMessage: lastMessage ?? null,
           unreadCount,
           lastMessageAt: lastMessage?.createdAt ?? null,
+          conversationId: convo?.id ?? null,
+          conversationStatus: (convo?.status as 'pending' | 'accepted') ?? null,
+          isInitiator: convo ? convo.initiatorId === currentUserId : false,
+          isFriend: friendIds.has(user.id),
+          friendshipId: friendshipIdMap.get(user.id) ?? null,
+          isBlocked: blockedByMeIds.has(user.id) || blockedMeIds.has(user.id),
+          blockedByMe: blockedByMeIds.has(user.id),
         };
       })
     );
 
-    res.json({ conversations: withMessages });
+    const result = { conversations: withMessages };
+
+    // Cache in Redis (fire-and-forget)
+    setCachedConversations(currentUserId, JSON.stringify(result)).catch(() => {});
+
+    res.json(result);
   } catch (error) {
     console.error('Error fetching conversations:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -626,6 +758,27 @@ router.post('/profile-image', authenticateToken as any, upload.single('profileIm
     } catch (dbError) {
       console.error('❌ Database update failed:', dbError);
       return res.status(500).json({ error: 'Failed to update database' });
+    }
+
+    // Invalidate conversation caches and notify connected users
+    try {
+      const { all: connectedIds } = await getConnectedUserIds(userId);
+      // Invalidate caches so they get fresh profileImage on next fetch
+      const cachePromises = Array.from(connectedIds).map(id => invalidateConversationCache(id));
+      cachePromises.push(invalidateConversationCache(userId));
+      await Promise.all(cachePromises);
+
+      // Broadcast to connected users so they update in real time
+      if (_io) {
+        for (const cid of connectedIds) {
+          _io.to(`user:${cid}`).emit('user:profileUpdate', {
+            userId,
+            profileImage: fileUrl,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('⚠️  Failed to broadcast profile image update:', e);
     }
 
     res.json({ url: fileUrl });

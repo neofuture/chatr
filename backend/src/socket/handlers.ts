@@ -1,6 +1,25 @@
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import {
+  setPresence,
+  getPresence,
+  removePresence,
+  setSocketMapping,
+  getSocketId,
+  removeSocketMapping,
+  getAllOnlineUserIds,
+  getMultiplePresences,
+  invalidateConversationCache,
+  PresenceData,
+} from '../lib/redis';
+import {
+  getOrCreateConversation,
+  acceptConversation,
+  findConversation,
+  getConnectedUserIds,
+  getBlockBetween,
+} from '../lib/conversation';
 
 const prisma = new PrismaClient();
 
@@ -10,18 +29,6 @@ interface AuthenticatedSocket extends Socket {
   displayName?: string | null;
   profileImage?: string | null;
 }
-
-interface UserPresence {
-  userId: string;
-  socketId: string;
-  status: 'online' | 'away' | 'offline';
-  lastSeen: Date;
-  hideOnlineStatus: boolean;
-}
-
-// In-memory store for user presence (replace with Redis in production)
-const userPresence = new Map<string, UserPresence>();
-const userSockets = new Map<string, string>(); // userId -> socketId
 
 export function setupSocketHandlers(io: Server) {
   // Middleware for JWT authentication
@@ -34,7 +41,6 @@ export function setupSocketHandlers(io: Server) {
         return next(new Error('Authentication error: No token provided'));
       }
 
-      // Verify JWT token
       let decoded: { userId: string };
       try {
         decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { userId: string };
@@ -43,7 +49,6 @@ export function setupSocketHandlers(io: Server) {
         return next(new Error('Authentication error: Invalid token'));
       }
 
-      // Verify user exists in database
       const user = await prisma.user.findUnique({
         where: { id: decoded.userId },
         select: { id: true, username: true, email: true, profileImage: true, displayName: true }
@@ -71,7 +76,7 @@ export function setupSocketHandlers(io: Server) {
     const userId = socket.userId!;
     const username = socket.username!;
     const displayName = socket.displayName ?? null;
-    const profileImage = socket.profileImage ?? null;
+    let profileImage = socket.profileImage ?? null;
 
     console.log(`🔌 User connected: ${username} (${socket.id})`);
 
@@ -87,36 +92,42 @@ export function setupSocketHandlers(io: Server) {
       console.error('❌ Error loading showOnlineStatus:', e);
     }
 
-    // Store user connection
-    userSockets.set(userId, socket.id);
-    userPresence.set(userId, {
+    // Store user connection in Redis
+    await setSocketMapping(userId, socket.id);
+    await setPresence({
       userId,
       socketId: socket.id,
       status: 'online',
-      lastSeen: new Date(),
+      lastSeen: new Date().toISOString(),
       hideOnlineStatus,
     });
 
     // Join user to their personal room
     socket.join(`user:${userId}`);
 
-    // Only broadcast online if the user allows it
+    // Broadcast online status only to connected users (friends / conversations / pending recipients)
+    const { all: connectedIds, pendingInitiatedByMe } = await getConnectedUserIds(userId);
     if (!hideOnlineStatus) {
-      socket.broadcast.emit('user:status', {
-        userId,
-        username,
-        status: 'online',
-        timestamp: new Date()
-      });
+      for (const cid of connectedIds) {
+        io.to(`user:${cid}`).emit('user:status', {
+          userId,
+          username,
+          status: 'online',
+          timestamp: new Date()
+        });
+      }
     }
 
-    // Send user their current presence info (always show themselves as online)
+    // Send user only the presence of their connected users (excluding pending outgoing recipients)
+    const visibleIds = Array.from(connectedIds).filter(id => !pendingInitiatedByMe.has(id));
+    const connectedPresences = visibleIds.length > 0
+      ? await getMultiplePresences(visibleIds)
+      : [];
     socket.emit('presence:update', {
       status: 'online',
-      onlineUsers: Array.from(userPresence.values()).map(p => ({
-        userId: p.userId,
-        status: p.status
-      }))
+      onlineUsers: connectedPresences
+        .filter((p): p is PresenceData => p !== null && !p.hideOnlineStatus)
+        .map(p => ({ userId: p.userId, status: p.status }))
     });
 
     // ==================== DIRECT MESSAGES ====================
@@ -155,10 +166,43 @@ export function setupSocketHandlers(io: Server) {
           return;
         }
 
+        // Block check — reject if either user has blocked the other
+        const blockInfo = await getBlockBetween(userId, data.recipientId);
+        if (blockInfo.blocked) {
+          const iBlockedThem = blockInfo.blockerId === userId;
+          socket.emit('message:blocked', {
+            recipientId: data.recipientId,
+            reason: iBlockedThem
+              ? 'You have blocked this user'
+              : "Could not deliver — you're blocked",
+          });
+          return;
+        }
+
+        // Get or create conversation (auto-accepted for friends, pending for non-friends)
+        const convo = await getOrCreateConversation(userId, data.recipientId);
+
+        // If the conversation is pending and this sender is the NON-initiator (recipient replying), auto-accept
+        let wasAutoAccepted = false;
+        if (convo.status === 'pending' && convo.initiatorId !== userId) {
+          const accepted = await acceptConversation(convo.id, userId);
+          if (accepted) {
+            convo.status = 'accepted';
+            wasAutoAccepted = true;
+            // Notify the original sender that their request was accepted
+            io.to(`user:${convo.initiatorId}`).emit('conversation:accepted', {
+              conversationId: convo.id,
+              acceptedBy: userId,
+            });
+            console.log(`✅ Conversation ${convo.id} auto-accepted (reply from ${username})`);
+          }
+        }
+
+        const isPending = convo.status === 'pending';
+
         let message: any;
 
         if (data.messageId) {
-          // Message already exists in DB (created by file upload) - just look it up
           message = await prisma.message.findUnique({
             where: { id: data.messageId },
             include: { sender: { select: { id: true, username: true, email: true } } }
@@ -168,7 +212,6 @@ export function setupSocketHandlers(io: Server) {
             return;
           }
         } else {
-          // Create new message record
           message = await prisma.message.create({
             data: {
               senderId: userId,
@@ -182,7 +225,6 @@ export function setupSocketHandlers(io: Server) {
               fileType: data.fileType,
               audioWaveform: data.waveform ? data.waveform : undefined,
               audioDuration: data.duration,
-              // Reply snapshot
               replyToId: data.replyTo?.id ?? null,
               replyToContent: data.replyTo?.content ?? null,
               replyToSenderName: data.replyTo?.senderDisplayName || data.replyTo?.senderUsername?.replace(/^@/, '') || null,
@@ -193,9 +235,13 @@ export function setupSocketHandlers(io: Server) {
           });
         }
 
-        // Send to recipient if online
-        const recipientSocketId = userSockets.get(data.recipientId);
-        // Use DB record fields for file/audio data (reliable for pre-existing messages)
+        // Invalidate conversation cache for both parties
+        await Promise.all([
+          invalidateConversationCache(userId),
+          invalidateConversationCache(data.recipientId),
+        ]);
+
+        const recipientSocketId = await getSocketId(data.recipientId);
         const fileUrl = message.fileUrl || data.fileUrl;
         const fileName = message.fileName || data.fileName;
         const fileSize = message.fileSize || data.fileSize;
@@ -203,7 +249,6 @@ export function setupSocketHandlers(io: Server) {
         const waveform = (message.audioWaveform as number[] | null) || data.waveform;
         const duration = message.audioDuration || data.duration;
 
-        // Build replyTo snapshot for emit (use DB values for reliability)
         const replyToPayload = message.replyToId ? {
           id: message.replyToId,
           content: message.replyToContent || '',
@@ -232,16 +277,20 @@ export function setupSocketHandlers(io: Server) {
             waveform,
             duration,
             replyTo: replyToPayload,
+            conversationId: convo.id,
+            conversationStatus: convo.status,
           });
 
-          // Update message status to delivered
-          await prisma.message.update({
-            where: { id: message.id },
-            data: { status: 'delivered' }
-          });
+          // Only update status to delivered if conversation is accepted
+          if (!isPending) {
+            await prisma.message.update({
+              where: { id: message.id },
+              data: { status: 'delivered' }
+            });
+          }
         }
 
-        // Confirm to sender
+        // Confirm to sender — suppress delivered status for pending conversations
         socket.emit('message:sent', {
           id: message.id,
           senderId: userId,
@@ -249,7 +298,7 @@ export function setupSocketHandlers(io: Server) {
           content: message.content,
           type: message.type,
           timestamp: message.createdAt,
-          status: recipientSocketId ? 'delivered' : 'sent',
+          status: (recipientSocketId && !isPending) ? 'delivered' : 'sent',
           replyTo: replyToPayload,
           fileUrl: message.fileUrl,
           fileName: message.fileName,
@@ -257,6 +306,8 @@ export function setupSocketHandlers(io: Server) {
           fileType: message.fileType,
           waveform: (message.audioWaveform as number[] | null) || null,
           duration: message.audioDuration,
+          conversationId: convo.id,
+          conversationStatus: convo.status,
         });
 
       } catch (error) {
@@ -269,12 +320,8 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('group:join', async (groupId: string) => {
       try {
-        // Verify user is member of group
         const membership = await prisma.groupMember.findFirst({
-          where: {
-            groupId,
-            userId
-          }
+          where: { groupId, userId }
         });
 
         if (!membership) {
@@ -285,7 +332,6 @@ export function setupSocketHandlers(io: Server) {
         socket.join(`group:${groupId}`);
         console.log(`👥 ${username} joined group room: ${groupId}`);
 
-        // Notify group members
         socket.to(`group:${groupId}`).emit('group:user:joined', {
           groupId,
           userId,
@@ -315,18 +361,13 @@ export function setupSocketHandlers(io: Server) {
       try {
         console.log(`💬 Group message from ${username} to group ${data.groupId}`);
 
-        // Validate message
         if (!data.content || data.content.trim().length === 0) {
           socket.emit('error', { message: 'Message content is required' });
           return;
         }
 
-        // Verify user is member of group
         const membership = await prisma.groupMember.findFirst({
-          where: {
-            groupId: data.groupId,
-            userId
-          }
+          where: { groupId: data.groupId, userId }
         });
 
         if (!membership) {
@@ -334,7 +375,6 @@ export function setupSocketHandlers(io: Server) {
           return;
         }
 
-        // Save message to database
         const message = await prisma.groupMessage.create({
           data: {
             groupId: data.groupId,
@@ -343,13 +383,10 @@ export function setupSocketHandlers(io: Server) {
             type: data.type || 'text'
           },
           include: {
-            sender: {
-              select: { id: true, username: true, email: true }
-            }
+            sender: { select: { id: true, username: true, email: true } }
           }
         });
 
-        // Broadcast to all group members
         io.to(`group:${data.groupId}`).emit('group:message:received', {
           id: message.id,
           groupId: data.groupId,
@@ -372,18 +409,22 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('message:received', async (messageId: string) => {
       try {
+        const message = await prisma.message.findUnique({
+          where: { id: messageId },
+          select: { senderId: true, recipientId: true }
+        });
+        if (!message) return;
+
+        // Check conversation status — suppress status events for pending requests
+        const convo = await findConversation(message.senderId, message.recipientId);
+        const isPending = convo?.status === 'pending';
+
         await prisma.message.update({
           where: { id: messageId },
           data: { status: 'delivered' }
         });
 
-        // Notify sender
-        const message = await prisma.message.findUnique({
-          where: { id: messageId },
-          select: { senderId: true }
-        });
-
-        if (message) {
+        if (!isPending) {
           io.to(`user:${message.senderId}`).emit('message:status', {
             messageId,
             status: 'delivered',
@@ -397,21 +438,22 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('message:read', async (messageId: string) => {
       try {
-        await prisma.message.update({
-          where: { id: messageId },
-          data: {
-            status: 'read',
-            readAt: new Date()
-          }
-        });
-
-        // Notify sender
         const message = await prisma.message.findUnique({
           where: { id: messageId },
-          select: { senderId: true }
+          select: { senderId: true, recipientId: true }
+        });
+        if (!message) return;
+
+        // Check conversation status — suppress status events for pending requests
+        const convo = await findConversation(message.senderId, message.recipientId);
+        const isPending = convo?.status === 'pending';
+
+        await prisma.message.update({
+          where: { id: messageId },
+          data: { status: 'read', readAt: new Date() }
         });
 
-        if (message) {
+        if (!isPending) {
           io.to(`user:${message.senderId}`).emit('message:status', {
             messageId,
             status: 'read',
@@ -425,8 +467,6 @@ export function setupSocketHandlers(io: Server) {
 
     // ==================== REACTIONS & UNSEND ====================
 
-    // ==================== REACTIONS & UNSEND ====================
-
     socket.on('message:react', async (data: { messageId: string; emoji: string }) => {
       try {
         const message = await prisma.message.findUnique({
@@ -435,18 +475,15 @@ export function setupSocketHandlers(io: Server) {
         });
         if (!message) return;
 
-        // Check if this user already reacted with this exact emoji — if so, remove it (toggle off)
         const existing = await (prisma as any).messageReaction.findUnique({
           where: { messageId_userId: { messageId: data.messageId, userId } }
         });
 
         if (existing && existing.emoji === data.emoji) {
-          // Same emoji — remove reaction
           await (prisma as any).messageReaction.delete({
             where: { messageId_userId: { messageId: data.messageId, userId } }
           });
         } else {
-          // New reaction or different emoji — upsert
           await (prisma as any).messageReaction.upsert({
             where: { messageId_userId: { messageId: data.messageId, userId } },
             update: { emoji: data.emoji },
@@ -454,7 +491,6 @@ export function setupSocketHandlers(io: Server) {
           });
         }
 
-        // Fetch full updated reactions list
         const reactions = await (prisma as any).messageReaction.findMany({
           where: { messageId: data.messageId },
           include: { user: { select: { id: true, username: true } } }
@@ -481,19 +517,23 @@ export function setupSocketHandlers(io: Server) {
           select: { senderId: true, recipientId: true, deletedAt: true }
         });
         if (!message) return;
-        // Only the sender can unsend
         if (message.senderId !== userId) return;
-        if (message.deletedAt) return; // already unsent
+        if (message.deletedAt) return;
 
         await prisma.message.update({
           where: { id: messageId },
-          data: { deletedAt: new Date() }  // keep content in DB, just mark as deleted
+          data: { deletedAt: new Date() }
         });
 
-        // Notify both parties — they render a placeholder, not remove
         const payload = { messageId, senderDisplayName: displayName || username };
         io.to(`user:${message.senderId}`).emit('message:unsent', payload);
         io.to(`user:${message.recipientId}`).emit('message:unsent', payload);
+
+        // Invalidate conversation cache
+        await Promise.all([
+          invalidateConversationCache(message.senderId),
+          invalidateConversationCache(message.recipientId),
+        ]);
 
         console.log(`🗑️  Message ${messageId} unsent by ${username}`);
       } catch (error) {
@@ -507,7 +547,6 @@ export function setupSocketHandlers(io: Server) {
         const { messageId, content } = data;
         if (!messageId || !content?.trim()) return;
 
-        // Fetch the current message — only the sender may edit
         const existing = await prisma.message.findUnique({
           where: { id: messageId },
           select: { senderId: true, recipientId: true, content: true, deletedAt: true, type: true }
@@ -521,7 +560,6 @@ export function setupSocketHandlers(io: Server) {
         const trimmed = content.trim();
         const now = new Date();
 
-        // Write the audit-history row FIRST (previousContent = what it was before)
         await (prisma as any).messageEditHistory.create({
           data: {
             messageId,
@@ -531,13 +569,11 @@ export function setupSocketHandlers(io: Server) {
           }
         });
 
-        // Update the message
         await prisma.message.update({
           where: { id: messageId },
           data: { content: trimmed, edited: true, editedAt: now }
         });
 
-        // Notify both sender and recipient
         const payload = {
           messageId,
           content: trimmed,
@@ -545,6 +581,12 @@ export function setupSocketHandlers(io: Server) {
         };
         io.to(`user:${existing.senderId}`).emit('message:edited', payload);
         io.to(`user:${existing.recipientId}`).emit('message:edited', payload);
+
+        // Invalidate conversation cache (last message preview may have changed)
+        await Promise.all([
+          invalidateConversationCache(existing.senderId),
+          invalidateConversationCache(existing.recipientId),
+        ]);
 
         console.log(`✏️  Message ${messageId} edited by ${username}`);
       } catch (error) {
@@ -555,9 +597,11 @@ export function setupSocketHandlers(io: Server) {
 
     // ==================== TYPING INDICATORS ====================
 
-    socket.on('typing:start', (data: { recipientId?: string; groupId?: string }) => {
+    socket.on('typing:start', async (data: { recipientId?: string; groupId?: string }) => {
       if (data.recipientId) {
-        // Direct message typing
+        // Suppress typing for pending conversations — initiator shouldn't see recipient typing
+        const convo = await findConversation(userId, data.recipientId);
+        if (convo?.status === 'pending') return;
         io.to(`user:${data.recipientId}`).emit('typing:status', {
           userId,
           username,
@@ -565,7 +609,6 @@ export function setupSocketHandlers(io: Server) {
           type: 'direct'
         });
       } else if (data.groupId) {
-        // Group typing
         socket.to(`group:${data.groupId}`).emit('typing:status', {
           userId,
           username,
@@ -576,8 +619,10 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
-    socket.on('typing:stop', (data: { recipientId?: string; groupId?: string }) => {
+    socket.on('typing:stop', async (data: { recipientId?: string; groupId?: string }) => {
       if (data.recipientId) {
+        const convo = await findConversation(userId, data.recipientId);
+        if (convo?.status === 'pending') return;
         io.to(`user:${data.recipientId}`).emit('typing:status', {
           userId,
           username,
@@ -597,9 +642,10 @@ export function setupSocketHandlers(io: Server) {
 
     // ==================== AUDIO STATUS ====================
 
-    // Sender is recording a voice note - notify recipient
-    socket.on('audio:recording', (data: { recipientId: string; isRecording: boolean }) => {
+    socket.on('audio:recording', async (data: { recipientId: string; isRecording: boolean }) => {
       if (data.recipientId) {
+        const convo = await findConversation(userId, data.recipientId);
+        if (convo?.status === 'pending') return;
         io.to(`user:${data.recipientId}`).emit('audio:recording', {
           userId,
           username,
@@ -609,7 +655,6 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
-    // Recipient is listening to an audio message - notify sender
     socket.on('audio:listening', async (data: { senderId: string; messageId: string; isListening: boolean; isEnded?: boolean }) => {
       if (data.senderId) {
         io.to(`user:${data.senderId}`).emit('audio:listening', {
@@ -621,18 +666,21 @@ export function setupSocketHandlers(io: Server) {
         });
         console.log(`🎧 ${username} ${data.isListening ? 'started' : data.isEnded ? 'finished (ended)' : 'paused'} listening to message ${data.messageId}`);
 
-        // Only mark as read when they FINISH (audio ended = 100% listened)
         if (data.isEnded === true && data.messageId) {
           try {
             await prisma.message.update({
               where: { id: data.messageId },
               data: { status: 'read', readAt: new Date() },
             });
-            io.to(`user:${data.senderId}`).emit('message:status', {
-              messageId: data.messageId,
-              status: 'read',
-              timestamp: new Date(),
-            });
+            // Suppress status for pending conversations
+            const convo = await findConversation(userId, data.senderId);
+            if (convo?.status !== 'pending') {
+              io.to(`user:${data.senderId}`).emit('message:status', {
+                messageId: data.messageId,
+                status: 'read',
+                timestamp: new Date(),
+              });
+            }
             console.log(`✅ Message ${data.messageId} marked as read (100% listened)`);
           } catch (err) {
             console.error('❌ Failed to mark audio message as read:', err);
@@ -643,50 +691,60 @@ export function setupSocketHandlers(io: Server) {
 
     // ==================== GHOST TYPING ====================
 
-    socket.on('ghost:typing', (data: { recipientId?: string; text: string }) => {
+    socket.on('ghost:typing', async (data: { recipientId?: string; text: string }) => {
       if (data.recipientId) {
-        // Send real-time typing text to recipient
+        const convo = await findConversation(userId, data.recipientId);
+        if (convo?.status === 'pending') return;
         io.to(`user:${data.recipientId}`).emit('ghost:typing', {
           userId,
           username,
           text: data.text,
           type: 'direct'
         });
-        console.log(`👻 Ghost typing from ${username} to recipient ${data.recipientId}: "${data.text.substring(0, 20)}${data.text.length > 20 ? '...' : ''}"`);
       }
     });
 
     // ==================== USER PRESENCE ====================
 
-    socket.on('presence:update', (status: 'online' | 'away') => {
-      const presence = userPresence.get(userId);
+    socket.on('presence:update', async (status: 'online' | 'away') => {
+      const presence = await getPresence(userId);
       if (presence) {
-        presence.status = status;
-        presence.lastSeen = new Date();
-        userPresence.set(userId, presence);
+        await setPresence({
+          ...presence,
+          status,
+          lastSeen: new Date().toISOString(),
+        });
 
-        // Only broadcast if user allows it
         if (!presence.hideOnlineStatus) {
-          socket.broadcast.emit('user:status', {
-            userId,
-            username,
-            status,
-            timestamp: new Date()
-          });
+          const { all: connected } = await getConnectedUserIds(userId);
+          for (const cid of connected) {
+            io.to(`user:${cid}`).emit('user:status', {
+              userId,
+              username,
+              status,
+              timestamp: new Date()
+            });
+          }
         }
       }
     });
 
     socket.on('presence:request', async (userIds: string[]) => {
-      // For users not in the in-memory map (offline / server restarted),
-      // fall back to the lastSeen stored in the database.
-      const unknownIds = userIds.filter(id => !userPresence.has(id));
+      const { all: connected, pendingInitiatedByMe } = await getConnectedUserIds(userId);
 
+      const presences = await getMultiplePresences(userIds);
+
+      // For visible users not in Redis (offline / never connected), fall back to DB lastSeen
+      const visibleIds = userIds.filter(id => connected.has(id) && !pendingInitiatedByMe.has(id));
+      const missingIds = visibleIds.filter((id) => {
+        const idx = userIds.indexOf(id);
+        return !presences[idx];
+      });
       let dbLastSeen: Record<string, Date | null> = {};
-      if (unknownIds.length > 0) {
+      if (missingIds.length > 0) {
         try {
           const rows = await prisma.user.findMany({
-            where: { id: { in: unknownIds } },
+            where: { id: { in: missingIds } },
             select: { id: true, lastSeen: true },
           });
           rows.forEach(r => { dbLastSeen[r.id] = r.lastSeen; });
@@ -695,13 +753,17 @@ export function setupSocketHandlers(io: Server) {
         }
       }
 
-      const presenceData = userIds.map(id => {
-        const presence = userPresence.get(id);
-        const hidden = presence?.hideOnlineStatus ?? false;
+      const presenceData = userIds.map((id, i) => {
+        // Not connected at all, or pending outgoing (sender can't see recipient)
+        if (!connected.has(id) || pendingInitiatedByMe.has(id)) {
+          return { userId: id, status: 'offline', lastSeen: null, hidden: true };
+        }
+        const p = presences[i];
+        const hidden = p?.hideOnlineStatus ?? false;
         return {
           userId: id,
-          status: hidden ? 'offline' : (presence?.status || 'offline'),
-          lastSeen: presence?.lastSeen || dbLastSeen[id] || null,
+          status: hidden ? 'offline' : (p?.status || 'offline'),
+          lastSeen: p?.lastSeen || dbLastSeen[id]?.toISOString() || null,
           hidden,
         };
       });
@@ -709,17 +771,21 @@ export function setupSocketHandlers(io: Server) {
       socket.emit('presence:response', presenceData);
     });
 
+    // Keep socket-level profileImage in sync when user uploads a new one
+    socket.on('profile:imageUpdated', (data: { profileImage: string }) => {
+      profileImage = data.profileImage;
+      socket.profileImage = data.profileImage;
+    });
+
     // Update user settings that affect socket behaviour
     socket.on('settings:update', async (data: { showOnlineStatus?: boolean }) => {
       if (typeof data.showOnlineStatus === 'boolean') {
         const hide = !data.showOnlineStatus;
-        const presence = userPresence.get(userId);
+        const presence = await getPresence(userId);
         if (presence) {
-          presence.hideOnlineStatus = hide;
-          userPresence.set(userId, presence);
+          await setPresence({ ...presence, hideOnlineStatus: hide });
         }
 
-        // Persist to DB
         try {
           await prisma.user.update({
             where: { id: userId },
@@ -729,16 +795,18 @@ export function setupSocketHandlers(io: Server) {
           console.error('❌ Error updating showOnlineStatus:', e);
         }
 
-        // Broadcast new effective status to everyone else
         const effectiveStatus = hide ? 'offline' : (presence?.status || 'online');
-        socket.broadcast.emit('user:status', {
-          userId,
-          username,
-          status: effectiveStatus,
-          hidden: hide,
-          lastSeen: hide ? new Date() : null,
-          timestamp: new Date(),
-        });
+        const { all: settingsConnected } = await getConnectedUserIds(userId);
+        for (const cid of settingsConnected) {
+          io.to(`user:${cid}`).emit('user:status', {
+            userId,
+            username,
+            status: effectiveStatus,
+            hidden: hide,
+            lastSeen: hide ? new Date() : null,
+            timestamp: new Date(),
+          });
+        }
       }
     });
 
@@ -747,28 +815,33 @@ export function setupSocketHandlers(io: Server) {
     socket.on('disconnect', async () => {
       console.log(`🔌 User disconnected: ${username} (${socket.id})`);
 
-      // Update presence
-      const presence = userPresence.get(userId);
+      const presence = await getPresence(userId);
+
+      // Update presence to offline in Redis, then remove
       if (presence) {
-        presence.status = 'offline';
-        presence.lastSeen = new Date();
-        userPresence.set(userId, presence);
-      }
-
-      // Remove from active sockets
-      userSockets.delete(userId);
-
-      // Only broadcast offline if the user was showing their status
-      if (!presence?.hideOnlineStatus) {
-        socket.broadcast.emit('user:status', {
-          userId,
-          username,
+        await setPresence({
+          ...presence,
           status: 'offline',
-          lastSeen: new Date()
+          lastSeen: new Date().toISOString(),
         });
       }
+      await removeSocketMapping(userId);
+      await removePresence(userId);
 
-      // Update user's last seen in database
+      // Broadcast offline only to connected users
+      if (!presence?.hideOnlineStatus) {
+        const { all: disconnConnected } = await getConnectedUserIds(userId);
+        for (const cid of disconnConnected) {
+          io.to(`user:${cid}`).emit('user:status', {
+            userId,
+            username,
+            status: 'offline',
+            lastSeen: new Date()
+          });
+        }
+      }
+
+      // Persist lastSeen to database
       try {
         await prisma.user.update({
           where: { id: userId },
@@ -778,6 +851,30 @@ export function setupSocketHandlers(io: Server) {
         console.error('❌ Error updating last seen:', error);
       }
     });
+
+    // ==================== FRIENDS ====================
+
+    socket.on('friend:notify', async (data: { type: 'request' | 'accepted' | 'declined' | 'removed'; addresseeId: string; friendshipId: string }) => {
+      try {
+        const recipientSocketId = await getSocketId(data.addresseeId);
+        const senderUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, username: true, displayName: true, profileImage: true },
+        });
+        if (!senderUser) return;
+
+        const payload = {
+          type: data.type,
+          friendshipId: data.friendshipId,
+          from: senderUser,
+        };
+
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit('friend:update', payload);
+        }
+      } catch (err) {
+        console.error('❌ friend:notify error', err);
+      }
+    });
   });
 }
-

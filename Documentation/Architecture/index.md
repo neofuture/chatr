@@ -2,7 +2,7 @@
 
 ## Overview
 
-Chatr is a three-tier real-time messaging platform: a Next.js 15 client, an Express 4 API server, and a PostgreSQL 16 database. Real-time communication runs over Socket.io on the same Express process. File uploads are stored locally (`/uploads`) in development and on AWS S3 in production. Presence and session state are managed in Redis.
+Chatr is a three-tier real-time messaging platform: a Next.js 16 client, an Express 4 API server, and a PostgreSQL 16 database. Real-time communication runs over Socket.io on the same Express process. File uploads are stored locally (`/uploads`) in development and on AWS S3 in production. Presence, session state, conversation caching, and rate limiting are managed in Redis.
 
 ## High-Level Architecture
 
@@ -10,11 +10,11 @@ Chatr is a three-tier real-time messaging platform: a Next.js 15 client, an Expr
 graph TB
     subgraph CLIENT
         direction LR
-        CT["Next.js 15 · React 19 · TypeScript"]
+        CT["Next.js 16 · React 19 · TypeScript"]
         Pages["Pages<br/>/app/*"]
-        Contexts["Contexts<br/>WS · Theme · Toast · Panel"]
+        Contexts["Contexts<br/>WS · Theme · Toast · Panel · Presence"]
         Components["Components<br/>UI Layer"]
-        IDB["IndexedDB<br/>Offline Queue"]
+        IDB["IndexedDB<br/>Offline Queue + Message Cache"]
     end
 
     subgraph SERVER
@@ -28,8 +28,8 @@ graph TB
 
     subgraph DATA["DATA LAYER — AWS"]
         direction LR
-        PG["PostgreSQL<br/>Users · Messages · Groups"]
-        Redis["Redis<br/>Presence · Online Users"]
+        PG["PostgreSQL<br/>Users · Messages · Conversations · Friendships"]
+        Redis["Redis<br/>Presence · Conversations Cache · Rate Limiting"]
         S3["S3<br/>Files · Audio · Images"]
     end
 
@@ -45,7 +45,7 @@ graph TB
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| Framework | Next.js | 15.x |
+| Framework | Next.js | 16.x |
 | UI Library | React | 19.x |
 | Language | TypeScript | 5.x |
 | Styling | CSS Modules + CSS custom properties | — |
@@ -118,17 +118,20 @@ sequenceDiagram
 sequenceDiagram
     participant S as Sender
     participant SV as Socket.io Server
+    participant RD as Redis
     participant R as Recipient
     participant DB as PostgreSQL
 
     S->>SV: "connect (auth: { token })"
     SV->>SV: verify JWT → socket.userId
     SV->>SV: "socket.join(user:userId room)"
+    SV->>RD: store presence online
+    SV->>SV: getConnectedUserIds
     SV-->>S: presence:update (online user list)
-    SV-->>R: user:status (online)
+    SV-->>R: user:status (online) — connected users only
 
     S->>SV: "message:send { recipientId, content, type }"
-    SV->>DB: prisma.message.create()
+    SV->>DB: getOrCreateConversation + prisma.message.create
     SV-->>R: "message:received { id, content, status: delivered }"
     SV-->>S: "message:sent { id, status }"
 
@@ -170,29 +173,32 @@ graph TD
 
     frontend --> fapp["app/<br/>pages + layouts"]
     frontend --> fcomponents["components/<br/>UI library"]
-    frontend --> fcontexts["contexts/<br/>WS · Theme · Toast · Panel · Confirmation"]
-    frontend --> fhooks["hooks/<br/>useAuth · useOfflineSync"]
-    frontend --> flib["lib/<br/>api · auth · db · offline · imageServices"]
-    frontend --> ftypes["types/<br/>User · Message · Group"]
+    frontend --> fcontexts["contexts/<br/>WS · Theme · Toast · Panel<br/>Presence · Confirmation · Log · UserSettings"]
+    frontend --> fhooks["hooks/<br/>useAuth · useOfflineSync · useConversationList<br/>useConversationView · useMessageInput<br/>useFriends · useMessageToast · useTTS"]
+    frontend --> flib["lib/<br/>api · auth · db · offline<br/>imageServices · messageCache"]
+    frontend --> ftypes["types/<br/>User · Message · Conversation · Group"]
     frontend --> futils["utils/<br/>extractWaveform"]
 
     fapp --> apppages["login · register · setup-2fa<br/>demo · docs · email-preview"]
-    fapp --> appauth["app/ authenticated<br/>chat · settings · groups · updates · test"]
+    fapp --> appauth["app/ authenticated<br/>chat · friends · settings · groups · updates · test"]
 
-    fcomponents --> messaging["messaging/<br/>MessageBubble · AudioPlayer<br/>VoiceRecorder · ChatInput · ChatMessageList"]
+    fcomponents --> messaging["messaging/<br/>ConversationsList · ConversationView<br/>ChatView · MessageInput · NewChatPanel<br/>MessageBubble · MessageAudioPlayer<br/>VoiceRecorder · EmojiPicker"]
+    fcomponents --> friendscomp["friends/<br/>FriendsPanel"]
+    fcomponents --> commoncomp["common/<br/>PaneSearchBox"]
     fcomponents --> formcontrols["form-controls/<br/>Button · Input · Select · Textarea<br/>Checkbox · Radio · DatePicker · Calendar<br/>RangeSlider · DualRangeSlider"]
     fcomponents --> dialogs["dialogs/<br/>BottomSheet · ConfirmationDialog · Lightbox"]
     fcomponents --> imagemanip["image-manip/<br/>ProfileImage · CoverImage<br/>Uploader + Cropper"]
     fcomponents --> formcomps["forms/<br/>LoginForm · LoginVerification<br/>EmailVerification · ForgotPassword"]
-    fcomponents --> panels["panels/<br/>PanelContainer · AuthPanel"]
-    fcomponents --> layout["layout/<br/>MobileLayout · BackgroundBlobs"]
-    fcomponents --> utility["utility/<br/>Logo · ThemeToggle · ToastContainer<br/>ConnectionIndicator · BurgerMenu<br/>WebSocketStatusBadge · RoutePreloader"]
+    fcomponents --> panels["panels/<br/>PanelContainer · AuthPanel · DemoPanels"]
+    fcomponents --> layout["layout/<br/>AppLayout · MobileLayout<br/>BottomNav · PanelFooter · BackgroundBlobs"]
+    fcomponents --> utility["utility/<br/>Logo · ThemeToggle · ToastContainer<br/>PresenceAvatar · PresenceLabel<br/>FlipText · LogViewerPanel · MermaidDiagram<br/>BurgerMenu · RoutePreloader"]
 
     backend --> bsrc["src/"]
     bsrc --> bindexts["index.ts<br/>Express + Socket.io entry"]
     bsrc --> bmiddleware["middleware/<br/>auth.ts — JWT"]
-    bsrc --> broutes["routes/<br/>auth · users · messages<br/>groups · file-upload · email-templates"]
-    bsrc --> bsocket["socket/<br/>handlers.ts — all events + presence"]
+    bsrc --> broutes["routes/<br/>auth · users · messages<br/>friends · conversations<br/>groups · file-upload · email-templates"]
+    bsrc --> bsocket["socket/<br/>handlers.ts — events + presence"]
+    bsrc --> blib["lib/<br/>redis.ts · conversation.ts"]
     bsrc --> bservices["services/<br/>email · sms · waveform"]
 
     prisma --> schema["schema.prisma"]
@@ -208,7 +214,10 @@ graph TD
     ToastProvider --> ConfirmationProvider
     ConfirmationProvider --> PanelProvider
     PanelProvider --> WebSocketProvider
-    WebSocketProvider --> PageContent["Page Content"]
+    WebSocketProvider --> PresenceProvider
+    PresenceProvider --> UserSettingsProvider
+    UserSettingsProvider --> LogProvider
+    LogProvider --> PageContent["Page Content"]
 ```
 
 ## Authentication & Session Flow
@@ -223,7 +232,9 @@ flowchart TD
     F -- No --> G[connect_error → user redirected]
     F -- Yes --> H[socket.userId assigned]
     H --> I["socket joins user:userId room"]
-    I --> J[presence:update sent to client]
+    I --> J[Store presence in Redis]
+    J --> K["Broadcast user:status to connected users only"]
+    K --> L[presence:update sent to client]
 ```
 
 ---

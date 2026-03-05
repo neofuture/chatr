@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { clearCachedConversation } from '@/lib/messageCache';
 
 export interface ConversationUser {
   id: string;
@@ -22,8 +23,17 @@ export interface ConversationUser {
   } | null;
   unreadCount: number;
   lastMessageAt: string | null;
+  conversationId: string | null;
+  conversationStatus: 'pending' | 'accepted' | null;
+  isInitiator: boolean;
+  isFriend: boolean;
+  friendshipId?: string | null;
+  isBlocked?: boolean;
+  blockedByMe?: boolean;
   // set by socket events
   isOnline?: boolean;
+  // set by search results
+  friendship?: { id: string; status: string; iRequested: boolean } | null;
 }
 
 function getApiBase() {
@@ -41,9 +51,6 @@ export function useConversationList() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
-  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [searchResults, setSearchResults] = useState<ConversationUser[] | null>(null);
-  const [searching, setSearching] = useState(false);
 
   // ── Fetch conversations ──────────────────────────────────────────────────
   const fetchConversations = useCallback(async () => {
@@ -87,69 +94,126 @@ export function useConversationList() {
       });
     };
 
-    // When a new message arrives, bump that conversation to the top
+    // When a new message arrives, bump that conversation to the top (or create it)
     const onMessage = (data: any) => {
       const otherId = data.senderId;
+      setConversations(prev => {
+        let next: ConversationUser[];
+        const exists = prev.some(c => c.id === otherId);
+        if (exists) {
+          next = prev.map(c =>
+            c.id === otherId
+              ? {
+                  ...c,
+                  lastMessage: {
+                    id: data.id,
+                    content: data.content,
+                    type: data.type ?? 'text',
+                    createdAt: data.createdAt ?? new Date().toISOString(),
+                    senderId: data.senderId,
+                    isRead: false,
+                    fileType: data.fileType ?? null,
+                  },
+                  unreadCount: c.unreadCount + 1,
+                  lastMessageAt: data.createdAt ?? new Date().toISOString(),
+                  conversationId: data.conversationId ?? c.conversationId,
+                  conversationStatus: data.conversationStatus ?? c.conversationStatus,
+                }
+              : c
+          );
+        } else {
+          next = [...prev, {
+            id: otherId,
+            username: data.senderUsername ?? '',
+            displayName: data.senderDisplayName ?? null,
+            firstName: null,
+            lastName: null,
+            profileImage: data.senderProfileImage ?? null,
+            lastSeen: null,
+            lastMessage: {
+              id: data.id,
+              content: data.content,
+              type: data.type ?? 'text',
+              createdAt: data.createdAt ?? new Date().toISOString(),
+              senderId: data.senderId,
+              isRead: false,
+              fileType: data.fileType ?? null,
+            },
+            unreadCount: 1,
+            lastMessageAt: data.createdAt ?? new Date().toISOString(),
+            conversationId: data.conversationId ?? null,
+            conversationStatus: data.conversationStatus ?? 'pending',
+            isInitiator: false,
+            isFriend: false,
+          }];
+        }
+        queueMicrotask(() => {
+          const total = next.reduce((sum, c) => sum + c.unreadCount, 0);
+          window.dispatchEvent(new CustomEvent('chatr:unread-changed', { detail: { total } }));
+        });
+        return next;
+      });
+    };
+
+    // Conversation accepted — move from requests to chats
+    const onConvoAccepted = (data: { conversationId: string }) => {
       setConversations(prev =>
         prev.map(c =>
-          c.id === otherId
-            ? {
-                ...c,
-                lastMessage: {
-                  id: data.id,
-                  content: data.content,
-                  type: data.type ?? 'text',
-                  createdAt: data.createdAt ?? new Date().toISOString(),
-                  senderId: data.senderId,
-                  isRead: false,
-                  fileType: data.fileType ?? null,
-                },
-                unreadCount: c.unreadCount + 1,
-                lastMessageAt: data.createdAt ?? new Date().toISOString(),
-              }
+          c.conversationId === data.conversationId
+            ? { ...c, conversationStatus: 'accepted' as const }
             : c
+        )
+      );
+    };
+
+    // Conversation declined/nuked — remove from list and clear local cache
+    const onConvoDeclined = (data: { conversationId: string | null; otherUserId?: string }) => {
+      // Clear IndexedDB cache for this conversation
+      const otherUserId = data.otherUserId;
+      if (otherUserId) {
+        try {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            const meId = JSON.parse(userStr).id;
+            if (meId) clearCachedConversation(meId, otherUserId).catch(() => {});
+          }
+        } catch {}
+      }
+
+      setConversations(prev =>
+        prev.filter(c => {
+          if (data.conversationId && c.conversationId === data.conversationId) return false;
+          if (data.otherUserId && c.id === data.otherUserId) return false;
+          return true;
+        })
+      );
+    };
+
+    // Profile image updated by another user
+    const onProfileUpdate = (data: { userId: string; profileImage: string }) => {
+      setConversations(prev =>
+        prev.map(c =>
+          c.id === data.userId ? { ...c, profileImage: data.profileImage } : c
         )
       );
     };
 
     socket.on('presence:update', onPresence);
     socket.on('user:status',     onUserStatus);
-    socket.on('message:receive', onMessage);
+    socket.on('user:profileUpdate', onProfileUpdate);
+    socket.on('message:received', onMessage);
+    socket.on('conversation:accepted', onConvoAccepted);
+    socket.on('conversation:declined', onConvoDeclined);
 
     return () => {
       socket.off('presence:update', onPresence);
       socket.off('user:status',     onUserStatus);
-      socket.off('message:receive', onMessage);
+      socket.off('user:profileUpdate', onProfileUpdate);
+      socket.off('message:received', onMessage);
+      socket.off('conversation:accepted', onConvoAccepted);
+      socket.off('conversation:declined', onConvoDeclined);
     };
   }, [socket]);
-
-  // ── Search ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-
-    if (!search.trim()) {
-      setSearchResults(null);
-      setSearching(false);
-      return;
-    }
-
-    setSearching(true);
-    searchTimeout.current = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `${getApiBase()}/api/users/search?q=${encodeURIComponent(search.trim())}`,
-          { headers: { Authorization: `Bearer ${getToken()}` } }
-        );
-        if (!res.ok) throw new Error('Search failed');
-        const data = await res.json();
-        setSearchResults(data.users ?? []);
-      } catch {
-        setSearchResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 250);
-  }, [search]);
 
   // ── Sorting ──────────────────────────────────────────────────────────────
   // Priority: 1) online  2) has messages (most recent first)  3) alphabetical
@@ -170,24 +234,24 @@ export function useConversationList() {
       return aName.localeCompare(bName);
     });
 
-  // Apply search results if active (overlay on top of sorted list)
-  const displayList: ConversationUser[] = searchResults !== null
-    ? searchResults.map(u => {
-        const existing = conversations.find(c => c.id === u.id);
-        return {
-          ...u,
-          lastMessage: existing?.lastMessage ?? null,
-          unreadCount: existing?.unreadCount ?? 0,
-          lastMessageAt: existing?.lastMessageAt ?? null,
-          isOnline: onlineUserIds.has(u.id),
-        };
+  // Local search: filter across all conversations by message content
+  const q = search.trim().toLowerCase();
+  const displayList: ConversationUser[] = q
+    ? sorted.filter(c => {
+        const msgContent = (c.lastMessage?.content || '').toLowerCase();
+        return msgContent.includes(q);
       })
     : sorted;
 
   const clearUnread = useCallback((userId: string) => {
-    setConversations(prev =>
-      prev.map(c => c.id === userId ? { ...c, unreadCount: 0 } : c)
-    );
+    setConversations(prev => {
+      const next = prev.map(c => c.id === userId ? { ...c, unreadCount: 0 } : c);
+      queueMicrotask(() => {
+        const total = next.reduce((sum, c) => sum + c.unreadCount, 0);
+        window.dispatchEvent(new CustomEvent('chatr:unread-changed', { detail: { total } }));
+      });
+      return next;
+    });
   }, []);
 
   return {
@@ -196,7 +260,6 @@ export function useConversationList() {
     error,
     search,
     setSearch,
-    searching,
     onlineUserIds,
     refresh: fetchConversations,
     clearUnread,
