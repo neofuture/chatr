@@ -16,6 +16,7 @@ interface Props {
   badges?: ReactNode;
   actions?: ReactNode;
   onClick?: () => void;
+  onAvatarClick?: () => void;
 }
 
 export default function UserRow({
@@ -29,6 +30,7 @@ export default function UserRow({
   badges,
   actions,
   onClick,
+  onAvatarClick,
 }: Props) {
   const Tag = onClick ? 'button' : 'div';
 
@@ -40,6 +42,7 @@ export default function UserRow({
         size={avatarSize}
         info={presence}
         showDot={showPresenceDot}
+        onClick={onAvatarClick ? (e) => { e.stopPropagation(); onAvatarClick(); } : undefined}
       />
       <div className={styles.info}>
         <div className={styles.nameRow}>

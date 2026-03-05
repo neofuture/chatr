@@ -25,6 +25,31 @@ jest.mock('@/components/common/PaneSearchBox/PaneSearchBox', () => ({
   ),
 }));
 
+jest.mock('@/hooks/useOpenUserProfile', () => ({
+  useOpenUserProfile: () => jest.fn(),
+}));
+
+jest.mock('@/hooks/useFriends', () => ({
+  useFriends: () => ({
+    blocked: [],
+    friends: [],
+    incoming: [],
+    outgoing: [],
+    loading: false,
+    searchQuery: '',
+    setSearchQuery: jest.fn(),
+    searchResults: [],
+    searching: false,
+    sendRequest: jest.fn(),
+    acceptRequest: jest.fn(),
+    declineRequest: jest.fn(),
+    removeFriend: jest.fn(),
+    blockUser: jest.fn(),
+    unblockUser: jest.fn(),
+    refresh: jest.fn(),
+  }),
+}));
+
 const makeConversation = (overrides: Partial<ConversationUser> & { id: string }): ConversationUser => ({
   username: `@user-${overrides.id}`,
   displayName: `User ${overrides.id}`,
@@ -169,7 +194,7 @@ describe('ConversationsList', () => {
   });
 
   describe('Badges', () => {
-    it('does not show a badge on the All tab', () => {
+    it('shows total unread badge on the All tab', () => {
       render(
         <ConversationsList
           {...defaultProps}
@@ -177,7 +202,10 @@ describe('ConversationsList', () => {
         />
       );
       const allTab = screen.getByText('All').closest('button')!;
-      expect(allTab.querySelector('span')).not.toBeInTheDocument();
+      const badge = allTab.querySelector('span');
+      // friendChat has 2 unread + incomingRequest has 1 = 3
+      expect(badge).toBeInTheDocument();
+      expect(badge!.textContent).toBe('3');
     });
 
     it('shows red badge on Chats tab with chats unread count', () => {

@@ -14,6 +14,8 @@ interface PresenceAvatarProps {
   size?: number;
   /** Whether to show the presence dot. Default true. */
   showDot?: boolean;
+  /** Optional click handler — makes the avatar interactive */
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export default function PresenceAvatar({
@@ -22,6 +24,7 @@ export default function PresenceAvatar({
   info,
   size = 50,
   showDot = true,
+  onClick,
 }: PresenceAvatarProps) {
   const initials = displayName
     .split(' ')
@@ -50,7 +53,14 @@ export default function PresenceAvatar({
   const dotPos = Math.round(size - centre - dotSz / 2);
 
   return (
-    <div className={styles.root} style={{ width: size, height: size }}>
+    <div
+      className={styles.root}
+      style={{ width: size, height: size, cursor: onClick ? 'pointer' : undefined }}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(e as any); } : undefined}
+    >
       {/* Gradient ring — only shown around photos; initials have their own gradient bg */}
       <div
         className={profileImage ? styles.ring : styles.ringBorder}

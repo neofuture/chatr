@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { useLog } from '@/contexts/LogContext';
 import { clearCachedConversation } from '@/lib/messageCache';
 
 export interface ConversationUser {
@@ -46,6 +47,7 @@ function getToken() {
 
 export function useConversationList() {
   const { socket } = useWebSocket();
+  const { addLog } = useLog();
   const [conversations, setConversations] = useState<ConversationUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,9 +55,9 @@ export function useConversationList() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   // ── Fetch conversations ──────────────────────────────────────────────────
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
       const res = await fetch(`${getApiBase()}/api/users/conversations`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
@@ -63,14 +65,42 @@ export function useConversationList() {
       const data = await res.json();
       setConversations(data.conversations ?? []);
       setError(null);
+      addLog('info', 'conversations:loaded', { count: (data.conversations ?? []).length });
     } catch (e: any) {
       setError(e.message);
+      addLog('error', 'conversations:load-failed', { error: e.message });
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
-  }, []);
+  }, [addLog]);
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
+
+  // Re-fetch when local block/unblock happens (fired by FriendsContext).
+  // Apply optimistic update immediately, then confirm with server after a short
+  // delay to ensure the DB has committed before we re-fetch.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const handler = (e: Event) => {
+      const { action, targetUserId } = (e as CustomEvent).detail ?? {};
+      if (targetUserId) {
+        setConversations(prev => prev.map(c => {
+          if (c.id !== targetUserId) return c;
+          if (action === 'block')   return { ...c, isBlocked: true,  blockedByMe: true };
+          if (action === 'unblock') return { ...c, isBlocked: false, blockedByMe: false };
+          return c;
+        }));
+      }
+      // Background fetch to confirm from DB (cache now invalidated by backend)
+      clearTimeout(timer);
+      timer = setTimeout(() => fetchConversations(true), 100);
+    };
+    window.addEventListener('chatr:friends-changed', handler);
+    return () => {
+      window.removeEventListener('chatr:friends-changed', handler);
+      clearTimeout(timer);
+    };
+  }, [fetchConversations]);
 
   // ── Online presence via socket ───────────────────────────────────────────
   useEffect(() => {
@@ -96,6 +126,7 @@ export function useConversationList() {
 
     // When a new message arrives, bump that conversation to the top (or create it)
     const onMessage = (data: any) => {
+      addLog('received', 'message:received', { from: data.senderId, type: data.type ?? 'text', id: data.id });
       const otherId = data.senderId;
       setConversations(prev => {
         let next: ConversationUser[];
@@ -157,6 +188,7 @@ export function useConversationList() {
 
     // Conversation accepted — move from requests to chats
     const onConvoAccepted = (data: { conversationId: string }) => {
+      addLog('info', 'conversation:accepted', { conversationId: data.conversationId });
       setConversations(prev =>
         prev.map(c =>
           c.conversationId === data.conversationId
@@ -168,6 +200,7 @@ export function useConversationList() {
 
     // Conversation declined/nuked — remove from list and clear local cache
     const onConvoDeclined = (data: { conversationId: string | null; otherUserId?: string }) => {
+      addLog('info', 'conversation:declined', { conversationId: data.conversationId, otherUserId: data.otherUserId });
       // Clear IndexedDB cache for this conversation
       const otherUserId = data.otherUserId;
       if (otherUserId) {
@@ -204,6 +237,8 @@ export function useConversationList() {
     socket.on('message:received', onMessage);
     socket.on('conversation:accepted', onConvoAccepted);
     socket.on('conversation:declined', onConvoDeclined);
+    // Re-fetch when any friend/block relationship changes so isBlocked updates immediately
+    socket.on('friend:update', fetchConversations);
 
     return () => {
       socket.off('presence:update', onPresence);
@@ -212,6 +247,7 @@ export function useConversationList() {
       socket.off('message:received', onMessage);
       socket.off('conversation:accepted', onConvoAccepted);
       socket.off('conversation:declined', onConvoDeclined);
+      socket.off('friend:update', fetchConversations);
     };
   }, [socket]);
 

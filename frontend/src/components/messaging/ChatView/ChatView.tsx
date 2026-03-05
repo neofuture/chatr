@@ -35,6 +35,8 @@ export interface ChatViewProps {
   onReply?: (message: import('@/components/MessageBubble').Message) => void;
   onEdit?: (message: import('@/components/MessageBubble').Message) => void;
   currentUserId?: string;
+  /** Called when a received message avatar is clicked */
+  onAvatarClick?: (senderId: string, displayName: string, profileImage?: string | null) => void;
 }
 
 export default function ChatView({
@@ -56,6 +58,7 @@ export default function ChatView({
   onReply,
   onEdit,
   currentUserId,
+  onAvatarClick,
 }: ChatViewProps) {
   const scrollRef      = useRef<HTMLDivElement>(null);
   const overlayRef     = useRef<HTMLDivElement>(null);
@@ -235,6 +238,7 @@ export default function ChatView({
             onReply={onReply}
             onEdit={onEdit}
             currentUserId={currentUserId}
+            onAvatarClick={onAvatarClick}
           />
         )}
       </div>

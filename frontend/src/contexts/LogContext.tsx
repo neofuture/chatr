@@ -1,7 +1,35 @@
 'use client';
 
-import { createContext, useContext, useCallback, useRef, useState, ReactNode } from 'react';
+import { createContext, useContext, useCallback, useRef, useState, useEffect, ReactNode } from 'react';
 import type { LogEntry } from '@/types/types.ts';
+
+const STORAGE_KEY = 'chatr:system-logs';
+const MAX_LOGS = 1000;
+
+function loadLogsFromStorage(): LogEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as LogEntry[];
+    // Rehydrate timestamp strings back to Date objects
+    return parsed.map(l => ({ ...l, timestamp: new Date(l.timestamp) }));
+  } catch {
+    return [];
+  }
+}
+
+function saveLogsToStorage(logs: LogEntry[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+  } catch {
+    // Storage full — clear and try again
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.slice(0, 100)));
+    } catch {}
+  }
+}
 
 interface LogContextValue {
   logs: LogEntry[];
@@ -18,8 +46,13 @@ const LogContext = createContext<LogContextValue>({
 });
 
 export function LogProvider({ children }: { children: ReactNode }) {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>(() => loadLogsFromStorage());
   const idRef = useRef(0);
+
+  // Persist to localStorage whenever logs change
+  useEffect(() => {
+    saveLogsToStorage(logs);
+  }, [logs]);
 
   const addLog = useCallback((type: LogEntry['type'], event: string, data: any = {}) => {
     const entry: LogEntry = {
@@ -29,10 +62,13 @@ export function LogProvider({ children }: { children: ReactNode }) {
       data,
       timestamp: new Date(),
     };
-    setLogs(prev => [entry, ...prev].slice(0, 1000));
+    setLogs(prev => [entry, ...prev].slice(0, MAX_LOGS));
   }, []);
 
-  const clearLogs = useCallback(() => setLogs([]), []);
+  const clearLogs = useCallback(() => {
+    setLogs([]);
+    localStorage.removeItem(STORAGE_KEY);
+  }, []);
 
   const copyLogs = useCallback(() => {
     setLogs(prev => {
@@ -54,4 +90,3 @@ export function LogProvider({ children }: { children: ReactNode }) {
 export function useLog() {
   return useContext(LogContext);
 }
-

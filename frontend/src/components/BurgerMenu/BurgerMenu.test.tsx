@@ -5,9 +5,13 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
-jest.mock('next/link', () => ({
+jest.mock('@/contexts/PanelContext', () => ({
+  usePanels: jest.fn(() => ({ openPanel: jest.fn() })),
+}));
+
+jest.mock('@/components/settings/SettingsPanel', () => ({
   __esModule: true,
-  default: ({ children, href }: any) => <a href={href}>{children}</a>,
+  default: () => <div>Settings</div>,
 }));
 
 // The burger toggle is always the first button rendered
@@ -48,17 +52,23 @@ describe('BurgerMenu', () => {
   });
 
   describe('Menu items', () => {
-    it('renders navigation links', () => {
+    it('renders Settings button', () => {
       render(<BurgerMenu isDark={true} />);
-      expect(screen.getByText('Home').closest('a')).toHaveAttribute('href', '/');
-      expect(screen.getByText('Read Documentation').closest('a')).toHaveAttribute('href', '/docs');
+      expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
-    it('calls onPanelDemo when Panel Demo is clicked', () => {
-      const onPanelDemo = jest.fn();
-      render(<BurgerMenu isDark={true} onPanelDemo={onPanelDemo} />);
-      fireEvent.click(screen.getByText('Panel Demo'));
-      expect(onPanelDemo).toHaveBeenCalledTimes(1);
+    it('opens settings panel when Settings is clicked', () => {
+      const mockOpenPanel = jest.fn();
+      const { usePanels } = require('@/contexts/PanelContext');
+      (usePanels as jest.Mock).mockReturnValue({ openPanel: mockOpenPanel });
+      render(<BurgerMenu isDark={true} />);
+      fireEvent.click(screen.getByText('Settings'));
+      expect(mockOpenPanel).toHaveBeenCalledWith('settings', expect.anything(), 'Settings', 'center', undefined, undefined, true);
+    });
+
+    it('renders Logout button', () => {
+      render(<BurgerMenu isDark={true} />);
+      expect(screen.getByText('Logout')).toBeInTheDocument();
     });
   });
 

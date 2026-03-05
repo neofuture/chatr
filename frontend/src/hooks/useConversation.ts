@@ -62,11 +62,15 @@ export function useConversation() {
   useEffect(() => { effectivelyOnlineRef.current = effectivelyOnline; }, [effectivelyOnline]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
-  // Sync showOnlineStatus setting to backend whenever it changes or socket connects
+  // Sync privacy settings to backend whenever they change or socket connects
   useEffect(() => {
     if (!socket || !connected) return;
-    socket.emit('settings:update', { showOnlineStatus: settings.showOnlineStatus });
-  }, [socket, connected, settings.showOnlineStatus]);
+    socket.emit('settings:update', {
+      showOnlineStatus: settings.showOnlineStatus,
+      showPhoneNumber: settings.showPhoneNumber,
+      showEmail: settings.showEmail,
+    });
+  }, [socket, connected, settings.showOnlineStatus, settings.showPhoneNumber, settings.showEmail]);
 
   // Persist selected recipient
   useEffect(() => {

@@ -536,6 +536,45 @@ router.get('/suggest-username', async (req, res) => {
   }
 });
 
+// GET /api/users/by-id/:userId - Get user profile by ID
+router.get('/by-id/:userId', authenticateToken as any, async (req: any, res: any) => {
+  try {
+    const { userId } = req.params;
+    const viewerId: string = req.user.userId;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, username: true, displayName: true,
+        profileImage: true, coverImage: true,
+        lastSeen: true, emailVerified: true,
+        showPhoneNumber: true, showEmail: true,
+        phoneNumber: true, email: true,
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Check if the profile owner has blocked the viewer
+    const block = await (prisma as any).friendship.findFirst({
+      where: { requesterId: userId, addresseeId: viewerId, status: 'blocked' },
+    });
+    if (block) return res.json({ blockedByThem: true });
+
+    // Strip sensitive fields based on privacy settings
+    const { showPhoneNumber, showEmail, phoneNumber, email, ...publicFields } = user;
+    const profile = {
+      ...publicFields,
+      ...(showPhoneNumber ? { phoneNumber } : {}),
+      ...(showEmail      ? { email }       : {}),
+    };
+
+    res.json({ user: profile });
+  } catch (error) {
+    console.error('Get user by id error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/users/:username - Get user profile by username
 router.get('/:username', authenticateToken as any, async (req: any, res: any) => {
   try {
@@ -619,6 +658,9 @@ router.get('/me', authenticateToken, async (req, res) => {
         emailVerified: true,
         phoneVerified: true,
         createdAt: true,
+        showOnlineStatus: true,
+        showPhoneNumber: true,
+        showEmail: true,
       },
     });
 
@@ -652,6 +694,34 @@ router.put('/me', authenticateToken as any, async (req: any, res: any) => {
     res.json(updated);
   } catch (error) {
     console.error('Update profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /api/users/me/settings - Save privacy / behaviour settings immediately
+router.put('/me/settings', authenticateToken as any, async (req: any, res: any) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const allowed = ['showOnlineStatus', 'showPhoneNumber', 'showEmail'] as const;
+    type AllowedKey = typeof allowed[number];
+    const data: Partial<Record<AllowedKey, boolean>> = {};
+
+    for (const key of allowed) {
+      if (typeof req.body[key] === 'boolean') {
+        data[key] = req.body[key];
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'No valid settings provided' });
+    }
+
+    await prisma.user.update({ where: { id: userId }, data });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Update settings error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

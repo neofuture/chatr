@@ -130,6 +130,8 @@ interface MessageBubbleProps {
   onEdit?: (message: Message) => void;
   onUnsend?: (messageId: string) => void;
   onReplyQuoteClick?: (messageId: string) => void;
+  /** Called when a received message avatar is clicked — opens user profile */
+  onAvatarClick?: (senderId: string, displayName: string, profileImage?: string | null) => void;
   /** The fixed-height scroll container — the overlay will portal into this */
   overlayContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -379,6 +381,7 @@ export default function MessageBubble({
   onEdit,
   onUnsend,
   onReplyQuoteClick,
+  onAvatarClick,
   overlayContainerRef,
 }: MessageBubbleProps) {
   const defaultRef = useRef<HTMLDivElement>(null);
@@ -535,21 +538,28 @@ export default function MessageBubble({
               <div className={styles.avatarColumn} aria-hidden="true">
                 {/* Only show avatar on last bubble of a group (or solo) */}
                 {!isGroupedWithNext && (
-                  msg.senderProfileImage ? (
-                    <div className={styles.avatarImageRing}>
-                      <img
-                        src={msg.senderProfileImage}
-                        alt=""
-                        className={styles.avatarImage}
-                      />
-                    </div>
-                  ) : (
-                    <div className={styles.avatarImageRing}>
-                      <div className={styles.avatarInitials}>
-                        {initials}
+                  <div
+                    style={{ cursor: onAvatarClick ? 'pointer' : undefined }}
+                    onClick={onAvatarClick ? () => onAvatarClick(msg.senderId, senderDisplayName, msg.senderProfileImage) : undefined}
+                    role={onAvatarClick ? 'button' : undefined}
+                    aria-label={onAvatarClick ? `View ${senderDisplayName}'s profile` : undefined}
+                  >
+                    {msg.senderProfileImage ? (
+                      <div className={styles.avatarImageRing}>
+                        <img
+                          src={msg.senderProfileImage}
+                          alt=""
+                          className={styles.avatarImage}
+                        />
                       </div>
-                    </div>
-                  )
+                    ) : (
+                      <div className={styles.avatarImageRing}>
+                        <div className={styles.avatarInitials}>
+                          {initials}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}

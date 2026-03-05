@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { loadCachedMessages, cacheMessage, updateCachedMessage, replaceCachedMessageId, cacheMessages } from '@/lib/messageCache';
+import { loadQueueForRecipient, dequeue } from '@/lib/outboundQueue';
 import type { Message, MessageReaction } from '@/components/MessageBubble';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -29,12 +30,26 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ── Load cached messages on recipient change ──
+  // ── Load cached messages + pending outbound queue on recipient change ──
   useEffect(() => {
     if (!recipientId || !currentUserId) return;
     setMessages([]);
-    loadCachedMessages(currentUserId, recipientId).then(cached => {
-      if (cached.length) setMessages(cached);
+    Promise.all([
+      loadCachedMessages(currentUserId, recipientId),
+      loadQueueForRecipient(currentUserId, recipientId),
+    ]).then(([cached, queued]) => {
+      // Merge: confirmed messages from cache, then any still-pending ones on top
+      // De-dupe by id in case a queued msg is also in cache with a real id
+      const queuedIds = new Set(queued.map(q => q.id));
+      const merged = [
+        ...cached.filter(m => !queuedIds.has(m.id)),
+        ...queued,
+      ].sort((a, b) => {
+        const ta = a.timestamp instanceof Date ? a.timestamp.getTime() : Number(a.timestamp);
+        const tb = b.timestamp instanceof Date ? b.timestamp.getTime() : Number(b.timestamp);
+        return ta - tb;
+      });
+      if (merged.length) setMessages(merged);
     }).catch(console.error);
   }, [recipientId, currentUserId]);
 
@@ -167,14 +182,18 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
         }
 
         if (tempIdx !== -1) {
+          const tempId = prev[tempIdx].id;
+          replaceCachedMessageId(tempId, data.id).catch(console.error);
+          // Remove from outbound queue — server confirmed delivery
+          dequeue(tempId).catch(console.error);
           const updated = [...prev];
-          replaceCachedMessageId(updated[tempIdx].id, data.id).catch(console.error);
           updated[tempIdx] = confirmed;
           cacheMessage(confirmed, currentUserId).catch(console.error);
           return updated;
         }
 
-        // No temp found — just append
+        // No temp found — just append and dequeue by tempId if provided
+        if (data.tempId) dequeue(data.tempId).catch(console.error);
         cacheMessage(confirmed, currentUserId).catch(console.error);
         return [...prev, confirmed];
       });
@@ -278,18 +297,30 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
       .then(r => r.ok ? r.json() : null)
       .then((res: any) => {
         if (!res) return;
-        // API returns { messages, hasMore } or legacy flat array
         const raw: any[] = Array.isArray(res) ? res : (res.messages ?? []);
         const mapped = raw.map((m: any) => ({
           ...m,
           direction: m.senderId === currentUserId ? 'sent' : 'received',
           timestamp: new Date(m.timestamp ?? m.createdAt),
-          // Map API field names → MessageBubble field names
           waveformData: m.waveformData ?? m.waveform ?? undefined,
           duration: m.duration ?? m.audioDuration ?? undefined,
         })) as Message[];
-        setMessages(mapped);
-        cacheMessages(mapped, currentUserId).catch(console.error);
+
+        // Re-attach any still-queued messages that haven't been confirmed yet
+        loadQueueForRecipient(currentUserId, recipientId).then(queued => {
+          const serverIds = new Set(mapped.map(m => m.id));
+          const pending = queued.filter(q => !serverIds.has(q.id));
+          const merged = [...mapped, ...pending].sort((a, b) => {
+            const ta = a.timestamp instanceof Date ? a.timestamp.getTime() : Number(a.timestamp);
+            const tb = b.timestamp instanceof Date ? b.timestamp.getTime() : Number(b.timestamp);
+            return ta - tb;
+          });
+          setMessages(merged);
+          cacheMessages(mapped, currentUserId).catch(console.error);
+        }).catch(() => {
+          setMessages(mapped);
+          cacheMessages(mapped, currentUserId).catch(console.error);
+        });
       })
       .catch(console.error);
   }, [recipientId, currentUserId, connected]);

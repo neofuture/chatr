@@ -9,6 +9,7 @@ import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import { PresenceProvider } from '@/contexts/PresenceContext';
 import { UserSettingsProvider } from '@/contexts/UserSettingsContext';
 import { LogProvider } from '@/contexts/LogContext';
+import { FriendsProvider } from '@/contexts/FriendsContext';
 import PanelContainer from '@/components/panels/PanelContainer/PanelContainer';
 import ToastContainer from '@/components/ToastContainer/ToastContainer';
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog/ConfirmationDialog';
@@ -77,10 +78,12 @@ export default function RootLayout({
             <ToastProvider>
               <PanelProvider>
                 <ConfirmationProvider>
-                  {children}
-                  <PanelContainer />
-                  <ToastContainer />
-                  <ConfirmationDialog />
+                  <FriendsProvider>
+                    {children}
+                    <PanelContainer />
+                    <ToastContainer />
+                    <ConfirmationDialog />
+                  </FriendsProvider>
                 </ConfirmationProvider>
               </PanelProvider>
             </ToastProvider>

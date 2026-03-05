@@ -106,9 +106,13 @@ export function setupSocketHandlers(io: Server) {
     socket.join(`user:${userId}`);
 
     // Broadcast online status only to connected users (friends / conversations / pending recipients)
+    // Exclude users to whom we only have a pending outgoing friend request
+    // (recipient should not see requester's online status until accepted)
     const { all: connectedIds, pendingInitiatedByMe } = await getConnectedUserIds(userId);
     if (!hideOnlineStatus) {
       for (const cid of connectedIds) {
+        // Don't broadcast to users we've only sent a pending friend request to
+        if (pendingInitiatedByMe.has(cid)) continue;
         io.to(`user:${cid}`).emit('user:status', {
           userId,
           username,
@@ -716,8 +720,9 @@ export function setupSocketHandlers(io: Server) {
         });
 
         if (!presence.hideOnlineStatus) {
-          const { all: connected } = await getConnectedUserIds(userId);
+          const { all: connected, pendingInitiatedByMe: pendingByMe } = await getConnectedUserIds(userId);
           for (const cid of connected) {
+            if (pendingByMe.has(cid)) continue; // don't reveal status to pending request recipients
             io.to(`user:${cid}`).emit('user:status', {
               userId,
               username,
@@ -778,7 +783,8 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Update user settings that affect socket behaviour
-    socket.on('settings:update', async (data: { showOnlineStatus?: boolean }) => {
+    socket.on('settings:update', async (data: { showOnlineStatus?: boolean; showPhoneNumber?: boolean; showEmail?: boolean }) => {
+      // ── Online status ──────────────────────────────────────────────────────
       if (typeof data.showOnlineStatus === 'boolean') {
         const hide = !data.showOnlineStatus;
         const presence = await getPresence(userId);
@@ -796,8 +802,9 @@ export function setupSocketHandlers(io: Server) {
         }
 
         const effectiveStatus = hide ? 'offline' : (presence?.status || 'online');
-        const { all: settingsConnected } = await getConnectedUserIds(userId);
+        const { all: settingsConnected, pendingInitiatedByMe: settingsPending } = await getConnectedUserIds(userId);
         for (const cid of settingsConnected) {
+          if (settingsPending.has(cid)) continue;
           io.to(`user:${cid}`).emit('user:status', {
             userId,
             username,
@@ -806,6 +813,18 @@ export function setupSocketHandlers(io: Server) {
             lastSeen: hide ? new Date() : null,
             timestamp: new Date(),
           });
+        }
+      }
+
+      // ── Phone / Email visibility ───────────────────────────────────────────
+      const privacyUpdate: Record<string, boolean> = {};
+      if (typeof data.showPhoneNumber === 'boolean') privacyUpdate.showPhoneNumber = data.showPhoneNumber;
+      if (typeof data.showEmail === 'boolean') privacyUpdate.showEmail = data.showEmail;
+      if (Object.keys(privacyUpdate).length > 0) {
+        try {
+          await prisma.user.update({ where: { id: userId }, data: privacyUpdate });
+        } catch (e) {
+          console.error('❌ Error updating privacy settings:', e);
         }
       }
     });
@@ -828,10 +847,11 @@ export function setupSocketHandlers(io: Server) {
       await removeSocketMapping(userId);
       await removePresence(userId);
 
-      // Broadcast offline only to connected users
+      // Broadcast offline only to connected users (excluding pending request recipients)
       if (!presence?.hideOnlineStatus) {
-        const { all: disconnConnected } = await getConnectedUserIds(userId);
+        const { all: disconnConnected, pendingInitiatedByMe: disconnPending } = await getConnectedUserIds(userId);
         for (const cid of disconnConnected) {
+          if (disconnPending.has(cid)) continue; // don't reveal offline status to pending request recipients
           io.to(`user:${cid}`).emit('user:status', {
             userId,
             username,

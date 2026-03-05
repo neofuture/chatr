@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
+import { enqueue, loadAllQueued } from '@/lib/outboundQueue';
 import type { Message } from '@/components/MessageBubble';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -79,6 +80,31 @@ export function useMessageInput({
 
   // ── Message send ─────────────────────────────────────
 
+  // Flush queued messages on reconnect
+  useEffect(() => {
+    if (!socket || !connected || !currentUserId) return;
+
+    loadAllQueued(currentUserId).then(queued => {
+      if (!queued.length) return;
+      for (const item of queued) {
+        socket.emit('message:send', {
+          recipientId: item.recipientId,
+          content: item.content,
+          type: item.type,
+          replyTo: item.replyTo ?? undefined,
+          fileUrl: item.fileUrl ?? undefined,
+          fileName: item.fileName ?? undefined,
+          fileSize: item.fileSize ?? undefined,
+          fileType: item.fileType ?? undefined,
+          waveform: item.waveformData ?? undefined,
+          duration: item.duration ?? undefined,
+          // Pass tempId so the server/client can match confirmation back
+          tempId: item.tempId,
+        });
+      }
+    }).catch(console.error);
+  }, [socket, connected, currentUserId]);
+
   const handleSend = useCallback(() => {
     if (!socket || !effectivelyOnline || !recipientId) {
       showToast('Not connected', 'error');
@@ -88,12 +114,10 @@ export function useMessageInput({
     const trimmed = message.trim();
     if (!trimmed) return;
 
-    // Cancel typing
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     emitTypingStop();
 
     if (editingMessage) {
-      // Edit existing message
       socket.emit('message:edit', { messageId: editingMessage.id, content: trimmed, recipientId });
       onEditSaved?.(editingMessage.id, trimmed);
       onCancelEdit?.();
@@ -121,8 +145,9 @@ export function useMessageInput({
       } : undefined,
     };
 
-    // Add optimistic message FIRST, then emit — prevents race condition
-    // where message:sent arrives before the temp message is in state
+    // Persist to outbound queue BEFORE emitting so it survives navigation
+    enqueue(msg).catch(console.error);
+
     onMessageSent?.(msg);
     onCancelReply?.();
     setMessage('');
@@ -139,7 +164,7 @@ export function useMessageInput({
         type: replyingTo.type,
         duration: replyingTo.duration,
       } : undefined,
-      // No messageId — backend creates the record
+      tempId,
     });
   }, [socket, effectivelyOnline, recipientId, message, editingMessage, currentUserId, replyingTo, showToast, emitTypingStop, onMessageSent, onEditSaved, onCancelEdit, onCancelReply]);
 

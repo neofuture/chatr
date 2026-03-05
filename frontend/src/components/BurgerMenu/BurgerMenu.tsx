@@ -1,32 +1,31 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { usePanels } from '@/contexts/PanelContext';
+import SettingsPanel from '@/components/settings/SettingsPanel';
 import styles from './BurgerMenu.module.css';
 
 interface BurgerMenuProps {
   isDark: boolean;
-  onPanelDemo?: () => void;
 }
 
-export default function BurgerMenu({ isDark, onPanelDemo }: BurgerMenuProps) {
+export default function BurgerMenu({ isDark }: BurgerMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const { openPanel } = usePanels();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('chatr_user_settings');
     router.push('/');
   };
 
-  const menuItems = [
-    { name: 'Home', href: '/', icon: 'fa-home', isButton: false },
-    { name: 'Demo Components', href: '/demo', icon: 'fa-palette', isButton: false },
-    { name: 'Panel Demo', href: '#', icon: 'fa-mobile-alt', isButton: true },
-    { name: 'Read Documentation', href: '/docs', icon: 'fa-book', isButton: false },
-    { name: 'Database Console', href: '/console', icon: 'fa-database', isButton: false },
-  ];
+  const handleOpenSettings = () => {
+    setIsOpen(false);
+    openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
+  };
 
   const bgColor = isDark ? '#1e293b' : '#f8fafc';
   const textColor = isDark ? '#93c5fd' : '#475569';
@@ -39,25 +38,14 @@ export default function BurgerMenu({ isDark, onPanelDemo }: BurgerMenuProps) {
       {/* Burger Button */}
       <button className={styles.burgerBtn} onClick={() => setIsOpen(!isOpen)}>
         <div className={styles.burgerIcon}>
-          <span
-            className={`${styles.bar} ${isOpen ? styles.barTopOpen : styles.barTop}`}
-            style={{ backgroundColor: barColor }}
-          />
-          <span
-            className={`${styles.bar} ${isOpen ? styles.barMidOpen : styles.barMid}`}
-            style={{ backgroundColor: barColor }}
-          />
-          <span
-            className={`${styles.bar} ${isOpen ? styles.barBottomOpen : styles.barBottom}`}
-            style={{ backgroundColor: barColor }}
-          />
+          <span className={`${styles.bar} ${isOpen ? styles.barTopOpen : styles.barTop}`} style={{ backgroundColor: barColor }} />
+          <span className={`${styles.bar} ${isOpen ? styles.barMidOpen : styles.barMid}`} style={{ backgroundColor: barColor }} />
+          <span className={`${styles.bar} ${isOpen ? styles.barBottomOpen : styles.barBottom}`} style={{ backgroundColor: barColor }} />
         </div>
       </button>
 
       {/* Backdrop */}
-      {isOpen && (
-        <div className={styles.backdrop} onClick={() => setIsOpen(false)} />
-      )}
+      {isOpen && <div className={styles.backdrop} onClick={() => setIsOpen(false)} />}
 
       {/* Menu Panel */}
       <div
@@ -65,45 +53,21 @@ export default function BurgerMenu({ isDark, onPanelDemo }: BurgerMenuProps) {
         className={`${styles.panel} ${isOpen ? styles.panelOpen : styles.panelClosed}`}
         style={{ backgroundColor: bgColor, borderRight: `1px solid ${borderColor}`, left: isOpen ? '0px' : '-280px' }}
       >
-        {/* Menu Header */}
         <div className={styles.panelHeader} style={{ borderBottom: `1px solid ${borderColor}` }}>
           <h3 className={styles.panelTitle} style={{ color: textColor }}>Menu</h3>
         </div>
 
-        {/* Menu Items */}
         <div className={styles.panelBody}>
-          {menuItems.map((item) => {
-            if (item.isButton && onPanelDemo) {
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => { onPanelDemo(); setIsOpen(false); }}
-                  className={styles.menuItem}
-                  style={{ color: textColor }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <i className={`fad ${item.icon} ${styles.menuItemIcon}`}></i>
-                  <span>{item.name}</span>
-                </button>
-              );
-            }
-
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={styles.menuItem}
-                style={{ color: textColor }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <i className={`fad ${item.icon} ${styles.menuItemIcon}`}></i>
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
+          <button
+            onClick={handleOpenSettings}
+            className={styles.menuItem}
+            style={{ color: textColor }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <i className={`fad fa-cog ${styles.menuItemIcon}`}></i>
+            <span>Settings</span>
+          </button>
 
           {/* Logout Button */}
           <button

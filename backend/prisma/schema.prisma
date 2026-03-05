@@ -32,6 +32,8 @@ model User {
   loginVerificationMethod String?
   lastSeen                DateTime?
   showOnlineStatus        Boolean   @default(true)
+  showPhoneNumber         Boolean   @default(false)
+  showEmail               Boolean   @default(false)
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import ChatView from '@/components/messaging/ChatView';
 import MessageInput from '@/components/messaging/MessageInput/MessageInput';
 import Lightbox from '@/components/Lightbox/Lightbox';
@@ -10,6 +10,8 @@ import { usePanels } from '@/contexts/PanelContext';
 import { useFriends } from '@/hooks/useFriends';
 import { useConfirmation } from '@/contexts/ConfirmationContext';
 import { clearCachedConversation } from '@/lib/messageCache';
+import BlockedUsersPanel from '@/components/settings/BlockedUsersPanel';
+import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -52,10 +54,11 @@ export default function ConversationView({
   const [declining, setDeclining] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [nuking, setNuking] = useState(false);
-  const [blocked, setBlocked] = useState(initialBlocked);
+  const [blocked, setBlocked] = useState(initialBlockedByMe);
   const [iBlockedThem, setIBlockedThem] = useState(initialBlockedByMe);
-  const { closePanel } = usePanels();
-  const { blockUser } = useFriends();
+  const { closePanel, openPanel } = usePanels();
+  const openUserProfile = useOpenUserProfile();
+  const { blockUser, unblockUser } = useFriends();
   const { showConfirmation } = useConfirmation();
 
   const {
@@ -112,12 +115,10 @@ export default function ConversationView({
   }, [socket, localConvoId, recipientId]);
 
   const [blockedReason, setBlockedReason] = useState(
-    initialBlocked
-      ? (initialBlockedByMe ? 'You have blocked this user' : "Could not deliver — you're blocked")
-      : ''
+    initialBlockedByMe ? 'You have blocked this user' : ''
   );
 
-  // Proactively check block status on mount
+  // Proactively check block status on mount — only care if WE blocked them
   useEffect(() => {
     if (!recipientId) return;
     let cancelled = false;
@@ -129,12 +130,11 @@ export default function ConversationView({
         });
         if (!res.ok || cancelled) return;
         const data = await res.json();
-        if (data.blocked && !cancelled) {
+        // Only update UI state if WE are the blocker — never reveal to user that they are blocked
+        if (data.blocked && data.blockedByMe && !cancelled) {
           setBlocked(true);
-          setIBlockedThem(!!data.blockedByMe);
-          setBlockedReason(
-            data.blockedByMe ? 'You have blocked this user' : "Could not deliver — you're blocked"
-          );
+          setIBlockedThem(true);
+          setBlockedReason('You have blocked this user');
         }
       } catch { /* network error — fail silently */ }
     })();
@@ -161,6 +161,13 @@ export default function ConversationView({
     setAccepting(true);
     try {
       const token = localStorage.getItem('token');
+      // If we blocked them, unblock first so the conversation can proceed
+      if (iBlockedThem) {
+        await unblockUser(recipientId);
+        setBlocked(false);
+        setIBlockedThem(false);
+        setBlockedReason('');
+      }
       const res = await fetch(`${API}/api/conversations/${localConvoId}/accept`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -174,7 +181,22 @@ export default function ConversationView({
     } finally {
       setAccepting(false);
     }
-  }, [localConvoId, onConversationAccepted]);
+  }, [localConvoId, iBlockedThem, recipientId, unblockUser, onConversationAccepted]);
+
+  const handleUnblockFromRequest = useCallback(async () => {
+    setBlocking(true);
+    try {
+      await unblockUser(recipientId);
+      setBlocked(false);
+      setIBlockedThem(false);
+      setBlockedReason('');
+      onConversationAccepted?.();
+    } catch (e) {
+      console.error('Failed to unblock user:', e);
+    } finally {
+      setBlocking(false);
+    }
+  }, [recipientId, unblockUser, onConversationAccepted]);
 
   const handleDecline = useCallback(async () => {
     if (!localConvoId) return;
@@ -194,35 +216,31 @@ export default function ConversationView({
   }, [localConvoId, onConversationAccepted]);
 
   const handleBlockFromRequest = useCallback(async () => {
-    const result = await showConfirmation({
-      title: 'Block User',
-      message: 'Are you sure you want to block this user? This will also delete the conversation.',
+    const confirmed = await showConfirmation({
+      title: 'Block this user?',
+      message: 'They will no longer be able to message you. You can manage blocked users in Settings.',
       urgency: 'danger',
       actions: [
         { label: 'Cancel', variant: 'secondary', value: false },
         { label: 'Block', variant: 'destructive', value: true },
       ],
     });
-    if (result !== true) return;
+    if (!confirmed) return;
     setBlocking(true);
     try {
       await blockUser(recipientId);
-      if (localConvoId) {
-        const token = localStorage.getItem('token');
-        await fetch(`${API}/api/conversations/${localConvoId}/decline`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-      if (currentUserId) await clearCachedConversation(currentUserId, recipientId);
+      setBlocked(true);
+      setIBlockedThem(true);
+      setBlockedReason('You have blocked this user');
+      // Do NOT change localStatus — keep the bar visible so user can Accept/Deny/Unblock
       onConversationAccepted?.();
-      closePanel(`chat-${recipientId}`);
     } catch (e) {
       console.error('Failed to block user:', e);
     } finally {
       setBlocking(false);
     }
-  }, [recipientId, localConvoId, currentUserId, blockUser, showConfirmation, onConversationAccepted, closePanel]);
+  }, [recipientId, blockUser, showConfirmation, onConversationAccepted]);
+
 
   const handleNuke = useCallback(async () => {
     if (!confirm('Nuke this conversation? All messages will be permanently deleted for both users.')) return;
@@ -299,6 +317,7 @@ export default function ConversationView({
           onReply={setReplyingTo}
           onEdit={setEditingMessage}
           currentUserId={currentUserId}
+          onAvatarClick={(senderId, displayName, profileImage) => openUserProfile(senderId, displayName, profileImage)}
         />
       </div>
 
@@ -318,64 +337,75 @@ export default function ConversationView({
             color: isDark ? '#94a3b8' : '#64748b',
             flex: 1,
           }}>
-            Message request — reply to accept, or:
+            {iBlockedThem
+              ? 'You have blocked this user — accept to unblock and reply, or:'
+              : 'Message request — reply to accept, or:'}
           </span>
+          {/* Accept */}
           <button
             onClick={handleAccept}
             disabled={accepting || blocking}
             style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
-              border: 'none',
-              backgroundColor: '#3b82f6',
-              color: '#fff',
-              fontSize: '13px',
-              fontWeight: '600',
+              padding: '6px 16px', borderRadius: '6px', border: 'none',
+              backgroundColor: '#3b82f6', color: '#fff',
+              fontSize: '13px', fontWeight: '600',
               cursor: accepting || blocking ? 'wait' : 'pointer',
               opacity: accepting || blocking ? 0.6 : 1,
             }}
           >
-            {accepting ? 'Accepting...' : 'Accept'}
+            {accepting ? 'Accepting...' : iBlockedThem ? 'Unblock & Accept' : 'Accept'}
           </button>
+          {/* Deny */}
           <button
             onClick={handleDecline}
             disabled={declining || blocking}
             style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
+              padding: '6px 16px', borderRadius: '6px',
               border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`,
               backgroundColor: 'transparent',
               color: isDark ? '#94a3b8' : '#64748b',
-              fontSize: '13px',
-              fontWeight: '600',
+              fontSize: '13px', fontWeight: '600',
               cursor: declining || blocking ? 'wait' : 'pointer',
               opacity: declining || blocking ? 0.6 : 1,
             }}
           >
-            {declining ? 'Declining...' : 'Decline'}
+            {declining ? 'Declining...' : 'Deny'}
           </button>
-          <button
-            onClick={handleBlockFromRequest}
-            disabled={blocking || accepting || declining}
-            style={{
-              padding: '6px 16px',
-              borderRadius: '6px',
-              border: '1px solid #ef4444',
-              backgroundColor: 'transparent',
-              color: '#ef4444',
-              fontSize: '13px',
-              fontWeight: '600',
-              cursor: blocking || accepting || declining ? 'wait' : 'pointer',
-              opacity: blocking || accepting || declining ? 0.6 : 1,
-            }}
-          >
-            {blocking ? 'Blocking...' : 'Block'}
-          </button>
+          {/* Unblock / Block */}
+          {iBlockedThem ? (
+            <button
+              onClick={handleUnblockFromRequest}
+              disabled={blocking || accepting || declining}
+              style={{
+                padding: '6px 16px', borderRadius: '6px',
+                border: '1px solid #22c55e', backgroundColor: 'transparent',
+                color: '#22c55e', fontSize: '13px', fontWeight: '600',
+                cursor: blocking || accepting || declining ? 'wait' : 'pointer',
+                opacity: blocking || accepting || declining ? 0.6 : 1,
+              }}
+            >
+              {blocking ? 'Unblocking...' : 'Unblock'}
+            </button>
+          ) : (
+            <button
+              onClick={handleBlockFromRequest}
+              disabled={blocking || accepting || declining}
+              style={{
+                padding: '6px 16px', borderRadius: '6px',
+                border: '1px solid #ef4444', backgroundColor: 'transparent',
+                color: '#ef4444', fontSize: '13px', fontWeight: '600',
+                cursor: blocking || accepting || declining ? 'wait' : 'pointer',
+                opacity: blocking || accepting || declining ? 0.6 : 1,
+              }}
+            >
+              {blocking ? 'Blocking...' : 'Block'}
+            </button>
+          )}
         </div>
       )}
 
-      {/* Blocked footer alert */}
-      {blocked && (
+      {/* Blocked footer alert — only shown when WE blocked them, never when they blocked us */}
+      {blocked && iBlockedThem && !isIncomingRequest && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -386,26 +416,33 @@ export default function ConversationView({
           borderTop: `1px solid ${isDark ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.18)'}`,
         }}>
           <i className="fas fa-ban" style={{ color: '#ef4444', fontSize: '13px', flexShrink: 0 }} />
-          <span style={{ fontSize: '13px', fontWeight: 500, color: '#ef4444' }}>
-            {blockedReason || "Could not deliver — you're blocked"}
+          <span style={{ fontSize: '13px', fontWeight: 500, color: '#ef4444', flex: 1 }}>
+            You have blocked this user
           </span>
+          <button
+            onClick={() => openPanel('blocked-users', <BlockedUsersPanel />, 'Blocked Users', 'center', undefined, undefined, true)}
+            style={{ fontSize: '12px', color: '#ef4444', opacity: 0.7, flexShrink: 0, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+          >
+            Manage in Settings
+          </button>
         </div>
       )}
 
-      {/* Input — disabled when blocked */}
-      <MessageInput
-        isDark={isDark}
-        recipientId={recipientId}
-        replyingTo={blocked ? null : replyingTo}
-        editingMessage={blocked ? null : editingMessage}
-        onMessageSent={handleMessageSentWrapper}
-        onEditSaved={handleEditSaved}
-        onCancelReply={cancelReply}
-        onCancelEdit={cancelEdit}
-        onEditLastSent={editLastSentMessage}
-        conversationStatus={localStatus}
-        disabled={blocked}
-      />
+      {/* Input — hidden only when WE blocked them */}
+      {(!blocked || !iBlockedThem) && (
+        <MessageInput
+          isDark={isDark}
+          recipientId={recipientId}
+          replyingTo={replyingTo}
+          editingMessage={editingMessage}
+          onMessageSent={handleMessageSentWrapper}
+          onEditSaved={handleEditSaved}
+          onCancelReply={cancelReply}
+          onCancelEdit={cancelEdit}
+          onEditLastSent={editLastSentMessage}
+          conversationStatus={localStatus}
+        />
+      )}
 
       {/* Floating nuke button (testing utility) */}
       <button

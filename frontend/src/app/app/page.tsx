@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+ import { useCallback, useEffect, useMemo, useState } from "react";
 import ConversationsList from "@/components/messaging/ConversationsList";
 import ConversationView from "@/components/messaging/ConversationView/ConversationView";
 import NewChatPanel from "@/components/messaging/NewChatPanel/NewChatPanel";
@@ -34,7 +34,7 @@ export default function AppPage() {
   const { socket } = useWebSocket();
   const { showToast } = useToast();
   const { showConfirmation } = useConfirmation();
-  const { blockUser, removeFriend } = useFriends();
+  const { blockUser, removeFriend, unblockUser } = useFriends();
   const [selectedUserId, setSelectedUserId] = useState('');
 
   const currentUserId = typeof window !== 'undefined'
@@ -145,7 +145,7 @@ export default function AppPage() {
         onClick: async () => {
           const result = await showConfirmation({
             title: 'Block User',
-            message: 'Are you sure you want to block this user? This will also remove them from your friends and delete the conversation.',
+            message: 'Are you sure you want to block this user? Their messages will be disabled but the conversation history will remain.',
             urgency: 'danger',
             actions: [
               { label: 'Cancel', variant: 'secondary', value: false },
@@ -155,19 +155,25 @@ export default function AppPage() {
           if (result !== true) return;
           try {
             await blockUser(id);
-            if (convoId) {
-              const token = localStorage.getItem('token');
-              await fetch(`${API}/api/conversations/${convoId}/decline`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
-              });
-            }
-            if (currentUserId) await clearCachedConversation(currentUserId, id);
-            refresh();
             closePanel(`chat-${id}`);
           } catch (e) {
             console.error('Failed to block user:', e);
             showToast('Failed to block user', 'error');
+          }
+        },
+      });
+    }
+    if (isBlocked && blockedByMe) {
+      submenuItems.push({
+        icon: 'fas fa-lock-open',
+        label: 'Unblock',
+        onClick: async () => {
+          try {
+            await unblockUser(id);
+            closePanel(`chat-${id}`);
+          } catch (e) {
+            console.error('Failed to unblock user:', e);
+            showToast('Failed to unblock user', 'error');
           }
         },
       });
@@ -199,7 +205,7 @@ export default function AppPage() {
       true,
       actionIcons.length > 0 ? actionIcons : undefined,
     );
-  }, [conversations, clearUnread, openPanel, closePanel, isDark, refresh, socket, showToast, showConfirmation, blockUser, removeFriend, currentUserId]);
+  }, [conversations, clearUnread, openPanel, closePanel, isDark, refresh, socket, showToast, showConfirmation, blockUser, removeFriend, unblockUser, currentUserId]);
 
   const openNewChatPanel = useCallback(() => {
     openPanel(

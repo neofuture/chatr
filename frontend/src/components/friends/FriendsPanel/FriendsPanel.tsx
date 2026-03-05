@@ -7,6 +7,7 @@ import { useConfirmation } from '@/contexts/ConfirmationContext';
 import type { FriendEntry, FriendRequest, FriendUser } from '@/types/types';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
 import UserRow from '@/components/common/UserRow/UserRow';
+import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
 import styles from './FriendsPanel.module.css';
 
 type Tab = 'friends' | 'search' | 'requests' | 'blocked';
@@ -18,6 +19,7 @@ interface Props {
 export default function FriendsPanel({ onStartChat }: Props) {
   const [tab, setTab] = useState<Tab>('friends');
   const { userPresence, requestPresence } = usePresence();
+  const openUserProfile = useOpenUserProfile();
   const { showConfirmation } = useConfirmation();
   const {
     friends, incoming, outgoing, blocked, loading,
@@ -71,6 +73,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
             subtitle={uname(u)}
             presence={presence(u.id)}
             isFriend={fs?.status === 'accepted'}
+            onAvatarClick={() => openUserProfile(u.id, dn(u), u.profileImage)}
             actions={<>
               {!fs && !isBlocked && (
                 <button className={styles.btnAdd} onClick={() => sendRequest(u.id)}>
@@ -92,13 +95,15 @@ export default function FriendsPanel({ onStartChat }: Props) {
               {isBlocked && (
                 <button className={styles.btnGhost} onClick={() => unblockUser(u.id)}>Unblock</button>
               )}
-              <button
-                className={styles.btnAccept}
-                onClick={() => onStartChat?.(u.id, dn(u), u.profileImage, fs?.status === 'accepted', fs?.status === 'accepted' ? fs?.id : undefined)}
-                title="Send message"
-              >
-                <i className="fa-solid fa-comment" />
-              </button>
+              {!isBlocked && (
+                <button
+                  className={styles.btnAccept}
+                  onClick={() => onStartChat?.(u.id, dn(u), u.profileImage, fs?.status === 'accepted', fs?.status === 'accepted' ? fs?.id : undefined)}
+                  title="Send message"
+                >
+                  <i className="fa-solid fa-comment" />
+                </button>
+              )}
             </>}
           />
         );
@@ -154,6 +159,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
             displayName={dn(f.user)}
             subtitle={uname(f.user)}
             presence={presence(f.user.id)}
+            onAvatarClick={() => openUserProfile(f.user.id, dn(f.user), f.user.profileImage)}
             actions={<>
               <button className={styles.btnGhost} onClick={() => handleRemoveFriend(f)}>
                 <i className="fa-solid fa-user-minus" /> Remove
@@ -196,6 +202,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
                 displayName={dn(r.user)}
                 subtitle={uname(r.user)}
                 presence={presence(r.user.id)}
+                onAvatarClick={() => openUserProfile(r.user.id, dn(r.user), r.user.profileImage)}
                 actions={<>
                   <button className={styles.btnAccept} onClick={() => acceptRequest(r.friendshipId, r.user.id)}>
                     <i className="fa-solid fa-check" /> Accept
@@ -219,6 +226,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
                 subtitle="Pending acceptance"
                 presence={{ status: 'offline', lastSeen: null }}
                 showPresenceDot={false}
+                onAvatarClick={() => openUserProfile(r.user.id, dn(r.user), r.user.profileImage)}
                 actions={
                   <button className={styles.btnDecline} onClick={() => declineRequest(r.friendshipId, r.user.id)}>
                     Cancel
@@ -251,17 +259,12 @@ export default function FriendsPanel({ onStartChat }: Props) {
             subtitle={uname(b.user)}
             presence={{ status: 'offline', lastSeen: null }}
             showPresenceDot={false}
-            actions={<>
+            onAvatarClick={() => openUserProfile(b.user.id, dn(b.user), b.user.profileImage)}
+            actions={
               <button className={styles.btnGhost} onClick={() => unblockUser(b.user.id)}>
                 <i className="fa-solid fa-lock-open" /> Unblock
               </button>
-              <button
-                className={styles.btnAccept}
-                onClick={() => onStartChat?.(b.user.id, dn(b.user), b.user.profileImage, false)}
-              >
-                <i className="fa-solid fa-comment" />
-              </button>
-            </>}
+            }
           />
         ))}
       </div>

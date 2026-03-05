@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
+import { invalidateConversationCache } from '../lib/redis';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -357,6 +358,12 @@ router.post('/:targetUserId/block', authenticateToken, async (req: any, res) => 
       include: { addressee: { select: userSelect } },
     });
 
+    // Invalidate conversation cache for both parties so next fetch is fresh
+    await Promise.all([
+      invalidateConversationCache(userId),
+      invalidateConversationCache(targetUserId),
+    ]).catch(() => {});
+
     res.json({ friendship });
   } catch (err) {
     console.error('POST /friends/:id/block error', err);
@@ -381,6 +388,12 @@ router.post('/:targetUserId/unblock', authenticateToken, async (req: any, res) =
     await prisma.friendship.deleteMany({
       where: { requesterId: userId, addresseeId: targetUserId, status: 'blocked' },
     });
+
+    // Invalidate conversation cache for both parties so next fetch is fresh
+    await Promise.all([
+      invalidateConversationCache(userId),
+      invalidateConversationCache(targetUserId),
+    ]).catch(() => {});
 
     res.json({ success: true });
   } catch (err) {

@@ -6,6 +6,7 @@ import type { ConversationUser } from '@/hooks/useConversationList';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
+import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
 
 function formatTime(date: Date): string {
   const now = new Date();
@@ -46,6 +47,7 @@ export default function ConversationsList({
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [showPresence, setShowPresence] = useState(false);
+  const openUserProfile = useOpenUserProfile();
 
   useEffect(() => {
     const id = setInterval(() => setShowPresence(prev => !prev), 5000);
@@ -59,7 +61,7 @@ export default function ConversationsList({
   );
 
   const hasRequests = requests.length > 0;
-  const requestCount = requests.reduce((sum, r) => sum + r.unreadCount, 0) || requests.length;
+  const requestUnreadCount = requests.reduce((sum, r) => sum + (r.unreadCount ?? 0), 0);
 
   // "Chats" = everything except incoming requests
   const chats = conversations.filter(c => {
@@ -70,6 +72,7 @@ export default function ConversationsList({
   });
 
   const chatsUnreadCount = chats.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
+  const allUnreadCount = conversations.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
 
   const effectiveTab = isSearching ? 'search' : (!hasRequests ? 'all' : activeTab);
   const displayList = isSearching
@@ -127,6 +130,17 @@ export default function ConversationsList({
             <>
               <button style={tabStyle('all', activeTab === 'all')} onClick={() => setActiveTab('all')}>
                 All
+                {allUnreadCount > 0 && (
+                  <span style={{
+                    minWidth: '18px', height: '18px', borderRadius: '9px',
+                    backgroundColor: '#ef4444', color: '#fff',
+                    fontSize: '10px', fontWeight: '700',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 4px',
+                  }}>
+                    {allUnreadCount > 99 ? '99+' : allUnreadCount}
+                  </span>
+                )}
               </button>
               <button style={tabStyle('chats', activeTab === 'chats')} onClick={() => setActiveTab('chats')}>
                 Chats
@@ -144,7 +158,7 @@ export default function ConversationsList({
               </button>
               <button style={tabStyle('requests', activeTab === 'requests')} onClick={() => setActiveTab('requests')}>
                 Requests
-                {requests.length > 0 && (
+                {requestUnreadCount > 0 && (
                   <span style={{
                     minWidth: '18px', height: '18px', borderRadius: '9px',
                     backgroundColor: '#ef4444', color: '#fff',
@@ -152,7 +166,7 @@ export default function ConversationsList({
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                     padding: '0 4px',
                   }}>
-                    {requestCount > 99 ? '99+' : requestCount}
+                    {requestUnreadCount > 99 ? '99+' : requestUnreadCount}
                   </span>
                 )}
               </button>
@@ -218,6 +232,7 @@ export default function ConversationsList({
                   profileImage={user.profileImage}
                   info={info}
                   size={50}
+                  onClick={(e) => { e.stopPropagation(); openUserProfile(user.id, displayName, user.profileImage); }}
                 />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -229,7 +244,7 @@ export default function ConversationsList({
                       display: 'flex', alignItems: 'center', gap: '5px',
                     }}>
                       {displayName}
-                      {user.isBlocked ? (
+                      {user.blockedByMe ? (
                         <span style={{
                           fontSize: '9px', fontWeight: '600',
                           color: '#ef4444',

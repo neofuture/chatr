@@ -44,6 +44,10 @@ jest.mock('@/hooks/useFriends', () => ({
   useFriends: () => mockFriendsData,
 }));
 
+jest.mock('@/hooks/useOpenUserProfile', () => ({
+  useOpenUserProfile: () => jest.fn(),
+}));
+
 jest.mock('@/contexts/PresenceContext', () => ({
   usePresence: () => ({
     userPresence: {},

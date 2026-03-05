@@ -12,14 +12,13 @@ import styles from './MobileLayout.module.css';
 interface MobileLayoutProps {
   children: React.ReactNode;
   title: string;
-  onPanelDemo?: () => void;
   headerAction?: {
     icon: string;
     onClick: () => void;
   };
 }
 
-export default function MobileLayout({ children, title, onPanelDemo, headerAction }: MobileLayoutProps) {
+export default function MobileLayout({ children, title, headerAction }: MobileLayoutProps) {
   const { theme: themeMode } = useTheme();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -105,7 +104,7 @@ export default function MobileLayout({ children, title, onPanelDemo, headerActio
       >
         {/* Burger Menu on Left */}
         <div className={styles.headerLeft}>
-          <BurgerMenu isDark={isDark} onPanelDemo={onPanelDemo} />
+          <BurgerMenu isDark={isDark} />
         </div>
 
         {/* Centered Title */}

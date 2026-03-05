@@ -71,6 +71,26 @@ export interface CachedMessage {
   edited?: boolean;
 }
 
+// Queued outbound message — persists until server confirms delivery
+export interface OutboundMessage {
+  tempId: string;          // Primary key — the temp-XXXX id we assigned locally
+  recipientId: string;
+  senderId: string;
+  content: string;
+  type: string;
+  timestamp: number;       // epoch ms
+  replyTo: any | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  fileType: string | null;
+  waveformData: number[] | null;
+  duration: number | null;
+  status: 'sending' | 'failed';
+  attempts: number;
+  queuedAt: number;        // epoch ms — when first queued
+}
+
 // Dexie database class
 export class ChatrDB extends Dexie {
   messages!: Table<OfflineMessage>;
@@ -79,6 +99,7 @@ export class ChatrDB extends Dexie {
   profileImages!: Table<ProfileImage>;
   coverImages!: Table<CoverImage>;
   cachedMessages!: Table<CachedMessage>;
+  outboundQueue!: Table<OutboundMessage>;
 
   constructor() {
     super('chatr');
@@ -124,6 +145,17 @@ export class ChatrDB extends Dexie {
       profileImages: 'userId, synced, uploadedAt',
       coverImages: 'userId, synced, uploadedAt',
       cachedMessages: 'id, conversationKey, timestamp',
+    });
+
+    // Version 6 — add outboundQueue for reliable message delivery
+    this.version(6).stores({
+      messages: 'id, senderId, recipientId, groupId, createdAt, synced',
+      users: 'id, username',
+      groups: 'id, name',
+      profileImages: 'userId, synced, uploadedAt',
+      coverImages: 'userId, synced, uploadedAt',
+      cachedMessages: 'id, conversationKey, timestamp',
+      outboundQueue: 'tempId, recipientId, senderId, queuedAt',
     });
   }
 }

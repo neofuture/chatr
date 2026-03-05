@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import io, { Socket } from 'socket.io-client';
+import { useLog } from './LogContext';
 
 interface WebSocketContextType {
   socket: Socket | null;
@@ -31,6 +32,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const [connecting, setConnecting] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const initRef = useRef<(() => Socket | null) | null>(null);
+  const { addLog } = useLog();
 
   useEffect(() => {
     // Function to initialize WebSocket connection
@@ -79,45 +81,39 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         setConnected(true);
         setConnecting(false);
         console.log('✅ WebSocket connected:', newSocket.id);
+        addLog('info', 'socket:connected', { id: newSocket.id });
       });
 
       newSocket.on('disconnect', (reason) => {
         setConnected(false);
         setConnecting(false);
         console.log('🔌 WebSocket disconnected:', reason);
+        addLog('info', 'socket:disconnected', { reason });
       });
 
       newSocket.on('connect_error', (error) => {
         setConnected(false);
         setConnecting(false);
-
-        // Parse error message for better logging
         const errorMessage = error?.message || 'Unknown connection error';
         console.error('❌ WebSocket connection error:', errorMessage);
-
-        // If authentication failed, clear invalid token
+        addLog('error', 'socket:connect_error', { message: errorMessage });
         if (errorMessage.includes('Authentication error')) {
           console.warn('⚠️  Authentication failed - token may be invalid. Consider logging out.');
-          // Don't auto-clear tokens here - let user manually logout
-          // This prevents issues if it's just a temporary backend issue
         }
       });
 
       newSocket.on('error', (error) => {
-        // Handle empty error objects gracefully
         if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
           console.warn('⚠️  WebSocket error occurred (no details provided)');
           return;
         }
-
-        // Log error with proper formatting
         const errorMessage = error?.message || error?.toString() || 'Unknown error';
         const errorDetails = typeof error === 'object' ? JSON.stringify(error) : error;
-
         console.error('❌ WebSocket error:', errorMessage);
         if (errorDetails !== errorMessage) {
           console.error('   Error details:', errorDetails);
         }
+        addLog('error', 'socket:error', { message: errorMessage });
       });
 
       // Reconnection events
@@ -125,16 +121,19 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         console.log('🔄 WebSocket reconnected after', attemptNumber, 'attempts');
         setConnected(true);
         setConnecting(false);
+        addLog('info', 'socket:reconnected', { attempts: attemptNumber });
       });
 
       newSocket.io.on('reconnect_attempt', () => {
         console.log('🔄 Attempting to reconnect...');
         setConnecting(true);
+        addLog('info', 'socket:reconnect_attempt', {});
       });
 
       newSocket.io.on('reconnect_failed', () => {
         console.error('❌ WebSocket reconnection failed');
         setConnecting(false);
+        addLog('error', 'socket:reconnect_failed', {});
       });
 
       return newSocket;

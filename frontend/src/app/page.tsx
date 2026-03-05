@@ -32,6 +32,7 @@ export default function HomePage() {
         console.log('[HomePage] Invalid auth data, staying on home page');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('chatr_user_settings');
       }
     } else {
       console.log('[HomePage] No auth found, staying on home page');

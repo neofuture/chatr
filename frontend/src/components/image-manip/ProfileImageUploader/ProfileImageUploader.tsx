@@ -239,21 +239,44 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
         disabled={uploading}
       />
 
-      {/* Profile Image */}
-      <img
-        src={imageUrl}
-        alt="Profile"
-        style={{
+      {/* Profile Image — wrapped in orange gradient ring */}
+      <div style={{
+        width: '168px',
+        height: '168px',
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, var(--color-orange-500, #f97316), var(--color-red-500, #ef4444))',
+        padding: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+      }}>
+        <div style={{
           width: '160px',
           height: '160px',
           borderRadius: '50%',
-          objectFit: 'cover',
-          border: isDark ? '4px solid rgba(59, 130, 246, 0.3)' : '4px solid rgba(15, 23, 42, 0.2)',
-          cursor: uploading ? 'wait' : 'default',
-          opacity: uploading ? 0.6 : 1,
-          transition: 'opacity 0.2s',
-        }}
-      />
+          overflow: 'hidden',
+          background: 'var(--bg-primary)',
+          border: '4px solid var(--bg-primary)',
+          flexShrink: 0,
+        }}>
+          <img
+            src={imageUrl}
+            alt="Profile"
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              cursor: uploading ? 'wait' : 'default',
+              opacity: uploading ? 0.6 : 1,
+              transition: 'opacity 0.2s',
+              display: 'block',
+            }}
+          />
+        </div>
+      </div>
 
       {/* Camera Icon Overlay */}
       {showMenu && (
@@ -341,7 +364,7 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
         disabled={uploading}
         style={{
           position: 'absolute',
-          bottom: '8px',
+          bottom: '4px',
           left: '50%',
           width: '40px',
           height: '40px',

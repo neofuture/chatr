@@ -10,6 +10,17 @@ jest.mock('next/navigation', () => ({
   usePathname: jest.fn(),
 }));
 
+// Mock PanelContext (BurgerMenu uses usePanels)
+jest.mock('@/contexts/PanelContext', () => ({
+  usePanels: jest.fn(() => ({ openPanel: jest.fn() })),
+}));
+
+// Mock SettingsPanel (imported by BurgerMenu)
+jest.mock('@/components/settings/SettingsPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 // Mock profile image service
 jest.mock('@/lib/profileImageService', () => ({
   getProfileImageURL: jest.fn().mockResolvedValue('/profile/test-user.jpg'),
@@ -38,7 +49,6 @@ Object.defineProperty(window, 'localStorage', {
 
 describe('MobileLayout', () => {
   const mockPush = jest.fn();
-  const mockOnPanelDemo = jest.fn();
 
   beforeEach(() => {
     (useRouter as jest.Mock).mockReturnValue({ push: mockPush });
@@ -63,7 +73,6 @@ describe('MobileLayout', () => {
       <ThemeProvider>
         <MobileLayout
           title={title}
-          onPanelDemo={mockOnPanelDemo}
           headerAction={headerAction}
         >
           <div>Test Content</div>
