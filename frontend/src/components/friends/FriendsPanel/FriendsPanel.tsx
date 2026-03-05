@@ -66,7 +66,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
         return (
           <UserRow
             key={u.id}
-            profileImage={u.profileImage}
+            profileImage={u.profileImage ?? null}
             displayName={dn(u)}
             subtitle={uname(u)}
             presence={presence(u.id)}
@@ -150,7 +150,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
         {friends.map((f: FriendEntry) => (
           <UserRow
             key={f.friendshipId}
-            profileImage={f.user.profileImage}
+            profileImage={f.user.profileImage ?? null}
             displayName={dn(f.user)}
             subtitle={uname(f.user)}
             presence={presence(f.user.id)}
@@ -192,7 +192,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
             {incoming.map((r: FriendRequest) => (
               <UserRow
                 key={r.friendshipId}
-                profileImage={r.user.profileImage}
+                profileImage={r.user.profileImage ?? null}
                 displayName={dn(r.user)}
                 subtitle={uname(r.user)}
                 presence={presence(r.user.id)}
@@ -214,7 +214,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
             {outgoing.map((r: FriendRequest) => (
               <UserRow
                 key={r.friendshipId}
-                profileImage={r.user.profileImage}
+                profileImage={r.user.profileImage ?? null}
                 displayName={dn(r.user)}
                 subtitle="Pending acceptance"
                 presence={{ status: 'offline', lastSeen: null }}
@@ -246,7 +246,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
         {blocked.map((b: FriendEntry) => (
           <UserRow
             key={b.friendshipId}
-            profileImage={b.user.profileImage}
+            profileImage={b.user.profileImage ?? null}
             displayName={dn(b.user)}
             subtitle={uname(b.user)}
             presence={{ status: 'offline', lastSeen: null }}

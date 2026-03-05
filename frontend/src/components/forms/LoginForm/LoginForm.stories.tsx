@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { PanelProvider } from '@/contexts/PanelContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import LoginForm from './LoginForm';
+import { LoginFormContent as LoginForm } from './LoginForm';
 
 const meta: Meta<typeof LoginForm> = {
   title: 'Forms/LoginForm',
