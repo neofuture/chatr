@@ -271,6 +271,27 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
     socket.on('audio:recording', onAudioRecording);
     socket.on('audio:waveform', onAudioWaveform);
 
+    const onMessageBlocked = ({ tempId }: { tempId?: string; recipientId: string; reason: string }) => {
+      setMessages(prev => {
+        // Try to match by tempId first, otherwise fall back to last temp- message to this recipient
+        const idx = tempId
+          ? prev.findIndex(m => m.id === tempId)
+          : (() => {
+              for (let i = prev.length - 1; i >= 0; i--) {
+                if (prev[i].id.startsWith('temp-') && prev[i].recipientId === recipientId) return i;
+              }
+              return -1;
+            })();
+        if (idx === -1) return prev;
+        const failedId = prev[idx].id;
+        dequeue(failedId).catch(console.error);
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], status: 'failed' as Message['status'] };
+        return updated;
+      });
+    };
+    socket.on('message:blocked', onMessageBlocked);
+
     return () => {
       socket.off('message:received', onMessageReceived);
       socket.off('message:sent', onMessageSent);
@@ -281,7 +302,7 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
       socket.off('typing:status', onTypingStatus);
       socket.off('audio:recording', onAudioRecording);
       socket.off('audio:waveform', onAudioWaveform);
-      socket.off('audio:recording', onAudioRecording);
+      socket.off('message:blocked', onMessageBlocked);
     };
   }, [socket, recipientId, currentUserId]);
 

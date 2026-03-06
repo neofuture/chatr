@@ -147,6 +147,7 @@ export function setupSocketHandlers(io: Server) {
       waveform?: number[];
       duration?: number;
       messageId?: string;
+      tempId?: string;
       replyTo?: {
         id: string;
         content: string;
@@ -176,6 +177,7 @@ export function setupSocketHandlers(io: Server) {
           const iBlockedThem = blockInfo.blockerId === userId;
           socket.emit('message:blocked', {
             recipientId: data.recipientId,
+            tempId: data.tempId,
             reason: iBlockedThem
               ? 'You have blocked this user'
               : "Could not deliver — you're blocked",

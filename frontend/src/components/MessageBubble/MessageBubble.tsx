@@ -416,13 +416,15 @@ export default function MessageBubble({
     else if (status === 'read') {
       statusClass = styles.statusRead;
       statusText = type === 'audio' ? 'Listened' : (type === 'image' || type === 'file') ? 'Viewed' : 'Read';
-    } else if (status === 'failed')  { statusClass = styles.statusFailed; statusText = 'Failed'; }
+    } else if (status === 'failed')  { statusClass = styles.statusFailed; statusText = 'Failed to send'; }
     return { statusClass, statusText };
   };
 
   const getBubbleToneClass = (isSent: boolean, status: Message['status']) => {
     if (!isSent) return styles.bubbleReceived;
-    return status === 'queued' ? styles.bubbleSentQueued : styles.bubbleSent;
+    if (status === 'queued') return styles.bubbleSentQueued;
+    if (status === 'failed') return styles.bubbleSentFailed;
+    return styles.bubbleSent;
   };
 
   const getBubbleRadiusClass = (isSent: boolean, gPrev: boolean, gNext: boolean) => {
