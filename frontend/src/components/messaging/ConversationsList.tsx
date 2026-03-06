@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { PresenceInfo } from '@/types/types';
 import type { ConversationUser } from '@/hooks/useConversationList';
+import type { GroupSummary } from '@/hooks/useGroupsList';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
@@ -20,7 +21,7 @@ function formatTime(date: Date): string {
   return date.toLocaleDateString([], { day: '2-digit', month: 'short' });
 }
 
-type Tab = 'all' | 'chats' | 'requests' | 'search';
+type Tab = 'all' | 'chats' | 'groups' | 'requests' | 'search';
 
 interface Props {
   isDark: boolean;
@@ -32,6 +33,10 @@ interface Props {
   search: string;
   onSearchChange: (val: string) => void;
   loading: boolean;
+  groups: GroupSummary[];
+  groupsLoading: boolean;
+  selectedGroupId: string;
+  onSelectGroup: (group: GroupSummary) => void;
 }
 
 export default function ConversationsList({
@@ -44,8 +49,12 @@ export default function ConversationsList({
   search,
   onSearchChange,
   loading,
+  groups,
+  groupsLoading,
+  selectedGroupId,
+  onSelectGroup,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('all');
+  const [activeTab, setActiveTab] = useState<Tab>('chats');
   const [showPresence, setShowPresence] = useState(false);
   const openUserProfile = useOpenUserProfile();
 
@@ -72,16 +81,13 @@ export default function ConversationsList({
   });
 
   const chatsUnreadCount = chats.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
-  const allUnreadCount = conversations.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0);
 
-  const effectiveTab = isSearching ? 'search' : (!hasRequests ? 'all' : activeTab);
+  const effectiveTab = isSearching ? 'search' : activeTab;
   const displayList = isSearching
     ? conversations
     : effectiveTab === 'requests'
       ? requests
-      : effectiveTab === 'chats'
-        ? chats
-        : conversations;
+      : chats;
 
   const tabStyle = (tab: Tab, active: boolean) => ({
     flex: 1,
@@ -113,49 +119,38 @@ export default function ConversationsList({
         placeholder="Search messages..."
       />
 
-      {/* Tabs — only shown when searching or when there are message requests */}
-      {(isSearching || hasRequests) && (
-        <div style={{ display: 'flex', borderBottom: `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}` }}>
-          {isSearching ? (
-            <button style={tabStyle('search', true)}>
-              <i className="fas fa-search" style={{ fontSize: '11px' }} />
-              Search
-              {displayList.length > 0 && (
-                <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: '400' }}>
-                  ({displayList.length})
+      {/* Tabs */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}` }}>
+        {isSearching ? (
+          <button style={tabStyle('search', true)}>
+            <i className="fas fa-search" style={{ fontSize: '11px' }} />
+            Search
+            {displayList.length > 0 && (
+              <span style={{ fontSize: '11px', opacity: 0.6, fontWeight: '400' }}>
+                ({displayList.length})
+              </span>
+            )}
+          </button>
+        ) : (
+          <>
+            <button style={tabStyle('chats', activeTab === 'chats')} onClick={() => setActiveTab('chats')}>
+              Chats
+              {chatsUnreadCount > 0 && (
+                <span style={{
+                  minWidth: '18px', height: '18px', borderRadius: '9px',
+                  backgroundColor: '#ef4444', color: '#fff',
+                  fontSize: '10px', fontWeight: '700',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 4px',
+                }}>
+                  {chatsUnreadCount > 99 ? '99+' : chatsUnreadCount}
                 </span>
               )}
             </button>
-          ) : (
-            <>
-              <button style={tabStyle('all', activeTab === 'all')} onClick={() => setActiveTab('all')}>
-                All
-                {allUnreadCount > 0 && (
-                  <span style={{
-                    minWidth: '18px', height: '18px', borderRadius: '9px',
-                    backgroundColor: '#ef4444', color: '#fff',
-                    fontSize: '10px', fontWeight: '700',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 4px',
-                  }}>
-                    {allUnreadCount > 99 ? '99+' : allUnreadCount}
-                  </span>
-                )}
-              </button>
-              <button style={tabStyle('chats', activeTab === 'chats')} onClick={() => setActiveTab('chats')}>
-                Chats
-                {chatsUnreadCount > 0 && (
-                  <span style={{
-                    minWidth: '18px', height: '18px', borderRadius: '9px',
-                    backgroundColor: '#ef4444', color: '#fff',
-                    fontSize: '10px', fontWeight: '700',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 4px',
-                  }}>
-                    {chatsUnreadCount > 99 ? '99+' : chatsUnreadCount}
-                  </span>
-                )}
-              </button>
+            <button style={tabStyle('groups', activeTab === 'groups')} onClick={() => setActiveTab('groups')}>
+              Groups
+            </button>
+            {hasRequests && (
               <button style={tabStyle('requests', activeTab === 'requests')} onClick={() => setActiveTab('requests')}>
                 Requests
                 {requestUnreadCount > 0 && (
@@ -170,12 +165,128 @@ export default function ConversationsList({
                   </span>
                 )}
               </button>
-            </>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Groups tab */}
+      {!isSearching && activeTab === 'groups' && (
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* Create Group button */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('chatr:new-group'))}
+            style={{
+              margin: '12px 12px 4px',
+              padding: '12px 16px',
+              border: `1px dashed ${isDark ? 'rgba(249,115,22,0.5)' : 'rgba(249,115,22,0.4)'}`,
+              borderRadius: '12px',
+              background: isDark ? 'rgba(249,115,22,0.06)' : 'rgba(249,115,22,0.04)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              color: 'var(--color-orange-500)',
+              transition: 'background 0.15s',
+              flexShrink: 0,
+            }}
+          >
+            <i className="fas fa-users-plus" style={{ fontSize: '16px' }} />
+            <span style={{ fontSize: '14px', fontWeight: 600 }}>Create New Group</span>
+          </button>
+
+          {/* Groups list */}
+          {groupsLoading ? (
+            <div style={{ padding: '40px 16px', textAlign: 'center', opacity: 0.4 }}>
+              <div style={{ fontSize: '13px' }}>Loading...</div>
+            </div>
+          ) : groups.length === 0 ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.4 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>👥</div>
+                <div style={{ fontSize: '13px' }}>No group conversations yet</div>
+              </div>
+            </div>
+          ) : (
+            groups.map(group => {
+              const isSelected = group.id === selectedGroupId;
+              const unread = group.unreadCount ?? 0;
+              const lastMsg = group.lastMessage;
+              const lastMsgTime = lastMsg ? new Date(lastMsg.createdAt) : null;
+              const memberCount = group.members.length;
+
+              return (
+                <button
+                  key={group.id}
+                  onClick={() => onSelectGroup(group)}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '12px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
+                    backgroundColor: isSelected
+                      ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.1)')
+                      : unread > 0
+                      ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)')
+                      : 'transparent',
+                    borderLeft: isSelected ? '3px solid #3b82f6' : unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
+                    transition: 'background-color 0.15s',
+                  }}
+                >
+                  {/* Group avatar */}
+                  <div style={{
+                    width: 50, height: 50, borderRadius: '50%', flexShrink: 0,
+                    background: 'linear-gradient(135deg, var(--color-orange-500), var(--color-red-500))',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '20px', color: '#fff',
+                  }}>
+                    <i className="fas fa-users" />
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px' }}>
+                      <div style={{
+                        fontWeight: unread > 0 ? '700' : '600', fontSize: '14px',
+                        color: isDark ? '#f1f5f9' : '#0f172a',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {group.name}
+                      </div>
+                      {lastMsgTime && (
+                        <div style={{ fontSize: '11px', color: isDark ? '#f1f5f9' : '#0f172a', flexShrink: 0 }}>
+                          {formatTime(lastMsgTime)}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                      <div style={{
+                        flex: 1, minWidth: 0, fontSize: '12px',
+                        color: isDark ? '#94a3b8' : '#64748b',
+                        fontWeight: unread > 0 ? '500' : 'normal',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {lastMsg
+                          ? `${lastMsg.sender.displayName || lastMsg.sender.username.replace(/^@/, '')}: ${lastMsg.content}`
+                          : `${memberCount} member${memberCount !== 1 ? 's' : ''}`}
+                      </div>
+                      {unread > 0 && (
+                        <div style={{
+                          flexShrink: 0, minWidth: '20px', height: '20px', borderRadius: '10px',
+                          backgroundColor: '#ef4444', color: '#fff',
+                          fontSize: '11px', fontWeight: '700',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: '0 5px',
+                        }}>{unread > 99 ? '99+' : unread}</div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       )}
 
-      {/* List */}
+      {/* List — hidden when on groups tab */}
+      {(isSearching || activeTab !== 'groups') && (
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {loading ? (
           <div style={{ padding: '40px 16px', textAlign: 'center', opacity: 0.4 }}>
@@ -342,6 +453,7 @@ export default function ConversationsList({
           })
         )}
       </div>
+      )}
     </div>
   );
 }

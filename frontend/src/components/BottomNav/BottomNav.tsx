@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getProfileImageURL } from '@/lib/profileImageService';
 import styles from './BottomNav.module.css';
 
@@ -12,6 +13,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function BottomNav() {
   const { theme: themeMode } = useTheme();
+  const { socket } = useWebSocket();
   const pathname = usePathname();
   const [profileImageUrl, setProfileImageUrl] = useState('/profile/default-profile.jpg');
   const [firstName, setFirstName] = useState('ME');
@@ -85,7 +87,7 @@ export default function BottomNav() {
     };
   }, []);
 
-  // Poll for incoming friend requests to show badge
+  // Fetch incoming friend request count — updates instantly via socket + window events
   useEffect(() => {
     const fetchPending = async () => {
       try {
@@ -100,10 +102,39 @@ export default function BottomNav() {
         }
       } catch {}
     };
+
     fetchPending();
     const interval = setInterval(fetchPending, 30000);
-    return () => clearInterval(interval);
+
+    // Refresh immediately whenever any friend event arrives via window event
+    const onFriendsChanged = () => fetchPending();
+    window.addEventListener('chatr:friends-changed', onFriendsChanged);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('chatr:friends-changed', onFriendsChanged);
+    };
   }, []);
+
+  // Listen to socket friend:update events directly for instant badge updates
+  useEffect(() => {
+    if (!socket) return;
+    const fetchPending = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await fetch(`${API}/api/friends/requests/incoming`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setPendingRequests(data.requests?.length ?? 0);
+        }
+      } catch {}
+    };
+    socket.on('friend:update', fetchPending);
+    return () => { socket.off('friend:update', fetchPending); };
+  }, [socket]);
 
   const menuItems = [
     { name: 'CHATS',   href: '/app',          icon: 'fa-comments',   type: 'icon', badge: unreadChats },

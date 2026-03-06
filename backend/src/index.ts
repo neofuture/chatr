@@ -28,6 +28,7 @@ import { setSocketIO } from './routes/file-upload';
 import { setMessagesSocketIO } from './routes/messages';
 import { setConversationsSocketIO } from './routes/conversations';
 import { setUsersSocketIO } from './routes/users';
+import { setGroupsSocketIO } from './routes/groups';
 
 dotenv.config();
 
@@ -136,6 +137,7 @@ async function start() {
   setMessagesSocketIO(io);
   setConversationsSocketIO(io);
   setUsersSocketIO(io);
+  setGroupsSocketIO(io);
 
   httpServer.listen(PORT, () => {
     console.log(`🚀 Server: http://localhost:${PORT}`);

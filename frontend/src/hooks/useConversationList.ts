@@ -86,8 +86,8 @@ export function useConversationList() {
       if (targetUserId) {
         setConversations(prev => prev.map(c => {
           if (c.id !== targetUserId) return c;
-          if (action === 'block')   return { ...c, isBlocked: true,  blockedByMe: true };
-          if (action === 'unblock') return { ...c, isBlocked: false, blockedByMe: false };
+          if (action === 'block'   || action === 'blocked')   return { ...c, isBlocked: true,  blockedByMe: true };
+          if (action === 'unblock' || action === 'unblocked') return { ...c, isBlocked: false, blockedByMe: false };
           return c;
         }));
       }

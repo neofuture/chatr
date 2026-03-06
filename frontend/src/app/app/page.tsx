@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ConversationsList from "@/components/messaging/ConversationsList";
 import ConversationView from "@/components/messaging/ConversationView/ConversationView";
 import NewChatPanel from "@/components/messaging/NewChatPanel/NewChatPanel";
+import NewGroupPanel from "@/components/messaging/NewGroupPanel/NewGroupPanel";
+import GroupView from "@/components/messaging/GroupView/GroupView";
+import type { GroupData } from "@/components/messaging/GroupView/GroupView";
 import { useConversationList, type ConversationUser } from "@/hooks/useConversationList";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePanels, type ActionIcon } from "@/contexts/PanelContext";
@@ -16,6 +19,7 @@ import { useMessageToast } from "@/hooks/useMessageToast";
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+
 export default function AppPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -24,7 +28,6 @@ export default function AppPage() {
     loading,
     search,
     setSearch,
-    onlineUserIds,
     refresh,
     clearUnread,
   } = useConversationList();
@@ -285,11 +288,36 @@ export default function AppPage() {
     );
   }, [conversations, clearUnread, openPanel, isDark, refresh, buildActionIcons]);
 
+  const openNewGroupPanel = useCallback(() => {
+    openPanel(
+      'new-group',
+      <NewGroupPanel
+        onGroupCreated={(group) => {
+          closePanel('new-group');
+          openPanel(
+            `group-${group.id}`,
+            <GroupView group={group as GroupData} isDark={isDark} currentUserId={currentUserId} />,
+            group.name,
+            'left',
+            `${group.members.length} members`,
+            undefined,
+            true,
+          );
+        }}
+      />,
+      'New Group',
+      'center',
+      undefined,
+      undefined,
+      true,
+    );
+  }, [openPanel, closePanel, isDark, currentUserId]);
+
   const openNewChatPanel = useCallback(() => {
     openPanel(
       'new-chat',
       <NewChatPanel isDark={isDark} onSelectUser={handleSelectUser} />,
-      'New Chat',
+      'New Message',
       'center',
       undefined,
       undefined,
@@ -297,12 +325,19 @@ export default function AppPage() {
     );
   }, [openPanel, isDark, handleSelectUser]);
 
-  // Listen for compose events from the header button and the ConversationsList button
+  // Listen for compose events (header + button in ConversationsList)
   useEffect(() => {
     const handler = () => openNewChatPanel();
     window.addEventListener('chatr:compose', handler);
     return () => window.removeEventListener('chatr:compose', handler);
   }, [openNewChatPanel]);
+
+  // Listen for new-group events (button in groups tab of ConversationsList)
+  useEffect(() => {
+    const handler = () => openNewGroupPanel();
+    window.addEventListener('chatr:new-group', handler);
+    return () => window.removeEventListener('chatr:new-group', handler);
+  }, [openNewGroupPanel]);
 
   useMessageToast(handleSelectUser, currentUserId);
 
@@ -320,6 +355,10 @@ export default function AppPage() {
         search={search}
         onSearchChange={setSearch}
         loading={loading}
+        groups={groups}
+        groupsLoading={groupsLoading}
+        selectedGroupId={selectedGroupId}
+        onSelectGroup={handleSelectGroup}
       />
     </div>
   );

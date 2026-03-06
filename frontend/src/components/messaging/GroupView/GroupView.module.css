@@ -1,0 +1,94 @@
+.container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.messageArea {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.inputArea {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.typingLabel {
+  padding: 4px 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.textInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  padding: 0;
+}
+
+.iconBtn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.iconBtn:hover { color: var(--color-orange-500); }
+
+.sendBtn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.sendBtn:disabled { cursor: not-allowed; }
+.sendBtn:not(:disabled):hover { opacity: 0.85; }
+
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.lightboxImg {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+

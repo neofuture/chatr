@@ -6,12 +6,11 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { usePanels } from '@/contexts/PanelContext';
 import { useLog } from '@/contexts/LogContext';
-import { useFriends } from '@/hooks/useFriends';
 import { version } from '@/version';
 import ProfileImageUploader from '@/components/image-manip/ProfileImageUploader/ProfileImageUploader';
 import CoverImageUploader from '@/components/image-manip/CoverImageUploader/CoverImageUploader';
 import LogViewerPanel from '@/components/LogViewerPanel/LogViewerPanel';
-import BlockedUsersPanel from './BlockedUsersPanel';
+import PrivacyPanel from './PrivacyPanel';
 import styles from './SettingsPanel.module.css';
 
 function getCurrentUserId(): string {
@@ -62,7 +61,6 @@ export default function SettingsPanel() {
   const { settings, setSetting } = useUserSettings();
   const { openPanel, closeTopPanel } = usePanels();
   const { logs } = useLog();
-  const { blocked } = useFriends();
   const [userId] = useState<string>(getCurrentUserId);
 
   const isDark = theme === 'dark';
@@ -79,8 +77,9 @@ export default function SettingsPanel() {
     openPanel('log-viewer', <LogViewerPanel />, 'System Logs', 'center', undefined, undefined, true);
   };
 
-  const handleOpenBlocked = () => {
-    openPanel('blocked-users', <BlockedUsersPanel />, 'Blocked Users', 'center', undefined, undefined, true);
+
+  const handleOpenPrivacy = () => {
+    openPanel('privacy', <PrivacyPanel />, 'Privacy', 'center', undefined, undefined, true);
   };
 
   return (
@@ -127,46 +126,11 @@ export default function SettingsPanel() {
 
         {/* ── Privacy ── */}
         <SettingsSection title="Privacy">
-          <SettingsRow
-            icon="fad fa-eye"
-            label="Show online status"
-            description="Let others see when you are online"
-            control={
-              <Toggle
-                checked={settings.showOnlineStatus}
-                onChange={v => setSetting('showOnlineStatus', v)}
-              />
-            }
-          />
-          <SettingsRow
-            icon="fad fa-phone"
-            label="Show phone number"
-            description="Let others see your phone number on your profile"
-            control={
-              <Toggle
-                checked={settings.showPhoneNumber}
-                onChange={v => setSetting('showPhoneNumber', v)}
-              />
-            }
-          />
-          <SettingsRow
-            icon="fad fa-envelope"
-            label="Show email address"
-            description="Let others see your email address on your profile"
-            control={
-              <Toggle
-                checked={settings.showEmail}
-                onChange={v => setSetting('showEmail', v)}
-              />
-            }
-          />
-          <button className={styles.navRow} onClick={handleOpenBlocked}>
-            <div className={styles.rowIcon}><i className="fad fa-ban" /></div>
+          <button className={styles.navRow} onClick={handleOpenPrivacy}>
+            <div className={styles.rowIcon}><i className="fad fa-shield-halved" /></div>
             <div className={styles.rowText}>
-              <span className={styles.rowLabel}>Blocked Users</span>
-              <span className={styles.rowDesc}>
-                {blocked.length === 0 ? 'No blocked users' : `${blocked.length} blocked user${blocked.length !== 1 ? 's' : ''}`}
-              </span>
+              <span className={styles.rowLabel}>Privacy</span>
+              <span className={styles.rowDesc}>Online status, profile visibility, blocked users</span>
             </div>
             <div className={styles.rowControl}>
               <i className="fas fa-chevron-right" style={{ color: 'var(--text-secondary)', fontSize: '12px' }} />
@@ -205,6 +169,7 @@ export default function SettingsPanel() {
             Sign out
           </button>
         </SettingsSection>
+
       </div>
     </div>
   );

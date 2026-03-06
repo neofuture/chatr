@@ -43,6 +43,7 @@ jest.mock('@/hooks/useFriends', () => ({
     sendRequest: jest.fn(),
     acceptRequest: jest.fn(),
     declineRequest: jest.fn(),
+    cancelRequest: jest.fn(),
     removeFriend: jest.fn(),
     blockUser: jest.fn(),
     unblockUser: jest.fn(),
@@ -82,31 +83,44 @@ const defaultProps = {
   search: '',
   onSearchChange: jest.fn(),
   loading: false,
+  groups: [],
+  groupsLoading: false,
+  selectedGroupId: '',
+  onSelectGroup: jest.fn(),
 };
 
 describe('ConversationsList', () => {
   describe('Tab visibility', () => {
-    it('does not show tabs when there are no incoming requests', () => {
+    it('always shows Chats and Groups tabs', () => {
       render(
         <ConversationsList
           {...defaultProps}
           conversations={[friendChat, friendChat2, outgoingPending]}
         />
       );
-      expect(screen.queryByText('All')).not.toBeInTheDocument();
-      expect(screen.queryByText('Chats')).not.toBeInTheDocument();
+      expect(screen.getByText('Chats')).toBeInTheDocument();
+      expect(screen.getByText('Groups')).toBeInTheDocument();
+    });
+
+    it('does not show Requests tab when no incoming requests', () => {
+      render(
+        <ConversationsList
+          {...defaultProps}
+          conversations={[friendChat, friendChat2, outgoingPending]}
+        />
+      );
       expect(screen.queryByText('Requests')).not.toBeInTheDocument();
     });
 
-    it('shows All, Chats, Requests tabs when incoming requests exist', () => {
+    it('shows Requests tab when incoming requests exist', () => {
       render(
         <ConversationsList
           {...defaultProps}
           conversations={[friendChat, incomingRequest]}
         />
       );
-      expect(screen.getByText('All')).toBeInTheDocument();
       expect(screen.getByText('Chats')).toBeInTheDocument();
+      expect(screen.getByText('Groups')).toBeInTheDocument();
       expect(screen.getByText('Requests')).toBeInTheDocument();
     });
 
@@ -123,7 +137,7 @@ describe('ConversationsList', () => {
   });
 
   describe('Default tab behaviour', () => {
-    it('displays all conversations by default when no tabs (friends only)', () => {
+    it('displays chats by default (Chats tab active)', () => {
       render(
         <ConversationsList
           {...defaultProps}
@@ -134,15 +148,16 @@ describe('ConversationsList', () => {
       expect(screen.getByText('User f2')).toBeInTheDocument();
     });
 
-    it('defaults to All tab showing all conversations when requests exist', () => {
+    it('defaults to Chats tab — incoming requests not shown until Requests tab clicked', () => {
       render(
         <ConversationsList
           {...defaultProps}
           conversations={[friendChat, incomingRequest]}
         />
       );
+      // Chats tab is default — f1 (accepted) visible, r1 (incoming request) not visible
       expect(screen.getByText('User f1')).toBeInTheDocument();
-      expect(screen.getByText('User r1')).toBeInTheDocument();
+      expect(screen.queryByText('User r1')).not.toBeInTheDocument();
     });
   });
 
@@ -156,6 +171,7 @@ describe('ConversationsList', () => {
         />
       );
 
+      // Chats is the default tab — f1 (accepted) and o1 (outgoing pending) visible, r1 (incoming) not
       await user.click(screen.getByText('Chats'));
       expect(screen.getByText('User f1')).toBeInTheDocument();
       expect(screen.getByText('User o1')).toBeInTheDocument();
@@ -177,7 +193,7 @@ describe('ConversationsList', () => {
       expect(screen.getByText('User r2')).toBeInTheDocument();
     });
 
-    it('All tab shows everything including requests', async () => {
+    it('switching from Requests back to Chats shows chats only', async () => {
       const user = userEvent.setup();
       render(
         <ConversationsList
@@ -186,26 +202,26 @@ describe('ConversationsList', () => {
         />
       );
 
+      await user.click(screen.getByText('Requests'));
       await user.click(screen.getByText('Chats'));
-      await user.click(screen.getByText('All'));
       expect(screen.getByText('User f1')).toBeInTheDocument();
-      expect(screen.getByText('User r1')).toBeInTheDocument();
+      expect(screen.queryByText('User r1')).not.toBeInTheDocument();
     });
   });
 
   describe('Badges', () => {
-    it('shows total unread badge on the All tab', () => {
+    it('shows unread badge on Chats tab with chats unread count', () => {
       render(
         <ConversationsList
           {...defaultProps}
           conversations={[friendChat, incomingRequest]}
         />
       );
-      const allTab = screen.getByText('All').closest('button')!;
-      const badge = allTab.querySelector('span');
-      // friendChat has 2 unread + incomingRequest has 1 = 3
+      // friendChat has 2 unread (accepted chat), incomingRequest is in Requests tab not Chats
+      const chatsTab = screen.getByText('Chats').closest('button')!;
+      const badge = chatsTab.querySelector('span');
       expect(badge).toBeInTheDocument();
-      expect(badge!.textContent).toBe('3');
+      expect(badge!.textContent).toBe('2');
     });
 
     it('shows red badge on Chats tab with chats unread count', () => {
@@ -222,7 +238,7 @@ describe('ConversationsList', () => {
       expect(badge!.textContent).toBe('2');
     });
 
-    it('shows badge on Requests tab with request count', () => {
+    it('shows badge on Requests tab with request unread count', () => {
       render(
         <ConversationsList
           {...defaultProps}
@@ -321,13 +337,15 @@ describe('ConversationsList', () => {
       expect(screen.getByText('Pending')).toBeInTheDocument();
     });
 
-    it('shows message request icon for incoming requests', () => {
+    it('shows message request icon for incoming requests on Requests tab', async () => {
+      const user = userEvent.setup();
       render(
         <ConversationsList
           {...defaultProps}
           conversations={[incomingRequest]}
         />
       );
+      await user.click(screen.getByText('Requests'));
       expect(screen.getByTitle('Message request')).toBeInTheDocument();
     });
   });

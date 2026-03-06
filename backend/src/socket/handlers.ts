@@ -784,6 +784,51 @@ export function setupSocketHandlers(io: Server) {
       socket.profileImage = data.profileImage;
     });
 
+    // ==================== FRIENDS ====================
+
+    // Relay friend lifecycle events to the other user in real-time.
+    // The FE emits this after every REST action (request, accept, decline, remove, block, unblock).
+    socket.on('friend:notify', async (data: {
+      type: 'request' | 'accepted' | 'declined' | 'removed' | 'blocked' | 'unblocked' | 'cancelled';
+      addresseeId: string;
+      friendshipId?: string;
+    }) => {
+      try {
+        // Look up sender's display info fresh from DB
+        const sender = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, username: true, displayName: true, profileImage: true },
+        });
+        if (!sender) return;
+
+        // Emit to the other user's personal room
+        io.to(`user:${data.addresseeId}`).emit('friend:update', {
+          type: data.type,
+          friendshipId: data.friendshipId,
+          from: {
+            id: sender.id,
+            username: sender.username,
+            displayName: sender.displayName,
+            profileImage: sender.profileImage,
+          },
+        });
+
+        // Also notify the sender themselves so any other open tabs/devices refresh
+        io.to(`user:${userId}`).emit('friend:update', {
+          type: data.type,
+          friendshipId: data.friendshipId,
+          from: {
+            id: sender.id,
+            username: sender.username,
+            displayName: sender.displayName,
+            profileImage: sender.profileImage,
+          },
+        });
+      } catch (err) {
+        console.error('❌ friend:notify error:', err);
+      }
+    });
+
     // Update user settings that affect socket behaviour
     socket.on('settings:update', async (data: { showOnlineStatus?: boolean; showPhoneNumber?: boolean; showEmail?: boolean }) => {
       // ── Online status ──────────────────────────────────────────────────────
@@ -874,29 +919,57 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
-    // ==================== FRIENDS ====================
+    // ==================== GROUPS ====================
 
-    socket.on('friend:notify', async (data: { type: 'request' | 'accepted' | 'declined' | 'removed'; addresseeId: string; friendshipId: string }) => {
+    socket.on('group:message', async (data: { groupId: string; content: string; type?: string; tempId?: string }) => {
       try {
-        const recipientSocketId = await getSocketId(data.addresseeId);
-        const senderUser = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, username: true, displayName: true, profileImage: true },
+        const { groupId, content, type = 'text', tempId } = data;
+        if (!groupId || !content?.trim()) return;
+
+        // Verify sender is a member
+        const member = await prisma.groupMember.findUnique({
+          where: { userId_groupId: { userId, groupId } },
         });
-        if (!senderUser) return;
+        if (!member) {
+          socket.emit('error', 'Not a member of this group');
+          return;
+        }
 
-        const payload = {
-          type: data.type,
-          friendshipId: data.friendshipId,
-          from: senderUser,
-        };
+        const message = await prisma.groupMessage.create({
+          data: { groupId, senderId: userId, content: content.trim(), type },
+          include: { sender: { select: { id: true, username: true, displayName: true, profileImage: true } } },
+        });
 
-        if (recipientSocketId) {
-          io.to(recipientSocketId).emit('friend:update', payload);
+        // Broadcast to all group members
+        const members = await prisma.groupMember.findMany({ where: { groupId } });
+        const payload = { ...message, tempId };
+        for (const m of members) {
+          io.to(`user:${m.userId}`).emit('group:message', payload);
         }
       } catch (err) {
-        console.error('❌ friend:notify error', err);
+        console.error('❌ group:message error', err);
+        socket.emit('error', 'Failed to send group message');
       }
     });
+
+    socket.on('group:typing', async (data: { groupId: string; isTyping: boolean }) => {
+      try {
+        const { groupId, isTyping } = data;
+        const members = await prisma.groupMember.findMany({ where: { groupId } });
+        const senderUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, displayName: true, username: true },
+        });
+        for (const m of members) {
+          if (m.userId === userId) continue;
+          io.to(`user:${m.userId}`).emit('group:typing', { groupId, userId, displayName: senderUser?.displayName || senderUser?.username, isTyping });
+        }
+      } catch (err) {
+        console.error('❌ group:typing error', err);
+      }
+    });
+
   });
 }
+
+

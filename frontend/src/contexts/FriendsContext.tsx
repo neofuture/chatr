@@ -25,6 +25,7 @@ interface FriendsContextValue {
   sendRequest: (addresseeId: string) => Promise<any>;
   acceptRequest: (friendshipId: string, requesterId: string) => Promise<boolean>;
   declineRequest: (friendshipId: string, otherUserId: string) => Promise<boolean>;
+  cancelRequest: (friendshipId: string, addresseeId: string) => Promise<boolean>;
   removeFriend: (friendshipId: string, otherUserId: string) => Promise<boolean>;
   blockUser: (targetUserId: string) => Promise<boolean>;
   unblockUser: (targetUserId: string) => Promise<boolean>;
@@ -72,7 +73,11 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!socket) return;
     const handler = (data: { type: string; friendshipId: string; from: AvailableUser }) => {
+      // Refresh our own friends data
       refresh();
+      // Also tell the conversation list to refresh
+      window.dispatchEvent(new CustomEvent('chatr:friends-changed', { detail: { action: data.type, targetUserId: data.from.id } }));
+
       const name = data.from.displayName || data.from.username;
       switch (data.type) {
         case 'request':
@@ -82,11 +87,16 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
           showToast(`${name} accepted your friend request`, 'success', 4000, undefined, undefined, 'Friend Accepted');
           break;
         case 'declined':
+          // The sender receives this — their request was declined
           showToast(`${name} declined your friend request`, 'warning', 4000, undefined, undefined, 'Friend Declined');
+          break;
+        case 'cancelled':
+          // The addressee receives this — the sender withdrew their request (silent, no toast)
           break;
         case 'removed':
           showToast(`${name} removed you as a friend`, 'warning', 4000, undefined, undefined, 'Friend Removed');
           break;
+        // blocked/unblocked are silent — no toast needed for the blocked party
       }
     };
     socket.on('friend:update', handler);
@@ -147,17 +157,51 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
     return res.ok;
   }, [socket, refresh]);
 
-  const declineRequest = useCallback(async (friendshipId: string, otherUserId: string) => {
+  const declineRequest = useCallback(async (friendshipId: string, requesterId: string) => {
+    // Look up the requester's name for the local toast
+    const requester = incoming.find(r => r.friendshipId === friendshipId);
+    const requesterName = requester
+      ? (requester.user.displayName || requester.user.username.replace(/^@/, ''))
+      : 'them';
+
     const res = await fetch(`${API}/api/friends/${friendshipId}/decline`, {
       method: 'POST',
       headers: authHeaders(),
     });
     if (res.ok) {
-      socket?.emit('friend:notify', { type: 'declined', addresseeId: otherUserId, friendshipId });
+      // Tell the original sender their request was declined
+      socket?.emit('friend:notify', { type: 'declined', addresseeId: requesterId, friendshipId });
+      // Show the decliner their own confirmation toast
+      showToast(`You declined the friend request from ${requesterName}`, 'info', 4000, undefined, undefined, 'Request Declined');
       await refresh();
     }
     return res.ok;
-  }, [socket, refresh]);
+  }, [socket, refresh, showToast, incoming]);
+
+  // Cancel an outgoing request that the current user sent
+  const cancelRequest = useCallback(async (friendshipId: string, addresseeId: string) => {
+    const outgoingReq = outgoing.find(r => r.friendshipId === friendshipId);
+    const addresseeName = outgoingReq
+      ? (outgoingReq.user.displayName || outgoingReq.user.username.replace(/^@/, ''))
+      : 'them';
+
+    const res = await fetch(`${API}/api/friends/${friendshipId}/decline`, {
+      method: 'POST',
+      headers: authHeaders(),
+    });
+    if (res.ok) {
+      // Silently notify the addressee so their UI removes the incoming request
+      socket?.emit('friend:notify', { type: 'cancelled', addresseeId, friendshipId });
+      showToast(`Friend request to ${addresseeName} cancelled`, 'info', 3000, undefined, undefined, 'Request Cancelled');
+      await refresh();
+      // Refresh search results so the "Pending" button resets
+      if (searchQuery.trim().length >= 2) {
+        const sr = await fetch(`${API}/api/friends/search?q=${encodeURIComponent(searchQuery)}`, { headers: authHeaders() });
+        setSearchResults((await sr.json()).users ?? []);
+      }
+    }
+    return res.ok;
+  }, [socket, refresh, showToast, outgoing, searchQuery]);
 
   const removeFriend = useCallback(async (friendshipId: string, otherUserId: string) => {
     const res = await fetch(`${API}/api/friends/${friendshipId}`, {
@@ -177,12 +221,12 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
       headers: authHeaders(),
     });
     if (res.ok) {
-      // Optimistic update fires immediately via the event; friends list refreshes too
+      socket?.emit('friend:notify', { type: 'blocked', addresseeId: targetUserId });
       refresh();
       window.dispatchEvent(new CustomEvent('chatr:friends-changed', { detail: { action: 'block', targetUserId } }));
     }
     return res.ok;
-  }, [refresh]);
+  }, [socket, refresh]);
 
   const unblockUser = useCallback(async (targetUserId: string) => {
     const res = await fetch(`${API}/api/friends/${targetUserId}/unblock`, {
@@ -190,18 +234,18 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
       headers: authHeaders(),
     });
     if (res.ok) {
-      // Optimistic update fires immediately via the event; friends list refreshes too
+      socket?.emit('friend:notify', { type: 'unblocked', addresseeId: targetUserId });
       refresh();
       window.dispatchEvent(new CustomEvent('chatr:friends-changed', { detail: { action: 'unblock', targetUserId } }));
     }
     return res.ok;
-  }, [refresh]);
+  }, [socket, refresh]);
 
   return (
     <FriendsContext.Provider value={{
       friends, incoming, outgoing, blocked, loading,
       searchQuery, setSearchQuery, searchResults, searching,
-      sendRequest, acceptRequest, declineRequest, removeFriend,
+      sendRequest, acceptRequest, declineRequest, cancelRequest, removeFriend,
       blockUser, unblockUser, refresh,
     }}>
       {children}

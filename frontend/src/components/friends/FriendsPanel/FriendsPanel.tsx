@@ -24,7 +24,7 @@ export default function FriendsPanel({ onStartChat }: Props) {
   const {
     friends, incoming, outgoing, blocked, loading,
     searchQuery, setSearchQuery, searchResults, searching,
-    sendRequest, acceptRequest, declineRequest, removeFriend, blockUser, unblockUser,
+    sendRequest, acceptRequest, declineRequest, cancelRequest, removeFriend, blockUser, unblockUser,
   } = useFriends();
 
 
@@ -81,7 +81,10 @@ export default function FriendsPanel({ onStartChat }: Props) {
                 </button>
               )}
               {fs?.status === 'pending' && fs.iRequested && (
-                <span className={styles.btnPending}><i className="fa-regular fa-clock" /> Pending</span>
+                <button className={styles.btnDecline} onClick={() => cancelRequest(fs.id, u.id)}
+                  title="Cancel friend request">
+                  <i className="fa-regular fa-clock" /> Cancel
+                </button>
               )}
               {fs?.status === 'pending' && !fs.iRequested && (
                 <>
@@ -228,8 +231,9 @@ export default function FriendsPanel({ onStartChat }: Props) {
                 showPresenceDot={false}
                 onAvatarClick={() => openUserProfile(r.user.id, dn(r.user), r.user.profileImage)}
                 actions={
-                  <button className={styles.btnDecline} onClick={() => declineRequest(r.friendshipId, r.user.id)}>
-                    Cancel
+                  <button className={styles.btnDecline} onClick={() => cancelRequest(r.friendshipId, r.user.id)}
+                    title="Cancel friend request">
+                    <i className="fa-solid fa-xmark" /> Cancel
                   </button>
                 }
               />
