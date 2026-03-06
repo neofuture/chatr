@@ -134,6 +134,8 @@ interface MessageBubbleProps {
   onAvatarClick?: (senderId: string, displayName: string, profileImage?: string | null) => void;
   /** The fixed-height scroll container — the overlay will portal into this */
   overlayContainerRef?: React.RefObject<HTMLDivElement | null>;
+  /** When 'pending', hide sent/delivered status to anonymise receipts until accepted */
+  conversationStatus?: 'pending' | 'accepted';
 }
 
 const REACTIONS = ['❤️', '😂', '😯', '😢', '😡', '👍'];
@@ -383,6 +385,7 @@ export default function MessageBubble({
   onReplyQuoteClick,
   onAvatarClick,
   overlayContainerRef,
+  conversationStatus,
 }: MessageBubbleProps) {
   const defaultRef = useRef<HTMLDivElement>(null);
   const endRef = messagesEndRef || defaultRef;
@@ -811,14 +814,21 @@ export default function MessageBubble({
                 )}
               </div>{/* end relative wrapper */}
 
-            {/* Status */}
-            {isSent && !isGroupedWithNext && (
+            {/* Status — shows 'Pending' while conversation is a pending request */}
+            {isSent && !isGroupedWithNext && (conversationStatus === 'pending'
+              ? (
+                <div className={`${styles.statusText} ${styles.statusPending}`} aria-label="Message pending acceptance">
+                  Pending
+                </div>
+              )
+              : (
               <div className={`${styles.statusText} ${statusClass} ${listeningMessageIds.has(msg.id) ? styles.statusListening : ''}`}
                 aria-label={listeningMessageIds.has(msg.id) ? 'Recipient is listening' : `Message ${statusText.toLowerCase()}`}>
                 {listeningMessageIds.has(msg.id)
                   ? <><i className={`fas fa-headphones ${styles.statusIcon}`} aria-hidden="true" />Listening...</>
                   : statusText}
               </div>
+              )
             )}
 
             </div>{/* end bubble column */}

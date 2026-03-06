@@ -1,6 +1,6 @@
 "use client";
 
- import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ConversationsList from "@/components/messaging/ConversationsList";
 import ConversationView from "@/components/messaging/ConversationView/ConversationView";
 import NewChatPanel from "@/components/messaging/NewChatPanel/NewChatPanel";
@@ -13,7 +13,6 @@ import { useToast } from "@/contexts/ToastContext";
 import { useConfirmation } from "@/contexts/ConfirmationContext";
 import { useFriends } from "@/hooks/useFriends";
 import { useMessageToast } from "@/hooks/useMessageToast";
-import { clearCachedConversation } from "@/lib/messageCache";
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -29,13 +28,15 @@ export default function AppPage() {
     refresh,
     clearUnread,
   } = useConversationList();
-  const { openPanel, closePanel } = usePanels();
+  const { openPanel, closePanel, panels, updatePanelActionIcons } = usePanels();
   const { userPresence, requestPresence, setSuppressedIds } = usePresence();
   const { socket } = useWebSocket();
   const { showToast } = useToast();
   const { showConfirmation } = useConfirmation();
   const { blockUser, removeFriend, unblockUser } = useFriends();
   const [selectedUserId, setSelectedUserId] = useState('');
+  // Per-user nuke ref map — ConversationView stores its nuke handler here on mount
+  const nukeRefs = useRef<Record<string, React.MutableRefObject<(() => Promise<void>) | null>>>({});
 
   const currentUserId = typeof window !== 'undefined'
     ? (() => { try { const t = localStorage.getItem('token'); if (!t) return ''; const p = JSON.parse(atob(t.split('.')[1])); return p.userId || ''; } catch { return ''; } })()
@@ -63,26 +64,32 @@ export default function AppPage() {
     }
   }, [conversations, requestPresence]);
 
-  const handleSelectUser = useCallback((id: string, userData?: { displayName: string | null; username: string; profileImage: string | null }) => {
-    const user: ConversationUser | undefined = conversations.find(u => u.id === id);
-    setSelectedUserId(id);
-    clearUnread(id);
+  /**
+   * Keep a live ref to conversations so onClick handlers always read fresh state.
+   */
+  const conversationsRef = useRef(conversations);
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
-    const displayName = userData?.displayName || userData?.username
-      || user?.displayName || user?.username || id;
-    const convoStatus = user?.conversationStatus;
-    const convoId = user?.conversationId;
-    const isInitiator = user?.isInitiator ?? false;
-    const profileImage = userData?.profileImage ?? user?.profileImage ?? undefined;
-    const isFriend = user?.isFriend ?? false;
-    const friendshipId = user?.friendshipId ?? null;
-    const hasPendingFriendship = !!user?.friendship && user.friendship.status === 'pending';
-    const isBlocked = user?.isBlocked ?? false;
-    const blockedByMe = user?.blockedByMe ?? false;
+  /**
+   * Build action icons for a chat panel.
+   * - Which items are SHOWN is determined by `snap` (the user data at build time).
+   * - onClick handlers always read the LIVE friendshipId etc. from conversationsRef
+   *   so they work correctly even if the icon was built with slightly stale state.
+   */
+  const buildActionIcons = useCallback((userId: string, snap?: ConversationUser): ActionIcon[] => {
+    const name = snap?.displayName || snap?.username || userId;
+    const isFriend        = snap?.isFriend      ?? false;
+    const friendshipId    = snap?.friendshipId   ?? null;
+    const hasPending      = !!snap?.friendship   && snap.friendship.status === 'pending';
+    const isBlockedByMe   = snap?.blockedByMe    ?? false;
+    // isBlocked means either party blocked — don't show "block" if already blocked
+    const isBlocked       = snap?.isBlocked      ?? false;
 
-    const submenuItems: ActionIcon['submenu'] = [];
-    if (!isFriend && !hasPendingFriendship) {
-      submenuItems.push({
+    const items: ActionIcon['submenu'] = [];
+
+    // ── Add friend ── visible when: not a friend, no pending request, not blocked
+    if (!isFriend && !hasPending && !isBlocked) {
+      items.push({
         icon: 'fas fa-user-plus',
         label: 'Add friend',
         onClick: async () => {
@@ -91,15 +98,11 @@ export default function AppPage() {
             const res = await fetch(`${API}/api/friends/request`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ addresseeId: id }),
+              body: JSON.stringify({ addresseeId: userId }),
             });
             if (res.ok) {
               const data = await res.json();
-              socket?.emit('friend:notify', {
-                type: 'request',
-                addresseeId: id,
-                friendshipId: data.friendship.id,
-              });
+              socket?.emit('friend:notify', { type: 'request', addresseeId: userId, friendshipId: data.friendship.id });
               showToast('Friend request sent', 'success');
               refresh();
             } else {
@@ -112,79 +115,153 @@ export default function AppPage() {
         },
       });
     }
-    if (isFriend && friendshipId) {
-      submenuItems.push({
+
+    // ── Remove friend ── visible when: currently friends
+    if (isFriend) {
+      items.push({
         icon: 'fas fa-user-minus',
         label: 'Remove friend',
         onClick: async () => {
-          const result = await showConfirmation({
+          // Read live friendshipId in case it changed since the icon was built
+          const live = conversationsRef.current.find(u => u.id === userId);
+          const liveFriendshipId = live?.friendshipId ?? friendshipId;
+          if (!liveFriendshipId) { showToast('Could not find friendship', 'error'); return; }
+          const ok = await showConfirmation({
             title: 'Remove Friend',
-            message: `Are you sure you want to remove ${displayName} from your friends?`,
+            message: `Remove ${name} from your friends?`,
             urgency: 'warning',
             actions: [
               { label: 'Cancel', variant: 'secondary', value: false },
               { label: 'Remove', variant: 'destructive', value: true },
             ],
           });
-          if (result !== true) return;
+          if (ok !== true) return;
           try {
-            await removeFriend(friendshipId, id);
+            await removeFriend(liveFriendshipId, userId);
             refresh();
-          } catch (e) {
-            console.error('Failed to remove friend:', e);
+          } catch {
             showToast('Failed to remove friend', 'error');
           }
         },
       });
     }
-    if (!isBlocked) {
-      submenuItems.push({
+
+    // ── Block ── visible when: I have NOT already blocked them
+    if (!isBlockedByMe) {
+      items.push({
         icon: 'fas fa-ban',
         label: 'Block',
         variant: 'danger',
         onClick: async () => {
-          const result = await showConfirmation({
+          const ok = await showConfirmation({
             title: 'Block User',
-            message: 'Are you sure you want to block this user? Their messages will be disabled but the conversation history will remain.',
+            message: 'Block this user? They will no longer be able to message you.',
             urgency: 'danger',
             actions: [
               { label: 'Cancel', variant: 'secondary', value: false },
               { label: 'Block', variant: 'destructive', value: true },
             ],
           });
-          if (result !== true) return;
+          if (ok !== true) return;
           try {
-            await blockUser(id);
-            closePanel(`chat-${id}`);
-          } catch (e) {
-            console.error('Failed to block user:', e);
+            await blockUser(userId);
+            closePanel(`chat-${userId}`);
+            refresh();
+          } catch {
             showToast('Failed to block user', 'error');
           }
         },
       });
     }
-    if (isBlocked && blockedByMe) {
-      submenuItems.push({
+
+    // ── Unblock ── visible when: I have blocked them
+    if (isBlockedByMe) {
+      items.push({
         icon: 'fas fa-lock-open',
         label: 'Unblock',
         onClick: async () => {
           try {
-            await unblockUser(id);
-            closePanel(`chat-${id}`);
-          } catch (e) {
-            console.error('Failed to unblock user:', e);
+            await unblockUser(userId);
+            closePanel(`chat-${userId}`);
+            refresh();
+          } catch {
             showToast('Failed to unblock user', 'error');
           }
         },
       });
     }
 
-    const actionIcons: ActionIcon[] = submenuItems.length > 0 ? [{
+    // ── Delete conversation ── always visible
+    items.push({
+      icon: 'fas fa-radiation',
+      label: 'Delete conversation',
+      variant: 'danger',
+      onClick: async () => {
+        const nukeHandler = nukeRefs.current[userId]?.current;
+        if (nukeHandler) {
+          await nukeHandler();
+        } else {
+          showToast('Could not delete conversation', 'error');
+        }
+      },
+    });
+
+    // Always return the ellipsis button — even if only block is present
+    return [{
       icon: 'fas fa-ellipsis-vertical',
       label: 'More options',
       onClick: () => {},
-      submenu: submenuItems,
-    }] : [];
+      submenu: items,
+    }];
+  }, [socket, showToast, showConfirmation, refresh, blockUser, removeFriend, unblockUser, closePanel]);
+
+  /**
+   * When conversations update, refresh the visible menu items for any open chat panel.
+   * We use a ref to track the previous key so we only patch when something meaningful changed.
+   */
+  const panelStatusKeyRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    for (const panel of panels) {
+      if (!panel.id.startsWith('chat-') || panel.isClosing) continue;
+      const userId = panel.id.slice(5);
+      const user = conversations.find(u => u.id === userId);
+      if (!user) continue;
+
+      const key = `${user.isFriend ? 1 : 0}|${user.friendshipId ?? ''}|${user.isBlocked ? 1 : 0}|${user.blockedByMe ? 1 : 0}|${user.friendship?.status ?? ''}`;
+      if (panelStatusKeyRef.current[userId] === key) continue;
+      panelStatusKeyRef.current[userId] = key;
+
+      updatePanelActionIcons(panel.id, buildActionIcons(userId, user));
+    }
+  // panels intentionally omitted — we don't want panel changes to re-trigger this
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations, buildActionIcons, updatePanelActionIcons]);
+
+  const handleSelectUser = useCallback((id: string, userData?: { displayName: string | null; username: string; profileImage: string | null }) => {
+    const user: ConversationUser | undefined = conversations.find(u => u.id === id);
+    setSelectedUserId(id);
+    clearUnread(id);
+
+    const displayName = userData?.displayName || userData?.username
+      || user?.displayName || user?.username || id;
+    const convoStatus = user?.conversationStatus;
+    const convoId = user?.conversationId;
+    const isInitiator = user?.isInitiator ?? false;
+    const profileImage = userData?.profileImage ?? user?.profileImage ?? undefined;
+    const isBlocked = user?.isBlocked ?? false;
+    const blockedByMe = user?.blockedByMe ?? false;
+
+    // Ensure a stable ref exists for this user's nuke handler
+    if (!nukeRefs.current[id]) {
+      nukeRefs.current[id] = { current: null };
+    }
+    const nukeRef = nukeRefs.current[id];
+
+    // Clear the status key so the update effect sets fresh icons if this panel was previously open
+    if (panelStatusKeyRef.current[id]) {
+      delete panelStatusKeyRef.current[id];
+    }
 
     openPanel(
       `chat-${id}`,
@@ -197,15 +274,16 @@ export default function AppPage() {
         onConversationAccepted={refresh}
         isBlocked={isBlocked}
         blockedByMe={blockedByMe}
+        nukeRef={nukeRef}
       />,
       displayName,
       'left',
       undefined,
       profileImage ?? undefined,
       true,
-      actionIcons.length > 0 ? actionIcons : undefined,
+      buildActionIcons(id, user),
     );
-  }, [conversations, clearUnread, openPanel, closePanel, isDark, refresh, socket, showToast, showConfirmation, blockUser, removeFriend, unblockUser, currentUserId]);
+  }, [conversations, clearUnread, openPanel, isDark, refresh, buildActionIcons]);
 
   const openNewChatPanel = useCallback(() => {
     openPanel(
@@ -246,3 +324,4 @@ export default function AppPage() {
     </div>
   );
 }
+

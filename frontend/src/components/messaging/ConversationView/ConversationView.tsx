@@ -24,6 +24,8 @@ export interface ConversationViewProps {
   onConversationAccepted?: () => void;
   isBlocked?: boolean;
   blockedByMe?: boolean;
+  /** Parent passes a ref; ConversationView stores its nuke handler into it on mount */
+  nukeRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
 
 function getCurrentUserId(): string {
@@ -45,6 +47,7 @@ export default function ConversationView({
   onConversationAccepted,
   isBlocked: initialBlocked = false,
   blockedByMe: initialBlockedByMe = false,
+  nukeRef,
 }: ConversationViewProps) {
   const [currentUserId] = useState<string>(getCurrentUserId);
   const [localStatus, setLocalStatus] = useState(conversationStatus);
@@ -84,7 +87,14 @@ export default function ConversationView({
     cancelEdit,
     setReplyingTo,
     setEditingMessage,
-  } = useConversationView({ recipientId, currentUserId });
+  } = useConversationView({
+    recipientId,
+    currentUserId,
+    onConversationAccepted: () => {
+      // Recipient accepted — flip localStatus so status indicators become visible
+      setLocalStatus('accepted');
+    },
+  });
 
   // Pick up conversationId from the backend when the first message is sent/received
   const { socket } = useWebSocket();
@@ -94,7 +104,6 @@ export default function ConversationView({
       if (data.conversationId && data.recipientId === recipientId) {
         setLocalConvoId(data.conversationId);
         if (data.conversationStatus) setLocalStatus(data.conversationStatus);
-        // We sent this message, so we are the initiator
         setLocalIsInitiator(true);
       }
     };
@@ -102,7 +111,6 @@ export default function ConversationView({
       if (data.conversationId && data.senderId === recipientId) {
         setLocalConvoId(data.conversationId);
         if (data.conversationStatus) setLocalStatus(data.conversationStatus);
-        // They sent the message to us, so we are NOT the initiator
         setLocalIsInitiator(false);
       }
     };
@@ -113,6 +121,7 @@ export default function ConversationView({
       socket.off('message:received', onReceived);
     };
   }, [socket, localConvoId, recipientId]);
+
 
   const [blockedReason, setBlockedReason] = useState(
     initialBlockedByMe ? 'You have blocked this user' : ''
@@ -243,7 +252,16 @@ export default function ConversationView({
 
 
   const handleNuke = useCallback(async () => {
-    if (!confirm('Nuke this conversation? All messages will be permanently deleted for both users.')) return;
+    const confirmed = await showConfirmation({
+      title: 'Delete Conversation',
+      message: 'Permanently delete all messages for both users? This cannot be undone.',
+      urgency: 'danger',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Delete', variant: 'destructive', value: true },
+      ],
+    });
+    if (!confirmed) return;
     setNuking(true);
     try {
       const token = localStorage.getItem('token');
@@ -254,23 +272,24 @@ export default function ConversationView({
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      // Clear local IndexedDB cache for this conversation
       if (currentUserId) {
         await clearCachedConversation(currentUserId, recipientId);
       }
-
-      // Refresh the conversation list
       onConversationAccepted?.();
-
-      // Close the chat panel
       closePanel(`chat-${recipientId}`);
     } catch (e) {
       console.error('Failed to nuke conversation:', e);
     } finally {
       setNuking(false);
     }
-  }, [localConvoId, recipientId, currentUserId, onConversationAccepted, closePanel]);
+  }, [localConvoId, recipientId, currentUserId, onConversationAccepted, closePanel, showConfirmation]);
+
+  // Keep nukeRef.current pointing at the latest handleNuke so the parent menu can call it.
+  // This effect MUST be after handleNuke is defined.
+  useEffect(() => {
+    if (nukeRef) nukeRef.current = handleNuke;
+    return () => { if (nukeRef) nukeRef.current = null; };
+  }, [nukeRef, handleNuke]);
 
   // When user replies to a pending request, auto-accept locally
   const handleMessageSentWrapper = useCallback((msg: any) => {
@@ -318,6 +337,7 @@ export default function ConversationView({
           onEdit={setEditingMessage}
           currentUserId={currentUserId}
           onAvatarClick={(senderId, displayName, profileImage) => openUserProfile(senderId, displayName, profileImage)}
+          conversationStatus={localStatus}
         />
       </div>
 
@@ -444,33 +464,6 @@ export default function ConversationView({
         />
       )}
 
-      {/* Floating nuke button (testing utility) */}
-      <button
-        onClick={handleNuke}
-        disabled={nuking}
-        title="Delete conversation and all messages for both users"
-        style={{
-          position: 'absolute',
-          top: '8px',
-          right: '8px',
-          zIndex: 10,
-          width: '30px',
-          height: '30px',
-          borderRadius: '50%',
-          border: 'none',
-          backgroundColor: isDark ? 'rgba(127,29,29,0.5)' : 'rgba(239,68,68,0.12)',
-          color: '#ef4444',
-          fontSize: '12px',
-          cursor: nuking ? 'wait' : 'pointer',
-          opacity: nuking ? 0.4 : 0.7,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'opacity 0.15s',
-        }}
-      >
-        <i className={nuking ? 'fas fa-spinner fa-spin' : 'fas fa-radiation'} />
-      </button>
 
       {/* Lightbox */}
       {lightboxUrl && (

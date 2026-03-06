@@ -1573,6 +1573,8 @@ h1 {
   backdrop-filter: blur(10px);
   min-height: 56px;
   position: relative;
+  z-index: 10;
+  overflow: visible;
 }
 
 [data-theme='light'] .auth-panel-header {

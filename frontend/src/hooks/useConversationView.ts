@@ -11,9 +11,10 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 export interface UseConversationViewOptions {
   recipientId: string;
   currentUserId: string;
+  onConversationAccepted?: () => void;
 }
 
-export function useConversationView({ recipientId, currentUserId }: UseConversationViewOptions) {
+export function useConversationView({ recipientId, currentUserId, onConversationAccepted }: UseConversationViewOptions) {
   const { socket, connected } = useWebSocket();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -292,6 +293,27 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
     };
     socket.on('message:blocked', onMessageBlocked);
 
+    // When the recipient accepts our message request, all previously sent messages
+    // should at minimum show as 'delivered'. Fire the callback so ConversationView
+    // can also flip localStatus → 'accepted' to un-suppress the status indicators.
+    const onConversationAcceptedEvt = ({ acceptedBy }: { conversationId: string; acceptedBy: string }) => {
+      if (acceptedBy !== recipientId) return; // only care about this conversation
+      setMessages(prev => {
+        const updated = prev.map(m => {
+          if (m.direction !== 'sent' || m.unsent) return m;
+          // Only upgrade — don't downgrade a message already at 'read'
+          if (m.status === 'queued' || m.status === 'sending' || m.status === 'sent') {
+            updateCachedMessage(m.id, { status: 'delivered' }).catch(console.error);
+            return { ...m, status: 'delivered' as Message['status'] };
+          }
+          return m;
+        });
+        return updated;
+      });
+      onConversationAccepted?.();
+    };
+    socket.on('conversation:accepted', onConversationAcceptedEvt);
+
     return () => {
       socket.off('message:received', onMessageReceived);
       socket.off('message:sent', onMessageSent);
@@ -303,6 +325,7 @@ export function useConversationView({ recipientId, currentUserId }: UseConversat
       socket.off('audio:recording', onAudioRecording);
       socket.off('audio:waveform', onAudioWaveform);
       socket.off('message:blocked', onMessageBlocked);
+      socket.off('conversation:accepted', onConversationAcceptedEvt);
     };
   }, [socket, recipientId, currentUserId]);
 

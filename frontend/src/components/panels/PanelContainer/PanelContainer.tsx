@@ -2,6 +2,7 @@
 
 import { usePanels, ActionIcon } from '@/contexts/PanelContext';
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getProfileImageURL } from '@/lib/profileImageService';
 import { usePresence } from '@/contexts/PresenceContext';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
@@ -88,7 +89,9 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentProfileImage, setCurrentProfileImage] = useState<string | undefined>(profileImage);
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null);
+  const [submenuPos, setSubmenuPos] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const btnRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Load actual user profile image if a generic marker is provided
   useEffect(() => {
@@ -122,13 +125,18 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
   // Is this panel covered by another panel? Use effectiveMaxLevel to exclude closing panels
   const isCovered = level < effectiveMaxLevel;
 
-  // Click-outside to close submenu
+  // Click-outside to close submenu — must also allow clicks inside the portalled submenu
   useEffect(() => {
     if (openMenuIndex === null) return;
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenuIndex(null);
-      }
+      const target = e.target as Node;
+      // Allow clicks inside the trigger button area
+      if (menuRef.current && menuRef.current.contains(target)) return;
+      // Allow clicks inside the portalled submenu (rendered in document.body)
+      const portalMenu = document.querySelector(`.${styles.submenu}`);
+      if (portalMenu && portalMenu.contains(target)) return;
+      setOpenMenuIndex(null);
+      setSubmenuPos(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -139,6 +147,7 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
     if (isClosing) {
       setIsAnimating(false);
       setOpenMenuIndex(null);
+      setSubmenuPos(null);
       return;
     }
 
@@ -239,15 +248,37 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
               action.submenu && action.submenu.length > 0 ? (
                 <div key={index} className={styles.menuWrap}>
                   <button
-                    onClick={() => setOpenMenuIndex(openMenuIndex === index ? null : index)}
+                    ref={el => { btnRefs.current[index] = el; }}
+                    onClick={() => {
+                      if (openMenuIndex === index) {
+                        setOpenMenuIndex(null);
+                        setSubmenuPos(null);
+                      } else {
+                        const btn = btnRefs.current[index];
+                        if (btn) {
+                          const rect = btn.getBoundingClientRect();
+                          // Position below the header (use the bottom of the header bar)
+                          const header = btn.closest('.auth-panel-header');
+                          const headerBottom = header ? header.getBoundingClientRect().bottom : rect.bottom;
+                          setSubmenuPos({
+                            top: headerBottom + 4,
+                            right: window.innerWidth - rect.right,
+                          });
+                        }
+                        setOpenMenuIndex(index);
+                      }
+                    }}
                     aria-label={action.label || 'Menu'}
                     aria-expanded={openMenuIndex === index}
                     className={styles.actionBtn}
                   >
                     <i className={action.icon}></i>
                   </button>
-                  {openMenuIndex === index && (
-                    <div className={styles.submenu}>
+                  {openMenuIndex === index && submenuPos && createPortal(
+                    <div
+                      className={styles.submenu}
+                      style={{ top: submenuPos.top, right: submenuPos.right }}
+                    >
                       {action.submenu.map((item, i) => (
                         <button
                           key={i}
@@ -255,13 +286,15 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
                           onClick={() => {
                             item.onClick();
                             setOpenMenuIndex(null);
+                            setSubmenuPos(null);
                           }}
                         >
                           <i className={item.icon} />
                           <span>{item.label}</span>
                         </button>
                       ))}
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </div>
               ) : (

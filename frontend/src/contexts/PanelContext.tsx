@@ -34,6 +34,8 @@ interface Panel {
 interface PanelContextType {
   panels: Panel[];
   openPanel: (id: string, component: ReactNode, title?: string, titlePosition?: 'center' | 'left' | 'right', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[], footer?: () => ReactNode) => void;
+  /** Patch only the actionIcons of an existing panel — does NOT re-mount its component */
+  updatePanelActionIcons: (id: string, actionIcons: ActionIcon[] | undefined) => void;
   closePanel: (id: string) => void;
   closeTopPanel: () => void;
   closeAllPanels: () => void;
@@ -94,6 +96,16 @@ export function PanelProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updatePanelActionIcons = (id: string, actionIcons: ActionIcon[] | undefined) => {
+    setPanels((prev) => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (idx === -1) return prev; // panel not open, no-op
+      const next = [...prev];
+      next[idx] = { ...next[idx], actionIcons };
+      return next;
+    });
+  };
+
   const closePanel = (id: string) => {
     setPanels((prev) => {
       const panel = prev.find((p) => p.id === id);
@@ -149,7 +161,7 @@ export function PanelProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <PanelContext.Provider value={{ panels, openPanel, closePanel, closeTopPanel, closeAllPanels, maxLevel, effectiveMaxLevel }}>
+    <PanelContext.Provider value={{ panels, openPanel, updatePanelActionIcons, closePanel, closeTopPanel, closeAllPanels, maxLevel, effectiveMaxLevel }}>
       {children}
     </PanelContext.Provider>
   );

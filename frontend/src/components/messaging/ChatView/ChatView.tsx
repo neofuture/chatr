@@ -37,6 +37,8 @@ export interface ChatViewProps {
   currentUserId?: string;
   /** Called when a received message avatar is clicked */
   onAvatarClick?: (senderId: string, displayName: string, profileImage?: string | null) => void;
+  /** When 'pending', hide sent/delivered status to anonymise receipts until accepted */
+  conversationStatus?: 'pending' | 'accepted';
 }
 
 export default function ChatView({
@@ -59,6 +61,7 @@ export default function ChatView({
   onEdit,
   currentUserId,
   onAvatarClick,
+  conversationStatus,
 }: ChatViewProps) {
   const scrollRef      = useRef<HTMLDivElement>(null);
   const overlayRef     = useRef<HTMLDivElement>(null);
@@ -239,6 +242,7 @@ export default function ChatView({
             onEdit={onEdit}
             currentUserId={currentUserId}
             onAvatarClick={onAvatarClick}
+            conversationStatus={conversationStatus}
           />
         )}
       </div>
