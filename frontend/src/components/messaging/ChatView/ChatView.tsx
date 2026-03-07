@@ -39,6 +39,8 @@ export interface ChatViewProps {
   onAvatarClick?: (senderId: string, displayName: string, profileImage?: string | null) => void;
   /** When 'pending', hide sent/delivered status to anonymise receipts until accepted */
   conversationStatus?: 'pending' | 'accepted';
+  /** True when the conversation partner is the AI bot — purple bubble + ring */
+  isBot?: boolean;
 }
 
 export default function ChatView({
@@ -62,6 +64,7 @@ export default function ChatView({
   currentUserId,
   onAvatarClick,
   conversationStatus,
+  isBot = false,
 }: ChatViewProps) {
   const scrollRef      = useRef<HTMLDivElement>(null);
   const overlayRef     = useRef<HTMLDivElement>(null);
@@ -243,6 +246,7 @@ export default function ChatView({
             currentUserId={currentUserId}
             onAvatarClick={onAvatarClick}
             conversationStatus={conversationStatus}
+            isBot={isBot}
           />
         )}
       </div>

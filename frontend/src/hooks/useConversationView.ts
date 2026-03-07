@@ -12,9 +12,11 @@ export interface UseConversationViewOptions {
   recipientId: string;
   currentUserId: string;
   onConversationAccepted?: () => void;
+  /** Profile image URL for the recipient — stamped onto received messages for display */
+  recipientProfileImage?: string | null;
 }
 
-export function useConversationView({ recipientId, currentUserId, onConversationAccepted }: UseConversationViewOptions) {
+export function useConversationView({ recipientId, currentUserId, onConversationAccepted, recipientProfileImage }: UseConversationViewOptions) {
   const { socket, connected } = useWebSocket();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -149,6 +151,10 @@ export function useConversationView({ recipientId, currentUserId, onConversation
       // Map socket field names → MessageBubble field names
       waveformData: data.waveformData ?? data.waveform ?? undefined,
       duration: data.duration ?? data.audioDuration ?? undefined,
+      // Stamp recipient's profile image onto received messages if not already set
+      senderProfileImage: dir === 'received'
+        ? (data.senderProfileImage ?? recipientProfileImage ?? null)
+        : (data.senderProfileImage ?? null),
     });
 
     const onMessageReceived = (data: any) => {
@@ -348,6 +354,10 @@ export function useConversationView({ recipientId, currentUserId, onConversation
           timestamp: new Date(m.timestamp ?? m.createdAt),
           waveformData: m.waveformData ?? m.waveform ?? undefined,
           duration: m.duration ?? m.audioDuration ?? undefined,
+          // Stamp recipient's profile image onto received messages if API didn't provide one
+          senderProfileImage: m.senderId !== currentUserId
+            ? (m.senderProfileImage ?? recipientProfileImage ?? null)
+            : (m.senderProfileImage ?? null),
         })) as Message[];
 
         // Re-attach any still-queued messages that haven't been confirmed yet

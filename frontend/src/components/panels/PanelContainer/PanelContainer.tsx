@@ -8,6 +8,7 @@ import { usePresence } from '@/contexts/PresenceContext';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PanelFooter from '@/components/PanelFooter/PanelFooter';
+import { isAIBot } from '@/lib/aiBot';
 import styles from './PanelContainer.module.css';
 
 /** True when we have no real presence data (suppress "last seen a while ago") */
@@ -20,12 +21,15 @@ function PresenceAvatarForPanel({ panelId, profileImage, title }: { panelId: str
   const { getPresence } = usePresence();
   const userId = panelId.startsWith('chat-') ? panelId.slice(5) : null;
   if (!userId) return profileImage ? <img src={profileImage} alt={title} /> : null;
+  const bot = isAIBot(userId);
   const info = getPresence(userId);
   // When presence is unknown/hidden, render avatar without status dot
-  const effectiveInfo = shouldHidePresence(info)
+  const effectiveInfo = bot
+    ? { status: 'online' as const, lastSeen: null }
+    : shouldHidePresence(info)
     ? { status: 'offline' as const, lastSeen: null, hidden: true }
     : info;
-  return <PresenceAvatar displayName={title} profileImage={profileImage} info={effectiveInfo} size={36} />;
+  return <PresenceAvatar displayName={title} profileImage={profileImage} info={effectiveInfo} size={36} isBot={bot} showDot={!bot} />;
 }
 
 /** Renders the subtitle row, or nothing when user hides their status */
@@ -39,6 +43,15 @@ function PanelSubTitle({ panelId, staticSubTitle }: { panelId: string; staticSub
     return (
       <div className={styles.titleSub}>
         <span className={styles.titleSubText}>{staticSubTitle}</span>
+      </div>
+    );
+  }
+
+  // AI bot: show a fixed subtitle
+  if (isAIBot(userId)) {
+    return (
+      <div className={styles.titleSub}>
+        <span className={styles.titleSubText} style={{ color: '#a78bfa' }}>AI Assistant · Always online</span>
       </div>
     );
   }

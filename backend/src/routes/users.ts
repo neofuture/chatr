@@ -144,6 +144,7 @@ router.get('/search', authenticateToken as any, async (req: any, res: any) => {
         lastName: true,
         profileImage: true,
         lastSeen: true,
+        isBot: true,
       },
       take: 30,
     });
@@ -234,6 +235,7 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
         lastName: true,
         profileImage: true,
         lastSeen: true,
+         isBot: true,
       },
     });
 
@@ -337,7 +339,57 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
       })
     );
 
-    const result = { conversations: withMessages };
+    // ── Always inject the AI bot at the top of the list ──────────────────
+    const AI_BOT_ID = process.env.AI_BOT_USER_ID;
+    let conversations = withMessages;
+    if (AI_BOT_ID) {
+      // Determine which AI avatar to show — opposite of the current user's gender
+      const currentUser = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { gender: true },
+      });
+      const gender = currentUser?.gender ?? null;
+      const botImagePath =
+        gender === 'male'   ? '/images/ai/female-sm.jpg' :
+        gender === 'female' ? '/images/ai/male-sm.jpg'   :
+                              '/images/ai/them-sm.jpg';   // non-binary, prefer-not-to-say, or unset
+
+      // Only inject if bot user is not already in the list (i.e. they haven't messaged yet)
+      const botAlreadyPresent = withMessages.some(c => c.id === AI_BOT_ID);
+      if (!botAlreadyPresent) {
+        const botUser = await prisma.user.findUnique({
+          where: { id: AI_BOT_ID },
+          select: {
+            id: true, username: true, displayName: true,
+            firstName: true, lastName: true,
+            profileImage: true, lastSeen: true, isBot: true,
+          },
+        });
+        if (botUser) {
+          const botEntry = {
+            ...botUser,
+            profileImage: botImagePath,
+            lastMessage: null,
+            unreadCount: 0,
+            lastMessageAt: null,
+            conversationId: null,
+            conversationStatus: 'accepted' as 'accepted' | 'pending',
+            isInitiator: false,
+            isFriend: false,
+            friendshipId: null,
+            isBlocked: false,
+            blockedByMe: false,
+          };
+          conversations = [botEntry as unknown as typeof withMessages[0], ...withMessages];
+        }
+      } else {
+        // Bot is already in the list — move it to the top and apply the avatar
+        const botEntry = { ...withMessages.find(c => c.id === AI_BOT_ID)!, profileImage: botImagePath };
+        conversations = [botEntry, ...withMessages.filter(c => c.id !== AI_BOT_ID)];
+      }
+    }
+
+    const result = { conversations };
 
     // Cache in Redis (fire-and-forget)
     setCachedConversations(currentUserId, JSON.stringify(result)).catch(() => {});
@@ -661,6 +713,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         showOnlineStatus: true,
         showPhoneNumber: true,
         showEmail: true,
+        gender: true,
       },
     });
 
@@ -681,14 +734,20 @@ router.put('/me', authenticateToken as any, async (req: any, res: any) => {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
-    const { displayName } = req.body;
+    const { displayName, gender } = req.body;
+
+    const validGenders = ['male', 'female', 'non-binary', 'prefer-not-to-say'];
+    if (gender !== undefined && gender !== null && gender !== '' && !validGenders.includes(gender)) {
+      return res.status(400).json({ error: 'Invalid gender value' });
+    }
 
     const updated = await prisma.user.update({
       where: { id: userId },
       data: {
         ...(displayName !== undefined ? { displayName: displayName || null } : {}),
+        ...(gender !== undefined ? { gender: gender || null } : {}),
       },
-      select: { id: true, username: true, displayName: true, profileImage: true },
+      select: { id: true, username: true, displayName: true, profileImage: true, gender: true },
     });
 
     res.json(updated);

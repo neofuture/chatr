@@ -31,6 +31,7 @@ export interface ConversationUser {
   friendshipId?: string | null;
   isBlocked?: boolean;
   blockedByMe?: boolean;
+  isBot?: boolean;
   // set by socket events
   isOnline?: boolean;
   // set by search results

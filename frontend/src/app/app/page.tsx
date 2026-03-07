@@ -83,6 +83,28 @@ export default function AppPage() {
    *   so they work correctly even if the icon was built with slightly stale state.
    */
   const buildActionIcons = useCallback((userId: string, snap?: ConversationUser): ActionIcon[] => {
+    // AI bot only gets delete conversation
+    if (snap?.isBot) {
+      return [{
+        icon: 'fas fa-ellipsis-vertical',
+        label: 'More options',
+        onClick: () => {},
+        submenu: [{
+          icon: 'fas fa-radiation',
+          label: 'Delete conversation',
+          variant: 'danger',
+          onClick: async () => {
+            const nukeHandler = nukeRefs.current[userId]?.current;
+            if (nukeHandler) {
+              await nukeHandler();
+            } else {
+              showToast('Could not delete conversation', 'error');
+            }
+          },
+        }],
+      }];
+    }
+
     const name = snap?.displayName || snap?.username || userId;
     const isFriend        = snap?.isFriend      ?? false;
     const friendshipId    = snap?.friendshipId   ?? null;
@@ -280,6 +302,7 @@ export default function AppPage() {
         onConversationAccepted={refresh}
         isBlocked={isBlocked}
         blockedByMe={blockedByMe}
+        recipientProfileImage={profileImage ?? null}
         nukeRef={nukeRef}
       />,
       displayName,

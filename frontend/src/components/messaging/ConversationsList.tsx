@@ -401,14 +401,15 @@ export default function ConversationsList({
             const lastMsg = user.lastMessage;
             const lastMsgTime = user.lastMessageAt ? new Date(user.lastMessageAt) : null;
             const isPending = user.conversationStatus === 'pending';
-            const isIncomingRequest = isPending && !user.isInitiator;
-            const isOutgoingPending = isPending && user.isInitiator;
-            // Hide presence from sender until message request is accepted
-            const info: PresenceInfo = isOutgoingPending
+            // Bot conversations are never pending from the user's perspective
+            const isIncomingRequest = isPending && !user.isInitiator && !user.isBot;
+            const isOutgoingPending = isPending && user.isInitiator && !user.isBot;
+            // Hide presence from sender until message request is accepted; bots are always shown
+            const info: PresenceInfo = (isOutgoingPending && !user.isBot)
               ? { status: 'offline', lastSeen: null, hidden: true }
               : (userPresence[user.id] ?? { status: 'offline', lastSeen: null });
             const isHidden = !!info.hidden;
-            const canFlip = !!lastMsg && !isHidden;
+            const canFlip = !!lastMsg && !isHidden && !user.isBot;
 
             return (
               <button
@@ -422,16 +423,24 @@ export default function ConversationsList({
                     : unread > 0
                     ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)')
                     : 'transparent',
-                  borderLeft: isSelected ? '3px solid #3b82f6' : unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
+                  borderLeft: isSelected
+                    ? '3px solid #3b82f6'
+                    : unread > 0
+                    ? '3px solid #ef4444'
+                    : user.isBot
+                    ? '3px solid #0891b2'
+                    : '3px solid transparent',
                   transition: 'background-color 0.15s',
                 }}
               >
                 <PresenceAvatar
                   displayName={displayName}
                   profileImage={user.profileImage}
-                  info={info}
+                  info={user.isBot ? { status: 'online', lastSeen: null } : info}
                   size={50}
-                  onClick={(e) => { e.stopPropagation(); openUserProfile(user.id, displayName, user.profileImage); }}
+                  isBot={user.isBot}
+                  showDot={!user.isBot}
+                  onClick={(e) => { e.stopPropagation(); if (!user.isBot) openUserProfile(user.id, displayName, user.profileImage); }}
                 />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -443,7 +452,19 @@ export default function ConversationsList({
                       display: 'flex', alignItems: 'center', gap: '5px',
                     }}>
                       {displayName}
-                      {user.blockedByMe ? (
+                      {user.isBot ? (
+                        <span style={{
+                          fontSize: '9px', fontWeight: '700',
+                          color: '#0891b2',
+                          border: '1px solid #0891b2',
+                          borderRadius: '4px',
+                          padding: '1px 4px',
+                          lineHeight: '1.2',
+                          flexShrink: 0,
+                        }}>
+                          AI
+                        </span>
+                      ) : user.blockedByMe ? (
                         <span style={{
                           fontSize: '9px', fontWeight: '600',
                           color: '#ef4444',
@@ -500,7 +521,7 @@ export default function ConversationsList({
                       <div style={{
                         position: 'absolute', inset: 0,
                         fontSize: '12px',
-                        color: isDark ? '#94a3b8' : '#64748b',
+                        color: user.isBot ? (isDark ? '#22d3ee' : '#0891b2') : (isDark ? '#94a3b8' : '#64748b'),
                         fontWeight: unread > 0 ? '500' : 'normal',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         opacity: (canFlip && showPresence) ? 0 : 1,
@@ -509,9 +530,11 @@ export default function ConversationsList({
                       }}>
                         {lastMsg
                           ? `${lastMsg.senderId === currentUserId ? 'You: ' : ''}${lastMsg.content}`
+                          : user.isBot
+                          ? 'Your AI assistant Luna — say hello! 👋'
                           : ''}
                       </div>
-                      {!isHidden && (
+                      {!isHidden && !user.isBot && (
                         <div style={{
                           position: 'absolute', inset: 0,
                           fontSize: '12px',

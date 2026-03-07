@@ -34,6 +34,8 @@ model User {
   showOnlineStatus        Boolean   @default(true)
   showPhoneNumber         Boolean   @default(false)
   showEmail               Boolean   @default(false)
+  gender                  String?
+  isBot                   Boolean   @default(false)
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 

@@ -1,3 +1,42 @@
+/*
+ * ── Message Bubble colour tokens ──────────────────────────────────────────
+ * Defined on :root so they are available to all child components regardless
+ * of where in the tree the bubble or avatar renders (1:1, groups, etc.)
+ *
+ *  --bubble-sent          Your outgoing messages            blue
+ *  --bubble-sent-queued   Queued / not yet sent             darker blue
+ *  --bubble-sent-failed   Failed to send                    dark red
+ *  --bubble-received      Normal incoming messages          orange
+ *  --bubble-bot-from      AI bot bubble gradient start      teal
+ *  --bubble-bot-to        AI bot bubble gradient end        emerald
+ *  --ring-user-from       Regular user avatar ring start    orange
+ *  --ring-user-to         Regular user avatar ring end      red
+ *  --ring-bot-from        AI bot avatar ring start          teal
+ *  --ring-bot-to          AI bot avatar ring end            emerald
+ *  --initials-bot-from    AI bot initials bg start          teal
+ *  --initials-bot-to      AI bot initials bg end            emerald
+ *
+ * To change the AI colour scheme, edit only --bubble-bot-* and --ring-bot-*.
+ */
+:global(:root) {
+  --bubble-sent:           #3b82f6;
+  --bubble-sent-queued:    #2563eb;
+  --bubble-sent-failed:    #7f1d1d;
+  --bubble-received:       #f97316;
+
+  /* AI bot — teal → emerald (clearly distinct from blue sent & orange received) */
+  --bubble-bot-from:       #0891b2;
+  --bubble-bot-to:         #059669;
+  --ring-bot-from:         #0891b2;
+  --ring-bot-to:           #059669;
+  --initials-bot-from:     #0e7490;
+  --initials-bot-to:       #047857;
+
+  /* Regular user avatar ring */
+  --ring-user-from:        #f97316;
+  --ring-user-to:          #ef4444;
+}
+
 /* ── Emoji-only naked display ─────────────────────────────────────────────── */
 .emojiOnlyBubble {
   display: flex;
@@ -47,10 +86,6 @@
   touch-action: pan-y;
 }
 
-/* Messages Container */
-.messagesContainer {
-  /* no position:relative needed — overlay is portalled into the scroll div */
-}
 
 /* Message Bubble */
 .messageBubble {
@@ -664,7 +699,7 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-orange-500), var(--color-red-500));
+  background: linear-gradient(135deg, var(--ring-user-from), var(--ring-user-to));
   padding: 3px;
   display: flex;
   align-items: center;
@@ -691,6 +726,32 @@
   font-weight: 700;
   color: var(--color-white);
   background-color: var(--color-slate-700);
+}
+
+/* AI bot avatar — teal → emerald ring */
+.avatarImageRingBot {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ring-bot-from), var(--ring-bot-to));
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatarInitialsBot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-white);
+  background: linear-gradient(135deg, var(--initials-bot-from), var(--initials-bot-to));
 }
 
 .bubbleColumn {
@@ -909,20 +970,25 @@
 }
 
 .bubbleSent {
-  background-color: #3b82f6;
+  background-color: var(--bubble-sent);
 }
 
 .bubbleSentQueued {
-  background-color: #2563eb;
+  background-color: var(--bubble-sent-queued);
 }
 
 .bubbleSentFailed {
-  background-color: #7f1d1d;
+  background-color: var(--bubble-sent-failed);
   opacity: 0.85;
 }
 
 .bubbleReceived {
-  background-color: #f97316;
+  background-color: var(--bubble-received);
+}
+
+/* AI bot received bubble — teal → emerald */
+.bubbleBot {
+  background: linear-gradient(135deg, var(--bubble-bot-from), var(--bubble-bot-to));
 }
 
 .bubbleRadiusSentSolo {

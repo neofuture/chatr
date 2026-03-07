@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { generateAIReply } from '../services/openai';
 import {
   setPresence,
   getPresence,
@@ -188,6 +189,13 @@ export function setupSocketHandlers(io: Server) {
         // Get or create conversation (auto-accepted for friends, pending for non-friends)
         const convo = await getOrCreateConversation(userId, data.recipientId);
 
+        // AI bot conversations are always immediately accepted
+        const AI_BOT_CHECK = process.env.AI_BOT_USER_ID;
+        if (AI_BOT_CHECK && data.recipientId === AI_BOT_CHECK && convo.status !== 'accepted') {
+          await prisma.conversation.update({ where: { id: convo.id }, data: { status: 'accepted' } });
+          convo.status = 'accepted';
+        }
+
         // If the conversation is pending and this sender is the NON-initiator (recipient replying), auto-accept
         let wasAutoAccepted = false;
         if (convo.status === 'pending' && convo.initiatorId !== userId) {
@@ -326,6 +334,126 @@ export function setupSocketHandlers(io: Server) {
           conversationId: convo.id,
           conversationStatus: convo.status,
         });
+
+        // ── AI Bot reply ──────────────────────────────────────
+        const AI_BOT_ID = process.env.AI_BOT_USER_ID;
+        if (AI_BOT_ID && data.recipientId === AI_BOT_ID && message.type === 'text') {
+          // Fire-and-forget — don't block the response to the sender
+          (async () => {
+            try {
+              // Fetch conversation history for context (last 10 messages)
+              const history = await prisma.message.findMany({
+                where: {
+                  deletedAt: null,
+                  OR: [
+                    { senderId: userId,   recipientId: AI_BOT_ID },
+                    { senderId: AI_BOT_ID, recipientId: userId },
+                  ],
+                },
+                orderBy: { createdAt: 'desc' },
+                take: 10,
+                select: { senderId: true, content: true, type: true },
+              });
+
+              // Reverse so oldest first and map to OpenAI format
+              const chatHistory = history.reverse()
+                .filter(m => m.type === 'text')
+                .map(m => ({
+                  role: (m.senderId === AI_BOT_ID ? 'assistant' : 'user') as 'user' | 'assistant',
+                  content: m.content,
+                }));
+
+              // Emit typing indicator to sender
+              io.to(`user:${userId}`).emit('typing:status', {
+                userId: AI_BOT_ID,
+                isTyping: true,
+              });
+
+              // Get the AI reply
+              const replyContent = await generateAIReply(chatHistory, message.content);
+
+              // Small delay to feel more natural
+              await new Promise(resolve => setTimeout(resolve, 600));
+
+              // Save the bot's reply to the database
+              const botMessage = await prisma.message.create({
+                data: {
+                  senderId: AI_BOT_ID,
+                  recipientId: userId,
+                  content: replyContent,
+                  type: 'text',
+                  status: 'delivered',
+                },
+              });
+
+              // Invalidate caches
+              await Promise.all([
+                invalidateConversationCache(userId),
+                invalidateConversationCache(AI_BOT_ID),
+              ]);
+
+              // Stop typing indicator
+              io.to(`user:${userId}`).emit('typing:status', {
+                userId: AI_BOT_ID,
+                isTyping: false,
+              });
+
+              // Deliver the bot reply to the sender
+              const botUser = await prisma.user.findUnique({
+                where: { id: AI_BOT_ID },
+                select: { username: true, displayName: true, profileImage: true },
+              });
+
+              io.to(`user:${userId}`).emit('message:received', {
+                id: botMessage.id,
+                senderId: AI_BOT_ID,
+                recipientId: userId,
+                senderUsername: botUser?.username ?? '@chatr-ai',
+                senderDisplayName: botUser?.displayName ?? 'Chatr AI',
+                senderProfileImage: botUser?.profileImage ?? null,
+                content: replyContent,
+                type: 'text',
+                timestamp: botMessage.createdAt,
+                status: 'delivered',
+                conversationId: convo.id,
+                conversationStatus: convo.status,
+              });
+
+              console.log(`🤖 AI replied to ${username}`);
+            } catch (aiError) {
+              console.error('❌ AI bot reply error:', aiError);
+              // Stop typing on error
+              io.to(`user:${userId}`).emit('typing:status', {
+                userId: AI_BOT_ID,
+                isTyping: false,
+              });
+              // Send a friendly error message
+              const fallbackMsg = await prisma.message.create({
+                data: {
+                  senderId: AI_BOT_ID,
+                  recipientId: userId,
+                  content: "Sorry, I'm having trouble thinking right now. Try again in a moment! 🤖",
+                  type: 'text',
+                  status: 'delivered',
+                },
+              });
+              io.to(`user:${userId}`).emit('message:received', {
+                id: fallbackMsg.id,
+                senderId: AI_BOT_ID,
+                recipientId: userId,
+                senderUsername: '@chatr-ai',
+                senderDisplayName: 'Chatr AI',
+                senderProfileImage: null,
+                content: fallbackMsg.content,
+                type: 'text',
+                timestamp: fallbackMsg.createdAt,
+                status: 'delivered',
+                conversationId: convo.id,
+                conversationStatus: convo.status,
+              });
+            }
+          })();
+        }
 
       } catch (error) {
         console.error('❌ Error sending message:', error);
@@ -619,45 +747,66 @@ export function setupSocketHandlers(io: Server) {
 
     // ==================== TYPING INDICATORS ====================
 
-    socket.on('typing:start', async (data: { recipientId?: string; groupId?: string }) => {
+    socket.on('typing:start', (data: { recipientId?: string; groupId?: string }) => {
       if (data.recipientId) {
-        // Suppress typing for pending conversations — initiator shouldn't see recipient typing
-        const convo = await findConversation(userId, data.recipientId);
-        if (convo?.status === 'pending') return;
-        io.to(`user:${data.recipientId}`).emit('typing:status', {
-          userId,
-          username,
-          isTyping: true,
-          type: 'direct'
-        });
+        // Check pending status async but don't block the emit — suppress only if confirmed pending
+        findConversation(userId, data.recipientId)
+          .then(convo => {
+            if (convo?.status === 'pending') return;
+            io.to(`user:${data.recipientId!}`).emit('typing:status', {
+              userId,
+              username,
+              isTyping: true,
+              type: 'direct',
+            });
+          })
+          .catch(() => {
+            // On DB error, emit anyway — better to show typing than to silently drop it
+            io.to(`user:${data.recipientId!}`).emit('typing:status', {
+              userId,
+              username,
+              isTyping: true,
+              type: 'direct',
+            });
+          });
       } else if (data.groupId) {
         socket.to(`group:${data.groupId}`).emit('typing:status', {
           userId,
           username,
           groupId: data.groupId,
           isTyping: true,
-          type: 'group'
+          type: 'group',
         });
       }
     });
 
-    socket.on('typing:stop', async (data: { recipientId?: string; groupId?: string }) => {
+    socket.on('typing:stop', (data: { recipientId?: string; groupId?: string }) => {
       if (data.recipientId) {
-        const convo = await findConversation(userId, data.recipientId);
-        if (convo?.status === 'pending') return;
-        io.to(`user:${data.recipientId}`).emit('typing:status', {
-          userId,
-          username,
-          isTyping: false,
-          type: 'direct'
-        });
+        findConversation(userId, data.recipientId)
+          .then(convo => {
+            if (convo?.status === 'pending') return;
+            io.to(`user:${data.recipientId!}`).emit('typing:status', {
+              userId,
+              username,
+              isTyping: false,
+              type: 'direct',
+            });
+          })
+          .catch(() => {
+            io.to(`user:${data.recipientId!}`).emit('typing:status', {
+              userId,
+              username,
+              isTyping: false,
+              type: 'direct',
+            });
+          });
       } else if (data.groupId) {
         socket.to(`group:${data.groupId}`).emit('typing:status', {
           userId,
           username,
           groupId: data.groupId,
           isTyping: false,
-          type: 'group'
+          type: 'group',
         });
       }
     });

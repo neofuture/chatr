@@ -62,8 +62,34 @@ export default function SettingsPanel() {
   const { openPanel, closeTopPanel } = usePanels();
   const { logs } = useLog();
   const [userId] = useState<string>(getCurrentUserId);
+  const [gender, setGenderState] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try { return JSON.parse(localStorage.getItem('user') || '{}')?.gender ?? ''; } catch { return ''; }
+  });
+  const [genderSaving, setGenderSaving] = useState(false);
 
   const isDark = theme === 'dark';
+
+  const handleGenderChange = async (value: string) => {
+    setGenderState(value);
+    setGenderSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/me`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ gender: value || null }),
+      });
+      if (res.ok) {
+        // Update cached user object
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        user.gender = value || null;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+    } catch { /* silent */ } finally {
+      setGenderSaving(false);
+    }
+  };
 
   const handleLogout = () => {
     closeTopPanel();
@@ -98,6 +124,32 @@ export default function SettingsPanel() {
       <div className={styles.content}>
         <h2 className={styles.pageTitle}>Settings</h2>
         <p className={styles.pageSubtitle}>Manage your preferences</p>
+
+        {/* ── Profile ── */}
+        <SettingsSection title="Profile">
+          <SettingsRow
+            icon="fad fa-venus-mars"
+            label="Gender"
+            description="Used to personalise your experience"
+            control={
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <select
+                  className="form-input"
+                  value={gender}
+                  onChange={e => handleGenderChange(e.target.value)}
+                  style={{ minWidth: '160px', padding: '6px 32px 6px 10px', fontSize: '14px' }}
+                >
+                  <option value="">Not specified</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="non-binary">Non-binary</option>
+                  <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
+                {genderSaving && <i className="fas fa-spinner fa-spin" style={{ color: 'var(--text-secondary)', fontSize: '12px' }} />}
+              </div>
+            }
+          />
+        </SettingsSection>
 
         {/* ── Appearance ── */}
         <SettingsSection title="Appearance">

@@ -38,6 +38,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
   const [regEmail, setRegEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [gender, setGender] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [username, setUsername] = useState('');
   const [usernameManuallyEdited, setUsernameManuallyEdited] = useState(false);
@@ -245,6 +246,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
           setRegEmail('');
           setFirstName('');
           setLastName('');
+          setGender('');
           setUsername('');
           setUsernameManuallyEdited(false);
           setRegPassword('');
@@ -509,6 +511,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
           password: regPassword,
           firstName: firstName.trim(),
           lastName: lastName.trim(),
+          gender: gender || undefined,
         }),
       });
 
@@ -528,6 +531,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
       setRegEmail('');
       setFirstName('');
       setLastName('');
+      setGender('');
       setPhoneNumber('');
       setUsername('');
       setRegPassword('');
@@ -736,6 +740,22 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
                     required
                   />
                 </div>
+              </div>
+
+              {/* Gender */}
+              <div className="form-group">
+                <label className="form-label">Gender <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
+                <select
+                  className="form-input"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="non-binary">Non-binary</option>
+                  <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
               </div>
 
               {/* Email */}

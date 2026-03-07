@@ -92,9 +92,9 @@ router.post('/register', rateLimit('register', 5, 900), async (req: Request, res
     console.log('\n🔵 === REGISTRATION REQUEST START ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
 
-    const { email, phoneNumber, username, password, firstName, lastName } = req.body;
+    const { email, phoneNumber, username, password, firstName, lastName, gender } = req.body;
 
-    console.log('Extracted values:', { email, phoneNumber, username, firstName, lastName, hasPassword: !!password });
+    console.log('Extracted values:', { email, phoneNumber, username, firstName, lastName, gender, hasPassword: !!password });
 
     // Validate input - require either email or phone number
     if ((!email && !phoneNumber) || !username || !password) {
@@ -109,6 +109,12 @@ router.post('/register', rateLimit('register', 5, 900), async (req: Request, res
     }
     if (!lastName || !lastName.trim()) {
       return res.status(400).json({ error: 'Last name is required' });
+    }
+
+    // Validate gender if provided
+    const validGenders = ['male', 'female', 'non-binary', 'prefer-not-to-say'];
+    if (gender && !validGenders.includes(gender)) {
+      return res.status(400).json({ error: 'Invalid gender value' });
     }
 
     const displayName = `${firstName.trim()} ${lastName.trim()}`;
@@ -249,6 +255,7 @@ router.post('/register', rateLimit('register', 5, 900), async (req: Request, res
           displayName,
           password: hashedPassword,
           phoneNumber: formattedPhone,
+          gender: gender || null,
           emailVerificationCode: verificationCode,
           verificationExpiry: verificationExpiry,
         },
@@ -265,6 +272,7 @@ router.post('/register', rateLimit('register', 5, 900), async (req: Request, res
           displayName,
           password: hashedPassword,
           email: email,
+          gender: gender || null,
           emailVerificationCode: verificationCode,
           verificationExpiry: verificationExpiry,
         },
@@ -284,6 +292,7 @@ router.post('/register', rateLimit('register', 5, 900), async (req: Request, res
           lastName: lastName.trim(),
           displayName,
           password: hashedPassword,
+          gender: gender || null,
           emailVerified: false,
           phoneVerified: false,
           emailVerificationCode: verificationCode,
@@ -867,6 +876,7 @@ router.post('/verify-email', async (req: Request, res: Response) => {
         data: { phoneVerified: true },
       });
 
+
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         process.env.JWT_SECRET || 'your_secret_key_change_in_production',
@@ -1028,6 +1038,7 @@ router.post('/verify-phone', async (req: Request, res: Response) => {
       },
     });
     await deleteVerificationCode('phone', userId).catch(() => {});
+
 
     // Generate JWT token - user is now fully registered
     const token = jwt.sign(

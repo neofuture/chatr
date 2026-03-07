@@ -62,6 +62,7 @@ export function useMessageInput({
   const [uploadingFile, setUploadingFile] = useState(false);
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingKeepaliveRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
 
   const effectivelyOnline = connected;
@@ -72,6 +73,7 @@ export function useMessageInput({
     if (!socket || !recipientId || !isTypingRef.current) return;
     socket.emit('typing:stop', { recipientId });
     isTypingRef.current = false;
+    if (typingKeepaliveRef.current) { clearInterval(typingKeepaliveRef.current); typingKeepaliveRef.current = null; }
     onTypingStop?.();
   }, [socket, recipientId, onTypingStop]);
 
@@ -85,15 +87,23 @@ export function useMessageInput({
       socket.emit('typing:start', { recipientId });
       isTypingRef.current = true;
       onTypingStart?.();
+      // Keepalive: re-emit typing:start every 4s so the receiver's 6s timer never fires mid-session
+      if (typingKeepaliveRef.current) clearInterval(typingKeepaliveRef.current);
+      typingKeepaliveRef.current = setInterval(() => {
+        if (isTypingRef.current && socket && recipientId) {
+          socket.emit('typing:start', { recipientId });
+        }
+      }, 4000);
     }
 
     if (!val && isTypingRef.current) {
       emitTypingStop();
     }
 
+    // Reset the idle stop timer on every keystroke — stop after 8s of inactivity
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (val) {
-      typingTimeoutRef.current = setTimeout(emitTypingStop, 3000);
+      typingTimeoutRef.current = setTimeout(emitTypingStop, 8000);
     }
   }, [socket, recipientId, effectivelyOnline, onTypingStart, emitTypingStop]);
 

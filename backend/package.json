@@ -15,7 +15,8 @@
     "cleanup-images": "node src/scripts/cleanup-images.js",
     "generate-docs": "node src/scripts/generate-api-docs.js",
     "debug-auth": "node src/scripts/debug-websocket-auth.js",
-    "seed:users": "ts-node --project tsconfig.seed.json prisma/seed-test-users.ts"
+    "seed:users": "ts-node --project tsconfig.seed.json prisma/seed-test-users.ts",
+    "seed:bot": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json prisma/seed-ai-bot.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.995.0",
@@ -39,6 +40,7 @@
     "mailtrap": "^4.4.0",
     "multer": "^2.0.2",
     "music-metadata": "^11.12.1",
+    "openai": "^6.27.0",
     "qrcode": "^1.5.4",
     "rate-limiter-flexible": "^9.1.1",
     "socket.io": "^4.7.2",

@@ -14,6 +14,17 @@
   border-radius: 50%;
 }
 
+/* AI Bot variant — teal → emerald gradient ring (matches chat bubble) */
+.ringBot {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0891b2, #059669);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
 /* No-image variant — transparent so the gradient initials fill the whole circle */
 .ringBorder {
   width: 100%;
@@ -40,6 +51,17 @@
   font-weight: 700;
   /* Always orange→red gradient background, white letters */
   background: linear-gradient(135deg, var(--color-orange-500, #f97316), var(--color-red-500, #ef4444));
+  color: #ffffff;
+}
+
+/* AI Bot initials — teal → emerald gradient (matches chat bubble) */
+.initialsBot {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  background: linear-gradient(135deg, #0e7490, #047857);
   color: #ffffff;
 }
 

@@ -4,6 +4,8 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import MessageAudioPlayer from '@/components/MessageAudioPlayer/MessageAudioPlayer';
 import { useTTS } from '@/hooks/useTTS';
+import { isAIBot } from '@/lib/aiBot';
+import CodeBlock, { parseCodeBlocks } from './CodeBlock';
 import styles from './MessageBubble.module.css';
 
 /** Mounts children, animates in on show, animates height+opacity out before unmounting */
@@ -136,6 +138,8 @@ interface MessageBubbleProps {
   overlayContainerRef?: React.RefObject<HTMLDivElement | null>;
   /** When 'pending', hide sent/delivered status to anonymise receipts until accepted */
   conversationStatus?: 'pending' | 'accepted';
+  /** True when the conversation partner is the AI bot — purple bubble + ring */
+  isBot?: boolean;
 }
 
 const REACTIONS = ['❤️', '😂', '😯', '😢', '😡', '👍'];
@@ -386,6 +390,7 @@ export default function MessageBubble({
   onAvatarClick,
   overlayContainerRef,
   conversationStatus,
+  isBot = false,
 }: MessageBubbleProps) {
   const defaultRef = useRef<HTMLDivElement>(null);
   const endRef = messagesEndRef || defaultRef;
@@ -424,7 +429,7 @@ export default function MessageBubble({
   };
 
   const getBubbleToneClass = (isSent: boolean, status: Message['status']) => {
-    if (!isSent) return styles.bubbleReceived;
+    if (!isSent) return isBot ? styles.bubbleBot : styles.bubbleReceived;
     if (status === 'queued') return styles.bubbleSentQueued;
     if (status === 'failed') return styles.bubbleSentFailed;
     return styles.bubbleSent;
@@ -558,21 +563,25 @@ export default function MessageBubble({
                     role={onAvatarClick ? 'button' : undefined}
                     aria-label={onAvatarClick ? `View ${senderDisplayName}'s profile` : undefined}
                   >
-                    {msg.senderProfileImage ? (
-                      <div className={styles.avatarImageRing}>
-                        <img
-                          src={msg.senderProfileImage}
-                          alt=""
-                          className={styles.avatarImage}
-                        />
-                      </div>
-                    ) : (
-                      <div className={styles.avatarImageRing}>
-                        <div className={styles.avatarInitials}>
-                          {initials}
+                    {(() => {
+                      const msgIsBot = isBot || isAIBot(msg.senderId);
+                      const ringClass = msgIsBot ? styles.avatarImageRingBot : styles.avatarImageRing;
+                      const profileImg = msg.senderProfileImage;
+                      if (profileImg) {
+                        return (
+                          <div className={ringClass}>
+                            <img src={profileImg} alt="" className={styles.avatarImage} />
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className={ringClass}>
+                          <div className={msgIsBot ? styles.avatarInitialsBot : styles.avatarInitials}>
+                            {initials}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -626,7 +635,9 @@ export default function MessageBubble({
                         </div>
                       ) : (
                         <div className={styles.replyQuoteText}>
-                          {msg.replyTo.content}
+                          {msg.replyTo.content.includes('```')
+                            ? <><i className="fas fa-code" style={{ marginRight: 4, opacity: 0.7 }} />Code snippet</>
+                            : msg.replyTo.content}
                         </div>
                       )}
                     </div>
@@ -784,11 +795,15 @@ export default function MessageBubble({
                         </a>
                       );
                     })()}
-                    {/* Text */}
+                    {/* Text — supports fenced code blocks */}
                     {(!msg.type || msg.type === 'text') && (
                       <div className={styles.messageTextWrapper}>
                         <div className={`${styles.messageText} ${isSent ? styles.messageTextSent : styles.messageTextReceived} ${messageTextSpacingClass}`}>
-                          {msg.content}
+                          {parseCodeBlocks(msg.content).map((seg, si) =>
+                            seg.kind === 'code'
+                              ? <CodeBlock key={si} lang={seg.lang} content={seg.content} />
+                              : <span key={si} style={{ whiteSpace: 'pre-wrap' }}>{seg.content}</span>
+                          )}
                         </div>
                         {msg.edited && !msg.unsent && (
                           <span className={styles.editedMarker} aria-label="edited">

@@ -12,6 +12,7 @@ import { useConfirmation } from '@/contexts/ConfirmationContext';
 import { clearCachedConversation } from '@/lib/messageCache';
 import BlockedUsersPanel from '@/components/settings/BlockedUsersPanel';
 import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
+import { isAIBot } from '@/lib/aiBot';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -24,6 +25,8 @@ export interface ConversationViewProps {
   onConversationAccepted?: () => void;
   isBlocked?: boolean;
   blockedByMe?: boolean;
+  /** Profile image URL for the recipient — shown in message bubbles */
+  recipientProfileImage?: string | null;
   /** Parent passes a ref; ConversationView stores its nuke handler into it on mount */
   nukeRef?: React.MutableRefObject<(() => Promise<void>) | null>;
 }
@@ -47,6 +50,7 @@ export default function ConversationView({
   onConversationAccepted,
   isBlocked: initialBlocked = false,
   blockedByMe: initialBlockedByMe = false,
+  recipientProfileImage,
   nukeRef,
 }: ConversationViewProps) {
   const [currentUserId] = useState<string>(getCurrentUserId);
@@ -90,6 +94,7 @@ export default function ConversationView({
   } = useConversationView({
     recipientId,
     currentUserId,
+    recipientProfileImage,
     onConversationAccepted: () => {
       // Recipient accepted — flip localStatus so status indicators become visible
       setLocalStatus('accepted');
@@ -338,6 +343,7 @@ export default function ConversationView({
           currentUserId={currentUserId}
           onAvatarClick={(senderId, displayName, profileImage) => openUserProfile(senderId, displayName, profileImage)}
           conversationStatus={localStatus}
+          isBot={isAIBot(recipientId)}
         />
       </div>
 
