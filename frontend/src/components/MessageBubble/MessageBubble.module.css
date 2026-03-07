@@ -422,7 +422,7 @@
   width: 100%;
   max-width: 300px;
   height: auto;
-  border-radius: inherit;
+  border-radius: 10px;
   pointer-events: none;
 }
 
@@ -433,13 +433,14 @@
   width: 100%;
   max-width: 300px;
   height: auto;
-  border-radius: inherit;
+  border-radius: 10px;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .imageFileName {
   font-size: 11px;
-  padding: 4px 8px;
+  padding: 4px 8px 2px;
   opacity: 0.75;
   white-space: nowrap;
   overflow: hidden;
@@ -900,7 +901,7 @@
 }
 
 .bubblePaddingMedia {
-  padding: 4px;
+  padding: 3px;
 }
 
 .bubblePaddingAudio {
@@ -1113,4 +1114,25 @@
 
 .reactionsRowOuterReceived {
   justify-content: flex-start;
+}
+
+/* ── System message pill ───────────────────────────────────── */
+.systemMessage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 16px;
+  margin: 4px 0;
+}
+
+.systemMessageText {
+  font-size: 11px;
+  color: var(--text-secondary, rgba(148, 163, 184, 0.9));
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 20px;
+  padding: 3px 12px;
+  text-align: center;
+  font-style: italic;
+  user-select: none;
 }

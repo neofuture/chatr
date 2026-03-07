@@ -217,6 +217,17 @@ export function setupSocketHandlers(io: Server) {
             socket.emit('error', { message: 'Message not found' });
             return;
           }
+          // Patch audioDuration/audioWaveform if the upload endpoint didn't save them
+          if (data.duration && !message.audioDuration) {
+            await prisma.message.update({
+              where: { id: data.messageId },
+              data: {
+                audioDuration: data.duration,
+                audioWaveform: message.audioWaveform ?? (data.waveform ? data.waveform : undefined),
+              },
+            });
+            message.audioDuration = data.duration;
+          }
         } else {
           message = await prisma.message.create({
             data: {
@@ -378,6 +389,11 @@ export function setupSocketHandlers(io: Server) {
 
         if (!membership) {
           socket.emit('error', { message: 'Not a member of this group' });
+          return;
+        }
+
+        if (membership.status !== 'accepted') {
+          socket.emit('error', { message: 'Accept the group invite before sending messages' });
           return;
         }
 
@@ -921,28 +937,66 @@ export function setupSocketHandlers(io: Server) {
 
     // ==================== GROUPS ====================
 
-    socket.on('group:message', async (data: { groupId: string; content: string; type?: string; tempId?: string }) => {
+    socket.on('group:message', async (data: {
+      groupId: string; content: string; type?: string; tempId?: string;
+      fileUrl?: string; fileName?: string; fileSize?: number; fileType?: string;
+      waveform?: number[]; duration?: number; messageId?: string;
+    }) => {
       try {
-        const { groupId, content, type = 'text', tempId } = data;
+        const { groupId, content, type = 'text', tempId, fileUrl, fileName, fileSize, fileType, waveform, duration, messageId: existingId } = data;
         if (!groupId || !content?.trim()) return;
 
         // Verify sender is a member
-        const member = await prisma.groupMember.findUnique({
-          where: { userId_groupId: { userId, groupId } },
+        const member = await prisma.groupMember.findFirst({
+          where: { userId, groupId },
         });
         if (!member) {
+          console.error(`❌ group:message membership check failed — userId: "${userId}", groupId: "${groupId}"`);
           socket.emit('error', 'Not a member of this group');
           return;
         }
 
-        const message = await prisma.groupMessage.create({
-          data: { groupId, senderId: userId, content: content.trim(), type },
-          include: { sender: { select: { id: true, username: true, displayName: true, profileImage: true } } },
-        });
+        // If the message was already created by the upload endpoint, just fetch it
+        let message: any;
+        if (existingId) {
+          message = await prisma.groupMessage.findUnique({
+            where: { id: existingId },
+            include: { sender: { select: { id: true, username: true, displayName: true, profileImage: true } } },
+          });
+          // Patch audioDuration if the upload endpoint didn't save it
+          if (message && duration && !message.audioDuration) {
+            await prisma.groupMessage.update({
+              where: { id: existingId },
+              data: {
+                audioDuration: duration,
+                audioWaveform: message.audioWaveform ?? (waveform ? waveform : undefined),
+              },
+            });
+            message.audioDuration = duration;
+          }
+        }
+
+        if (!message) {
+          message = await prisma.groupMessage.create({
+            data: {
+              groupId, senderId: userId,
+              content: content.trim(), type,
+              fileUrl, fileName, fileSize, fileType,
+              audioWaveform: waveform,
+              audioDuration: duration,
+            },
+            include: { sender: { select: { id: true, username: true, displayName: true, profileImage: true } } },
+          });
+        }
 
         // Broadcast to all group members
         const members = await prisma.groupMember.findMany({ where: { groupId } });
-        const payload = { ...message, tempId };
+        const payload = {
+          ...message,
+          tempId,
+          waveform: (message.audioWaveform as number[] | null) || waveform,
+          duration: message.audioDuration || duration,
+        };
         for (const m of members) {
           io.to(`user:${m.userId}`).emit('group:message', payload);
         }

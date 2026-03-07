@@ -8,6 +8,7 @@ import NewGroupPanel from "@/components/messaging/NewGroupPanel/NewGroupPanel";
 import GroupView from "@/components/messaging/GroupView/GroupView";
 import type { GroupData } from "@/components/messaging/GroupView/GroupView";
 import { useConversationList, type ConversationUser } from "@/hooks/useConversationList";
+import { useGroupsList, type GroupSummary } from "@/hooks/useGroupsList";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePanels, type ActionIcon } from "@/contexts/PanelContext";
 import { usePresence } from "@/contexts/PresenceContext";
@@ -38,6 +39,8 @@ export default function AppPage() {
   const { showConfirmation } = useConfirmation();
   const { blockUser, removeFriend, unblockUser } = useFriends();
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const { groups, invites: groupInvites, loading: groupsLoading, refresh: refreshGroups, clearUnread: clearGroupUnread, acceptInvite: acceptGroupInvite, declineInvite: declineGroupInvite } = useGroupsList();
   // Per-user nuke ref map — ConversationView stores its nuke handler here on mount
   const nukeRefs = useRef<Record<string, React.MutableRefObject<(() => Promise<void>) | null>>>({});
 
@@ -288,21 +291,64 @@ export default function AppPage() {
     );
   }, [conversations, clearUnread, openPanel, isDark, refresh, buildActionIcons]);
 
+  /** Build action icons for a group panel — members button always opens the sheet */
+  const buildGroupActionIcons = useCallback((groupId: string, memberCount: number): ActionIcon[] => {
+    return [{
+      icon: 'fas fa-users',
+      label: `Members (${memberCount})`,
+      onClick: () => {
+        window.dispatchEvent(new CustomEvent('chatr:group-members-toggle', { detail: { groupId, open: true } }));
+      },
+    }];
+  }, []);
+
+  const openGroupPanel = useCallback((group: GroupData | GroupSummary) => {
+    const panelId = `group-${group.id}`;
+    const memberCount = group.members.length;
+    openPanel(
+      panelId,
+      <GroupView
+        group={group as GroupData}
+        isDark={isDark}
+        currentUserId={currentUserId}
+        onGroupDeleted={() => { closePanel(panelId); refreshGroups(); }}
+      />,
+      group.name,
+      'left',
+      `${memberCount} member${memberCount !== 1 ? 's' : ''}`,
+      undefined,
+      true,
+      buildGroupActionIcons(group.id, memberCount),
+    );
+  }, [openPanel, closePanel, isDark, currentUserId, refreshGroups, buildGroupActionIcons]);
+
+  const handleSelectGroup = useCallback((group: GroupSummary) => {
+    setSelectedGroupId(group.id);
+    clearGroupUnread(group.id);
+    openGroupPanel(group);
+  }, [openGroupPanel, clearGroupUnread]);
+
+  const handleAcceptGroupInvite = useCallback(async (groupId: string) => {
+    const group = await acceptGroupInvite(groupId);
+    if (group) {
+      showToast(`You joined "${group.name}"`, 'success');
+      openGroupPanel(group as GroupData);
+    }
+  }, [acceptGroupInvite, showToast, openGroupPanel]);
+
+  const handleDeclineGroupInvite = useCallback(async (groupId: string) => {
+    await declineGroupInvite(groupId);
+    showToast('Group invite declined', 'info');
+  }, [declineGroupInvite, showToast]);
+
   const openNewGroupPanel = useCallback(() => {
     openPanel(
       'new-group',
       <NewGroupPanel
         onGroupCreated={(group) => {
           closePanel('new-group');
-          openPanel(
-            `group-${group.id}`,
-            <GroupView group={group as GroupData} isDark={isDark} currentUserId={currentUserId} />,
-            group.name,
-            'left',
-            `${group.members.length} members`,
-            undefined,
-            true,
-          );
+          refreshGroups();
+          openGroupPanel(group as GroupData);
         }}
       />,
       'New Group',
@@ -311,7 +357,7 @@ export default function AppPage() {
       undefined,
       true,
     );
-  }, [openPanel, closePanel, isDark, currentUserId]);
+  }, [openPanel, closePanel, refreshGroups, openGroupPanel]);
 
   const openNewChatPanel = useCallback(() => {
     openPanel(
@@ -359,6 +405,9 @@ export default function AppPage() {
         groupsLoading={groupsLoading}
         selectedGroupId={selectedGroupId}
         onSelectGroup={handleSelectGroup}
+        groupInvites={groupInvites}
+        onAcceptGroupInvite={handleAcceptGroupInvite}
+        onDeclineGroupInvite={handleDeclineGroupInvite}
       />
     </div>
   );

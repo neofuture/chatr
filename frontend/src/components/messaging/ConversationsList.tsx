@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { PresenceInfo } from '@/types/types';
 import type { ConversationUser } from '@/hooks/useConversationList';
-import type { GroupSummary } from '@/hooks/useGroupsList';
+import type { GroupSummary, GroupInvite } from '@/hooks/useGroupsList';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
@@ -37,6 +37,9 @@ interface Props {
   groupsLoading: boolean;
   selectedGroupId: string;
   onSelectGroup: (group: GroupSummary) => void;
+  groupInvites?: GroupInvite[];
+  onAcceptGroupInvite?: (groupId: string) => void;
+  onDeclineGroupInvite?: (groupId: string) => void;
 }
 
 export default function ConversationsList({
@@ -53,6 +56,9 @@ export default function ConversationsList({
   groupsLoading,
   selectedGroupId,
   onSelectGroup,
+  groupInvites = [],
+  onAcceptGroupInvite,
+  onDeclineGroupInvite,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('chats');
   const [showPresence, setShowPresence] = useState(false);
@@ -71,6 +77,8 @@ export default function ConversationsList({
 
   const hasRequests = requests.length > 0;
   const requestUnreadCount = requests.reduce((sum, r) => sum + (r.unreadCount ?? 0), 0);
+  const groupsUnreadCount  = (groups ?? []).reduce((sum, g) => sum + (g.unreadCount ?? 0), 0);
+  const groupInviteCount = groupInvites.length;
 
   // "Chats" = everything except incoming requests
   const chats = conversations.filter(c => {
@@ -149,6 +157,17 @@ export default function ConversationsList({
             </button>
             <button style={tabStyle('groups', activeTab === 'groups')} onClick={() => setActiveTab('groups')}>
               Groups
+              {(groupsUnreadCount + groupInviteCount) > 0 && (
+                <span style={{
+                  minWidth: '18px', height: '18px', borderRadius: '9px',
+                  backgroundColor: groupInviteCount > 0 ? '#f59e0b' : '#ef4444', color: '#fff',
+                  fontSize: '10px', fontWeight: '700',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 4px',
+                }}>
+                  {(groupsUnreadCount + groupInviteCount) > 99 ? '99+' : (groupsUnreadCount + groupInviteCount)}
+                </span>
+              )}
             </button>
             {hasRequests && (
               <button style={tabStyle('requests', activeTab === 'requests')} onClick={() => setActiveTab('requests')}>
@@ -173,6 +192,75 @@ export default function ConversationsList({
       {/* Groups tab */}
       {!isSearching && activeTab === 'groups' && (
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* Group Invites */}
+          {groupInvites.length > 0 && (
+            <div style={{ padding: '8px 12px 0' }}>
+              <div style={{
+                fontSize: '11px', fontWeight: '700', letterSpacing: '0.05em',
+                color: '#f59e0b', textTransform: 'uppercase', marginBottom: '6px',
+                display: 'flex', alignItems: 'center', gap: '6px',
+              }}>
+                <i className="fas fa-envelope" style={{ fontSize: '10px' }} />
+                Group Invites ({groupInvites.length})
+              </div>
+              {groupInvites.map(invite => (
+                <div key={invite.groupId} style={{
+                  background: isDark ? 'rgba(245,158,11,0.08)' : 'rgba(245,158,11,0.06)',
+                  border: `1px solid ${isDark ? 'rgba(245,158,11,0.25)' : 'rgba(245,158,11,0.2)'}`,
+                  borderRadius: '10px', padding: '10px 12px', marginBottom: '8px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                      background: 'linear-gradient(135deg, var(--color-orange-500), var(--color-red-500))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '15px', color: '#fff',
+                    }}>
+                      <i className="fas fa-users" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontWeight: '600', fontSize: '13px',
+                        color: isDark ? '#f1f5f9' : '#0f172a',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {invite.groupName}
+                      </div>
+                      <div style={{ fontSize: '11px', color: isDark ? '#94a3b8' : '#64748b' }}>
+                        Invited by {invite.invitedBy} · {invite.memberCount} member{invite.memberCount !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => onAcceptGroupInvite?.(invite.groupId)}
+                      style={{
+                        flex: 1, padding: '6px 0', border: 'none', borderRadius: '7px', cursor: 'pointer',
+                        background: '#22c55e', color: '#fff', fontSize: '12px', fontWeight: '600',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                      }}
+                    >
+                      <i className="fas fa-check" style={{ fontSize: '11px' }} /> Accept
+                    </button>
+                    <button
+                      onClick={() => onDeclineGroupInvite?.(invite.groupId)}
+                      style={{
+                        flex: 1, padding: '6px 0', cursor: 'pointer',
+                        background: 'transparent',
+                        border: `1px solid ${isDark ? '#475569' : '#cbd5e1'}`,
+                        borderRadius: '7px',
+                        color: isDark ? '#94a3b8' : '#64748b', fontSize: '12px', fontWeight: '600',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                      }}
+                    >
+                      <i className="fas fa-xmark" style={{ fontSize: '11px' }} /> Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Create Group button */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('chatr:new-group'))}

@@ -191,7 +191,7 @@ router.post('/upload',
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const { recipientId, type, waveform } = req.body;
+    const { recipientId, type, waveform, duration: durationParam } = req.body;
 
     if (!recipientId) {
       if (!IS_PRODUCTION && req.file.path) fs.unlinkSync(req.file.path);
@@ -229,6 +229,16 @@ router.post('/upload',
 
     // Use provided waveform (voice recorder) or placeholder (MP3 upload)
     let waveformData: number[] | undefined;
+    let audioDurationFromWaveform: number | undefined;
+
+    // Prefer duration sent explicitly by the client (accurate for any length).
+    // NEVER calculate from waveformData.length / 10 — waveforms are always resampled
+    // to a fixed bar count (e.g. 100), so length / 10 always gives 10s regardless.
+    if (durationParam) {
+      const parsed = parseFloat(durationParam);
+      if (!isNaN(parsed) && parsed > 0) audioDurationFromWaveform = parsed;
+    }
+
     if (waveform) {
       try {
         waveformData = JSON.parse(waveform);
@@ -257,6 +267,7 @@ router.post('/upload',
         fileSize: req.file.size,
         fileType: req.file.mimetype,
         audioWaveform: waveformData,
+        audioDuration: audioDurationFromWaveform,
       },
     });
 
@@ -271,6 +282,7 @@ router.post('/upload',
       fileSize: req.file.size,
       fileType: req.file.mimetype,
       waveform: waveformData,
+      duration: audioDurationFromWaveform,
       needsWaveformGeneration,
     });
 

@@ -19,6 +19,11 @@ export default function BottomNav() {
   const [firstName, setFirstName] = useState('ME');
   const [pendingRequests, setPendingRequests] = useState(0);
   const [unreadChats, setUnreadChats] = useState(0);
+  const [unreadGroups, setUnreadGroups] = useState(0);
+
+  // Combined badge = DM unreads + group unreads
+  const totalUnread = unreadChats + unreadGroups;
+
 
   const isDark = themeMode === 'dark';
 
@@ -79,11 +84,19 @@ export default function BottomNav() {
         setTimeout(fetchUnread, 500);
       }
     };
+    const onGroupUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail.total === 'number') {
+        setUnreadGroups(detail.total);
+      }
+    };
     window.addEventListener('chatr:unread-changed', onUpdate);
+    window.addEventListener('chatr:group-unread-changed', onGroupUpdate);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('chatr:unread-changed', onUpdate);
+      window.removeEventListener('chatr:group-unread-changed', onGroupUpdate);
     };
   }, []);
 
@@ -137,7 +150,7 @@ export default function BottomNav() {
   }, [socket]);
 
   const menuItems = [
-    { name: 'CHATS',   href: '/app',          icon: 'fa-comments',   type: 'icon', badge: unreadChats },
+    { name: 'CHATS',   href: '/app',          icon: 'fa-comments',   type: 'icon', badge: totalUnread },
     { name: 'FRIENDS', href: '/app/friends',  icon: 'fa-user-group', type: 'icon', badge: pendingRequests },
     { name: 'GROUPS',  href: '/app/groups',   icon: 'fa-users',      type: 'icon' },
     { name: firstName,  href: '/app/settings', icon: profileImageUrl, type: 'image' },

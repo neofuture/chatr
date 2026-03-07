@@ -1,10 +1,76 @@
 import { Router, Response } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
 import { Server } from 'socket.io';
+import { generatePlaceholderWaveform, generateWaveformFromFile } from '../services/waveform';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// ── S3 / storage config (mirrors file-upload.ts) ─────────────────────────────
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const S3_BUCKET = process.env.S3_BUCKET || '';
+const AWS_REGION = process.env.AWS_REGION || 'eu-west-2';
+
+const s3 = IS_PRODUCTION ? new S3Client({
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+}) : null;
+
+async function uploadToS3(buffer: Buffer, key: string, mimeType: string): Promise<string> {
+  if (!s3) throw new Error('S3 not configured');
+  await s3.send(new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, Body: buffer, ContentType: mimeType }));
+  return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
+}
+
+async function deleteFromS3(key: string): Promise<void> {
+  if (!s3) return;
+  await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
+}
+
+const messagesDir = path.join(__dirname, '../../uploads/messages');
+const audioDir    = path.join(__dirname, '../../uploads/audio');
+if (!IS_PRODUCTION) {
+  if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
+  if (!fs.existsSync(audioDir))    fs.mkdirSync(audioDir,    { recursive: true });
+}
+
+const storage = IS_PRODUCTION
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (req, file, cb) => cb(null, file.mimetype.startsWith('audio/') ? audioDir : messagesDir),
+      filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, `${path.basename(file.originalname, ext)}-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+      },
+    });
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = [
+      'image/jpeg','image/png','image/gif','image/webp',
+      'audio/webm','audio/mp4','audio/mpeg','audio/ogg','audio/wav','audio/x-m4a',
+      'application/pdf','application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain','application/zip',
+      'video/mp4','video/quicktime','video/webm',
+    ];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
 
 let _io: Server | null = null;
 export function setGroupsSocketIO(io: Server) { _io = io; }
@@ -25,22 +91,37 @@ router.post('/', authenticateToken as any, async (req: any, res: Response) => {
         ownerId: userId,
         members: {
           create: [
-            { userId },
-            ...((memberIds as string[]).filter((id: string) => id !== userId).map((id: string) => ({ userId: id }))),
+            { userId, role: 'admin', status: 'accepted' },
+            ...((memberIds as string[]).filter((id: string) => id !== userId).map((id: string) => ({
+              userId: id, role: 'member', status: 'pending', invitedBy: userId,
+            }))),
           ],
         },
       },
       include: { members: { include: { user: { select: { id: true, username: true, displayName: true, profileImage: true } } } } },
     });
 
-    // Notify all members via socket
+    // Build the creator-facing group object with only accepted members
+    const creatorUser = group.members.find(m => m.userId === userId);
+    const creatorName = creatorUser?.user?.displayName || creatorUser?.user?.username?.replace(/^@/, '') || 'Someone';
+    const acceptedMembers = group.members.filter(m => (m as any).status === 'accepted');
+    const groupForCreator = { ...group, members: acceptedMembers };
+
+    // Notify creator of the new group; notify invitees with an invite event
     if (_io) {
-      for (const m of group.members) {
-        _io.to(`user:${m.userId}`).emit('group:created', { group });
+      _io.to(`user:${userId}`).emit('group:created', { group: groupForCreator });
+      const pendingMembers = group.members.filter(m => (m as any).status === 'pending');
+      for (const m of pendingMembers) {
+        _io.to(`user:${m.userId}`).emit('group:invite', {
+          groupId: group.id,
+          groupName: group.name,
+          memberCount: acceptedMembers.length,
+          invitedBy: creatorName,
+        });
       }
     }
 
-    res.json({ group });
+    res.json({ group: groupForCreator });
   } catch (e) {
     console.error('Create group error:', e);
     res.status(500).json({ error: 'Internal server error' });
@@ -54,7 +135,7 @@ router.get('/', authenticateToken as any, async (req: any, res: Response) => {
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const memberships = await prisma.groupMember.findMany({
-      where: { userId },
+      where: { userId, status: 'accepted' },
       include: {
         group: {
           include: {
@@ -78,6 +159,137 @@ router.get('/', authenticateToken as any, async (req: any, res: Response) => {
   }
 });
 
+// ── List pending group invites ────────────────────────────────────────────────
+router.get('/invites', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const memberships = await prisma.groupMember.findMany({
+      where: { userId, status: 'pending' },
+      include: {
+        group: {
+          include: {
+            members: { where: { status: 'accepted' }, select: { userId: true } },
+          },
+        },
+      },
+    });
+
+    // Batch-fetch all inviters in one query
+    const inviterIds = [...new Set(memberships.map(m => m.invitedBy).filter(Boolean) as string[])];
+    const inviters = inviterIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: inviterIds } },
+          select: { id: true, displayName: true, username: true },
+        })
+      : [];
+    const inviterMap = Object.fromEntries(inviters.map(u => [u.id, u]));
+
+    const invites = memberships.map(m => {
+      const inviter = m.invitedBy ? inviterMap[m.invitedBy] : null;
+      return {
+        groupId: m.groupId,
+        groupName: m.group.name,
+        groupDescription: m.group.description,
+        memberCount: m.group.members.length,
+        invitedBy: inviter?.displayName || inviter?.username?.replace(/^@/, '') || 'Someone',
+        invitedById: m.invitedBy,
+      };
+    });
+
+    res.json({ invites });
+  } catch (e) {
+    console.error('List invites error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Accept group invite ───────────────────────────────────────────────────────
+router.post('/:id/accept', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId } = req.params;
+
+    const membership = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId, groupId } },
+    });
+    if (!membership) return res.status(404).json({ error: 'Invite not found' });
+    if (membership.status === 'accepted') return res.status(400).json({ error: 'Already a member' });
+
+    await prisma.groupMember.update({
+      where: { userId_groupId: { userId, groupId } },
+      data: { status: 'accepted' },
+    });
+
+    // Load the full group to send back to the accepting user
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: {
+        members: {
+          where: { status: 'accepted' },
+          include: { user: { select: { id: true, username: true, displayName: true, profileImage: true } } },
+        },
+      },
+    });
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+
+    if (_io) {
+      // Tell the accepting user their groups list needs this new group
+      _io.to(`user:${userId}`).emit('group:created', { group });
+      // Tell all other accepted members someone joined
+      for (const m of group.members) {
+        if (m.userId === userId) continue;
+        _io.to(`user:${m.userId}`).emit('group:memberJoined', { groupId, userId });
+      }
+      // Notify the inviter
+      if (membership.invitedBy) {
+        _io.to(`user:${membership.invitedBy}`).emit('group:inviteAccepted', { groupId, groupName: group.name, acceptedBy: userId });
+      }
+    }
+
+    // System message to accepted members
+    const accepter = await prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, username: true } });
+    const accepterName = accepter?.displayName || accepter?.username?.replace(/^@/, '') || 'Someone';
+    await sendSystemMessage(groupId, `${accepterName} joined the group`);
+
+    res.json({ group });
+  } catch (e) {
+    console.error('Accept invite error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Decline group invite ──────────────────────────────────────────────────────
+router.post('/:id/decline', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId } = req.params;
+
+    const membership = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId, groupId } },
+    });
+    if (!membership) return res.status(404).json({ error: 'Invite not found' });
+    if (membership.status === 'accepted') return res.status(400).json({ error: 'Already a member — use leave instead' });
+
+    await prisma.groupMember.delete({ where: { userId_groupId: { userId, groupId } } });
+
+    if (_io && membership.invitedBy) {
+      const group = await prisma.group.findUnique({ where: { id: groupId }, select: { name: true } });
+      _io.to(`user:${membership.invitedBy}`).emit('group:inviteDeclined', {
+        groupId, groupName: group?.name, declinedBy: userId,
+      });
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Decline invite error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Get group ─────────────────────────────────────────────────────────────────
 router.get('/:id', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -90,11 +302,16 @@ router.get('/:id', authenticateToken as any, async (req: any, res: Response) => 
 
     const group = await prisma.group.findUnique({
       where: { id },
-      include: { members: { include: { user: { select: { id: true, username: true, displayName: true, profileImage: true } } } } },
+      include: {
+        members: {
+          where: { status: 'accepted' },
+          include: { user: { select: { id: true, username: true, displayName: true, profileImage: true } } },
+        },
+      },
     });
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    res.json({ group });
+    res.json({ group, memberStatus: member.status });
   } catch (e) {
     console.error('Get group error:', e);
     res.status(500).json({ error: 'Internal server error' });
@@ -112,6 +329,7 @@ router.get('/:id/messages', authenticateToken as any, async (req: any, res: Resp
 
     const member = await prisma.groupMember.findUnique({ where: { userId_groupId: { userId, groupId: id } } });
     if (!member) return res.status(403).json({ error: 'Not a member' });
+    if (member.status !== 'accepted') return res.status(403).json({ error: 'Accept the group invite to view messages' });
 
     const messages = await prisma.groupMessage.findMany({
       where: { groupId: id, ...(before ? { createdAt: { lt: new Date(before) } } : {}) },
@@ -139,7 +357,7 @@ router.post('/:id/members', authenticateToken as any, async (req: any, res: Resp
     if (!group) return res.status(404).json({ error: 'Group not found' });
     if (group.ownerId !== userId) return res.status(403).json({ error: 'Only the owner can add members' });
 
-    await prisma.groupMember.create({ data: { userId: memberId, groupId: id } });
+    await prisma.groupMember.create({ data: { userId: memberId, groupId: id, status: 'pending', invitedBy: userId } });
 
     const updated = await prisma.group.findUnique({
       where: { id },
@@ -147,10 +365,14 @@ router.post('/:id/members', authenticateToken as any, async (req: any, res: Resp
     });
 
     if (_io) {
-      _io.to(`user:${memberId}`).emit('group:added', { group: updated });
-      for (const m of updated!.members) {
-        _io.to(`user:${m.userId}`).emit('group:updated', { group: updated });
-      }
+      // Send an invite to the new member
+      const inviter = updated!.members.find(m => m.userId === userId);
+      _io.to(`user:${memberId}`).emit('group:invite', {
+        groupId: id,
+        groupName: updated!.name,
+        memberCount: updated!.members.filter(m => (m as any).status === 'accepted').length,
+        invitedBy: inviter?.user?.displayName || inviter?.user?.username?.replace(/^@/, '') || 'Someone',
+      });
     }
 
     res.json({ group: updated });
@@ -161,6 +383,26 @@ router.post('/:id/members', authenticateToken as any, async (req: any, res: Resp
   }
 });
 
+// ── Helper: create + broadcast a system message ───────────────────────────────
+async function sendSystemMessage(groupId: string, content: string) {
+  try {
+    const msg = await prisma.groupMessage.create({
+      data: { groupId, senderId: (await prisma.group.findUnique({ where: { id: groupId }, select: { ownerId: true } }))!.ownerId, content, type: 'system' },
+    });
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:message', {
+          id: msg.id, groupId, senderId: msg.senderId, content, type: 'system',
+          createdAt: msg.createdAt, sender: null,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('sendSystemMessage failed:', e);
+  }
+}
+
 // ── Remove member / leave ─────────────────────────────────────────────────────
 router.delete('/:id/members/:memberId', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -168,21 +410,28 @@ router.delete('/:id/members/:memberId', authenticateToken as any, async (req: an
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const { id, memberId } = req.params;
 
-    const group = await prisma.group.findUnique({ where: { id } });
+    const group = await prisma.group.findUnique({ where: { id }, include: { members: { include: { user: { select: { displayName: true, username: true } } } } } });
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
     const isSelf = memberId === userId;
     if (!isSelf && group.ownerId !== userId) return res.status(403).json({ error: 'Only the owner can remove members' });
 
+    // Get the name before removing
+    const removedMember = group.members.find(m => m.userId === memberId);
+    const removedName = removedMember?.user.displayName || removedMember?.user.username?.replace(/^@/, '') || 'Someone';
+
     await prisma.groupMember.delete({ where: { userId_groupId: { userId: memberId, groupId: id } } });
 
     if (_io) {
       _io.to(`user:${memberId}`).emit('group:removed', { groupId: id });
-      const remaining = await prisma.groupMember.findMany({ where: { groupId: id } });
+      const remaining = await prisma.groupMember.findMany({ where: { groupId: id, status: 'accepted' } });
       for (const m of remaining) {
         _io.to(`user:${m.userId}`).emit('group:memberLeft', { groupId: id, memberId });
       }
     }
+
+    // System message — only "left" for self-leave, "was removed" for kicked
+    await sendSystemMessage(id, isSelf ? `${removedName} left the group` : `${removedName} was removed from the group`);
 
     res.json({ success: true });
   } catch (e) {
@@ -222,6 +471,70 @@ router.patch('/:id', authenticateToken as any, async (req: any, res: Response) =
   }
 });
 
+// ── Helper: promote next member to owner when current owner leaves/deletes ────
+async function promoteNextOwner(groupId: string, excludeUserId: string): Promise<string | null> {
+  // Prefer an existing admin, then fall back to oldest member by joinedAt
+  const next = await prisma.groupMember.findFirst({
+    where: { groupId, userId: { not: excludeUserId } },
+    orderBy: [{ role: 'desc' }, { joinedAt: 'asc' }], // 'member' < 'admin' alphabetically desc = admin first
+  });
+  if (!next) return null;
+  // Make them owner in Group and give them admin role in GroupMember
+  await prisma.$transaction([
+    prisma.group.update({ where: { id: groupId }, data: { ownerId: next.userId } }),
+    prisma.groupMember.update({ where: { id: next.id }, data: { role: 'admin' } }),
+  ]);
+  return next.userId;
+}
+
+// ── Delete group (owner only — deletes everything) ────────────────────────────
+router.delete('/:id', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id } = req.params;
+
+    const group = await prisma.group.findUnique({ where: { id }, include: { members: true } });
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+    if (group.ownerId !== userId) return res.status(403).json({ error: 'Only the owner can delete the group' });
+
+    // Notify all members before deleting
+    if (_io) {
+      for (const m of group.members) {
+        _io.to(`user:${m.userId}`).emit('group:deleted', { groupId: id, groupName: group.name });
+      }
+    }
+
+    // Clean up uploaded files
+    const messagesWithFiles = await prisma.groupMessage.findMany({
+      where: { groupId: id, fileUrl: { not: null } },
+      select: { fileUrl: true },
+    });
+    for (const msg of messagesWithFiles) {
+      if (!msg.fileUrl) continue;
+      try {
+        if (IS_PRODUCTION) {
+          const url = new URL(msg.fileUrl);
+          const key = url.pathname.replace(/^\//, '');
+          await deleteFromS3(key);
+        } else {
+          const relativePath = msg.fileUrl.replace(/^.*\/uploads\//, '');
+          const absPath = path.join(__dirname, '../../uploads', relativePath);
+          if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
+        }
+      } catch (fileErr) {
+        console.warn('Could not delete group message file:', msg.fileUrl, fileErr);
+      }
+    }
+
+    await prisma.group.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Delete group error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Join group ────────────────────────────────────────────────────────────────
 router.post('/:id/join', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -232,10 +545,9 @@ router.post('/:id/join', authenticateToken as any, async (req: any, res: Respons
     const group = await prisma.group.findUnique({ where: { id } });
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    // Upsert so joining twice is idempotent
     await prisma.groupMember.upsert({
       where: { userId_groupId: { userId, groupId: id } },
-      create: { userId, groupId: id },
+      create: { userId, groupId: id, role: 'member' },
       update: {},
     });
 
@@ -254,25 +566,292 @@ router.post('/:id/join', authenticateToken as any, async (req: any, res: Respons
 });
 
 // ── Leave group ───────────────────────────────────────────────────────────────
+// If the owner leaves: promote another member to owner and stay in the group for others.
+// If the last member leaves: delete the group.
 router.post('/:id/leave', authenticateToken as any, async (req: any, res: Response) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const { id } = req.params;
 
+    const group = await prisma.group.findUnique({
+      where: { id },
+      include: { members: { include: { user: { select: { displayName: true, username: true } } } } },
+    });
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+
+    const leavingMember = group.members.find(m => m.userId === userId);
+    const leavingName = leavingMember?.user.displayName || leavingMember?.user.username?.replace(/^@/, '') || 'Someone';
+
+    const otherMembers = group.members.filter(m => m.userId !== userId);
+
+    if (otherMembers.length === 0) {
+      // Last member — delete the group entirely (no system message needed)
+      if (_io) _io.to(`user:${userId}`).emit('group:deleted', { groupId: id, groupName: group.name });
+      await prisma.group.delete({ where: { id } });
+      return res.json({ success: true, deleted: true });
+    }
+
+    if (group.ownerId === userId) {
+      // Owner is leaving — promote someone else first
+      const newOwnerId = await promoteNextOwner(id, userId);
+      if (_io && newOwnerId) {
+        for (const m of group.members) {
+          _io.to(`user:${m.userId}`).emit('group:ownerChanged', { groupId: id, newOwnerId });
+        }
+      }
+    }
+
+    // Remove the leaving member
     await prisma.groupMember.deleteMany({ where: { userId, groupId: id } });
 
     if (_io) {
       _io.to(`user:${userId}`).emit('group:removed', { groupId: id });
-      const remaining = await prisma.groupMember.findMany({ where: { groupId: id } });
+      const remaining = await prisma.groupMember.findMany({ where: { groupId: id, status: 'accepted' } });
       for (const m of remaining) {
         _io.to(`user:${m.userId}`).emit('group:memberLeft', { groupId: id, memberId: userId });
       }
     }
 
-    res.json({ success: true });
+    // System message — broadcast to remaining members
+    await sendSystemMessage(id, `${leavingName} left the group`);
+
+    res.json({ success: true, deleted: false });
   } catch (e) {
     console.error('Leave group error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Promote member to admin ───────────────────────────────────────────────────
+router.patch('/:id/members/:memberId/promote', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId, memberId } = req.params;
+
+    // Only admins (or owner) can promote
+    const callerMember = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId, groupId } },
+    });
+    if (!callerMember || callerMember.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can promote members' });
+    }
+
+    const target = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId: memberId, groupId } },
+    });
+    if (!target) return res.status(404).json({ error: 'Member not found' });
+
+    await prisma.groupMember.update({
+      where: { id: target.id },
+      data: { role: 'admin' },
+    });
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:memberPromoted', { groupId, memberId, promotedBy: userId });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Promote member error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Demote admin to member ────────────────────────────────────────────────────
+router.patch('/:id/members/:memberId/demote', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId, memberId } = req.params;
+
+    const group = await prisma.group.findUnique({ where: { id: groupId } });
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+
+    // Only the owner can demote (prevent admins removing each other)
+    if (group.ownerId !== userId) {
+      return res.status(403).json({ error: 'Only the owner can demote admins' });
+    }
+    // Cannot demote the owner themselves
+    if (memberId === group.ownerId) {
+      return res.status(400).json({ error: 'Cannot demote the group owner' });
+    }
+
+    const target = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId: memberId, groupId } },
+    });
+    if (!target) return res.status(404).json({ error: 'Member not found' });
+
+    await prisma.groupMember.update({ where: { id: target.id }, data: { role: 'member' } });
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:memberDemoted', { groupId, memberId, demotedBy: userId });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Demote member error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Upload file / voice to group ──────────────────────────────────────────────
+router.post('/:id/upload', authenticateToken as any, upload.single('file') as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const { id: groupId } = req.params;
+    const { type, waveform, duration: durationParam } = req.body;
+
+    // Verify membership
+    const member = await prisma.groupMember.findFirst({ where: { userId, groupId } });
+    if (!member) {
+      if (!IS_PRODUCTION && req.file.path) fs.unlinkSync(req.file.path);
+      return res.status(403).json({ error: 'Not a member of this group' });
+    }
+    if (member.status !== 'accepted') {
+      if (!IS_PRODUCTION && req.file.path) fs.unlinkSync(req.file.path);
+      return res.status(403).json({ error: 'Accept the group invite before sending files' });
+    }
+
+    const isAudio = req.file.mimetype.startsWith('audio/');
+    const subfolder = isAudio ? 'audio' : 'messages';
+    const ext = path.extname(req.file.originalname);
+    const filename = `${path.basename(req.file.originalname, ext)}-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+
+    let fileUrl: string;
+    let localFilePath: string | null = null;
+
+    if (IS_PRODUCTION) {
+      const s3Key = `uploads/${subfolder}/${filename}`;
+      fileUrl = await uploadToS3(req.file.buffer, s3Key, req.file.mimetype);
+    } else {
+      localFilePath = req.file.path;
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+      fileUrl = `${backendUrl}/uploads/${subfolder}/${req.file.filename}`;
+    }
+
+    let waveformData: number[] | undefined;
+    let audioDurationFromWaveform: number | undefined;
+
+    // Prefer duration sent explicitly by the client — NEVER recalculate from bar count.
+    if (durationParam) {
+      const parsed = parseFloat(durationParam);
+      if (!isNaN(parsed) && parsed > 0) audioDurationFromWaveform = parsed;
+    }
+
+    if (waveform) {
+      try {
+        waveformData = JSON.parse(waveform);
+      } catch { /* ignore */ }
+    }
+
+    const needsWaveformGeneration = isAudio && (!waveformData || waveformData.length === 0);
+    if (needsWaveformGeneration) {
+      waveformData = generatePlaceholderWaveform(req.file.filename);
+    }
+
+    const messageType = isAudio ? 'audio' : (type === 'image' ? 'image' : 'file');
+
+    const message = await prisma.groupMessage.create({
+      data: {
+        groupId,
+        senderId: userId,
+        content: isAudio ? 'Voice message' : req.file.originalname,
+        type: messageType,
+        fileUrl,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        fileType: req.file.mimetype,
+        audioWaveform: waveformData,
+        audioDuration: audioDurationFromWaveform,
+      },
+      include: { sender: { select: { id: true, username: true, displayName: true, profileImage: true } } },
+    });
+
+    // Broadcast to all accepted group members
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
+      const payload = { ...message, waveform: waveformData, duration: audioDurationFromWaveform };
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:message', payload);
+      }
+    }
+
+    res.json({
+      success: true,
+      messageId: message.id,
+      fileUrl,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      fileType: req.file.mimetype,
+      waveform: waveformData,
+      duration: audioDurationFromWaveform,
+      needsWaveformGeneration,
+    });
+
+    // Async waveform generation for uploaded audio files (e.g. MP3)
+    if (needsWaveformGeneration && _io && localFilePath) {
+      const filePath = localFilePath;
+      const messageId = message.id;
+      const io = _io;
+      setImmediate(async () => {
+        try {
+          const { waveform: realWaveform, duration } = await generateWaveformFromFile(filePath);
+          await prisma.groupMessage.update({
+            where: { id: messageId },
+            data: { audioWaveform: realWaveform, audioDuration: duration || undefined },
+          });
+          const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
+          for (const m of members) {
+            io.to(`user:${m.userId}`).emit('audio:waveform', { messageId, waveform: realWaveform, duration });
+          }
+        } catch (err) {
+          console.error('❌ Group waveform generation failed:', err);
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Group upload error:', err);
+    if (!IS_PRODUCTION && req.file && req.file.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: 'File upload failed' });
+  }
+});
+
+// ── Patch waveform for a group message ───────────────────────────────────────
+router.patch('/:id/messages/:msgId/waveform', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId, msgId } = req.params;
+    const { waveform, duration } = req.body;
+
+    const member = await prisma.groupMember.findFirst({ where: { userId, groupId } });
+    if (!member) return res.status(403).json({ error: 'Not a member' });
+
+    await prisma.groupMessage.update({
+      where: { id: msgId },
+      data: { audioWaveform: waveform, audioDuration: duration },
+    });
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('audio:waveform', { messageId: msgId, waveform, duration });
+      }
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Group waveform patch error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

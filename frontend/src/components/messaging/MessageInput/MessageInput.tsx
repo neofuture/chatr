@@ -4,11 +4,15 @@ import { useRef, useState, useEffect } from 'react';
 import VoiceRecorder from '@/components/VoiceRecorder';
 import EmojiPicker from '@/components/EmojiPicker/EmojiPicker';
 import { useMessageInput } from '@/hooks/useMessageInput';
+import { useGroupMessageInput } from '@/hooks/useGroupMessageInput';
 import type { Message } from '@/components/MessageBubble';
 
 export interface MessageInputProps {
   isDark: boolean;
-  recipientId: string;
+  /** DM mode — provide recipientId */
+  recipientId?: string;
+  /** Group mode — provide groupId instead of recipientId */
+  groupId?: string;
   replyingTo?: Message | null;
   editingMessage?: Message | null;
   onMessageSent?: (msg: Message) => void;
@@ -20,9 +24,20 @@ export interface MessageInputProps {
   disabled?: boolean;
 }
 
+// ── Internal wrapper hooks so we can call them unconditionally ─────────────
+
+function useDMInput(props: Parameters<typeof useMessageInput>[0]) {
+  return useMessageInput(props);
+}
+
+function useGroupInput(props: Parameters<typeof useGroupMessageInput>[0]) {
+  return useGroupMessageInput(props);
+}
+
 export default function MessageInput({
   isDark,
-  recipientId,
+  recipientId = '',
+  groupId,
   replyingTo,
   editingMessage,
   onMessageSent,
@@ -37,13 +52,30 @@ export default function MessageInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
 
-  // Read current user id synchronously to avoid a render cycle delay
   const [currentUserId] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
     try {
       const u = JSON.parse(localStorage.getItem('user') || '{}');
       return u?.id ?? '';
     } catch { return ''; }
+  });
+
+  // Always call both hooks — select results based on mode
+  const dmInput = useDMInput({
+    recipientId,
+    currentUserId,
+    replyingTo,
+    editingMessage,
+    onMessageSent,
+    onEditSaved,
+    onCancelReply,
+    onCancelEdit,
+  });
+
+  const groupInput = useGroupInput({
+    groupId: groupId ?? '',
+    currentUserId,
+    onMessageSent,
   });
 
   const {
@@ -61,20 +93,10 @@ export default function MessageInput({
     handleVoiceRecording,
     handleVoiceRecordingStart,
     handleVoiceRecordingStop,
-  } = useMessageInput({
-    recipientId,
-    currentUserId,
-    replyingTo,
-    editingMessage,
-    onMessageSent,
-    onEditSaved,
-    onCancelReply,
-    onCancelEdit,
-  });
+  } = groupId ? groupInput : dmInput;
 
-  // When editingMessage changes, populate the input with the existing content
   useEffect(() => {
-    // handled externally via editingMessage prop — the hook resets on send
+    // editingMessage content is managed by the hook
   }, [editingMessage]);
 
   const canSend = effectivelyOnline && !disabled;
@@ -263,7 +285,7 @@ export default function MessageInput({
         backgroundColor: isDark ? '#1e293b' : '#ffffff',
         borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
       }}>
-        {!recipientId ? (
+        {(!recipientId && !groupId) ? (
           <div style={{
             textAlign: 'center', padding: '10px', borderRadius: '8px', fontSize: '13px',
             backgroundColor: isDark ? 'rgba(251,191,36,0.1)' : 'rgba(251,191,36,0.08)',
@@ -329,7 +351,7 @@ export default function MessageInput({
               placeholder={
                 disabled ? "You can't reply to this conversation"
                 : editingMessage ? 'Edit your message…'
-                : effectivelyOnline ? 'Message…'
+                : effectivelyOnline ? (groupId ? 'Message group…' : 'Message…')
                 : 'Offline — reconnecting…'
               }
               disabled={!canSend}

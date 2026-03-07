@@ -93,7 +93,7 @@ export interface Message {
   direction: 'sent' | 'received';
   status: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   timestamp: Date;
-  type?: 'text' | 'image' | 'file' | 'audio';
+  type?: 'text' | 'image' | 'file' | 'audio' | 'system';
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
@@ -493,12 +493,21 @@ export default function MessageBubble({
   return (
     <div className={styles.messagesContainer}>
       {messages.map((msg, index) => {
+        // ── System message pill (e.g. "[Name] has left the group") ──────────
+        if (msg.type === 'system') {
+          return (
+            <div key={msg.id} className={styles.systemMessage} role="status" aria-live="polite">
+              <span className={styles.systemMessageText}>{msg.content}</span>
+            </div>
+          );
+        }
+
         const isSent = msg.direction === 'sent';
         const { statusClass, statusText } = getStatusInfo(msg.status, msg.type);
         const prevMsg = index > 0 ? messages[index - 1] : null;
         const nextMsg = index < messages.length - 1 ? messages[index + 1] : null;
-        const isGroupedWithPrev = !!(prevMsg && prevMsg.direction === msg.direction);
-        const isGroupedWithNext = !!(nextMsg && nextMsg.direction === msg.direction);
+        const isGroupedWithPrev = !!(prevMsg && prevMsg.direction === msg.direction && prevMsg.senderId === msg.senderId);
+        const isGroupedWithNext = !!(nextMsg && nextMsg.direction === msg.direction && nextMsg.senderId === msg.senderId);
         const radiusClass = getBubbleRadiusClass(isSent, isGroupedWithPrev, isGroupedWithNext);
         const bubbleToneClass = getBubbleToneClass(isSent, msg.status);
 

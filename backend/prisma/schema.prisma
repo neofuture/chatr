@@ -123,14 +123,20 @@ model MessageReaction {
 }
 
 model GroupMessage {
-  id        String   @id @default(uuid())
-  groupId   String
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  senderId  String
-  sender    User     @relation("GroupSender", fields: [senderId], references: [id], onDelete: Cascade)
-  content   String
-  type      String   @default("text")
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
+  groupId       String
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  senderId      String
+  sender        User     @relation("GroupSender", fields: [senderId], references: [id], onDelete: Cascade)
+  content       String
+  type          String   @default("text")
+  fileUrl       String?
+  fileName      String?
+  fileSize      Int?
+  fileType      String?
+  audioWaveform Json?
+  audioDuration Float?
+  createdAt     DateTime @default(now())
 
   @@index([groupId])
   @@index([senderId])
@@ -151,12 +157,15 @@ model Group {
 }
 
 model GroupMember {
-  id       String   @id @default(uuid())
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  groupId  String
-  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  joinedAt DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  role      String   @default("member") // "member" | "admin"
+  status    String   @default("pending") // "pending" | "accepted"
+  invitedBy String? // userId of whoever invited this member
+  joinedAt  DateTime @default(now())
 
   @@unique([userId, groupId])
   @@index([userId])

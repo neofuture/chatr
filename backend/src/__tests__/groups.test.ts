@@ -2,6 +2,12 @@ import request from 'supertest';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 
+// Mock waveform service to avoid fluent-ffmpeg native binary dependency in tests
+jest.mock('../services/waveform', () => ({
+  generatePlaceholderWaveform: jest.fn(() => new Array(50).fill(0.5)),
+  generateWaveformFromFile: jest.fn(() => Promise.resolve(new Array(50).fill(0.5))),
+}));
+
 // Import the router
 import groupsRouter from '../routes/groups';
 
