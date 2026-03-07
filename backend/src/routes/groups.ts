@@ -236,12 +236,17 @@ router.post('/:id/accept', authenticateToken as any, async (req: any, res: Respo
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
     if (_io) {
+      // Build the new member payload once
+      const newMember = group.members.find(m => m.userId === userId);
+      const memberPayload = newMember
+        ? { id: newMember.id, userId: newMember.userId, role: newMember.role, user: newMember.user }
+        : null;
       // Tell the accepting user their groups list needs this new group
       _io.to(`user:${userId}`).emit('group:created', { group });
-      // Tell all other accepted members someone joined
+      // Tell all other accepted members someone joined — include full user data
       for (const m of group.members) {
         if (m.userId === userId) continue;
-        _io.to(`user:${m.userId}`).emit('group:memberJoined', { groupId, userId });
+        _io.to(`user:${m.userId}`).emit('group:memberJoined', { groupId, userId, member: memberPayload });
       }
       // Notify the inviter
       if (membership.invitedBy) {
@@ -355,23 +360,32 @@ router.post('/:id/members', authenticateToken as any, async (req: any, res: Resp
 
     const group = await prisma.group.findUnique({ where: { id } });
     if (!group) return res.status(404).json({ error: 'Group not found' });
-    if (group.ownerId !== userId) return res.status(403).json({ error: 'Only the owner can add members' });
+
+    // Allow owner OR any admin member to add new members
+    const requester = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId, groupId: id } },
+    });
+    const isAdmin = group.ownerId === userId || requester?.role === 'admin';
+    if (!isAdmin) return res.status(403).json({ error: 'Only admins can add members' });
 
     await prisma.groupMember.create({ data: { userId: memberId, groupId: id, status: 'pending', invitedBy: userId } });
 
     const updated = await prisma.group.findUnique({
       where: { id },
-      include: { members: { include: { user: { select: { id: true, username: true, displayName: true, profileImage: true } } } } },
+      include: { members: {
+        where: { status: 'accepted' },
+        include: { user: { select: { id: true, username: true, displayName: true, profileImage: true } } },
+      } },
     });
 
     if (_io) {
-      // Send an invite to the new member
-      const inviter = updated!.members.find(m => m.userId === userId);
+      const inviter = await prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, username: true } });
+      const inviterName = inviter?.displayName || inviter?.username?.replace(/^@/, '') || 'Someone';
       _io.to(`user:${memberId}`).emit('group:invite', {
         groupId: id,
         groupName: updated!.name,
-        memberCount: updated!.members.filter(m => (m as any).status === 'accepted').length,
-        invitedBy: inviter?.user?.displayName || inviter?.user?.username?.replace(/^@/, '') || 'Someone',
+        memberCount: updated!.members.length,
+        invitedBy: inviterName,
       });
     }
 
@@ -552,9 +566,19 @@ router.post('/:id/join', authenticateToken as any, async (req: any, res: Respons
     });
 
     if (_io) {
+      const joiningUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, username: true, displayName: true, profileImage: true },
+      });
+      const newMembership = await prisma.groupMember.findUnique({
+        where: { userId_groupId: { userId, groupId: id } },
+      });
+      const memberPayload = joiningUser && newMembership
+        ? { id: newMembership.id, userId, role: newMembership.role, user: joiningUser }
+        : null;
       const members = await prisma.groupMember.findMany({ where: { groupId: id } });
       for (const m of members) {
-        _io.to(`user:${m.userId}`).emit('group:memberJoined', { groupId: id, userId });
+        _io.to(`user:${m.userId}`).emit('group:memberJoined', { groupId: id, userId, member: memberPayload });
       }
     }
 

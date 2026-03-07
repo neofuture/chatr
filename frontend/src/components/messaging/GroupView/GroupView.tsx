@@ -9,6 +9,7 @@ import ChatView from '@/components/messaging/ChatView/ChatView';
 import MessageInput from '@/components/messaging/MessageInput/MessageInput';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import Lightbox from '@/components/Lightbox/Lightbox';
+import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
 import styles from './GroupView.module.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -64,6 +65,12 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
   const isAdminMember = isOwner || myMember?.role === 'admin';
 
   const [membersOpen, setMembersOpen] = useState(false);
+  const [addingMembers, setAddingMembers] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberSearchResults, setMemberSearchResults] = useState<Array<{ id: string; username: string; displayName: string | null; profileImage: string | null }>>([]);
+  const [memberSearching, setMemberSearching] = useState(false);
+  const [invitingIds, setInvitingIds] = useState<Set<string>>(new Set());
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
   // Accept / decline the group invite from inside the panel
   const handleAcceptInvite = useCallback(async () => {
@@ -200,6 +207,16 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       }
     };
 
+    const onMemberJoined = (data: any) => {
+      if (data.groupId !== group.id) return;
+      if (!data.member) return;
+      setGroup(prev => {
+        // Don't add duplicates
+        if (prev.members.find(m => m.userId === data.member.userId)) return prev;
+        return { ...prev, members: [...prev.members, data.member] };
+      });
+    };
+
     const onMemberRemoved = (data: any) => {
       if (data.groupId !== group.id) return;
       setGroup(prev => ({ ...prev, members: prev.members.filter(m => m.userId !== data.memberId) }));
@@ -238,6 +255,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
 
     socket.on('group:message', onMessage);
     socket.on('group:typing', onTyping);
+    socket.on('group:memberJoined', onMemberJoined);
     socket.on('group:memberLeft', onMemberRemoved);
     socket.on('group:deleted', onGroupDeletedEvent);
     socket.on('group:ownerChanged', onOwnerChanged);
@@ -246,6 +264,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     return () => {
       socket.off('group:message', onMessage);
       socket.off('group:typing', onTyping);
+      socket.off('group:memberJoined', onMemberJoined);
       socket.off('group:memberLeft', onMemberRemoved);
       socket.off('group:deleted', onGroupDeletedEvent);
       socket.off('group:ownerChanged', onOwnerChanged);
@@ -262,7 +281,59 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     });
   }, []);
 
-  const closeMembersPanel = useCallback(() => setMembersOpen(false), []);
+  const closeMembersPanel = useCallback(() => {
+    setMembersOpen(false);
+    setAddingMembers(false);
+    setMemberSearch('');
+    setMemberSearchResults([]);
+    setInvitedIds(new Set());
+  }, []);
+
+  // Search users to invite — debounced
+  useEffect(() => {
+    if (!addingMembers) return;
+    const q = memberSearch.trim();
+    if (!q) { setMemberSearchResults([]); return; }
+    setMemberSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const token = localStorage.getItem('token') || '';
+        const res = await fetch(`${API}/api/users/search?q=${encodeURIComponent(q)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const currentIds = new Set(group.members.map(m => m.userId));
+        currentIds.add(currentUserId);
+        setMemberSearchResults((data.users ?? data ?? []).filter((u: any) => !currentIds.has(u.id)));
+      } catch { /* ignore */ }
+      finally { setMemberSearching(false); }
+    }, 280);
+    return () => clearTimeout(t);
+  }, [memberSearch, addingMembers, group.members, currentUserId]);
+
+  const handleInviteMember = useCallback(async (user: { id: string; username: string; displayName: string | null }) => {
+    const name = user.displayName || user.username.replace(/^@/, '');
+    setInvitingIds(prev => new Set(prev).add(user.id));
+    try {
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(`${API}/api/groups/${group.id}/members`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: user.id }),
+      });
+      if (res.ok) {
+        showToast(`Invited ${name} to the group`, 'success');
+        setInvitedIds(prev => new Set(prev).add(user.id));
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to invite member', 'error');
+      }
+    } catch {
+      showToast('Failed to invite member', 'error');
+    } finally {
+      setInvitingIds(prev => { const s = new Set(prev); s.delete(user.id); return s; });
+    }
+  }, [group.id, showToast]);
 
   const handleRemoveMember = useCallback(async (member: GroupMember) => {
     const name = member.user.displayName || member.user.username.replace(/^@/, '');
@@ -431,84 +502,145 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       {membersOpen && (
         <div className={styles.membersPanel} style={{ background: isDark ? '#1e293b' : '#f8fafc', borderTop: `1px solid ${border}` }}>
           <div className={styles.membersPanelHeader}>
-            <span style={{ fontWeight: 600, fontSize: '14px', color: isDark ? '#f1f5f9' : '#0f172a' }}>
-              Members ({group.members.length})
-            </span>
+            {addingMembers ? (
+              <>
+                <button className={styles.iconBtn} onClick={() => { setAddingMembers(false); setMemberSearch(''); setMemberSearchResults([]); setInvitedIds(new Set()); }} aria-label="Back to members">
+                  <i className="fas fa-arrow-left" />
+                </button>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: isDark ? '#f1f5f9' : '#0f172a', flex: 1, marginLeft: '6px' }}>
+                  Add Members
+                </span>
+              </>
+            ) : (
+              <>
+                <span style={{ fontWeight: 600, fontSize: '14px', color: isDark ? '#f1f5f9' : '#0f172a' }}>
+                  Members ({group.members.length})
+                </span>
+              </>
+            )}
             <button className={styles.iconBtn} onClick={closeMembersPanel} aria-label="Close members">
               <i className="fas fa-xmark" />
             </button>
           </div>
-          <div className={styles.membersList}>
-            {group.members.map(member => {
-              const name = member.user.displayName || member.user.username.replace(/^@/, '');
-              const memberIsOwner = member.userId === group.ownerId;
-              const memberIsAdmin = member.role === 'admin';
-              const isSelf = member.userId === currentUserId;
-              return (
-                <div key={member.userId} className={styles.memberRow}>
-                  <PresenceAvatar
-                    displayName={name}
-                    profileImage={member.user.profileImage}
-                    info={{ status: 'offline', lastSeen: null }}
-                    size={36}
-                  />
-                  <div className={styles.memberInfo}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: isDark ? '#f1f5f9' : '#0f172a' }}>
-                      {name}{isSelf ? ' (you)' : ''}
-                    </span>
-                    {(memberIsOwner || memberIsAdmin) && (
-                      <span className={styles.adminBadge}>Admin</span>
-                    )}
-                  </div>
-                  {/* Admin actions — only shown to admins, not on self or owner */}
-                  {isAdminMember && !isSelf && !memberIsOwner && (
-                    <div className={styles.memberActions}>
-                      {isOwner && !memberIsAdmin && (
+
+          {/* ── Add Members view ── */}
+          {addingMembers ? (
+            <div className={styles.addMembersView}>
+              <PaneSearchBox
+                value={memberSearch}
+                onChange={setMemberSearch}
+                onClear={() => setMemberSearchResults([])}
+                placeholder="Search by name or username…"
+                autoFocus
+              />
+              <div className={styles.searchResults}>
+                {memberSearching && (
+                  <div className={styles.searchHint}><i className="fas fa-spinner fa-pulse" /> Searching…</div>
+                )}
+                {!memberSearching && memberSearch.trim() && memberSearchResults.length === 0 && (
+                  <div className={styles.searchHint}>No users found</div>
+                )}
+                {!memberSearch.trim() && (
+                  <div className={styles.searchHint}>Start typing to search for people to add</div>
+                )}
+                {memberSearchResults.map(user => {
+                  const name = user.displayName || user.username.replace(/^@/, '');
+                  return (
+                    <div key={user.id} className={styles.memberRow}>
+                      <PresenceAvatar
+                        displayName={name}
+                        profileImage={user.profileImage}
+                        info={{ status: 'offline', lastSeen: null }}
+                        size={36}
+                      />
+                      <div className={styles.memberInfo}>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: isDark ? '#f1f5f9' : '#0f172a' }}>{name}</span>
+                        <span style={{ fontSize: '11px', color: isDark ? '#64748b' : '#94a3b8' }}>{user.username}</span>
+                      </div>
+                      {invitedIds.has(user.id) ? (
+                        <button className={styles.invitedBtn} disabled aria-label={`${name} invited`}>
+                          <i className="fas fa-check" /> Invited
+                        </button>
+                      ) : (
                         <button
-                          className={styles.actionBtn}
-                          onClick={() => handlePromote(member)}
-                          title={`Make ${name} admin`}
+                          className={styles.inviteBtn}
+                          onClick={() => handleInviteMember(user)}
+                          disabled={invitingIds.has(user.id)}
+                          aria-label={`Invite ${name}`}
                         >
-                          <i className="fas fa-shield-plus" />
-                          <span>Make Admin</span>
+                          {invitingIds.has(user.id)
+                            ? <i className="fas fa-spinner fa-pulse" />
+                            : <><i className="fas fa-user-plus" /> Invite</>}
                         </button>
                       )}
-                      {isOwner && memberIsAdmin && (
-                        <button
-                          className={styles.actionBtn}
-                          onClick={() => handleDemote(member)}
-                          title={`Remove admin from ${name}`}
-                        >
-                          <i className="fas fa-shield-minus" />
-                          <span>Remove Admin</span>
-                        </button>
-                      )}
-                      <button
-                        className={styles.removeMemberBtn}
-                        onClick={() => handleRemoveMember(member)}
-                        title={`Remove ${name}`}
-                      >
-                        <i className="fas fa-user-minus" />
-                        <span>Remove</span>
-                      </button>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className={styles.membersPanelFooter}>
-            <button className={styles.leaveGroupBtn} onClick={handleLeaveGroup}>
-              <i className="fas fa-arrow-right-from-bracket" />
-              Leave Group
-            </button>
-            {isOwner && (
-              <button className={styles.deleteGroupBtn} onClick={handleDeleteGroup}>
-                <i className="fas fa-trash" />
-                Delete Group
-              </button>
-            )}
-          </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* ── Members list ── */
+            <>
+              <div className={styles.membersList}>
+                {group.members.map(member => {
+                  const name = member.user.displayName || member.user.username.replace(/^@/, '');
+                  const memberIsOwner = member.userId === group.ownerId;
+                  const memberIsAdmin = member.role === 'admin';
+                  const isSelf = member.userId === currentUserId;
+                  return (
+                    <div key={member.userId} className={styles.memberRow}>
+                      <PresenceAvatar
+                        displayName={name}
+                        profileImage={member.user.profileImage}
+                        info={{ status: 'offline', lastSeen: null }}
+                        size={36}
+                      />
+                      <div className={styles.memberInfo}>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: isDark ? '#f1f5f9' : '#0f172a' }}>
+                          {name}{isSelf ? ' (you)' : ''}
+                        </span>
+                        {(memberIsOwner || memberIsAdmin) && (
+                          <span className={styles.adminBadge}>Admin</span>
+                        )}
+                      </div>
+                      {isAdminMember && !isSelf && !memberIsOwner && (
+                        <div className={styles.memberActions}>
+                          {isOwner && !memberIsAdmin && (
+                            <button className={styles.actionBtn} onClick={() => handlePromote(member)} title={`Make ${name} admin`}>
+                              <i className="fas fa-shield-plus" /><span>Make Admin</span>
+                            </button>
+                          )}
+                          {isOwner && memberIsAdmin && (
+                            <button className={styles.actionBtn} onClick={() => handleDemote(member)} title={`Remove admin from ${name}`}>
+                              <i className="fas fa-shield-minus" /><span>Remove Admin</span>
+                            </button>
+                          )}
+                          <button className={styles.removeMemberBtn} onClick={() => handleRemoveMember(member)} title={`Remove ${name}`}>
+                            <i className="fas fa-user-minus" /><span>Remove</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className={styles.membersPanelFooter}>
+                {isAdminMember && (
+                  <button className={styles.addMemberBtn} onClick={() => setAddingMembers(true)}>
+                    <i className="fas fa-user-plus" /> Add Members
+                  </button>
+                )}
+                <button className={styles.leaveGroupBtn} onClick={handleLeaveGroup}>
+                  <i className="fas fa-arrow-right-from-bracket" /> Leave Group
+                </button>
+                {isOwner && (
+                  <button className={styles.deleteGroupBtn} onClick={handleDeleteGroup}>
+                    <i className="fas fa-trash" /> Delete Group
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

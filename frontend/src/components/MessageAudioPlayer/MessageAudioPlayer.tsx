@@ -252,7 +252,7 @@ export default function MessageAudioPlayer({
           className={`${styles.waveform} ${audioLoaded ? styles.waveformSeekable : styles.waveformStatic}`}
         >
           {waveformData.map((amplitude, index) => {
-            const isPassed = (index / waveformData.length) * 100 <= progress;
+            const isPassed = progress > 0 && (index / waveformData.length) * 100 < progress;
             return (
               <div
                 key={index}
