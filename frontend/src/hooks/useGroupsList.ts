@@ -190,17 +190,54 @@ export function useGroupsList() {
       });
     };
 
+    // group:removed fires when WE are kicked from a group
+    const handleGroupRemoved = (data: { groupId: string }) => {
+      setGroups(prev => prev.filter(g => g.id !== data.groupId));
+      // Also remove any pending invite for that group
+      setInvites(prev => prev.filter(i => i.groupId !== data.groupId));
+    };
+
+    // group:deleted fires when the group is deleted (for all members)
+    const handleGroupDeleted = (data: { groupId: string }) => {
+      setGroups(prev => prev.filter(g => g.id !== data.groupId));
+      setInvites(prev => prev.filter(i => i.groupId !== data.groupId));
+    };
+
+    // group:memberJoined — refresh so member count stays accurate in the list
+    const handleMemberJoined = (data: { groupId: string }) => {
+      setGroups(prev => prev.map(g => {
+        if (g.id !== data.groupId) return g;
+        // Re-fetch the group to get the updated member list
+        return g;
+      }));
+      // Trigger a background refresh
+      fetchGroups();
+    };
+
+    // group:memberLeft — refresh member count
+    const handleMemberLeft = () => {
+      fetchGroups();
+    };
+
     socket.on('group:message', handleGroupMessage);
     socket.on('group:invite', handleGroupInvite);
     socket.on('group:inviteAccepted', handleInviteAccepted);
     socket.on('group:inviteDeclined', handleInviteDeclined);
     socket.on('group:created', handleGroupCreated);
+    socket.on('group:removed', handleGroupRemoved);
+    socket.on('group:deleted', handleGroupDeleted);
+    socket.on('group:memberJoined', handleMemberJoined);
+    socket.on('group:memberLeft', handleMemberLeft);
     return () => {
       socket.off('group:message', handleGroupMessage);
       socket.off('group:invite', handleGroupInvite);
       socket.off('group:inviteAccepted', handleInviteAccepted);
       socket.off('group:inviteDeclined', handleInviteDeclined);
       socket.off('group:created', handleGroupCreated);
+      socket.off('group:removed', handleGroupRemoved);
+      socket.off('group:deleted', handleGroupDeleted);
+      socket.off('group:memberJoined', handleMemberJoined);
+      socket.off('group:memberLeft', handleMemberLeft);
     };
   }, [socket, fetchGroups]);
 

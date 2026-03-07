@@ -230,7 +230,13 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
 
     const onOwnerChanged = (data: any) => {
       if (data.groupId !== group.id) return;
-      setGroup(prev => ({ ...prev, ownerId: data.newOwnerId }));
+      setGroup(prev => ({
+        ...prev,
+        ownerId: data.newOwnerId,
+        members: prev.members.map(m =>
+          m.userId === data.newOwnerId ? { ...m, role: 'admin' } : m
+        ),
+      }));
     };
 
     const onMemberPromoted = (data: any) => {
@@ -253,11 +259,19 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       }));
     };
 
+    // Fired when the current user is removed from the group by an admin
+    const onRemovedFromGroup = (data: any) => {
+      if (data.groupId !== group.id) return;
+      showToast(`You were removed from "${group.name}"`, 'warning', 4000);
+      onGroupDeleted?.();
+    };
+
     socket.on('group:message', onMessage);
     socket.on('group:typing', onTyping);
     socket.on('group:memberJoined', onMemberJoined);
     socket.on('group:memberLeft', onMemberRemoved);
     socket.on('group:deleted', onGroupDeletedEvent);
+    socket.on('group:removed', onRemovedFromGroup);
     socket.on('group:ownerChanged', onOwnerChanged);
     socket.on('group:memberPromoted', onMemberPromoted);
     socket.on('group:memberDemoted', onMemberDemoted);
@@ -267,6 +281,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       socket.off('group:memberJoined', onMemberJoined);
       socket.off('group:memberLeft', onMemberRemoved);
       socket.off('group:deleted', onGroupDeletedEvent);
+      socket.off('group:removed', onRemovedFromGroup);
       socket.off('group:ownerChanged', onOwnerChanged);
       socket.off('group:memberPromoted', onMemberPromoted);
       socket.off('group:memberDemoted', onMemberDemoted);
