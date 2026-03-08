@@ -1,6 +1,10 @@
 /deployAWS.sh
 /aws.sh
 
+# SSH keys / secrets
+*.pem
+*.key
+
 # Node modules
 /node_modules/
 **/node_modules/

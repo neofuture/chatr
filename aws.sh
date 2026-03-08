@@ -17,8 +17,9 @@ warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 # ── Config ────────────────────────────────────────────────────────────────────
-KEY="$HOME/.ssh/chatr-key.pem"
-SERVER="ubuntu@16.60.35.172"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KEY="$SCRIPT_DIR/Chatr-key.pem"
+SERVER="ubuntu@ec2-16-60-35-172.eu-west-2.compute.amazonaws.com"
 SCRIPT="./deployAWS.sh"
 
 # ── Parse target argument ─────────────────────────────────────────────────────

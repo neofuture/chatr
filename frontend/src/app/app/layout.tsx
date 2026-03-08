@@ -17,7 +17,7 @@ export default function AppLayout({
 
   // Determine title and header action based on path
   let title = "Chats";
-  let headerAction: { icon: string; onClick: () => void; title?: string; color?: string } | { icon: string; onClick: () => void; title?: string; color?: string }[] | undefined;
+  let headerAction: { icon: string; onClick: () => void; title?: string; color?: string; badge?: string } | { icon: string; onClick: () => void; title?: string; color?: string; badge?: string }[] | undefined;
 
   if (pathname === "/app/friends") {
     title = "Friends";
