@@ -32,18 +32,17 @@
   <p>This page demonstrates the Chatr support chat widget. Click the chat button in the bottom-right corner to start a conversation.</p>
   <code>&lt;script src="https://api.chatr-app.online/widget/chatr.js"&gt;&lt;/script&gt;</code>
 
-  <!-- Widget config (optional) -->
   <script>
+    // Auto-detect API URL — works on localhost (port 3001) and on the live server
+    var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     window.ChatrWidgetConfig = {
-      apiUrl: window.location.hostname === 'localhost' ? 'http://localhost:3001' : 'https://api.chatr-app.online',
+      apiUrl: isLocal ? 'http://localhost:3001' : 'https://api.chatr-app.online',
       accentColor: '#f97316',
       title: 'Chatr Support',
-      greeting: 'Hi there 👋 Need help? We\'re here!',
+      greeting: "Hi there 👋 Need help? We're here!",
     };
   </script>
-
-  <!-- The widget itself -->
-  <script src="/widget/chatr.js"></script>
+  <script src="chatr.js"></script>
 </body>
 </html>
 

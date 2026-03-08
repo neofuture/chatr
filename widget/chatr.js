@@ -18,7 +18,27 @@
 
   // ── Config ──────────────────────────────────────────────────────────────────
   var cfg = window.ChatrWidgetConfig || {};
-  var API_URL = (cfg.apiUrl || 'https://api.chatr-app.online').replace(/\/$/, '');
+
+  // Auto-detect API URL from the script's own src if not explicitly set.
+  // e.g. <script src="http://localhost:3001/widget/chatr.js"> → API_URL = http://localhost:3001
+  //      <script src="https://api.chatr-app.online/widget/chatr.js"> → API_URL = https://api.chatr-app.online
+  function detectApiUrl() {
+    if (cfg.apiUrl) return cfg.apiUrl.replace(/\/$/, '');
+    // Try to find the script tag that loaded this file
+    var scripts = document.querySelectorAll('script[src]');
+    for (var i = 0; i < scripts.length; i++) {
+      var src = scripts[i].getAttribute('src') || '';
+      if (src.indexOf('/widget/chatr.js') !== -1) {
+        // Strip the path, keep just the origin
+        var m = src.match(/^(https?:\/\/[^/]+)/);
+        if (m) return m[1];
+      }
+    }
+    // Fallback: same origin as the page (works for demo.html served from backend)
+    return window.location.protocol + '//' + window.location.host;
+  }
+
+  var API_URL = detectApiUrl();
   var ACCENT  = cfg.accentColor || '#f97316';
   var TITLE   = cfg.title   || 'Support Chat';
   var GREETING = cfg.greeting || 'Hi there 👋 How can we help you today?';
