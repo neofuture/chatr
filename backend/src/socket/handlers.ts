@@ -266,7 +266,15 @@ export function setupSocketHandlers(io: Server) {
           invalidateConversationCache(data.recipientId),
         ]);
 
+        // Check Redis for socket ID (used for delivered status only).
+        // Even if Redis is down we still emit to the Socket.IO room — rooms are
+        // in-memory and don't require Redis.
         const recipientSocketId = await getSocketId(data.recipientId);
+
+        // Check if recipient is actually in the room (works without Redis)
+        const recipientRoom = io.sockets.adapter.rooms.get(`user:${data.recipientId}`);
+        const recipientOnline = (recipientRoom && recipientRoom.size > 0) || !!recipientSocketId;
+
         const fileUrl = message.fileUrl || data.fileUrl;
         const fileName = message.fileName || data.fileName;
         const fileSize = message.fileSize || data.fileSize;
@@ -283,36 +291,35 @@ export function setupSocketHandlers(io: Server) {
           duration: message.replyToDuration || null,
         } : undefined;
 
-        if (recipientSocketId) {
-          io.to(`user:${data.recipientId}`).emit('message:received', {
-            id: message.id,
-            senderId: userId,
-            recipientId: data.recipientId,
-            senderUsername: username,
-            senderDisplayName: displayName,
-            senderProfileImage: profileImage,
-            content: message.content,
-            type: message.type,
-            timestamp: message.createdAt,
-            status: 'delivered',
-            fileUrl,
-            fileName,
-            fileSize,
-            fileType,
-            waveform,
-            duration,
-            replyTo: replyToPayload,
-            conversationId: convo.id,
-            conversationStatus: convo.status,
-          });
+        // Always emit to the recipient's room — works even when Redis is down
+        io.to(`user:${data.recipientId}`).emit('message:received', {
+          id: message.id,
+          senderId: userId,
+          recipientId: data.recipientId,
+          senderUsername: username,
+          senderDisplayName: displayName,
+          senderProfileImage: profileImage,
+          content: message.content,
+          type: message.type,
+          timestamp: message.createdAt,
+          status: recipientOnline && !isPending ? 'delivered' : 'sent',
+          fileUrl,
+          fileName,
+          fileSize,
+          fileType,
+          waveform,
+          duration,
+          replyTo: replyToPayload,
+          conversationId: convo.id,
+          conversationStatus: convo.status,
+        });
 
-          // Only update status to delivered if conversation is accepted
-          if (!isPending) {
-            await prisma.message.update({
-              where: { id: message.id },
-              data: { status: 'delivered' }
-            });
-          }
+        // Only update status to delivered if conversation is accepted and recipient is online
+        if (recipientOnline && !isPending) {
+          await prisma.message.update({
+            where: { id: message.id },
+            data: { status: 'delivered' }
+          });
         }
 
         // Confirm to sender — suppress delivered status for pending conversations
@@ -323,7 +330,7 @@ export function setupSocketHandlers(io: Server) {
           content: message.content,
           type: message.type,
           timestamp: message.createdAt,
-          status: (recipientSocketId && !isPending) ? 'delivered' : 'sent',
+          status: (recipientOnline && !isPending) ? 'delivered' : 'sent',
           replyTo: replyToPayload,
           fileUrl: message.fileUrl,
           fileName: message.fileName,
