@@ -289,16 +289,26 @@
     }
   }
 
+  function buildAvatarUrl(imgSrc) {
+    if (!imgSrc) return null;
+    // Already a full URL
+    if (/^https?:\/\//.test(imgSrc)) return imgSrc;
+    // Relative path — prefix with API_URL
+    return API_URL + '/' + imgSrc.replace(/^\//, '');
+  }
+
   function setAvatarContent(imgSrc, name) {
-    if (imgSrc) {
+    var url = buildAvatarUrl(imgSrc);
+    if (url) {
       var img = document.createElement('img');
-      img.src = API_URL + '/' + imgSrc.replace(/^\//, '');
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+      img.src = url;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
       img.onerror = function () { setAvatarContent(null, name); };
       elAvatar.innerHTML = '';
       elAvatar.appendChild(img);
     } else {
       var initials = (name || 'S').split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
+      elAvatar.innerHTML = '';
       elAvatar.textContent = initials;
     }
   }
@@ -352,10 +362,12 @@
     var avatarHtml = '';
     if (!isSent) {
       var initials = (state.supportName || 'S').split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
-      var avatarStyle = state.supportAvatar
-        ? 'style="background:url(' + API_URL + '/' + state.supportAvatar.replace(/^\//, '') + ') center/cover no-repeat"'
-        : '';
-      avatarHtml = '<div class="chatr-msg-avatar" aria-hidden="true" ' + avatarStyle + '>' + (state.supportAvatar ? '' : initials) + '</div>';
+      var avatarUrl = buildAvatarUrl(state.supportAvatar);
+      if (avatarUrl) {
+        avatarHtml = '<div class="chatr-msg-avatar" aria-hidden="true"><img src="' + avatarUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML=\'' + initials + '\'"/></div>';
+      } else {
+        avatarHtml = '<div class="chatr-msg-avatar" aria-hidden="true">' + initials + '</div>';
+      }
     }
 
     wrap.innerHTML = avatarHtml + [
@@ -382,7 +394,15 @@
     var el = document.createElement('div');
     el.id = 'chatr-w-typing';
     el.className = 'chatr-msg recv';
-    el.innerHTML = '<div class="chatr-typing"><span></span><span></span><span></span></div>';
+
+    // Avatar beside the typing dots (same as recv messages)
+    var initials = (state.supportName || 'S').split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
+    var avatarUrl = buildAvatarUrl(state.supportAvatar);
+    var avatarHtml = avatarUrl
+      ? '<div class="chatr-msg-avatar" aria-hidden="true"><img src="' + avatarUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML=\'' + initials + '\'"/></div>'
+      : '<div class="chatr-msg-avatar" aria-hidden="true">' + initials + '</div>';
+
+    el.innerHTML = avatarHtml + '<div class="chatr-typing"><span></span><span></span><span></span></div>';
     elBody.appendChild(el);
     scrollBottom();
   }
