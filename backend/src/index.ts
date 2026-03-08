@@ -21,6 +21,7 @@ import emailTemplatesRoutes from './routes/email-templates';
 import fileUploadRoutes from './routes/file-upload';
 import friendRoutes from './routes/friends';
 import conversationRoutes from './routes/conversations';
+import widgetRoutes from './routes/widget';
 
 // Import Socket.io handlers
 import { setupSocketHandlers } from './socket/handlers';
@@ -36,8 +37,9 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => callback(null, true), // allow widget from any origin
     methods: ['GET', 'POST'],
+    credentials: false,
   },
 });
 
@@ -112,7 +114,15 @@ app.use('/api/messages', fileUploadRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/widget', widgetRoutes);
 app.use('/api', emailTemplatesRoutes);
+
+// Serve the embeddable widget JS with open CORS so any site can load it
+app.use('/widget', (_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
+  next();
+}, express.static(path.join(__dirname, '../../widget')));
 
 const PORT = process.env.PORT || 3001;
 
