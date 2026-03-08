@@ -861,7 +861,7 @@ export default function MessageBubble({
         );
       })}
 
-      {/* Ghost Typing */}
+      {/* Ghost Typing — only for 1:1 when NOT actively typing (live preview) */}
       <AnimatedIndicator visible={!!recipientGhostText && !isRecipientTyping && !isRecipientRecording}>
         <div className={styles.ghostTypingWrapper} aria-hidden="true">
           <div className={styles.ghostTypingBubble}>
@@ -870,13 +870,16 @@ export default function MessageBubble({
         </div>
       </AnimatedIndicator>
 
-      {/* Typing */}
-      <AnimatedIndicator visible={isRecipientTyping && !recipientGhostText}>
+      {/* Typing dots — with optional names label for group chats */}
+      <AnimatedIndicator visible={isRecipientTyping}>
         <div className={styles.typingIndicatorWrapper} aria-hidden="true">
           <div className={styles.typingIndicatorBubble}>
             <span className={`${styles.typingDot} ${styles.typingDot1}`} />
             <span className={`${styles.typingDot} ${styles.typingDot2}`} />
             <span className={`${styles.typingDot} ${styles.typingDot3}`} />
+            {!!recipientGhostText && (
+              <span className={styles.typingNames}>{recipientGhostText}</span>
+            )}
           </div>
         </div>
       </AnimatedIndicator>

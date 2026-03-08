@@ -75,6 +75,17 @@
   flex-shrink: 0;
 }
 
+.ownerBadge {
+  font-size: 9px;
+  font-weight: 700;
+  color: #22c55e;
+  border: 1px solid #22c55e;
+  border-radius: 4px;
+  padding: 1px 5px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
 .memberActions {
   display: flex;
   align-items: center;

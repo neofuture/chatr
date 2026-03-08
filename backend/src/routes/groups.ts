@@ -696,9 +696,9 @@ router.patch('/:id/members/:memberId/demote', authenticateToken as any, async (r
     const group = await prisma.group.findUnique({ where: { id: groupId } });
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    // Only the owner can demote (prevent admins removing each other)
+    // Only the owner can demote admins
     if (group.ownerId !== userId) {
-      return res.status(403).json({ error: 'Only the owner can demote admins' });
+      return res.status(403).json({ error: 'Only the group owner can remove admin' });
     }
     // Cannot demote the owner themselves
     if (memberId === group.ownerId) {

@@ -130,9 +130,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Fixed Top Header */}
       <div className="flex-none h-16 bg-slate-800 border-b border-blue-500/20 px-6 flex items-center justify-between">
         <h1 className="text-xl font-bold text-white">{activeTitle}</h1>
-        <button className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-700/50 transition-colors text-blue-300">
-          <span className="text-2xl">☰</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {pathname === '/app' && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('chatr:new-group'))}
+              title="Create new group"
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-700/50 transition-colors text-orange-400"
+            >
+              <i className="fas fa-user-friends text-lg" />
+            </button>
+          )}
+          <button className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-700/50 transition-colors text-blue-300">
+            <span className="text-2xl">☰</span>
+          </button>
+        </div>
       </div>
 
       {/* Content — flex-1 so it fills between header and nav, overflow-hidden so children can manage their own scroll */}

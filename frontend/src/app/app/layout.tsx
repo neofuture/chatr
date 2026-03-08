@@ -17,7 +17,7 @@ export default function AppLayout({
 
   // Determine title and header action based on path
   let title = "Chats";
-  let headerAction;
+  let headerAction: { icon: string; onClick: () => void; title?: string; color?: string } | { icon: string; onClick: () => void; title?: string; color?: string }[] | undefined;
 
   if (pathname === "/app/friends") {
     title = "Friends";
@@ -30,11 +30,21 @@ export default function AppLayout({
   } else if (pathname === "/app/settings") {
     title = "Settings";
   } else {
-    // Chats page (default)
-    headerAction = {
-      icon: "far fa-pen-to-square",
-      onClick: () => window.dispatchEvent(new CustomEvent('chatr:compose')),
-    };
+    // Chats page — compose + create group
+    headerAction = [
+      {
+        icon: "fad fa-users",
+        badge: "+",
+        title: "Create new group",
+        color: "#ffffff",
+        onClick: () => window.dispatchEvent(new CustomEvent('chatr:new-group')),
+      },
+      {
+        icon: "far fa-pen-to-square",
+        title: "New message",
+        onClick: () => window.dispatchEvent(new CustomEvent('chatr:compose')),
+      },
+    ];
   }
 
   return (

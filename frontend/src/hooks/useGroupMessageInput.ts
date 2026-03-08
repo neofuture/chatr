@@ -47,6 +47,7 @@ export function useGroupMessageInput({
   const [uploadingFile, setUploadingFile] = useState(false);
 
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingKeepaliveRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
 
   const effectivelyOnline = connected;
@@ -57,6 +58,7 @@ export function useGroupMessageInput({
     if (!socket || !groupId || !isTypingRef.current) return;
     socket.emit('group:typing', { groupId, isTyping: false });
     isTypingRef.current = false;
+    if (typingKeepaliveRef.current) { clearInterval(typingKeepaliveRef.current); typingKeepaliveRef.current = null; }
   }, [socket, groupId]);
 
   const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +70,13 @@ export function useGroupMessageInput({
     if (val && !isTypingRef.current) {
       socket.emit('group:typing', { groupId, isTyping: true });
       isTypingRef.current = true;
+      // Keepalive: re-emit every 4s so the receiver's 5s timer never fires mid-session
+      if (typingKeepaliveRef.current) clearInterval(typingKeepaliveRef.current);
+      typingKeepaliveRef.current = setInterval(() => {
+        if (isTypingRef.current && socket && groupId) {
+          socket.emit('group:typing', { groupId, isTyping: true });
+        }
+      }, 4000);
     }
     if (!val && isTypingRef.current) {
       emitTypingStop();
@@ -75,7 +84,7 @@ export function useGroupMessageInput({
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (val) {
-      typingTimeoutRef.current = setTimeout(emitTypingStop, 3000);
+      typingTimeoutRef.current = setTimeout(emitTypingStop, 8000);
     }
   }, [socket, groupId, effectivelyOnline, emitTypingStop]);
 

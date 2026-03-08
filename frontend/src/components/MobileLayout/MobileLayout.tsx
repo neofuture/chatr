@@ -9,13 +9,18 @@ import BottomNav from '@/components/BottomNav/BottomNav';
 import type { User } from '@/types';
 import styles from './MobileLayout.module.css';
 
+interface HeaderAction {
+  icon: string;
+  onClick: () => void;
+  title?: string;
+  color?: string;
+  badge?: string; // small overlay text e.g. "+"
+}
+
 interface MobileLayoutProps {
   children: React.ReactNode;
   title: string;
-  headerAction?: {
-    icon: string;
-    onClick: () => void;
-  };
+  headerAction?: HeaderAction | HeaderAction[];
 }
 
 export default function MobileLayout({ children, title, headerAction }: MobileLayoutProps) {
@@ -124,22 +129,37 @@ export default function MobileLayout({ children, title, headerAction }: MobileLa
           </AnimatePresence>
         </div>
 
-        {/* Right spacer / Action Button */}
+        {/* Right spacer / Action Button(s) */}
         <div className={styles.headerRight}>
           <AnimatePresence>
-            {headerAction && (
+            {headerAction && (Array.isArray(headerAction) ? headerAction : [headerAction]).map((action, i) => (
               <motion.button
+                key={i}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 transition={{ duration: 0.2 }}
-                onClick={headerAction.onClick}
+                onClick={action.onClick}
                 className={styles.headerActionBtn}
-                style={{ color: theme.text }}
+                title={action.title}
+                style={{ color: action.color ?? theme.text, position: 'relative' }}
               >
-                <i className={headerAction.icon}></i>
+                <i className={action.icon}></i>
+                {action.badge && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    fontSize: '9px',
+                    fontWeight: '900',
+                    lineHeight: 1,
+                    color: action.color ?? theme.text,
+                  }}>
+                    {action.badge}
+                  </span>
+                )}
               </motion.button>
-            )}
+            ))}
           </AnimatePresence>
         </div>
       </div>

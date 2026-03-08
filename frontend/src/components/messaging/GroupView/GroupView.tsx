@@ -116,8 +116,21 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     const handler = (e: Event) => {
       const ev = e as CustomEvent<{ groupId: string; open: boolean }>;
       if (ev.detail.groupId === group.id) {
-        // Title bar always sends open:true — only the X button closes
         setMembersOpen(ev.detail.open);
+        // Re-fetch fresh member roles whenever the panel opens
+        if (ev.detail.open) {
+          const token = localStorage.getItem('token');
+          fetch(`${API}/api/groups/${group.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              if (data?.group?.members) {
+                setGroup(prev => ({ ...prev, members: data.group.members }));
+              }
+            })
+            .catch(() => {});
+        }
       }
     };
     window.addEventListener('chatr:group-members-toggle', handler);
@@ -200,7 +213,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
         if (typingTimers.current[data.userId]) clearTimeout(typingTimers.current[data.userId]);
         typingTimers.current[data.userId] = setTimeout(() => {
           setIsTyping(prev => prev.filter(t => t.userId !== data.userId));
-        }, 5000);
+        }, 6000);
       } else {
         clearTimeout(typingTimers.current[data.userId]);
         setIsTyping(prev => prev.filter(t => t.userId !== data.userId));
@@ -486,11 +499,15 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     }
   }, [group.id, group.name, showConfirmation, showToast, onGroupDeleted]);
 
-  const typingLabel = isTyping.length === 0
-    ? ''
-    : isTyping.length === 1
-    ? `${isTyping[0].displayName} is typing…`
-    : `${isTyping.map(t => t.displayName).join(', ')} are typing…`;
+  const typingLabel = (() => {
+    if (isTyping.length === 0) return '';
+    const names = isTyping.map(t => t.displayName.split(' ')[0]);
+    if (names.length === 1) return `${names[0]} is typing`;
+    if (names.length === 2) return `${names[0]} and ${names[1]} are typing`;
+    const last = names[names.length - 1];
+    const rest = names.slice(0, -1).join(', ');
+    return `${rest} and ${last} are typing`;
+  })();
 
   const border = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)';
 
@@ -614,13 +631,12 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
                         <span style={{ fontSize: '13px', fontWeight: 500, color: isDark ? '#f1f5f9' : '#0f172a' }}>
                           {name}{isSelf ? ' (you)' : ''}
                         </span>
-                        {(memberIsOwner || memberIsAdmin) && (
-                          <span className={styles.adminBadge}>Admin</span>
-                        )}
+                        {memberIsOwner && <span className={styles.ownerBadge}>Owner</span>}
+                        {memberIsAdmin && <span className={styles.adminBadge}>Admin</span>}
                       </div>
                       {isAdminMember && !isSelf && !memberIsOwner && (
                         <div className={styles.memberActions}>
-                          {isOwner && !memberIsAdmin && (
+                          {isAdminMember && !memberIsAdmin && (
                             <button className={styles.actionBtn} onClick={() => handlePromote(member)} title={`Make ${name} admin`}>
                               <i className="fas fa-shield-plus" /><span>Make Admin</span>
                             </button>

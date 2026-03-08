@@ -91,15 +91,16 @@ const defaultProps = {
 
 describe('ConversationsList', () => {
   describe('Tab visibility', () => {
-    it('always shows Chats and Groups tabs', () => {
+    it('does not show any tabs when only chats exist (no requests)', () => {
       render(
         <ConversationsList
           {...defaultProps}
           conversations={[friendChat, friendChat2, outgoingPending]}
         />
       );
-      expect(screen.getByText('Chats')).toBeInTheDocument();
-      expect(screen.getByText('Groups')).toBeInTheDocument();
+      expect(screen.queryByText('Chats')).not.toBeInTheDocument();
+      expect(screen.queryByText('Groups')).not.toBeInTheDocument();
+      expect(screen.queryByText('Requests')).not.toBeInTheDocument();
     });
 
     it('does not show Requests tab when no incoming requests', () => {
@@ -112,7 +113,7 @@ describe('ConversationsList', () => {
       expect(screen.queryByText('Requests')).not.toBeInTheDocument();
     });
 
-    it('shows Requests tab when incoming requests exist', () => {
+    it('shows Chats and Requests tabs when incoming requests exist', () => {
       render(
         <ConversationsList
           {...defaultProps}
@@ -120,7 +121,7 @@ describe('ConversationsList', () => {
         />
       );
       expect(screen.getByText('Chats')).toBeInTheDocument();
-      expect(screen.getByText('Groups')).toBeInTheDocument();
+      expect(screen.queryByText('Groups')).not.toBeInTheDocument();
       expect(screen.getByText('Requests')).toBeInTheDocument();
     });
 
