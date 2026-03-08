@@ -1,8 +1,16 @@
 import OpenAI from 'openai';
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy client — only created on first use so a missing key doesn't crash startup
+let _client: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (!_client) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set. Luna AI is unavailable.');
+    }
+    _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _client;
+}
 
 export const OPENAI_MODEL = 'gpt-4o-mini';
 export const OPENAI_MAX_TOKENS = 4096;
@@ -19,6 +27,7 @@ export async function generateAIReply(
   userMessage: string,
 ): Promise<string> {
   try {
+    const client = getClient();
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: SYSTEM_PROMPT },
       ...history.slice(-10), // last 10 messages for context
@@ -38,4 +47,3 @@ export async function generateAIReply(
     throw error;
   }
 }
-
