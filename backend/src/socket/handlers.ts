@@ -135,6 +135,10 @@ export function setupSocketHandlers(io: Server) {
         .map(p => ({ userId: p.userId, status: p.status }))
     });
 
+    // Signal to clients (especially the widget) that the server-side setup is
+    // complete and all event handlers are registered — safe to send first message.
+    socket.emit('socket:ready', { userId });
+
     // ==================== DIRECT MESSAGES ====================
 
     socket.on('message:send', async (data: {

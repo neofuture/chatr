@@ -587,8 +587,15 @@
 
     state.socket.on('connect', function () {
       elStatusTxt.textContent = 'Online';
+      // Don't send firstMessage here — wait for socket:ready which fires after
+      // the server has finished its async setup and registered all event handlers.
+      // Sending on 'connect' races with the server's connection handler.
+    });
+
+    // Server signals it has completed async setup and is ready to receive messages
+    state.socket.on('socket:ready', function () {
+      elStatusTxt.textContent = 'Online';
       if (firstMessage) {
-        // Send the first message once connected
         var msg = firstMessage;
         firstMessage = null;
         state.socket.emit('message:send', {
