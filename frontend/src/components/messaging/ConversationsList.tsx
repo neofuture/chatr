@@ -184,14 +184,14 @@ export default function ConversationsList({
                   borderRadius: '10px', padding: '10px 12px', marginBottom: '8px',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                      background: 'linear-gradient(135deg, var(--color-orange-500), var(--color-red-500))',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '15px', color: '#fff',
-                    }}>
-                      <i className="fas fa-users" />
-                    </div>
+                    <PresenceAvatar
+                      displayName={invite.groupName}
+                      profileImage={null}
+                      info={{ status: 'offline', lastSeen: null }}
+                      size={36}
+                      showDot={false}
+                      isGroup
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
                         fontWeight: '600', fontSize: '13px',
@@ -240,22 +240,20 @@ export default function ConversationsList({
               <button key={group.id} onClick={() => onSelectGroup(group)} style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                 padding: '12px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
-                backgroundColor: isSelected
-                  ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.1)')
-                  : unread > 0
+                backgroundColor: unread > 0
                   ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)')
                   : 'transparent',
-                borderLeft: isSelected ? '3px solid #3b82f6' : unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
+                borderLeft: unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
                 transition: 'background-color 0.15s',
               }}>
-                <div style={{
-                  width: 50, height: 50, borderRadius: '50%', flexShrink: 0,
-                  background: 'linear-gradient(135deg, var(--color-orange-500), var(--color-red-500))',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '20px', color: '#fff',
-                }}>
-                  <i className="fas fa-users" />
-                </div>
+                <PresenceAvatar
+                  displayName={group.name}
+                  profileImage={null}
+                  info={{ status: 'offline', lastSeen: null }}
+                  size={50}
+                  showDot={false}
+                  isGroup
+                />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px' }}>
                     <div style={{
@@ -332,13 +330,10 @@ export default function ConversationsList({
                 <button key={user.id} onClick={() => onSelectUser(user.id)} style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
-                  backgroundColor: isSelected
-                    ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.1)')
-                    : unread > 0
+                  backgroundColor: unread > 0
                     ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)')
                     : 'transparent',
-                  borderLeft: isSelected ? '3px solid #3b82f6'
-                    : unread > 0 ? '3px solid #ef4444'
+                  borderLeft: unread > 0 ? '3px solid #ef4444'
                     : user.isBot ? '3px solid #0891b2'
                     : '3px solid transparent',
                   transition: 'background-color 0.15s',
@@ -440,8 +435,8 @@ export default function ConversationsList({
                 <button key={user.id} onClick={() => onSelectUser(user.id)} style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
-                  backgroundColor: isSelected ? (isDark ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.1)') : unread > 0 ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)') : 'transparent',
-                  borderLeft: isSelected ? '3px solid #3b82f6' : unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
+                  backgroundColor: unread > 0 ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)') : 'transparent',
+                  borderLeft: unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
                   transition: 'background-color 0.15s',
                 }}>
                   <PresenceAvatar displayName={displayName} profileImage={user.profileImage} info={info} size={50} showDot={false} />

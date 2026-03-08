@@ -19,7 +19,13 @@ function shouldHidePresence(info: import('@/types/types').PresenceInfo): boolean
 /** For chat panels, shows live PresenceAvatar; falls back to plain img for others. */
 function PresenceAvatarForPanel({ panelId, profileImage, title }: { panelId: string; profileImage?: string | null; title: string }) {
   const { getPresence } = usePresence();
+  const isGroup = panelId.startsWith('group-');
   const userId = panelId.startsWith('chat-') ? panelId.slice(5) : null;
+
+  if (isGroup) {
+    return <PresenceAvatar displayName={title} profileImage={null} info={{ status: 'offline', lastSeen: null }} size={36} showDot={false} isGroup />;
+  }
+
   if (!userId) return profileImage ? <img src={profileImage} alt={title} /> : null;
   const bot = isAIBot(userId);
   const info = getPresence(userId);
@@ -233,8 +239,9 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
           >
             {(() => {
               const userId = id.startsWith('chat-') ? id.slice(5) : null;
-              if (userId) {
-                // Always render for chat panels — PresenceAvatar shows initials when no image
+              const isGroup = id.startsWith('group-');
+              if (userId || isGroup) {
+                // Always render for chat and group panels
                 return (
                   <PresenceAvatarForPanel panelId={id} profileImage={currentProfileImage} title={title} />
                 );

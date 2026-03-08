@@ -18,6 +18,8 @@ interface PresenceAvatarProps {
   onClick?: (e: React.MouseEvent) => void;
   /** Whether this is the AI bot — shows purple-blue ring instead of orange-red */
   isBot?: boolean;
+  /** Whether this is a group — shows fa-users icon with orange ring */
+  isGroup?: boolean;
 }
 
 export default function PresenceAvatar({
@@ -28,6 +30,7 @@ export default function PresenceAvatar({
   showDot = true,
   onClick,
   isBot = false,
+  isGroup = false,
 }: PresenceAvatarProps) {
   const initials = displayName
     .split(' ')
@@ -64,7 +67,7 @@ export default function PresenceAvatar({
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(e as any); } : undefined}
     >
-      {/* Gradient ring — only shown around photos; initials have their own gradient bg */}
+      {/* Gradient ring */}
       <div
         className={profileImage ? (isBot ? styles.ringBot : styles.ring) : styles.ringBorder}
         style={{ borderRadius: '50%', padding: ring }}
@@ -76,6 +79,13 @@ export default function PresenceAvatar({
             className={styles.image}
             style={{ width: inner, height: inner }}
           />
+        ) : isGroup ? (
+          <div
+            className={styles.initials}
+            style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
+          >
+            <i className="fas fa-users" />
+          </div>
         ) : (
           <div
             className={isBot ? styles.initialsBot : styles.initials}
