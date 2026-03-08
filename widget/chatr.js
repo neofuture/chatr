@@ -11,6 +11,7 @@
  *     accentColor: '#f97316',                  // override accent colour
  *     greeting: 'Hi! How can we help you?',    // override greeting text
  *     title: 'Support Chat',                   // override chat header title
+ *     devMode: true,                           // always start fresh (no session persistence)
  *   };
  */
 (function () {
@@ -24,29 +25,57 @@
   //      <script src="https://api.chatr-app.online/widget/chatr.js"> → API_URL = https://api.chatr-app.online
   function detectApiUrl() {
     if (cfg.apiUrl) return cfg.apiUrl.replace(/\/$/, '');
-    // Try to find the script tag that loaded this file
     var scripts = document.querySelectorAll('script[src]');
     for (var i = 0; i < scripts.length; i++) {
       var src = scripts[i].getAttribute('src') || '';
       if (src.indexOf('/widget/chatr.js') !== -1) {
-        // Strip the path, keep just the origin
         var m = src.match(/^(https?:\/\/[^/]+)/);
         if (m) return m[1];
       }
     }
-    // Fallback: same origin as the page (works for demo.html served from backend)
     return window.location.protocol + '//' + window.location.host;
   }
 
   var API_URL = detectApiUrl();
-  var ACCENT  = cfg.accentColor || '#f97316';
-  var TITLE   = cfg.title   || 'Support Chat';
-  var GREETING = cfg.greeting || 'Hi there 👋 How can we help you today?';
+  var ACCENT   = cfg.accentColor || '#f97316';
+  var TITLE    = cfg.title       || 'Support Chat';
+  var GREETING = cfg.greeting    || 'Hi there 👋 How can we help you today?';
+
+  // devMode: auto-detected when running on localhost, or set explicitly via config.
+  // In devMode the session is NEVER persisted — every page load starts a fresh chat.
+  // In production the session is stored in localStorage so visitors can resume their chat.
+  var isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  var DEV_MODE = cfg.devMode !== undefined ? !!cfg.devMode : isLocalhost;
+
   var SESSION_KEY = 'chatr_widget_session';
+
+  // ── Session storage helpers ──────────────────────────────────────────────────
+  // Dev mode: use sessionStorage (cleared when tab closes, but we also clear on init).
+  // Production: use localStorage (persists across page refreshes and browser restarts).
+  var store = (function () {
+    var s = DEV_MODE ? sessionStorage : localStorage;
+    return {
+      get: function () {
+        try { return JSON.parse(s.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; }
+      },
+      set: function (val) {
+        try { s.setItem(SESSION_KEY, JSON.stringify(val)); } catch (e) { /* ignore */ }
+      },
+      clear: function () {
+        try { s.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+        // Also clear both storages to avoid stale data
+        try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+        try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+      },
+    };
+  }());
 
   // Prevent double-init
   if (window.__chatrWidgetLoaded) return;
   window.__chatrWidgetLoaded = true;
+
+  // In devMode always start fresh — clear any lingering session from previous runs
+  if (DEV_MODE) store.clear();
 
   // ── State ────────────────────────────────────────────────────────────────────
   var state = {
@@ -62,18 +91,19 @@
     conversationId: null,
     messages: [],
     unread: 0,
+    agentTyping: false,
   };
 
-  // ── Restore session from sessionStorage ─────────────────────────────────────
-  try {
-    var saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+  // ── Restore session (production only — devMode always starts fresh) ──────────
+  if (!DEV_MODE) {
+    var saved = store.get();
     if (saved && saved.guestId && saved.token) {
       state.guestId   = saved.guestId;
       state.token     = saved.token;
       state.guestName = saved.guestName;
       state.phase     = 'chat';
     }
-  } catch (e) { /* ignore */ }
+  }
 
   // ── Inject styles ────────────────────────────────────────────────────────────
   var style = document.createElement('style');
@@ -437,14 +467,14 @@
       state.supportAgentId = data.supportAgentId;
       state.phase          = 'chat';
 
-      // Persist session
-      try {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      // Persist session (localStorage in production, not persisted in devMode)
+      if (!DEV_MODE) {
+        store.set({
           guestId: state.guestId,
           token: state.token,
           guestName: state.guestName,
-        }));
-      } catch (e) { /* ignore */ }
+        });
+      }
 
       renderChatPhase();
       loadSocketIO(function () {
