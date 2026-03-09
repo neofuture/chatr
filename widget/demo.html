@@ -8,8 +8,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f8fafc;
-      color: #1e293b;
+      background: #0f172a;
+      color: #f1f5f9;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -19,30 +19,174 @@
       padding: 2rem;
     }
     h1 { font-size: 2rem; font-weight: 700; }
-    p { color: #64748b; max-width: 480px; text-align: center; line-height: 1.6; }
-    code {
-      background: #1e293b; color: #f97316; padding: 12px 20px;
-      border-radius: 8px; display: block; font-size: 14px;
-      max-width: 500px; width: 100%;
+    p { color: #94a3b8; max-width: 480px; text-align: center; line-height: 1.6; }
+    .snippet {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-family: monospace;
+      font-size: 13px;
+      color: #f97316;
+      max-width: 520px;
+      width: 100%;
+      white-space: pre;
+      transition: color .3s;
+    }
+    .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .mode-badge {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .mode-badge.dev  { background: #f97316; color: #fff; }
+    .mode-badge.prod { background: #22c55e; color: #fff; }
+
+    /* ── Colour picker ── */
+    .colour-picker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .colour-picker .label { margin-bottom: 0; }
+    .swatches {
+      display: flex;
+      gap: 10px;
+    }
+    .swatch {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: transform .15s, border-color .15s;
+      outline: none;
+    }
+    .swatch:hover { transform: scale(1.15); }
+    .swatch.active {
+      border-color: #f1f5f9;
+      transform: scale(1.15);
     }
   </style>
 </head>
 <body>
-  <h1>Chatr Widget Demo</h1>
-  <p>This page demonstrates the Chatr support chat widget. Click the chat button in the bottom-right corner to start a conversation.</p>
-  <code>&lt;script src="https://api.chatr-app.online/widget/chatr.js"&gt;&lt;/script&gt;</code>
+  <div id="mode-badge" class="mode-badge"></div>
+  <script>
+    var badge = document.getElementById('mode-badge');
+    var isLocalHost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (isLocalHost) {
+      badge.textContent = '⚡ Dev Mode — fresh chat every load';
+      badge.classList.add('dev');
+    } else {
+      badge.textContent = '✓ Production — session persists';
+      badge.classList.add('prod');
+    }
+  </script>
+
+  <h1>💬 Chatr Widget Demo</h1>
+  <p>Click the chat button in the bottom-right corner to start a support conversation.</p>
+
+  <!-- Colour picker -->
+  <div class="colour-picker">
+    <div class="label">Accent colour</div>
+    <div class="swatches" role="radiogroup" aria-label="Accent colour">
+      <button class="swatch active" data-color="#f97316" title="Orange" style="background:#f97316" aria-label="Orange" aria-pressed="true"></button>
+      <button class="swatch"        data-color="#3b82f6" title="Blue"   style="background:#3b82f6" aria-label="Blue"   aria-pressed="false"></button>
+      <button class="swatch"        data-color="#8b5cf6" title="Purple" style="background:#8b5cf6" aria-label="Purple" aria-pressed="false"></button>
+      <button class="swatch"        data-color="#10b981" title="Green"  style="background:#10b981" aria-label="Green"  aria-pressed="false"></button>
+    </div>
+  </div>
+
+  <div>
+    <div class="label">Embed on any site</div>
+    <div class="snippet" id="snippet">&lt;script src="https://api.chatr-app.online/widget/chatr.js" data-accent-color="#f97316"&gt;&lt;/script&gt;</div>
+  </div>
 
   <script>
-    // Auto-detect API URL — works on localhost (port 3001) and on the live server
     var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     window.ChatrWidgetConfig = {
       apiUrl: isLocal ? 'http://localhost:3001' : 'https://api.chatr-app.online',
-      accentColor: '#f97316',
       title: 'Chatr Support',
       greeting: "Hi there 👋 Need help? We're here!",
     };
   </script>
-  <script src="chatr.js"></script>
+
+  <!--
+    chatr.js is proxied from the backend via Next.js rewrite:
+      /widget/chatr.js  →  http://localhost:3001/widget/chatr.js  (dev)
+      /widget/chatr.js  →  https://api.chatr-app.online/widget/chatr.js  (prod)
+  -->
+  <script src="/widget/chatr.js" id="chatr-script" data-accent-color="#f97316"></script>
+
+  <script>
+    // ── Colour swatch logic ──────────────────────────────────────────────────
+    var swatches = document.querySelectorAll('.swatch');
+    var snippet  = document.getElementById('snippet');
+
+    swatches.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var color = btn.getAttribute('data-color');
+
+        // Update active swatch
+        swatches.forEach(function (s) {
+          s.classList.remove('active');
+          s.setAttribute('aria-pressed', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+
+        // Update snippet text + colour
+        snippet.style.color = color;
+        snippet.textContent =
+          '<script src="https://api.chatr-app.online/widget/chatr.js" data-accent-color="' + color + '"><\/script>';
+
+        // ── Tear down existing widget ──────────────────────────────────────
+        ['chatr-widget-btn', 'chatr-widget-panel'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.parentNode.removeChild(el);
+        });
+        // Remove injected widget <style> tag
+        document.head.querySelectorAll('style').forEach(function (s) {
+          if (s.textContent.indexOf('#chatr-widget-btn') !== -1) {
+            s.parentNode.removeChild(s);
+          }
+        });
+
+        // Reset loaded flag
+        window.__chatrWidgetLoaded = false;
+
+        // Update config accent colour
+        window.ChatrWidgetConfig = window.ChatrWidgetConfig || {};
+        window.ChatrWidgetConfig.accentColor = color;
+
+        // Re-inject script with cache-bust
+        var old = document.getElementById('chatr-script');
+        if (old) old.parentNode.removeChild(old);
+
+        var newScript = document.createElement('script');
+        newScript.id  = 'chatr-script';
+        newScript.src = '/widget/chatr.js?t=' + Date.now();
+        newScript.setAttribute('data-accent-color', color);
+        document.body.appendChild(newScript);
+      });
+    });
+  </script>
 </body>
 </html>
 

@@ -1,0 +1,311 @@
+/* ── Page shell ──────────────────────────────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 56px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  backdrop-filter: blur(8px);
+}
+
+.headerTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Mode badge ──────────────────────────────────────────────────────────── */
+.modeBadge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.dev  { background: #f97316; color: #fff; }
+.prod { background: #22c55e; color: #fff; }
+
+/* ── Main content ────────────────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  padding: 3rem 1.5rem 4rem;
+}
+
+/* ── Intro ───────────────────────────────────────────────────────────────── */
+.intro {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+  max-width: 460px;
+  line-height: 1.6;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.12);
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: .04em;
+}
+
+/* ── Gradient preview ────────────────────────────────────────────────────── */
+.gradientPreview {
+  height: 52px;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,0,0,.25);
+  transition: background 0.25s;
+}
+
+/* ── Colour pickers ──────────────────────────────────────────────────────── */
+.pickersRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.pickerGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pickerLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-tertiary);
+}
+
+.pickerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.colourInputWrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--border-color);
+  transition: box-shadow .15s;
+}
+.colourInputWrap:hover {
+  box-shadow: 0 0 0 2px var(--text-tertiary);
+}
+.colourInputWrap input[type="color"] {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.hexInput {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 14px;
+  padding: 9px 10px;
+  outline: none;
+  transition: border-color .15s;
+  text-transform: uppercase;
+}
+.hexInput:focus {
+  border-color: var(--text-tertiary);
+}
+
+/* ── Section label ───────────────────────────────────────────────────────── */
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+/* ── Widget theme toggle ─────────────────────────────────────────────────── */
+.themeRow {
+  display: flex;
+  gap: 8px;
+}
+
+.themeBtn {
+  flex: 1;
+  padding: 9px 8px;
+  border-radius: 10px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+  white-space: nowrap;
+}
+
+.themeBtn:hover {
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
+}
+
+.themeBtnActive {
+  background: var(--bg-secondary);
+  font-weight: 700;
+}
+
+/* ── Preset grid ─────────────────────────────────────────────────────────── */
+.presetsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.presetBtn {
+  height: 34px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s;
+  outline: none;
+  flex: 1 1 calc(25% - 6px);
+  min-width: 72px;
+}
+.presetBtn:hover {
+  transform: scale(1.05);
+}
+.presetActive {
+  border-color: var(--text-primary);
+  transform: scale(1.05);
+}
+
+/* ── Snippet ─────────────────────────────────────────────────────────────── */
+.snippet {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 14px 16px 28px;
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.6;
+  transition: color 0.3s, border-color .15s;
+  position: relative;
+  cursor: pointer;
+  user-select: all;
+}
+.snippet:hover {
+  border-color: var(--text-tertiary);
+}
+
+.snippetHint {
+  position: absolute;
+  bottom: 7px;
+  right: 12px;
+  font-size: 10px;
+  font-family: sans-serif;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transition: color .2s;
+}
+.snippetCopied .snippetHint {
+  color: #22c55e;
+}
+
+/* ── Theme variables ─────────────────────────────────────────────────────── */
+.page[data-theme="dark"] {
+  --bg-primary:    #0f172a;
+  --bg-secondary:  #1e293b;
+  --border-color:  #334155;
+  --text-primary:  #f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-tertiary: #64748b;
+}
+
+.page[data-theme="light"] {
+  --bg-primary:    #f8fafc;
+  --bg-secondary:  #ffffff;
+  --border-color:  #e2e8f0;
+  --text-primary:  #0f172a;
+  --text-secondary:#475569;
+  --text-tertiary: #94a3b8;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .pickersRow {
+    grid-template-columns: 1fr;
+  }
+  .presetBtn {
+    flex: 1 1 calc(50% - 4px);
+  }
+  .card {
+    padding: 18px;
+  }
+}
+

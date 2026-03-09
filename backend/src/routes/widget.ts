@@ -186,8 +186,53 @@ router.post('/guest-session', async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/widget/history ───────────────────────────────────────────────────
+// Returns message history for a resumed guest session (last 100 messages)
+router.get('/history', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const guestId = req.user?.userId;
+    if (!guestId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const guest = await prisma.user.findUnique({
+      where: { id: guestId },
+      select: { id: true, isGuest: true },
+    });
+    if (!guest?.isGuest) return res.status(403).json({ error: 'Not a guest session' });
+
+    const agent = await prisma.user.findFirst({
+      where: { isSupport: true, emailVerified: true },
+      select: { id: true },
+    });
+    if (!agent) return res.json({ messages: [] });
+
+    const messages = await prisma.message.findMany({
+      where: {
+        type: { not: 'system' },
+        OR: [
+          { senderId: guestId,  recipientId: agent.id },
+          { senderId: agent.id, recipientId: guestId },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+      select: {
+        id: true,
+        senderId: true,
+        recipientId: true,
+        content: true,
+        type: true,
+        createdAt: true,
+      },
+    });
+
+    return res.json({ messages });
+  } catch (err) {
+    console.error('❌ widget/history error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── POST /api/widget/end-chat ─────────────────────────────────────────────────
-// Guest explicitly ends the chat. Sends a system message so the agent sees "Guest left".
 // Also disconnects cleanly — does NOT delete the user (agent may still want to review).
 let _widgetIo: any = null;
 export function setWidgetSocketIO(io: any) { _widgetIo = io; }
