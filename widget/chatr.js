@@ -41,11 +41,11 @@
   var TITLE    = cfg.title       || 'Support Chat';
   var GREETING = cfg.greeting    || 'Hi there 👋 How can we help you today?';
 
-  // devMode: auto-detected when running on localhost, or set explicitly via config.
-  // In devMode the session is NEVER persisted — every page load starts a fresh chat.
-  // In production the session is stored in localStorage so visitors can resume their chat.
-  var isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  var DEV_MODE = cfg.devMode !== undefined ? !!cfg.devMode : isLocalhost;
+  // devMode: only active when explicitly set via config (devMode: true).
+  // Sessions are ALWAYS persisted in localStorage unless devMode is on.
+  // Do NOT auto-detect localhost — the demo page and local testing should still
+  // retain sessions across refreshes just like production.
+  var DEV_MODE = !!cfg.devMode;
 
   var SESSION_KEY = 'chatr_widget_session';
   var SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -78,9 +78,6 @@
       },
       clear: function () {
         try { s.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
-        // Also clear both storages to avoid stale data
-        try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
-        try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
       },
     };
   }());
@@ -116,6 +113,7 @@
       state.guestId   = saved.guestId;
       state.token     = saved.token;
       state.guestName = saved.guestName;
+      state.messages  = saved.messages || [];
       state.phase     = 'chat';
     }
   }
@@ -341,6 +339,16 @@
     elBody.scrollTop = elBody.scrollHeight;
   }
 
+  function persistMessages() {
+    if (DEV_MODE) return;
+    store.set({
+      guestId:   state.guestId,
+      token:     state.token,
+      guestName: state.guestName,
+      messages:  state.messages.slice(-100), // keep last 100
+    });
+  }
+
   function updateBadge() {
     if (state.unread > 0 && !state.open) {
       badge.textContent = state.unread > 9 ? '9+' : state.unread;
@@ -505,6 +513,7 @@
           guestId: state.guestId,
           token: state.token,
           guestName: state.guestName,
+          messages: [],
         });
       }
 
@@ -525,30 +534,36 @@
   }
 
   // ── Render chat phase layout ─────────────────────────────────────────────────
-  function renderChatPhase() {
+  function renderChatPhase(isResume) {
     elBody.innerHTML = '';
     elFooter.style.display = 'flex';
     elEndBtn.style.display = 'block';
-    showSystemMsg('Hi ' + firstName(state.guestName) + '! You\'re now connected with ' + firstName(state.supportName) + '. We\'ll be right with you 😊');
 
-    // Load previous messages for this conversation (if any)
-    if (state.messages.length) {
-      state.messages.forEach(renderMessage);
+    if (!isResume) {
+      showSystemMsg('Hi ' + firstName(state.guestName) + '! You\'re now connected with ' + firstName(state.supportName) + '. We\'ll be right with you 😊');
     }
 
-    elInput.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
+    // Show any cached messages
+    if (state.messages.length) {
+      state.messages.forEach(renderMessage);
+    } else if (isResume && state.token) {
+      fetchHistory();
+    }
 
+    // Deduplicate listeners by cloning elements
+    var newInput = elInput.cloneNode(true);
+    elInput.parentNode.replaceChild(newInput, elInput);
+    elInput = newInput;
+    var newSend = elSend.cloneNode(true);
+    elSend.parentNode.replaceChild(newSend, elSend);
+    elSend = newSend;
+
+    elInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
     elInput.addEventListener('input', function () {
-      // Auto-grow
       elInput.style.height = 'auto';
       elInput.style.height = Math.min(elInput.scrollHeight, 100) + 'px';
-
-      // Typing indicator
       if (state.socket && state.supportAgentId) {
         state.socket.emit('typing:start', { recipientId: state.supportAgentId });
         clearTimeout(state._typingTimer);
@@ -557,9 +572,23 @@
         }, 2000);
       }
     });
-
     elSend.addEventListener('click', sendMessage);
     setTimeout(function () { elInput.focus(); }, 100);
+  }
+
+  // ── Fetch message history when resuming a session ────────────────────────────
+  function fetchHistory() {
+    fetch(API_URL + '/api/widget/history', {
+      headers: { 'Authorization': 'Bearer ' + state.token },
+    })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) {
+      if (!data || !data.messages || !data.messages.length) return;
+      state.messages = data.messages;
+      elBody.innerHTML = '';
+      state.messages.forEach(renderMessage);
+    })
+    .catch(function () {});
   }
 
   // ── Send a message ───────────────────────────────────────────────────────────
@@ -581,6 +610,7 @@
     };
     state.messages.push(tempMsg);
     renderMessage(tempMsg);
+    persistMessages();
 
     state.socket.emit('message:send', {
       recipientId: state.supportAgentId,
@@ -644,6 +674,7 @@
         };
         state.messages.push(tempMsg);
         renderMessage(tempMsg);
+        persistMessages();
       }
     });
 
@@ -673,6 +704,7 @@
 
       state.messages.push(msg);
       renderMessage(msg);
+      persistMessages();
 
       if (!state.open) {
         state.unread++;
@@ -789,9 +821,10 @@
         renderIntro();
       });
     } else if (state.phase === 'chat') {
-      // Always render the chat UI first (footer, input, end btn)
-      renderChatPhase();
-      // Then reconnect socket if not already connected
+      // Render the chat UI (footer, input, history)
+      // isResume=true suppresses the welcome banner and loads history
+      renderChatPhase(true);
+      // Connect socket only if not already connected from auto-init
       if (!state.socket) {
         loadSocketIO(function () {
           connectSocket(null);
@@ -852,25 +885,16 @@
 
   // ── Auto-init if session exists ──────────────────────────────────────────────
   if (state.phase === 'chat' && state.guestId) {
-    // Pre-fetch agent info for the header
-    fetchSupportAgent(null);
+    // Restored session — fetch agent info for the header, then silently reconnect
+    // socket so the badge updates if a message arrives while panel is closed
+    fetchSupportAgent(function () {
+      loadSocketIO(function () {
+        connectSocket(null);
+      });
+    });
   } else {
-    // Pre-fetch silently so first open is fast
-    fetch(API_URL + '/api/widget/support-agent')
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data.id) {
-          state.supportAgentId = data.id;
-          state.supportName    = data.displayName || data.username || 'Support';
-          state.supportAvatar  = data.profileImage || null;
-          elName.textContent   = firstName(state.supportName);
-          setAvatarContent(state.supportAvatar, state.supportName);
-          elStatusTxt.textContent = 'Online';
-        } else {
-          elStatusTxt.textContent = 'Away';
-        }
-      })
-      .catch(function () {});
+    // No session — pre-fetch agent info silently so first open is fast
+    fetchSupportAgent(null);
   }
 
 })();
