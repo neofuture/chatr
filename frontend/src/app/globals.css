@@ -194,6 +194,16 @@
   --overlay-slate-50-85:  rgba(248, 250, 252, 0.85);
   --overlay-slate-50-95:  rgba(248, 250, 252, 0.95);
 
+  /* ── User type accent colours ───────────────────────── */
+
+  /* AI Bot — teal → emerald */
+  --bot-color-from:   #0891b2;
+  --bot-color-to:     #059669;
+
+  /* Guest / widget visitor — green */
+  --guest-color-from: #16a34a;
+  --guest-color-to:   #15803d;
+
   /* ── Semantic (theme-aware) tokens ───────────────────── */
 
   /* Dark theme (default) */

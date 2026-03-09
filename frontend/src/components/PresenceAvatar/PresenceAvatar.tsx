@@ -16,8 +16,10 @@ interface PresenceAvatarProps {
   showDot?: boolean;
   /** Optional click handler — makes the avatar interactive */
   onClick?: (e: React.MouseEvent) => void;
-  /** Whether this is the AI bot — shows purple-blue ring instead of orange-red */
+  /** Whether this is the AI bot — shows teal ring instead of orange-red */
   isBot?: boolean;
+  /** Whether this is a widget guest — shows green ring */
+  isGuest?: boolean;
   /** Whether this is a group — shows fa-users icon with orange ring */
   isGroup?: boolean;
 }
@@ -30,6 +32,7 @@ export default function PresenceAvatar({
   showDot = true,
   onClick,
   isBot = false,
+  isGuest = false,
   isGroup = false,
 }: PresenceAvatarProps) {
   const initials = displayName
@@ -69,7 +72,9 @@ export default function PresenceAvatar({
     >
       {/* Gradient ring */}
       <div
-        className={profileImage ? (isBot ? styles.ringBot : styles.ring) : styles.ringBorder}
+        className={profileImage
+          ? (isBot ? styles.ringBot : isGuest ? styles.ringGuest : styles.ring)
+          : styles.ringBorder}
         style={{ borderRadius: '50%', padding: ring }}
       >
         {profileImage ? (
@@ -88,7 +93,7 @@ export default function PresenceAvatar({
           </div>
         ) : (
           <div
-            className={isBot ? styles.initialsBot : styles.initials}
+            className={isBot ? styles.initialsBot : isGuest ? styles.initialsGuest : styles.initials}
             style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
           >
             {initials}

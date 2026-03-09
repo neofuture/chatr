@@ -325,6 +325,7 @@ export default function ConversationsList({
                 : (userPresence[user.id] ?? { status: 'offline', lastSeen: null });
               const isHidden = !!info.hidden;
               const canFlip = !!lastMsg && !isHidden && !user.isBot;
+              const isGuest = user.isGuest ?? false;
 
               return (
                 <button key={user.id} onClick={() => onSelectUser(user.id)} style={{
@@ -335,6 +336,7 @@ export default function ConversationsList({
                     : 'transparent',
                   borderLeft: unread > 0 ? '3px solid #ef4444'
                     : user.isBot ? '3px solid #0891b2'
+                    : isGuest ? '3px solid var(--guest-color-from, #16a34a)'
                     : '3px solid transparent',
                   transition: 'background-color 0.15s',
                 }}>
@@ -344,7 +346,8 @@ export default function ConversationsList({
                     info={user.isBot ? { status: 'online', lastSeen: null } : info}
                     size={50}
                     isBot={user.isBot}
-                    showDot={!user.isBot}
+                    isGuest={isGuest}
+                    showDot={!user.isBot && !isGuest}
                     onClick={(e) => { e.stopPropagation(); if (!user.isBot) openUserProfile(user.id, displayName, user.profileImage); }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -358,6 +361,8 @@ export default function ConversationsList({
                         {displayName}
                         {user.isBot ? (
                           <span style={{ fontSize: '9px', fontWeight: '700', color: '#0891b2', border: '1px solid #0891b2', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>AI</span>
+                        ) : isGuest ? (
+                          <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--guest-color-from, #16a34a)', border: '1px solid var(--guest-color-from, #16a34a)', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>Guest</span>
                         ) : user.blockedByMe ? (
                           <span style={{ fontSize: '9px', fontWeight: '600', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>Blocked</span>
                         ) : user.isFriend ? (
@@ -376,7 +381,7 @@ export default function ConversationsList({
                       <div style={{ flex: 1, minWidth: 0, position: 'relative', height: '16px', overflow: 'hidden' }}>
                         <div style={{
                           position: 'absolute', inset: 0, fontSize: '12px',
-                          color: user.isBot ? (isDark ? '#22d3ee' : '#0891b2') : (isDark ? '#94a3b8' : '#64748b'),
+                          color: user.isBot ? (isDark ? '#22d3ee' : '#0891b2') : isGuest ? 'var(--guest-color-from, #16a34a)' : (isDark ? '#94a3b8' : '#64748b'),
                           fontWeight: unread > 0 ? '500' : 'normal',
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                           opacity: (canFlip && showPresence) ? 0 : 1,
@@ -431,19 +436,30 @@ export default function ConversationsList({
               const lastMsg = user.lastMessage;
               const lastMsgTime = user.lastMessageAt ? new Date(user.lastMessageAt) : null;
               const info: PresenceInfo = userPresence[user.id] ?? { status: 'offline', lastSeen: null };
+              const isGuest = user.isGuest ?? false;
               return (
                 <button key={user.id} onClick={() => onSelectUser(user.id)} style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
                   backgroundColor: unread > 0 ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)') : 'transparent',
-                  borderLeft: unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
+                  borderLeft: unread > 0 ? '3px solid #ef4444'
+                    : isGuest ? '3px solid var(--guest-color-from, #16a34a)'
+                    : '3px solid transparent',
                   transition: 'background-color 0.15s',
                 }}>
-                  <PresenceAvatar displayName={displayName} profileImage={user.profileImage} info={info} size={50} showDot={false} />
+                  <PresenceAvatar
+                    displayName={displayName}
+                    profileImage={user.profileImage}
+                    info={info}
+                    size={50}
+                    showDot={false}
+                    isGuest={isGuest}
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px' }}>
                       <div style={{ fontWeight: '600', fontSize: '14px', color: isDark ? '#f1f5f9' : '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         {displayName}
+                        {isGuest && <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--guest-color-from, #16a34a)', border: '1px solid var(--guest-color-from, #16a34a)', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>Guest</span>}
                         <i className="fas fa-inbox" title="Message request" style={{ fontSize: '10px', color: '#f59e0b' }} />
                       </div>
                       {lastMsgTime && <div style={{ fontSize: '11px', color: isDark ? '#f1f5f9' : '#0f172a', flexShrink: 0 }}>{formatTime(lastMsgTime)}</div>}

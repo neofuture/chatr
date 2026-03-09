@@ -32,6 +32,7 @@ export interface ConversationUser {
   isBlocked?: boolean;
   blockedByMe?: boolean;
   isBot?: boolean;
+  isGuest?: boolean;
   // set by socket events
   isOnline?: boolean;
   // set by search results
@@ -162,6 +163,7 @@ export function useConversationList() {
             lastName: null,
             profileImage: data.senderProfileImage ?? null,
             lastSeen: null,
+            isGuest: data.senderIsGuest ?? false,
             lastMessage: {
               id: data.id,
               content: data.content,

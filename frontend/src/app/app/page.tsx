@@ -279,6 +279,7 @@ export default function AppPage() {
     const profileImage = userData?.profileImage ?? user?.profileImage ?? undefined;
     const isBlocked = user?.isBlocked ?? false;
     const blockedByMe = user?.blockedByMe ?? false;
+    const isGuest = user?.isGuest ?? false;
 
     // Ensure a stable ref exists for this user's nuke handler
     if (!nukeRefs.current[id]) {
@@ -304,6 +305,7 @@ export default function AppPage() {
         blockedByMe={blockedByMe}
         recipientProfileImage={profileImage ?? null}
         nukeRef={nukeRef}
+        isGuest={isGuest}
       />,
       displayName,
       'left',

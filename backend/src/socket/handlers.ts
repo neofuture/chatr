@@ -296,6 +296,11 @@ export function setupSocketHandlers(io: Server) {
         } : undefined;
 
         // Always emit to the recipient's room — works even when Redis is down
+        const senderUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { isGuest: true },
+        });
+
         io.to(`user:${data.recipientId}`).emit('message:received', {
           id: message.id,
           senderId: userId,
@@ -303,6 +308,7 @@ export function setupSocketHandlers(io: Server) {
           senderUsername: username,
           senderDisplayName: displayName,
           senderProfileImage: profileImage,
+          senderIsGuest: senderUser?.isGuest ?? false,
           content: message.content,
           type: message.type,
           timestamp: message.createdAt,

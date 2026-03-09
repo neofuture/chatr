@@ -138,8 +138,10 @@ interface MessageBubbleProps {
   overlayContainerRef?: React.RefObject<HTMLDivElement | null>;
   /** When 'pending', hide sent/delivered status to anonymise receipts until accepted */
   conversationStatus?: 'pending' | 'accepted';
-  /** True when the conversation partner is the AI bot — purple bubble + ring */
+  /** True when the conversation partner is the AI bot — teal bubble + ring */
   isBot?: boolean;
+  /** True when the conversation partner is a widget guest — green bubble + ring */
+  isGuest?: boolean;
 }
 
 const REACTIONS = ['❤️', '😂', '😯', '😢', '😡', '👍'];
@@ -391,6 +393,7 @@ export default function MessageBubble({
   overlayContainerRef,
   conversationStatus,
   isBot = false,
+  isGuest = false,
 }: MessageBubbleProps) {
   const defaultRef = useRef<HTMLDivElement>(null);
   const endRef = messagesEndRef || defaultRef;
@@ -429,7 +432,11 @@ export default function MessageBubble({
   };
 
   const getBubbleToneClass = (isSent: boolean, status: Message['status']) => {
-    if (!isSent) return isBot ? styles.bubbleBot : styles.bubbleReceived;
+    if (!isSent) {
+      if (isGuest) return styles.bubbleGuest;
+      if (isBot) return styles.bubbleBot;
+      return styles.bubbleReceived;
+    }
     if (status === 'queued') return styles.bubbleSentQueued;
     if (status === 'failed') return styles.bubbleSentFailed;
     return styles.bubbleSent;
@@ -565,7 +572,11 @@ export default function MessageBubble({
                   >
                     {(() => {
                       const msgIsBot = isBot || isAIBot(msg.senderId);
-                      const ringClass = msgIsBot ? styles.avatarImageRingBot : styles.avatarImageRing;
+                      const ringClass = msgIsBot
+                        ? styles.avatarImageRingBot
+                        : isGuest
+                          ? styles.avatarImageRingGuest
+                          : styles.avatarImageRing;
                       const profileImg = msg.senderProfileImage;
                       if (profileImg) {
                         return (
@@ -576,7 +587,7 @@ export default function MessageBubble({
                       }
                       return (
                         <div className={ringClass}>
-                          <div className={msgIsBot ? styles.avatarInitialsBot : styles.avatarInitials}>
+                          <div className={msgIsBot ? styles.avatarInitialsBot : isGuest ? styles.avatarInitialsGuest : styles.avatarInitials}>
                             {initials}
                           </div>
                         </div>

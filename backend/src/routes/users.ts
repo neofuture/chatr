@@ -145,6 +145,7 @@ router.get('/search', authenticateToken as any, async (req: any, res: any) => {
         profileImage: true,
         lastSeen: true,
         isBot: true,
+        isGuest: true,
       },
       take: 30,
     });
@@ -235,7 +236,8 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
         lastName: true,
         profileImage: true,
         lastSeen: true,
-         isBot: true,
+        isBot: true,
+        isGuest: true,
       },
     });
 
@@ -362,7 +364,7 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
           select: {
             id: true, username: true, displayName: true,
             firstName: true, lastName: true,
-            profileImage: true, lastSeen: true, isBot: true,
+            profileImage: true, lastSeen: true, isBot: true, isGuest: true,
           },
         });
         if (botUser) {

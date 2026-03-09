@@ -29,6 +29,8 @@ export interface ConversationViewProps {
   recipientProfileImage?: string | null;
   /** Parent passes a ref; ConversationView stores its nuke handler into it on mount */
   nukeRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  /** True when the conversation partner is a widget guest — green bubbles + ring */
+  isGuest?: boolean;
 }
 
 function getCurrentUserId(): string {
@@ -52,6 +54,7 @@ export default function ConversationView({
   blockedByMe: initialBlockedByMe = false,
   recipientProfileImage,
   nukeRef,
+  isGuest = false,
 }: ConversationViewProps) {
   const [currentUserId] = useState<string>(getCurrentUserId);
   const [localStatus, setLocalStatus] = useState(conversationStatus);
@@ -344,6 +347,7 @@ export default function ConversationView({
           onAvatarClick={(senderId, displayName, profileImage) => openUserProfile(senderId, displayName, profileImage)}
           conversationStatus={localStatus}
           isBot={isAIBot(recipientId)}
+          isGuest={isGuest}
         />
       </div>
 

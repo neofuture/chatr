@@ -41,6 +41,8 @@ export interface ChatViewProps {
   conversationStatus?: 'pending' | 'accepted';
   /** True when the conversation partner is the AI bot — purple bubble + ring */
   isBot?: boolean;
+  /** True when the conversation partner is a widget guest — green bubble + ring */
+  isGuest?: boolean;
 }
 
 export default function ChatView({
@@ -65,6 +67,7 @@ export default function ChatView({
   onAvatarClick,
   conversationStatus,
   isBot = false,
+  isGuest = false,
 }: ChatViewProps) {
   const scrollRef      = useRef<HTMLDivElement>(null);
   const overlayRef     = useRef<HTMLDivElement>(null);
@@ -247,6 +250,7 @@ export default function ChatView({
             onAvatarClick={onAvatarClick}
             conversationStatus={conversationStatus}
             isBot={isBot}
+            isGuest={isGuest}
           />
         )}
       </div>

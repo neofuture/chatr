@@ -9,14 +9,20 @@
  *  --bubble-received      Normal incoming messages          orange
  *  --bubble-bot-from      AI bot bubble gradient start      teal
  *  --bubble-bot-to        AI bot bubble gradient end        emerald
+ *  --bubble-guest-from    Widget guest bubble start         green
+ *  --bubble-guest-to      Widget guest bubble end           dark green
  *  --ring-user-from       Regular user avatar ring start    orange
  *  --ring-user-to         Regular user avatar ring end      red
  *  --ring-bot-from        AI bot avatar ring start          teal
  *  --ring-bot-to          AI bot avatar ring end            emerald
+ *  --ring-guest-from      Widget guest avatar ring start    green
+ *  --ring-guest-to        Widget guest avatar ring end      dark green
  *  --initials-bot-from    AI bot initials bg start          teal
  *  --initials-bot-to      AI bot initials bg end            emerald
+ *  --initials-guest-from  Guest initials bg start           green
+ *  --initials-guest-to    Guest initials bg end             dark green
  *
- * To change the AI colour scheme, edit only --bubble-bot-* and --ring-bot-*.
+ * To change colours, edit only the --bubble-*, --ring-* and --initials-* tokens.
  */
 :global(:root) {
   --bubble-sent:           #3b82f6;
@@ -31,6 +37,14 @@
   --ring-bot-to:           #059669;
   --initials-bot-from:     #0e7490;
   --initials-bot-to:       #047857;
+
+  /* Widget guest — green (edit these two to change guest colour everywhere) */
+  --bubble-guest-from:     var(--guest-color-from, #16a34a);
+  --bubble-guest-to:       var(--guest-color-to,   #15803d);
+  --ring-guest-from:       var(--guest-color-from, #16a34a);
+  --ring-guest-to:         var(--guest-color-to,   #15803d);
+  --initials-guest-from:   var(--guest-color-from, #16a34a);
+  --initials-guest-to:     var(--guest-color-to,   #15803d);
 
   /* Regular user avatar ring */
   --ring-user-from:        #f97316;
@@ -754,6 +768,32 @@
   background: linear-gradient(135deg, var(--initials-bot-from), var(--initials-bot-to));
 }
 
+/* Widget guest avatar — green ring */
+.avatarImageRingGuest {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ring-guest-from), var(--ring-guest-to));
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatarInitialsGuest {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-white);
+  background: linear-gradient(135deg, var(--initials-guest-from), var(--initials-guest-to));
+}
+
 .bubbleColumn {
   display: flex;
   flex-direction: column;
@@ -989,6 +1029,12 @@
 /* AI bot received bubble — teal → emerald */
 .bubbleBot {
   background: linear-gradient(135deg, var(--bubble-bot-from), var(--bubble-bot-to));
+}
+
+/* Widget guest received bubble — green */
+.bubbleGuest {
+  background: linear-gradient(135deg, var(--bubble-guest-from), var(--bubble-guest-to));
+  color: #ffffff;
 }
 
 .bubbleRadiusSentSolo {
