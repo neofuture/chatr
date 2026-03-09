@@ -128,6 +128,8 @@ router.get('/search', authenticateToken as any, async (req: any, res: any) => {
     const users = await prisma.user.findMany({
       where: {
         emailVerified: true,
+        isGuest: false,
+        isBot: false,
         id: { not: currentUserId },
         OR: [
           { username:    { contains: q, mode: 'insensitive' } },

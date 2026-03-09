@@ -144,6 +144,8 @@ router.get('/search', authenticateToken, async (req: any, res) => {
       where: {
         id: { not: userId },
         emailVerified: true,
+        isGuest: false,
+        isBot: false,
         OR: [
           { username: { contains: q, mode: 'insensitive' } },
           { displayName: { contains: q, mode: 'insensitive' } },

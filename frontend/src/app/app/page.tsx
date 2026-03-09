@@ -112,6 +112,7 @@ export default function AppPage() {
     const isBlockedByMe   = snap?.blockedByMe    ?? false;
     // isBlocked means either party blocked — don't show "block" if already blocked
     const isBlocked       = snap?.isBlocked      ?? false;
+    const isGuest         = snap?.isGuest        ?? false;
 
     const items: ActionIcon['submenu'] = [];
 
@@ -145,7 +146,7 @@ export default function AppPage() {
     }
 
     // ── Remove friend ── visible when: currently friends
-    if (isFriend) {
+    if (isFriend && !isGuest) {
       items.push({
         icon: 'fas fa-user-minus',
         label: 'Remove friend',
@@ -175,7 +176,7 @@ export default function AppPage() {
     }
 
     // ── Block ── visible when: I have NOT already blocked them
-    if (!isBlockedByMe) {
+    if (!isBlockedByMe && !isGuest) {
       items.push({
         icon: 'fas fa-ban',
         label: 'Block',
