@@ -321,6 +321,11 @@
   var elEndBtn     = document.getElementById('chatr-w-end-btn');
 
   // ── Utility helpers ──────────────────────────────────────────────────────────
+  function firstName(name) {
+    if (!name) return '';
+    return name.trim().split(/\s+/)[0];
+  }
+
   function escHtml(str) {
     return String(str)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -809,16 +814,16 @@
           state.supportAgentId = data.id;
           state.supportName    = data.displayName || data.username || 'Support';
           state.supportAvatar  = data.profileImage || null;
-          elName.textContent   = state.supportName;
+          elName.textContent   = firstName(state.supportName);
           setAvatarContent(state.supportAvatar, state.supportName);
           elStatusTxt.textContent = 'Online';
         } else {
-          elStatusTxt.textContent = 'Unavailable';
+          elStatusTxt.textContent = 'Away';
         }
         if (cb) cb();
       })
       .catch(function () {
-        elStatusTxt.textContent = 'Unavailable';
+        elStatusTxt.textContent = 'Away';
         if (cb) cb();
       });
   }
@@ -854,11 +859,11 @@
           state.supportAgentId = data.id;
           state.supportName    = data.displayName || data.username || 'Support';
           state.supportAvatar  = data.profileImage || null;
-          elName.textContent   = state.supportName;
+          elName.textContent   = firstName(state.supportName);
           setAvatarContent(state.supportAvatar, state.supportName);
           elStatusTxt.textContent = 'Online';
         } else {
-          elStatusTxt.textContent = 'Unavailable';
+          elStatusTxt.textContent = 'Away';
         }
       })
       .catch(function () {});
