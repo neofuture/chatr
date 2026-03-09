@@ -155,7 +155,7 @@
     /* Header */
     '#chatr-w-header{',
       'background:linear-gradient(135deg,' + ACCENT + ',#dc2626);',
-      'padding:16px;display:flex;align-items:center;gap:12px;flex-shrink:0;',
+      'padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;',
     '}',
     '#chatr-w-header-avatar{',
       'width:42px;height:42px;border-radius:50%;object-fit:cover;',
@@ -170,8 +170,17 @@
     '.chatr-status-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0}',
     '#chatr-w-close{',
       'background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;',
-      'font-size:20px;padding:4px;line-height:1;margin-left:auto;flex-shrink:0;',
+      'font-size:20px;padding:4px;line-height:1;flex-shrink:0;',
     '}',
+    '#chatr-w-close:hover{color:#fff}',
+    '#chatr-w-end-btn{',
+      'background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.25);',
+      'color:rgba(255,255,255,.9);cursor:pointer;font-size:11px;font-weight:600;',
+      'font-family:inherit;letter-spacing:.4px;text-transform:uppercase;',
+      'border-radius:20px;padding:4px 12px;flex-shrink:0;',
+      'transition:background .2s,border-color .2s,color .2s;white-space:nowrap;',
+    '}',
+    '#chatr-w-end-btn:hover{background:rgba(220,38,38,.7);border-color:rgba(220,38,38,.8);color:#fff}',
     /* Body */
     '#chatr-w-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}',
     '#chatr-w-body::-webkit-scrollbar{width:4px}',
@@ -367,14 +376,14 @@
       '<div id="chatr-w-intro">',
         '<div id="chatr-w-greeting">' + escHtml(GREETING) + '</div>',
         '<div class="chatr-field">',
-          '<label class="chatr-label" for="chatr-w-name-input">Your name</label>',
-          '<input class="chatr-input" id="chatr-w-name-input" type="text" placeholder="Enter your name…" autocomplete="name" maxlength="60"/>',
+          '<label class="chatr-label" for="chatr-w-name-input">Your first name</label>',
+          '<input class="chatr-input" id="chatr-w-name-input" type="text" placeholder="What should we call you?" autocomplete="given-name" maxlength="60"/>',
         '</div>',
         '<div class="chatr-field">',
-          '<label class="chatr-label" for="chatr-w-first-msg">How can we help?</label>',
-          '<textarea class="chatr-input" id="chatr-w-first-msg" placeholder="Type your message…" rows="3" maxlength="1000"></textarea>',
+          '<label class="chatr-label" for="chatr-w-first-msg">What can we help with?</label>',
+          '<textarea class="chatr-input" id="chatr-w-first-msg" placeholder="Tell us what\'s on your mind…" rows="3" maxlength="1000"></textarea>',
         '</div>',
-        '<button class="chatr-btn" id="chatr-w-start-btn">Start Chat</button>',
+        '<button class="chatr-btn" id="chatr-w-start-btn">Start Chat →</button>',
       '</div>',
     ].join('');
 
@@ -515,7 +524,7 @@
     elBody.innerHTML = '';
     elFooter.style.display = 'flex';
     elEndBtn.style.display = 'block';
-    showSystemMsg('You are now chatting with ' + state.supportName + '. We\'ll respond as soon as possible.');
+    showSystemMsg('Hi ' + firstName(state.guestName) + '! You\'re now connected with ' + firstName(state.supportName) + '. We\'ll be right with you 😊');
 
     // Load previous messages for this conversation (if any)
     if (state.messages.length) {
@@ -706,7 +715,7 @@
     // Presence updates
     state.socket.on('user:status', function (data) {
       if (data.userId !== state.supportAgentId) return;
-      elStatusTxt.textContent = data.status === 'online' ? 'Online' : 'Offline — will reply soon';
+      elStatusTxt.textContent = data.status === 'online' ? 'Online' : firstName(state.supportName) + ' will reply soon';
       var dot = document.querySelector('.chatr-status-dot');
       if (dot) dot.style.background = data.status === 'online' ? '#4ade80' : '#94a3b8';
     });
@@ -750,7 +759,7 @@
 
     // Show a farewell message then reset to intro after a short delay
     elBody.innerHTML = '';
-    showSystemMsg('Chat ended. Thank you for reaching out!');
+    showSystemMsg('Thanks for chatting, ' + firstName(state.guestName) + '! Have a great day 👋');
     setTimeout(function () {
       state.phase = 'intro';
       elBody.innerHTML = '';
