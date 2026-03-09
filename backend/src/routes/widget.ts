@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -11,6 +12,72 @@ const prisma = new PrismaClient();
 const widgetCors = cors({ origin: '*', credentials: false });
 router.use(widgetCors);
 router.options('*', widgetCors);
+
+// ── Shared: delete a guest user and all their data ────────────────────────────
+export async function deleteGuestUser(guestId: string): Promise<void> {
+  try {
+    // Delete messages sent/received by this guest
+    await prisma.message.deleteMany({
+      where: { OR: [{ senderId: guestId }, { recipientId: guestId }] },
+    });
+    // Delete conversations involving this guest
+    await prisma.conversation.deleteMany({
+      where: { OR: [{ participantA: guestId }, { participantB: guestId }] },
+    });
+    // Delete the guest user record
+    await prisma.user.delete({ where: { id: guestId } });
+  } catch (err) {
+    console.error('❌ deleteGuestUser error:', err);
+  }
+}
+
+// ── Cleanup: delete guest users with no conversations older than 60 minutes ───
+export async function cleanupStaleGuests(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - 60 * 60 * 1000); // 60 minutes ago
+
+    // Find all guest users created more than 60 minutes ago
+    const staleGuests = await prisma.user.findMany({
+      where: { isGuest: true, createdAt: { lt: cutoff } },
+      select: { id: true },
+    });
+
+    if (!staleGuests.length) return;
+
+    // Find which of those have at least one conversation
+    const guestIds = staleGuests.map(g => g.id);
+    const withConversations = await prisma.conversation.findMany({
+      where: {
+        OR: [
+          { participantA: { in: guestIds } },
+          { participantB: { in: guestIds } },
+        ],
+      },
+      select: { participantA: true, participantB: true },
+    });
+
+    const hasConvo = new Set<string>();
+    for (const c of withConversations) {
+      hasConvo.add(c.participantA);
+      hasConvo.add(c.participantB);
+    }
+
+    const toDelete = staleGuests.filter(g => !hasConvo.has(g.id));
+    if (!toDelete.length) return;
+
+    // Delete their messages first (safety), then users
+    await prisma.message.deleteMany({
+      where: { OR: [{ senderId: { in: toDelete.map(g => g.id) } }, { recipientId: { in: toDelete.map(g => g.id) } }] },
+    });
+    await prisma.user.deleteMany({
+      where: { id: { in: toDelete.map(g => g.id) } },
+    });
+
+    console.log(`🧹 Cleaned up ${toDelete.length} stale guest user(s)`);
+  } catch (err) {
+    console.error('❌ cleanupStaleGuests error:', err);
+  }
+}
 
 // ── GET /api/widget/support-agent ─────────────────────────────────────────────
 // Returns the active support agent's public info so the widget can display it
@@ -115,6 +182,60 @@ router.post('/guest-session', async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error('❌ widget/guest-session error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── POST /api/widget/end-chat ─────────────────────────────────────────────────
+// Guest explicitly ends the chat. Sends a system message so the agent sees "Guest left".
+// Also disconnects cleanly — does NOT delete the user (agent may still want to review).
+let _widgetIo: any = null;
+export function setWidgetSocketIO(io: any) { _widgetIo = io; }
+
+router.post('/end-chat', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const guestId = req.user?.userId;
+    if (!guestId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Verify this is actually a guest user
+    const guest = await prisma.user.findUnique({
+      where: { id: guestId },
+      select: { id: true, isGuest: true, displayName: true },
+    });
+    if (!guest?.isGuest) return res.status(403).json({ error: 'Not a guest session' });
+
+    // Find the support agent
+    const agent = await prisma.user.findFirst({
+      where: { isSupport: true, emailVerified: true },
+      select: { id: true },
+    });
+
+    const guestName = guest.displayName || 'Guest';
+
+    if (agent) {
+      // Send a system message so it's visible in chat history
+      await prisma.message.create({
+        data: {
+          senderId: guestId,
+          recipientId: agent.id,
+          content: `${guestName} has left the chat.`,
+          type: 'system',
+        },
+      });
+
+      // Emit real-time notification to the support agent
+      if (_widgetIo) {
+        _widgetIo.to(`user:${agent.id}`).emit('guest:left', {
+          guestId,
+          guestName,
+          message: `${guestName} has left the chat.`,
+        });
+      }
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('❌ widget/end-chat error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth';
 import { acceptConversation, declineConversation, nukeConversation, nukeByParticipants } from '../lib/conversation';
 import { invalidateConversationCache, getSocketId } from '../lib/redis';
 import { Server } from 'socket.io';
+import { deleteGuestUser } from './widget';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -185,6 +186,14 @@ router.post('/:id/nuke', authenticateToken as any, async (req: any, res: Respons
       });
     }
 
+    // If either participant is a guest, delete their account now the conversation is gone
+    const participants = [result.participantA, result.participantB];
+    const guests = await prisma.user.findMany({
+      where: { id: { in: participants }, isGuest: true },
+      select: { id: true },
+    });
+    for (const g of guests) await deleteGuestUser(g.id);
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error nuking conversation:', error);
@@ -239,6 +248,13 @@ router.post('/nuke-by-user/:recipientId', authenticateToken as any, async (req: 
         otherUserId: userId,
       });
     }
+
+    // If either participant is a guest, delete their account now the conversation is gone
+    const guests = await prisma.user.findMany({
+      where: { id: { in: [userId, recipientId] }, isGuest: true },
+      select: { id: true },
+    });
+    for (const g of guests) await deleteGuestUser(g.id);
 
     res.json({ success: true });
   } catch (error) {

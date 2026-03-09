@@ -320,6 +320,27 @@ export function useConversationView({ recipientId, currentUserId, onConversation
     };
     socket.on('conversation:accepted', onConversationAcceptedEvt);
 
+    // Guest left the widget chat — inject a system message immediately
+    const onGuestLeft = (data: { guestId: string; guestName: string; message: string }) => {
+      if (data.guestId !== recipientId) return;
+      const sysMsg: Message = {
+        id: `guest-left-${Date.now()}`,
+        content: data.message,
+        senderId: data.guestId,
+        recipientId: currentUserId,
+        direction: 'received',
+        status: 'read',
+        timestamp: new Date(),
+        type: 'system',
+        unsent: false,
+      };
+      setMessages(prev => {
+        if (prev.find(m => m.type === 'system' && m.content === data.message)) return prev;
+        return [...prev, sysMsg];
+      });
+    };
+    socket.on('guest:left', onGuestLeft);
+
     return () => {
       socket.off('message:received', onMessageReceived);
       socket.off('message:sent', onMessageSent);
@@ -332,6 +353,7 @@ export function useConversationView({ recipientId, currentUserId, onConversation
       socket.off('audio:waveform', onAudioWaveform);
       socket.off('message:blocked', onMessageBlocked);
       socket.off('conversation:accepted', onConversationAcceptedEvt);
+      socket.off('guest:left', onGuestLeft);
     };
   }, [socket, recipientId, currentUserId]);
 

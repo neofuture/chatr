@@ -48,18 +48,33 @@
   var DEV_MODE = cfg.devMode !== undefined ? !!cfg.devMode : isLocalhost;
 
   var SESSION_KEY = 'chatr_widget_session';
+  var SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
   // ── Session storage helpers ──────────────────────────────────────────────────
   // Dev mode: use sessionStorage (cleared when tab closes, but we also clear on init).
-  // Production: use localStorage (persists across page refreshes and browser restarts).
+  // Production: use localStorage (persists for 24 hours then expires automatically).
   var store = (function () {
     var s = DEV_MODE ? sessionStorage : localStorage;
     return {
       get: function () {
-        try { return JSON.parse(s.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; }
+        try {
+          var raw = s.getItem(SESSION_KEY);
+          if (!raw) return null;
+          var parsed = JSON.parse(raw);
+          // Expire sessions older than 24 h
+          if (parsed && parsed.expiresAt && Date.now() > parsed.expiresAt) {
+            s.removeItem(SESSION_KEY);
+            return null;
+          }
+          return parsed;
+        } catch (e) { return null; }
       },
       set: function (val) {
-        try { s.setItem(SESSION_KEY, JSON.stringify(val)); } catch (e) { /* ignore */ }
+        try {
+          s.setItem(SESSION_KEY, JSON.stringify(Object.assign({}, val, {
+            expiresAt: Date.now() + SESSION_TTL_MS,
+          })));
+        } catch (e) { /* ignore */ }
       },
       clear: function () {
         try { s.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
@@ -269,6 +284,7 @@
         '<div id="chatr-w-header-name">' + escHtml(TITLE) + '</div>',
         '<div id="chatr-w-header-status"><span class="chatr-status-dot"></span><span id="chatr-w-status-text">Loading…</span></div>',
       '</div>',
+      '<button id="chatr-w-end-btn" style="display:none" aria-label="End chat">End Chat</button>',
       '<button id="chatr-w-close" aria-label="Close chat">×</button>',
     '</div>',
     '<div id="chatr-w-body" role="log" aria-live="polite"></div>',
@@ -293,6 +309,7 @@
   var elName       = document.getElementById('chatr-w-header-name');
   var elStatusTxt  = document.getElementById('chatr-w-status-text');
   var elClose      = document.getElementById('chatr-w-close');
+  var elEndBtn     = document.getElementById('chatr-w-end-btn');
 
   // ── Utility helpers ──────────────────────────────────────────────────────────
   function escHtml(str) {
@@ -345,6 +362,7 @@
 
   // ── Render intro form ────────────────────────────────────────────────────────
   function renderIntro() {
+    elEndBtn.style.display = 'none';
     elBody.innerHTML = [
       '<div id="chatr-w-intro">',
         '<div id="chatr-w-greeting">' + escHtml(GREETING) + '</div>',
@@ -496,6 +514,7 @@
   function renderChatPhase() {
     elBody.innerHTML = '';
     elFooter.style.display = 'flex';
+    elEndBtn.style.display = 'block';
     showSystemMsg('You are now chatting with ' + state.supportName + '. We\'ll respond as soon as possible.');
 
     // Load previous messages for this conversation (if any)
@@ -693,6 +712,52 @@
     });
   }
 
+  // ── End chat (guest explicitly leaves) ──────────────────────────────────────
+  function endChat() {
+    // Notify backend so support agent sees the "left" message
+    if (state.token) {
+      fetch(API_URL + '/api/widget/end-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + state.token,
+        },
+      }).catch(function () { /* best-effort */ });
+    }
+
+    // Disconnect socket
+    if (state.socket) {
+      try { state.socket.emit('typing:stop', { recipientId: state.supportAgentId }); } catch (e) { /* ignore */ }
+      state.socket.disconnect();
+      state.socket = null;
+    }
+
+    // Clear persisted session
+    store.clear();
+
+    // Reset state
+    state.phase         = 'intro';
+    state.token         = null;
+    state.guestId       = null;
+    state.guestName     = null;
+    state.conversationId = null;
+    state.messages      = [];
+    state.agentTyping   = false;
+
+    // Reset UI
+    elEndBtn.style.display = 'none';
+    elFooter.style.display = 'none';
+
+    // Show a farewell message then reset to intro after a short delay
+    elBody.innerHTML = '';
+    showSystemMsg('Chat ended. Thank you for reaching out!');
+    setTimeout(function () {
+      state.phase = 'intro';
+      elBody.innerHTML = '';
+      renderIntro();
+    }, 2500);
+  }
+
   // ── Toggle panel open/closed ─────────────────────────────────────────────────
   function openPanel() {
     state.open = true;
@@ -707,11 +772,12 @@
         renderIntro();
       });
     } else if (state.phase === 'chat' && !state.socket) {
-      // Resume session
+      // Resume session — reconnect socket
       loadSocketIO(function () {
         connectSocket(null);
       });
-    } else if (state.phase === 'chat' && !elFooter.style.display || elFooter.style.display === 'none') {
+    } else if (state.phase === 'chat' && (elFooter.style.display === 'none' || !elFooter.style.display)) {
+      // Chat phase but footer/input not yet rendered (e.g. panel was closed before render)
       renderChatPhase();
     }
   }
@@ -754,6 +820,12 @@
   });
 
   elClose.addEventListener('click', closePanel);
+
+  elEndBtn.addEventListener('click', function () {
+    if (confirm('Are you sure you want to end this chat?')) {
+      endChat();
+    }
+  });
 
   // Close on Escape key
   document.addEventListener('keydown', function (e) {

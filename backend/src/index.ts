@@ -22,6 +22,7 @@ import fileUploadRoutes from './routes/file-upload';
 import friendRoutes from './routes/friends';
 import conversationRoutes from './routes/conversations';
 import widgetRoutes from './routes/widget';
+import { setWidgetSocketIO, cleanupStaleGuests } from './routes/widget';
 
 // Import Socket.io handlers
 import { setupSocketHandlers } from './socket/handlers';
@@ -148,6 +149,11 @@ async function start() {
   setConversationsSocketIO(io);
   setUsersSocketIO(io);
   setGroupsSocketIO(io);
+  setWidgetSocketIO(io);
+
+  // Stale guest cleanup: run immediately on startup then every 30 minutes
+  cleanupStaleGuests();
+  setInterval(cleanupStaleGuests, 30 * 60 * 1000);
 
   httpServer.listen(PORT, () => {
     console.log(`🚀 Server: http://localhost:${PORT}`);
