@@ -115,6 +115,7 @@
       state.guestName = saved.guestName;
       state.messages  = saved.messages || [];
       state.phase     = 'chat';
+      state.open      = !!saved.open;
     }
   }
 
@@ -345,7 +346,19 @@
       guestId:   state.guestId,
       token:     state.token,
       guestName: state.guestName,
-      messages:  state.messages.slice(-100), // keep last 100
+      messages:  state.messages.slice(-100),
+      open:      state.open,
+    });
+  }
+
+  function persistOpen() {
+    if (DEV_MODE || state.phase !== 'chat') return;
+    store.set({
+      guestId:   state.guestId,
+      token:     state.token,
+      guestName: state.guestName,
+      messages:  state.messages.slice(-100),
+      open:      state.open,
     });
   }
 
@@ -815,6 +828,7 @@
     updateBadge();
     panel.classList.add('open');
     btn.setAttribute('aria-expanded', 'true');
+    persistOpen();
 
     if (state.phase === 'intro') {
       fetchSupportAgent(function () {
@@ -837,6 +851,7 @@
     state.open = false;
     panel.classList.remove('open');
     btn.setAttribute('aria-expanded', 'false');
+    persistOpen();
     if (state.socket) {
       state.socket.emit('typing:stop', { recipientId: state.supportAgentId });
     }
@@ -890,6 +905,12 @@
     fetchSupportAgent(function () {
       loadSocketIO(function () {
         connectSocket(null);
+        // Re-open the panel if it was open when the page was last closed/refreshed
+        if (state.open) {
+          panel.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+          renderChatPhase(true);
+        }
       });
     });
   } else {
