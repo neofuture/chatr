@@ -749,14 +749,17 @@
     // Clear persisted session
     store.clear();
 
+    // Save name before resetting state so farewell message is correct
+    var farewellName = firstName(state.guestName);
+
     // Reset state
-    state.phase         = 'intro';
-    state.token         = null;
-    state.guestId       = null;
-    state.guestName     = null;
+    state.phase          = 'intro';
+    state.token          = null;
+    state.guestId        = null;
+    state.guestName      = null;
     state.conversationId = null;
-    state.messages      = [];
-    state.agentTyping   = false;
+    state.messages       = [];
+    state.agentTyping    = false;
 
     // Reset UI
     elEndBtn.style.display = 'none';
@@ -764,9 +767,10 @@
 
     // Show a farewell message then reset to intro after a short delay
     elBody.innerHTML = '';
-    showSystemMsg('Thanks for chatting, ' + firstName(state.guestName) + '! Have a great day 👋');
+    showSystemMsg(farewellName
+      ? 'Thanks for chatting, ' + farewellName + '! Have a great day 👋'
+      : 'Thanks for chatting! Have a great day 👋');
     setTimeout(function () {
-      state.phase = 'intro';
       elBody.innerHTML = '';
       renderIntro();
     }, 2500);
@@ -781,18 +785,18 @@
     btn.setAttribute('aria-expanded', 'true');
 
     if (state.phase === 'intro') {
-      // Fetch support agent info then render intro
       fetchSupportAgent(function () {
         renderIntro();
       });
-    } else if (state.phase === 'chat' && !state.socket) {
-      // Resume session — reconnect socket
-      loadSocketIO(function () {
-        connectSocket(null);
-      });
-    } else if (state.phase === 'chat' && (elFooter.style.display === 'none' || !elFooter.style.display)) {
-      // Chat phase but footer/input not yet rendered (e.g. panel was closed before render)
+    } else if (state.phase === 'chat') {
+      // Always render the chat UI first (footer, input, end btn)
       renderChatPhase();
+      // Then reconnect socket if not already connected
+      if (!state.socket) {
+        loadSocketIO(function () {
+          connectSocket(null);
+        });
+      }
     }
   }
 
