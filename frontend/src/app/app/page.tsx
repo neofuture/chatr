@@ -313,6 +313,8 @@ export default function AppPage() {
       profileImage ?? undefined,
       true,
       buildActionIcons(id, user),
+      undefined,
+      isGuest,
     );
   }, [conversations, clearUnread, openPanel, isDark, refresh, buildActionIcons]);
 

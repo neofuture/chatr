@@ -72,9 +72,7 @@ export default function PresenceAvatar({
     >
       {/* Gradient ring */}
       <div
-        className={profileImage
-          ? (isBot ? styles.ringBot : isGuest ? styles.ringGuest : styles.ring)
-          : styles.ringBorder}
+        className={isBot ? styles.ringBot : isGuest ? styles.ringGuest : styles.ring}
         style={{ borderRadius: '50%', padding: ring }}
       >
         {profileImage ? (
@@ -87,14 +85,14 @@ export default function PresenceAvatar({
         ) : isGroup ? (
           <div
             className={styles.initials}
-            style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
+            style={{ width: inner, height: inner, fontSize: Math.round(size * 0.38) }}
           >
             <i className="fas fa-users" />
           </div>
         ) : (
           <div
             className={isBot ? styles.initialsBot : isGuest ? styles.initialsGuest : styles.initials}
-            style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
+            style={{ width: inner, height: inner, fontSize: Math.round(size * 0.36) }}
           >
             {initials}
           </div>

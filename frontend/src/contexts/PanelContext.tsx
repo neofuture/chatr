@@ -29,11 +29,12 @@ interface Panel {
   profileImage?: string;
   fullWidth?: boolean;
   actionIcons?: ActionIcon[];
+  isGuest?: boolean;
 }
 
 interface PanelContextType {
   panels: Panel[];
-  openPanel: (id: string, component: ReactNode, title?: string, titlePosition?: 'center' | 'left' | 'right', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[], footer?: () => ReactNode) => void;
+  openPanel: (id: string, component: ReactNode, title?: string, titlePosition?: 'center' | 'left' | 'right', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[], footer?: () => ReactNode, isGuest?: boolean) => void;
   /** Patch only the actionIcons of an existing panel — does NOT re-mount its component */
   updatePanelActionIcons: (id: string, actionIcons: ActionIcon[] | undefined) => void;
   closePanel: (id: string) => void;
@@ -56,7 +57,7 @@ export function PanelProvider({ children }: { children: ReactNode }) {
     ? Math.max(...nonClosingPanels.map(p => p.level))
     : -1;
 
-  const openPanel = (id: string, component: ReactNode, title?: string, titlePosition: 'center' | 'left' | 'right' = 'center', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[], footer?: () => ReactNode) => {
+  const openPanel = (id: string, component: ReactNode, title?: string, titlePosition: 'center' | 'left' | 'right' = 'center', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[], footer?: () => ReactNode, isGuest?: boolean) => {
     setPanels((prev) => {
       // Check if panel already exists
       const existsIndex = prev.findIndex((p) => p.id === id);
@@ -74,6 +75,7 @@ export function PanelProvider({ children }: { children: ReactNode }) {
           fullWidth,
           actionIcons,
           footer,
+          isGuest,
           // Don't update id or level
         };
         return newPanels;
@@ -91,7 +93,8 @@ export function PanelProvider({ children }: { children: ReactNode }) {
         profileImage,
         fullWidth,
         actionIcons,
-        footer
+        footer,
+        isGuest,
       }];
     });
   };

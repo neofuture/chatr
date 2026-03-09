@@ -17,7 +17,7 @@ function shouldHidePresence(info: import('@/types/types').PresenceInfo): boolean
 }
 
 /** For chat panels, shows live PresenceAvatar; falls back to plain img for others. */
-function PresenceAvatarForPanel({ panelId, profileImage, title }: { panelId: string; profileImage?: string | null; title: string }) {
+function PresenceAvatarForPanel({ panelId, profileImage, title, isGuest }: { panelId: string; profileImage?: string | null; title: string; isGuest?: boolean }) {
   const { getPresence } = usePresence();
   const isGroup = panelId.startsWith('group-');
   const userId = panelId.startsWith('chat-') ? panelId.slice(5) : null;
@@ -35,7 +35,7 @@ function PresenceAvatarForPanel({ panelId, profileImage, title }: { panelId: str
     : shouldHidePresence(info)
     ? { status: 'offline' as const, lastSeen: null, hidden: true }
     : info;
-  return <PresenceAvatar displayName={title} profileImage={profileImage} info={effectiveInfo} size={36} isBot={bot} showDot={!bot} />;
+  return <PresenceAvatar displayName={title} profileImage={profileImage} info={effectiveInfo} size={36} isBot={bot} isGuest={isGuest} showDot={!bot && !isGuest} />;
 }
 
 /** Renders the subtitle row, or nothing when user hides their status */
@@ -101,9 +101,10 @@ interface PanelProps {
   fullWidth?: boolean;
   actionIcons?: ActionIcon[];
   footer?: () => React.ReactNode;
+  isGuest?: boolean;
 }
 
-function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, titlePosition = 'center', subTitle, profileImage, fullWidth = false, actionIcons, footer }: PanelProps) {
+function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, titlePosition = 'center', subTitle, profileImage, fullWidth = false, actionIcons, footer, isGuest }: PanelProps) {
   const { closePanel } = usePanels();
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentProfileImage, setCurrentProfileImage] = useState<string | undefined>(profileImage);
@@ -243,7 +244,7 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
               if (userId || isGroup) {
                 // Always render for chat and group panels
                 return (
-                  <PresenceAvatarForPanel panelId={id} profileImage={currentProfileImage} title={title} />
+                  <PresenceAvatarForPanel panelId={id} profileImage={currentProfileImage} title={title} isGuest={isGuest} />
                 );
               }
               // Non-chat panels: only show image if one is provided
@@ -362,7 +363,9 @@ export default function PanelContainer() {
           profileImage={panel.profileImage}
           fullWidth={panel.fullWidth}
           actionIcons={panel.actionIcons}
-          footer={panel.footer}        >
+          footer={panel.footer}
+          isGuest={panel.isGuest}
+        >
           {panel.component}
         </Panel>
       ))}
