@@ -659,7 +659,19 @@
       if (tempEl) tempEl.setAttribute('data-msg-id', data.id || '');
     });
 
-    // Typing indicators from support agent
+    // Typing indicator from support agent — server emits typing:status with { userId, isTyping }
+    state.socket.on('typing:status', function (data) {
+      if (data.userId !== state.supportAgentId) return;
+      if (data.isTyping) {
+        state.agentTyping = true;
+        showTyping();
+      } else {
+        state.agentTyping = false;
+        hideTyping();
+      }
+    });
+
+    // Legacy event names — kept for compatibility
     state.socket.on('typing:start', function (data) {
       if (data.userId !== state.supportAgentId) return;
       state.agentTyping = true;

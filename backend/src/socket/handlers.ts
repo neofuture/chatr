@@ -760,10 +760,11 @@ export function setupSocketHandlers(io: Server) {
 
     socket.on('typing:start', (data: { recipientId?: string; groupId?: string }) => {
       if (data.recipientId) {
-        // Check pending status async but don't block the emit — suppress only if confirmed pending
         findConversation(userId, data.recipientId)
           .then(convo => {
-            if (convo?.status === 'pending') return;
+            // Suppress guest→agent typing in pending state (guest hasn't been accepted yet)
+            // but always allow agent→guest typing so the widget shows the indicator
+            if (convo?.status === 'pending' && convo.initiatorId === userId) return;
             io.to(`user:${data.recipientId!}`).emit('typing:status', {
               userId,
               username,
@@ -772,7 +773,6 @@ export function setupSocketHandlers(io: Server) {
             });
           })
           .catch(() => {
-            // On DB error, emit anyway — better to show typing than to silently drop it
             io.to(`user:${data.recipientId!}`).emit('typing:status', {
               userId,
               username,
@@ -795,7 +795,7 @@ export function setupSocketHandlers(io: Server) {
       if (data.recipientId) {
         findConversation(userId, data.recipientId)
           .then(convo => {
-            if (convo?.status === 'pending') return;
+            if (convo?.status === 'pending' && convo.initiatorId === userId) return;
             io.to(`user:${data.recipientId!}`).emit('typing:status', {
               userId,
               username,
