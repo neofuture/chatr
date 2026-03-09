@@ -739,7 +739,7 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--color-white);
-  background-color: var(--color-slate-700);
+  background: linear-gradient(135deg, var(--ring-user-from), var(--ring-user-to));
 }
 
 /* AI bot avatar — teal → emerald ring */
