@@ -118,6 +118,14 @@
   var SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
   var DEFAULT_PROFILE = API_URL + '/assets/default-profile.jpg';
   var AVATAR_IMG_CSS = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
+  var ICONS_URL = API_URL + '/widget/icons/';
+  function ico(name, w, h) {
+    var u = 'url(' + ICONS_URL + name + '.svg)';
+    return '<span class="chatr-ico" style="width:' + w + 'px;height:' + (h || w) + 'px;-webkit-mask-image:' + u + ';mask-image:' + u + '"></span>';
+  }
+  var ICO_COPY   = '\u29C9';
+  var ICO_CHECK  = '\u2713';
+  var ICO_VID    = '\uD83C\uDFA5';
 
   // ── Session storage helpers ──────────────────────────────────────────────────
   // Dev mode: use sessionStorage (cleared when tab closes, but we also clear on init).
@@ -326,6 +334,9 @@
     '.chatr-typing span:nth-child(2){animation-delay:.2s}',
     '.chatr-typing span:nth-child(3){animation-delay:.4s}',
     '@keyframes chatr-bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}',
+    '@keyframes chatr-spinner{to{transform:rotate(360deg)}}',
+    '.chatr-spin{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:chatr-spinner .7s linear infinite}',
+    '.chatr-ico{display:inline-block;background:currentColor;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;mask-size:contain;mask-repeat:no-repeat;mask-position:center}',
     /* Footer / input */
     '#chatr-w-footer{padding:10px 12px;border-top:1px solid var(--cw-border);background:var(--cw-bg);display:flex;gap:8px;align-items:center;flex-shrink:0}',
     '#chatr-w-input{',
@@ -338,12 +349,12 @@
     '#chatr-w-input::placeholder{color:var(--cw-text4)}',
     '#chatr-w-attach{width:40px;height:40px;background:var(--cw-input-bg);border:1px solid var(--cw-border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s,border-color .2s;color:var(--cw-text3);font-size:16px;padding:0}',
     '#chatr-w-attach:hover{background:var(--cw-bg2);border-color:' + ACCENT + ';color:' + ACCENT + '}',
-    '#chatr-w-send{width:40px;height:40px;background:' + ACCENT + ';border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s}',
+    '#chatr-w-send{width:40px;height:40px;background:' + ACCENT + ';color:#fff;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s}',
     '#chatr-w-send:hover{opacity:.9}',
     '#chatr-w-send:disabled{opacity:.4;cursor:not-allowed}',
     '#chatr-w-file-input{display:none}',
-    '.chatr-file-bubble{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cw-bg2);border:1px solid var(--cw-border2);border-radius:10px;font-size:13px;max-width:220px}',
-    '.chatr-file-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center;color:var(--cw-text3)}',
+    '.chatr-file-bubble{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--cw-bg2);border:1px solid var(--cw-border2);border-radius:10px;font-size:13px;max-width:240px}',
+    '.chatr-file-icon{flex-shrink:0;width:36px;line-height:0}',
     '.chatr-file-info{min-width:0}',
     '.chatr-file-name{color:var(--cw-text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}',
     '.chatr-file-size{color:var(--cw-text4);font-size:11px}',
@@ -388,19 +399,12 @@
   ].join('');
   document.head.appendChild(style);
 
-  // Inject Font Awesome (free) from CDN if not already on the page
-  if (!document.querySelector('link[href*="font-awesome"]') && !document.querySelector('link[href*="fontawesome"]')) {
-    var faLink = document.createElement('link');
-    faLink.rel = 'stylesheet';
-    faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';
-    document.head.appendChild(faLink);
-  }
 
   // ── Build DOM ────────────────────────────────────────────────────────────────
   var btn = document.createElement('button');
   btn.id = 'chatr-widget-btn';
   btn.setAttribute('aria-label', 'Open support chat');
-  btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+  btn.innerHTML = ico('chat', 26);
 
   var badge = document.createElement('span');
   badge.id = 'chatr-widget-badge';
@@ -425,13 +429,9 @@
     '<div id="chatr-w-body" role="log" aria-live="polite"></div>',
     '<div id="chatr-w-footer" style="display:none">',
       '<input type="file" id="chatr-w-file-input" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.mp3,.mp4" aria-label="Attach file"/>',
-      '<button id="chatr-w-attach" aria-label="Attach file" title="Attach file">',
-        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
-      '</button>',
+      '<button id="chatr-w-attach" aria-label="Attach file" title="Attach file">' + ico('attach', 18) + '</button>',
       '<textarea id="chatr-w-input" placeholder="Type a message…" rows="1" aria-label="Message input"></textarea>',
-      '<button id="chatr-w-send" aria-label="Send message" disabled>',
-        '<i class="fa-solid fa-paper-plane" style="color:#fff;font-size:15px"></i>',
-      '</button>',
+      '<button id="chatr-w-send" aria-label="Send message" disabled>' + ico('send', 15) + '</button>',
     '</div>',
     '<div id="chatr-w-powered"><a href="https://chatr-app.online" target="_blank" rel="noopener">Powered by Chatr</a></div>',
   ].join('');
@@ -476,18 +476,7 @@
 
   // ── Code block support ───────────────────────────────────────────────────────
 
-  var CODE_KEYWORDS = new Set([
-    'const','let','var','function','return','if','else','for','while','do','switch','case',
-    'break','continue','class','extends','new','this','super','import','export','default',
-    'from','async','await','try','catch','finally','throw','typeof','instanceof','in','of',
-    'void','delete','static','get','set','public','private','protected','readonly',
-    'interface','type','enum','namespace','declare','abstract','as','is',
-    'def','lambda','pass','None','True','False','and','or','not','with','yield',
-    'global','nonlocal','assert','raise','except','elif',
-    'fn','mut','use','mod','struct','impl','trait','where','match','Some','Ok','Err',
-    'func','go','defer','chan','map','range','select','package',
-    'null','undefined','true','false',
-  ]);
+  var CODE_KEYWORDS = new Set('const let var function return if else for while do switch case break continue class extends new this super import export default from async await try catch finally throw typeof instanceof in of void delete static get set public private protected readonly interface type enum namespace declare abstract as is def lambda pass None True False and or not with yield global nonlocal assert raise except elif fn mut use mod struct impl trait where match Some Ok Err func go defer chan map range select package null undefined true false'.split(' '));
 
   function tokeniseCode(code) {
     var tokens = [];
@@ -595,12 +584,12 @@
     langEl.textContent = lang;
     var copyBtn = document.createElement('button');
     copyBtn.className = 'chatr-code-copy';
-    copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+    copyBtn.textContent = ICO_COPY + ' Copy';
     copyBtn.onclick = function(e) {
       e.stopPropagation();
       navigator.clipboard.writeText(content).then(function() {
-        copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
-        setTimeout(function() { copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'; }, 2000);
+        copyBtn.textContent = ICO_CHECK + ' Copied!';
+        setTimeout(function() { copyBtn.textContent = ICO_COPY + ' Copy'; }, 2000);
       });
     };
     header.appendChild(langEl);
@@ -650,19 +639,9 @@
     tryScroll();
   }
 
-  function persistMessages() {
+  function persist(chatOnly) {
     if (DEV_MODE) return;
-    store.set({
-      guestId:   state.guestId,
-      token:     state.token,
-      guestName: state.guestName,
-      messages:  state.messages.slice(-100),
-      open:      state.open,
-    });
-  }
-
-  function persistOpen() {
-    if (DEV_MODE || state.phase !== 'chat') return;
+    if (chatOnly && state.phase !== 'chat') return;
     store.set({
       guestId:   state.guestId,
       token:     state.token,
@@ -752,16 +731,19 @@
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
+  var ICONS_URL = API_URL + '/widget/icons/';
   function fileIcon(mime) {
-    if (!mime) return '<i class="fa-solid fa-file"></i>';
-    if (mime.startsWith('image/')) return '<i class="fa-solid fa-image"></i>';
-    if (mime.startsWith('audio/')) return '<i class="fa-solid fa-music"></i>';
-    if (mime.startsWith('video/')) return '<i class="fa-solid fa-film"></i>';
-    if (mime.includes('pdf')) return '<i class="fa-solid fa-file-pdf"></i>';
-    if (mime.includes('word') || mime.includes('document')) return '<i class="fa-solid fa-file-word"></i>';
-    if (mime.includes('sheet') || mime.includes('excel')) return '<i class="fa-solid fa-file-excel"></i>';
-    if (mime.includes('zip') || mime.includes('rar')) return '<i class="fa-solid fa-file-archive"></i>';
-    return '<i class="fa-solid fa-file"></i>';
+    var t = 'file';
+    if (mime) {
+      if (mime.startsWith('image/')) t = 'img';
+      else if (mime.startsWith('audio/')) t = 'audio';
+      else if (mime.startsWith('video/')) t = 'video';
+      else if (mime.includes('pdf')) t = 'pdf';
+      else if (mime.includes('word') || mime.includes('document')) t = 'doc';
+      else if (mime.includes('sheet') || mime.includes('excel')) t = 'xls';
+      else if (mime.includes('zip') || mime.includes('rar')) t = 'zip';
+    }
+    return '<img src="' + ICONS_URL + t + '.svg" width="36" height="44" alt="' + t + '" style="display:block">';
   }
 
   // ── Audio player (Canvas + Web Audio API, zero deps) ────────────────────────
@@ -790,7 +772,7 @@
     playBtn.className = 'chatr-audio-play';
     playBtn.disabled = true;
     playBtn.setAttribute('aria-label', 'Play voice message');
-    playBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    playBtn.innerHTML = '<span class="chatr-spin"></span>';
 
     var canvas = document.createElement('canvas');
     canvas.className = 'chatr-audio-canvas';
@@ -883,15 +865,6 @@
       if (rect.width < 4) return;
       var clickRelative = e.clientX - rect.left;
       var pct = Math.max(0, Math.min(1, clickRelative / rect.width));
-      console.log('[chatr-seek] clientX=' + e.clientX.toFixed(1) +
-        ' rect.left=' + rect.left.toFixed(1) +
-        ' rect.width=' + rect.width.toFixed(1) +
-        ' offsetX=' + (e.offsetX||0).toFixed(1) +
-        ' canvas.width=' + canvas.width +
-        ' canvas.styleWidth=' + canvas.style.width +
-        ' dpr=' + (window.devicePixelRatio||1) +
-        ' pct=' + (pct*100).toFixed(1) + '%' +
-        ' → ' + (pct*duration).toFixed(1) + 's / ' + duration + 's');
       audio.currentTime = pct * duration;
       currentTime = audio.currentTime;
       updateUI();
@@ -940,7 +913,7 @@
       audioLoaded = true;
       syncDuration();
       playBtn.disabled = false;
-      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      playBtn.innerHTML = ico('play', 12);
       updateUI();
       requestAnimationFrame(drawWave);
     });
@@ -953,7 +926,7 @@
 
     audio.addEventListener('play', function() {
       isPlaying = true;
-      playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+      playBtn.innerHTML = ico('pause', 12);
       playBtn.setAttribute('aria-label', 'Pause voice message');
       startRAF();
     });
@@ -961,7 +934,7 @@
     audio.addEventListener('pause', function() {
       isPlaying = false;
       stopRAF();
-      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      playBtn.innerHTML = ico('play', 12);
       playBtn.setAttribute('aria-label', 'Play voice message');
       updateUI();
     });
@@ -971,7 +944,7 @@
       stopRAF();
       currentTime = 0;
       audio.currentTime = 0;
-      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      playBtn.innerHTML = ico('play', 12);
       updateUI();
     });
 
@@ -1028,7 +1001,7 @@
         if (msg.fileName) {
           var nameDiv = document.createElement('div');
           nameDiv.style.cssText = 'font-size:11px;color:var(--cw-text4);padding:2px 4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-          nameDiv.innerHTML = '<i class="fa-solid fa-video" style="margin-right:4px"></i>' + escHtml(msg.fileName);
+          nameDiv.innerHTML = ICO_VID + ' ' + escHtml(msg.fileName);
           colDiv.appendChild(nameDiv);
         }
         var timeDiv2 = document.createElement('div');
@@ -1045,7 +1018,7 @@
             '<div class="chatr-file-name">' + escHtml(msg.fileName || 'File') + '</div>' +
             '<div class="chatr-file-size">' + formatFileSize(msg.fileSize) + (msg._uploading ? ' · Uploading…' : '') + '</div>' +
           '</div>' +
-          (msg.content && !msg._uploading ? '<a href="' + API_URL + '/api/messages/download/' + encodeURIComponent(msg.id || '') + '" target="_blank" rel="noopener" style="font-size:14px;text-decoration:none;flex-shrink:0;color:var(--cw-text3)" aria-label="Download"><i class="fa-solid fa-download"></i></a>' : '') +
+          (msg.content && !msg._uploading ? '<a href="' + API_URL + '/api/messages/download/' + encodeURIComponent(msg.id || '') + '" target="_blank" rel="noopener" style="font-size:14px;text-decoration:none;flex-shrink:0;color:var(--cw-text3)" aria-label="Download">' + ico('attach', 14) + '</a>' : '') +
         '</div>';
         wrap.innerHTML = avatarHtml + '<div style="display:flex;flex-direction:column;' + (isSent ? 'align-items:flex-end' : '') + '">' + fileHtml + '<div class="chatr-msg-time">' + formatTime(msg.createdAt || msg.timestamp) + '</div></div>';
       } else {
@@ -1338,7 +1311,7 @@
     };
     state.messages.push(tempMsg);
     renderMessage(tempMsg);
-    persistMessages();
+    persist();
 
     state.socket.emit('message:send', {
       recipientId: state.supportAgentId,
@@ -1397,7 +1370,7 @@
         };
         state.messages.push(normMsg);
         renderMessage(normMsg);
-        persistMessages();
+        persist();
       }
     })
     .catch(function (err) {
@@ -1466,7 +1439,7 @@
         };
         state.messages.push(tempMsg);
         renderMessage(tempMsg);
-        persistMessages();
+        persist();
       }
     });
 
@@ -1526,7 +1499,7 @@
 
       state.messages.push(msg);
       renderMessage(msg);
-      persistMessages();
+      persist();
 
       if (!state.open) {
         state.unread++;
@@ -1593,7 +1566,7 @@
           }
         }
       }
-      persistMessages();
+      persist();
     });
 
     // Message unsent by support agent — silently remove, no placeholder
@@ -1602,7 +1575,7 @@
       state.messages = state.messages.filter(function (m) { return m.id !== data.messageId; });
       var el = elBody.querySelector('[data-msg-id="' + data.messageId + '"]');
       if (el) el.remove();
-      persistMessages();
+      persist();
     });
 
     // Typing indicator from support agent — server emits typing:status with { userId, isTyping }
@@ -1696,7 +1669,7 @@
     updateBadge();
     panel.classList.add('open');
     btn.setAttribute('aria-expanded', 'true');
-    persistOpen();
+    persist(true);
 
     if (state.phase === 'intro') {
       fetchSupportAgent(function () {
@@ -1719,7 +1692,7 @@
     state.open = false;
     panel.classList.remove('open');
     btn.setAttribute('aria-expanded', 'false');
-    persistOpen();
+    persist(true);
     if (state.socket) {
       state.socket.emit('typing:stop', { recipientId: state.supportAgentId });
     }

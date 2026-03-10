@@ -7,6 +7,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { authenticateToken } from '../middleware/auth';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -248,6 +249,23 @@ router.get('/history', authenticateToken as any, async (req: any, res: Response)
 // ── POST /api/widget/upload ───────────────────────────────────────────────────
 // Allows guest users to upload file attachments
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const S3_BUCKET = process.env.S3_BUCKET || '';
+const AWS_REGION = process.env.AWS_REGION || 'eu-west-2';
+
+const s3 = IS_PRODUCTION ? new S3Client({
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
+}) : null;
+
+async function uploadToS3(buffer: Buffer, key: string, mimeType: string): Promise<string> {
+  if (!s3) throw new Error('S3 not configured');
+  await s3.send(new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, Body: buffer, ContentType: mimeType }));
+  return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
+}
+
 const messagesDir = path.join(__dirname, '../../uploads/messages');
 if (!IS_PRODUCTION && !fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
 
@@ -261,9 +279,21 @@ const widgetStorage = IS_PRODUCTION
       },
     });
 
+const allowedMimes = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/x-m4a',
+  'video/mp4', 'video/quicktime', 'video/webm',
+  'application/pdf', 'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain', 'application/zip',
+];
+
 const widgetUpload = multer({
   storage: widgetStorage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB (videos can be large)
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    cb(null, allowedMimes.includes(file.mimetype));
+  },
 });
 
 router.post('/upload', authenticateToken as any, widgetUpload.single('file') as any, async (req: any, res: Response) => {
@@ -281,8 +311,6 @@ router.post('/upload', authenticateToken as any, widgetUpload.single('file') as 
 
     let fileUrl: string;
     if (IS_PRODUCTION) {
-      // Lazy-import S3 helper to avoid circular deps in dev
-      const { uploadToS3 } = await import('../lib/s3');
       const ext = path.extname(req.file.originalname);
       const key = `uploads/messages/widget-${Date.now()}${ext}`;
       fileUrl = await uploadToS3(req.file.buffer, key, req.file.mimetype);

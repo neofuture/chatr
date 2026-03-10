@@ -936,7 +936,7 @@ export default function MessageBubble({
 
                           {/* Action icon */}
                           <span className={styles.downloadIcon} aria-hidden="true">
-                            <i className={canPreview ? 'fas fa-eye' : 'fas fa-download'} />
+                            <i className={canPreview ? 'fas fa-eye' : 'fas fa-paperclip'} />
                           </span>
                         </a>
                       );
