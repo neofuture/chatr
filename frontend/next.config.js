@@ -5,9 +5,6 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const nextConfig = {
   reactStrictMode: false,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   outputFileTracingRoot: path.join(__dirname, '../'),
   devIndicators: false,
   async headers() {
