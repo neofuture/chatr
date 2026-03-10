@@ -166,7 +166,7 @@ router.get('/:recipientId', authenticateToken as any, async (req: AuthenticatedR
       return res.status(400).json({ error: 'recipientId is required' });
     }
 
-    const limitNum = parseInt(limit as string, 10);
+    const limitNum = Math.min(Math.max(parseInt(limit as string, 10) || 50, 1), 100);
 
     // Build query
     const whereClause: any = {
@@ -269,14 +269,6 @@ router.get('/:recipientId', authenticateToken as any, async (req: AuthenticatedR
   }
 });
 
-// GET /api/messages/conversations - Get user's conversations
-router.get('/conversations', (req, res) => {
-  // TODO: Implement get conversations
-  // - Get all conversations for current user
-  // - Include last message preview
-  // - Include unread count
-  res.status(501).json({ message: 'Get conversations not implemented yet' });
-});
 
 /**
  * @swagger
@@ -430,6 +422,10 @@ router.patch('/:id/waveform', authenticateToken as any, async (req: Authenticate
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     if (!waveform || !Array.isArray(waveform)) return res.status(400).json({ error: 'waveform array required' });
+
+    const existing = await prisma.message.findUnique({ where: { id }, select: { senderId: true } });
+    if (!existing) return res.status(404).json({ error: 'Message not found' });
+    if (existing.senderId !== userId) return res.status(403).json({ error: 'Access denied' });
 
     const message = await prisma.message.update({
       where: { id },

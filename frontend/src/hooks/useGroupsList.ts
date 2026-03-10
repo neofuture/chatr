@@ -203,14 +203,7 @@ export function useGroupsList() {
       setInvites(prev => prev.filter(i => i.groupId !== data.groupId));
     };
 
-    // group:memberJoined — refresh so member count stays accurate in the list
-    const handleMemberJoined = (data: { groupId: string }) => {
-      setGroups(prev => prev.map(g => {
-        if (g.id !== data.groupId) return g;
-        // Re-fetch the group to get the updated member list
-        return g;
-      }));
-      // Trigger a background refresh
+    const handleMemberJoined = () => {
       fetchGroups();
     };
 

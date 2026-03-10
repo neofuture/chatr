@@ -4,29 +4,11 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
+import { getAudioDurationFromBlob } from '@/utils/audio';
 import { enqueue, loadAllQueued } from '@/lib/outboundQueue';
 import type { Message } from '@/components/MessageBubble';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-/**
- * Decode an audio blob using the Web Audio API to get its exact duration.
- * Much more reliable than waveformData.length / 10 for long recordings.
- */
-async function getAudioDurationFromBlob(blob: Blob): Promise<number> {
-  try {
-    const arrayBuffer = await blob.arrayBuffer();
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    try {
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      return audioBuffer.duration;
-    } finally {
-      audioContext.close();
-    }
-  } catch {
-    return 0;
-  }
-}
 
 interface UseMessageInputOptions {
   recipientId: string;
@@ -263,11 +245,17 @@ export function useMessageInput({
 
   const cancelFileSelection = useCallback((index?: number) => {
     if (index === undefined) {
+      setFilePreviews(prev => {
+        prev.forEach(url => { if (url?.startsWith('blob:')) URL.revokeObjectURL(url); });
+        return [];
+      });
       setSelectedFiles([]);
-      setFilePreviews([]);
     } else {
+      setFilePreviews(prev => {
+        if (prev[index]?.startsWith('blob:')) URL.revokeObjectURL(prev[index]!);
+        return prev.filter((_, i) => i !== index);
+      });
       setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-      setFilePreviews(prev => prev.filter((_, i) => i !== index));
     }
   }, []);
 

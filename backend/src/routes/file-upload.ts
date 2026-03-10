@@ -345,15 +345,24 @@ router.post('/upload',
 // ── GET /api/messages/download/:messageId ─────────────────────────────────────
 // Proxies the file through the backend so Content-Disposition: attachment
 // with the original filename works in all environments, including S3.
-router.get('/download/:messageId', async (req: Request, res: Response) => {
+router.get('/download/:messageId', authenticateToken as any, async (req: Request, res: Response) => {
   try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const message = await prisma.message.findUnique({
       where: { id: req.params.messageId },
-      select: { fileUrl: true, fileName: true, fileType: true },
+      select: { fileUrl: true, fileName: true, fileType: true, senderId: true, recipientId: true },
     });
 
     if (!message?.fileUrl) {
       return res.status(404).json({ error: 'File not found' });
+    }
+
+    if (message.senderId !== userId && message.recipientId !== userId) {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     const originalName = message.fileName || 'download';

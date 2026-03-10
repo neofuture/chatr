@@ -3,7 +3,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import MessageAudioPlayer from '@/components/MessageAudioPlayer/MessageAudioPlayer';
-import { useTTS } from '@/hooks/useTTS';
 import { isAIBot } from '@/lib/aiBot';
 import CodeBlock, { parseCodeBlocks } from './CodeBlock';
 import styles from './MessageBubble.module.css';
@@ -510,7 +509,6 @@ export default function MessageBubble({
 }: MessageBubbleProps) {
   const defaultRef = useRef<HTMLDivElement>(null);
   const endRef = messagesEndRef || defaultRef;
-  const { speak, speakingId, supported: ttsSupported } = useTTS();
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
@@ -956,12 +954,6 @@ export default function MessageBubble({
                             <span className={styles.editedMarker} aria-label="edited">
                               <i className="fas fa-pen" aria-hidden="true" /> edited
                             </span>
-                          )}
-                          {false && ttsSupported && (
-                            <button onClick={e => { e.stopPropagation(); speak(msg.id, msg.content); }}
-                              className={`${styles.ttsButton} ${isSent ? styles.ttsButtonSent : styles.ttsButtonReceived} ${speakingId === msg.id ? styles.ttsButtonActive : styles.ttsButtonInactive}`}>
-                              <i className={speakingId === msg.id ? 'fas fa-volume-up' : 'fas fa-volume-off'} />
-                            </button>
                           )}
                         </div>
                       </CollapsibleText>

@@ -36,13 +36,13 @@ export function useConversationView({ recipientId, currentUserId, onConversation
   // ── Load cached messages + pending outbound queue on recipient change ──
   useEffect(() => {
     if (!recipientId || !currentUserId) return;
+    let cancelled = false;
     setMessages([]);
     Promise.all([
       loadCachedMessages(currentUserId, recipientId),
       loadQueueForRecipient(currentUserId, recipientId),
     ]).then(([cached, queued]) => {
-      // Merge: confirmed messages from cache, then any still-pending ones on top
-      // De-dupe by id in case a queued msg is also in cache with a real id
+      if (cancelled) return;
       const queuedIds = new Set(queued.map(q => q.id));
       const merged = [
         ...cached.filter(m => !queuedIds.has(m.id)),
@@ -54,6 +54,7 @@ export function useConversationView({ recipientId, currentUserId, onConversation
       });
       if (merged.length) setMessages(merged);
     }).catch(console.error);
+    return () => { cancelled = true; };
   }, [recipientId, currentUserId]);
 
   // ── Add a message (called by MessageInput via onMessageSent) ──
@@ -95,6 +96,11 @@ export function useConversationView({ recipientId, currentUserId, onConversation
       }
     } else {
       setActiveAudioMessageId(null);
+      setListeningMessageIds(prev => {
+        const next = new Set(prev);
+        next.delete(messageId);
+        return next;
+      });
       if (isEnded && socket && senderId !== currentUserId) {
         socket.emit('audio:listened', { messageId, senderId });
       }
@@ -104,7 +110,7 @@ export function useConversationView({ recipientId, currentUserId, onConversation
   // ── Reactions ─────────────────────────────────────────
   const handleReaction = useCallback((messageId: string, emoji: string) => {
     if (!socket || !connected) return;
-    socket.emit('message:reaction', { messageId, emoji, recipientId });
+    socket.emit('message:react', { messageId, emoji });
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId) return m;
       const existing = m.reactions ?? [];
@@ -354,6 +360,8 @@ export function useConversationView({ recipientId, currentUserId, onConversation
       socket.off('message:blocked', onMessageBlocked);
       socket.off('conversation:accepted', onConversationAcceptedEvt);
       socket.off('guest:left', onGuestLeft);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
     };
   }, [socket, recipientId, currentUserId]);
 
@@ -363,12 +371,16 @@ export function useConversationView({ recipientId, currentUserId, onConversation
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    let cancelled = false;
+    const controller = new AbortController();
+
     fetch(`${API}/api/messages/${recipientId}`, {
       headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
     })
       .then(r => r.ok ? r.json() : null)
       .then((res: any) => {
-        if (!res) return;
+        if (cancelled || !res) return;
         const raw: any[] = Array.isArray(res) ? res : (res.messages ?? []);
         const mapped = raw.map((m: any) => ({
           ...m,
@@ -376,14 +388,13 @@ export function useConversationView({ recipientId, currentUserId, onConversation
           timestamp: new Date(m.timestamp ?? m.createdAt),
           waveformData: m.waveformData ?? m.waveform ?? undefined,
           duration: m.duration ?? m.audioDuration ?? undefined,
-          // Stamp recipient's profile image onto received messages if API didn't provide one
           senderProfileImage: m.senderId !== currentUserId
             ? (m.senderProfileImage ?? recipientProfileImage ?? null)
             : (m.senderProfileImage ?? null),
         })) as Message[];
 
-        // Re-attach any still-queued messages that haven't been confirmed yet
         loadQueueForRecipient(currentUserId, recipientId).then(queued => {
+          if (cancelled) return;
           const serverIds = new Set(mapped.map(m => m.id));
           const pending = queued.filter(q => !serverIds.has(q.id));
           const merged = [...mapped, ...pending].sort((a, b) => {
@@ -394,11 +405,14 @@ export function useConversationView({ recipientId, currentUserId, onConversation
           setMessages(merged);
           cacheMessages(mapped, currentUserId).catch(console.error);
         }).catch(() => {
+          if (cancelled) return;
           setMessages(mapped);
           cacheMessages(mapped, currentUserId).catch(console.error);
         });
       })
-      .catch(console.error);
+      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+
+    return () => { cancelled = true; controller.abort(); };
   }, [recipientId, currentUserId, connected]);
 
   return {

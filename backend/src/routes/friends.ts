@@ -18,17 +18,6 @@ const userSelect = {
   showOnlineStatus: true,
 };
 
-// Helper: get all friendships (accepted) for a user
-async function getFriendIds(userId: string): Promise<Set<string>> {
-  const rows = await prisma.friendship.findMany({
-    where: {
-      status: 'accepted',
-      OR: [{ requesterId: userId }, { addresseeId: userId }],
-    },
-    select: { requesterId: true, addresseeId: true },
-  });
-  return new Set(rows.map(r => r.requesterId === userId ? r.addresseeId : r.requesterId));
-}
 
 /**
  * @swagger

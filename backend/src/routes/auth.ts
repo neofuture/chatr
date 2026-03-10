@@ -618,15 +618,14 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
  *         description: User not found
  */
 // POST /api/auth/2fa/setup - Generate 2FA secret and QR code
-router.post('/2fa/setup', async (req: Request, res: Response) => {
+router.post('/2fa/setup', authenticateToken as any, async (req: Request, res: Response) => {
   try {
-    const { userId } = req.body;
+    const userId = req.user?.userId;
 
     if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Find user
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -703,15 +702,19 @@ router.post('/2fa/setup', async (req: Request, res: Response) => {
  *         description: Invalid 2FA code
  */
 // POST /api/auth/2fa/verify - Verify 2FA code and enable 2FA
-router.post('/2fa/verify', async (req: Request, res: Response) => {
+router.post('/2fa/verify', authenticateToken as any, async (req: Request, res: Response) => {
   try {
-    const { userId, code } = req.body;
+    const userId = req.user?.userId;
+    const { code } = req.body;
 
-    if (!userId || !code) {
-      return res.status(400).json({ error: 'User ID and code are required' });
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Find user
+    if (!code) {
+      return res.status(400).json({ error: 'Verification code is required' });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -1125,15 +1128,10 @@ router.post('/forgot-password', rateLimit('forgot-pw', 3, 900), async (req: Requ
       },
     });
 
-    console.log(`Password reset code for ${email}: ${resetCode}`);
-
-    // Send password reset email via Mailtrap
     await sendPasswordResetEmail(email, resetCode, user.username);
 
     res.status(200).json({
       message: 'If an account exists with that email, a password reset link has been sent.',
-      // For demo purposes, include the code (REMOVE IN PRODUCTION!)
-      resetCode: resetCode,
     });
   } catch (error) {
     console.error('Forgot password error:', error);

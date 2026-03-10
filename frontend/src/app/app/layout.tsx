@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import MobileLayout from "@/components/MobileLayout/MobileLayout";
 
@@ -10,10 +9,6 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-
-  useEffect(() => {
-    // ...existing code...
-  }, []);
 
   // Determine title and header action based on path
   let title = "Chats";
