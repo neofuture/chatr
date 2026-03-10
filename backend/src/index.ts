@@ -129,7 +129,13 @@ app.use('/api', emailTemplatesRoutes);
 // Serve the embeddable widget JS with open CORS so any site can load it
 app.use('/widget', (_req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min cache
+  // No cache in dev so edits to chatr.js are picked up immediately
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+  } else {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+  }
   next();
 }, express.static(path.join(__dirname, '../../widget')));
 

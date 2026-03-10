@@ -107,6 +107,7 @@
   min-width: 0;
   max-width: 100%;
   width: auto;
+  padding: 10px;
   user-select: none;
   -webkit-user-select: none;
   touch-action: pan-y;
@@ -809,7 +810,9 @@
 }
 
 .bubbleColumnAudio {
-  max-width: none;
+  width: 80%;
+  max-width: 520px;
+  min-width: 220px;
 }
 
 .bubbleColumnImage {
@@ -959,7 +962,7 @@
 }
 
 .bubbleWrapAudio {
-  width: fit-content;
+  width: 100%;
 }
 
 .unsentBubble {
@@ -997,16 +1000,14 @@
   color: rgba(0, 0, 0, 0.35);
 }
 
-.bubblePaddingText {
-  padding: 5px 11px;
-}
+.bubblePaddingText {}
 
-.bubblePaddingMedia {
-  padding: 3px;
-}
+.bubblePaddingMedia {}
 
 .bubblePaddingAudio {
-  padding: 2px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .bubbleSent {
@@ -1071,6 +1072,65 @@
 
 .messageTextWrapper {
   position: relative;
+}
+
+.messageTextClip {
+  overflow: hidden;
+  position: relative;
+  transition: max-height 0.35s ease;
+}
+
+.messageTextFade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  pointer-events: none;
+}
+
+.messageTextFadeSent {
+  background: linear-gradient(to bottom, transparent, var(--bubble-sent));
+}
+
+.messageTextFadeReceived {
+  background: linear-gradient(to bottom, transparent, var(--bubble-received));
+}
+
+.readMoreBtn {
+  display: block;
+  margin: 6px auto 0;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 14px;
+  border-radius: 12px;
+  text-align: center;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.readMoreBtn:hover {
+  opacity: 1;
+}
+
+.readMoreBtnSent {
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.readMoreBtnSent:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.readMoreBtnReceived {
+  color: var(--accent, #3b82f6);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.readMoreBtnReceived:hover {
+  background: rgba(59, 130, 246, 0.15);
 }
 
 .editedMarker {

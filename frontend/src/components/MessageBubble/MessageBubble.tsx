@@ -95,7 +95,7 @@ export interface Message {
   direction: 'sent' | 'received';
   status: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   timestamp: Date;
-  type?: 'text' | 'image' | 'file' | 'audio' | 'system';
+  type?: 'text' | 'image' | 'video' | 'file' | 'audio' | 'system';
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
@@ -330,6 +330,10 @@ function MessageContextMenu({
           ) : message.type === 'image' && message.fileUrl ? (
             <img src={message.fileUrl} alt={message.fileName || 'Image'}
               className={styles.clonedImage} />
+          ) : message.type === 'video' && message.fileUrl ? (
+            <div className={styles.clonedVoice}>
+              <i className={`fas fa-video ${styles.clonedVoiceIcon}`} /> Video
+            </div>
           ) : (
             <>
               <div className={styles.clonedText}>
@@ -367,6 +371,115 @@ function MessageContextMenu({
         </div>
 
       </div>
+    </div>
+  );
+}
+
+// ─── Collapsible text wrapper ─────────────────────────────────────────────────
+
+const MAX_TEXT_HEIGHT = 300;
+
+function CollapsibleText({ isSent, children }: { isSent: boolean; children: React.ReactNode }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const clipRef = useRef<HTMLDivElement>(null);
+  const [needsCollapse, setNeedsCollapse] = useState(false);
+  const expandedRef = useRef(false);
+  const [, forceRender] = useState(0);
+  const animating = useRef(false);
+
+  useEffect(() => {
+    const el = clipRef.current;
+    if (!el) return;
+    const check = () => {
+      el.style.maxHeight = 'none';
+      const needs = el.scrollHeight > MAX_TEXT_HEIGHT + 40;
+      setNeedsCollapse(needs);
+      if (needs && !expandedRef.current) {
+        el.style.maxHeight = `${MAX_TEXT_HEIGHT}px`;
+      }
+    };
+    check();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => { if (!animating.current) check(); });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const toggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const el = clipRef.current;
+    if (!el || animating.current) return;
+
+    const sc = wrapRef.current?.closest('[data-messages-scroll]') as HTMLElement | null;
+    const willExpand = !expandedRef.current;
+    animating.current = true;
+
+    const fullH = el.scrollHeight;
+
+    // Set starting maxHeight explicitly so transition has a from-value
+    el.style.maxHeight = willExpand ? `${MAX_TEXT_HEIGHT}px` : `${fullH}px`;
+    // Force reflow so the browser registers the starting value
+    el.offsetHeight; // eslint-disable-line @typescript-eslint/no-unused-expressions
+
+    // Now set the target
+    el.style.maxHeight = willExpand ? `${fullH}px` : `${MAX_TEXT_HEIGHT}px`;
+
+    const onDone = () => {
+      el.removeEventListener('transitionend', onDone);
+      animating.current = false;
+      expandedRef.current = willExpand;
+      if (willExpand) {
+        el.style.maxHeight = 'none';
+      }
+      forceRender(n => n + 1);
+
+      // Scroll past the entire message (including timestamp + "Delivered")
+      if (willExpand && sc) {
+        const msgRow = wrapRef.current?.closest('[data-message-id]') as HTMLElement | null;
+        const target = msgRow || wrapRef.current;
+        if (target) {
+          const targetRect = target.getBoundingClientRect();
+          const scRect = sc.getBoundingClientRect();
+          const overflow = targetRect.bottom - scRect.bottom + 30;
+          if (overflow > 0) {
+            sc.scrollBy({ top: overflow, behavior: 'smooth' });
+          }
+        }
+      }
+    };
+    el.addEventListener('transitionend', onDone, { once: true });
+
+    // Safety fallback in case transitionend doesn't fire
+    setTimeout(() => {
+      if (animating.current) onDone();
+    }, 400);
+
+    expandedRef.current = willExpand;
+    forceRender(n => n + 1);
+  }, []);
+
+
+  const expanded = expandedRef.current;
+
+  return (
+    <div ref={wrapRef}>
+      <div
+        ref={clipRef}
+        className={needsCollapse ? styles.messageTextClip : undefined}
+      >
+        {children}
+        {needsCollapse && !expanded && (
+          <div className={`${styles.messageTextFade} ${isSent ? styles.messageTextFadeSent : styles.messageTextFadeReceived}`} />
+        )}
+      </div>
+      {needsCollapse && (
+        <button
+          className={`${styles.readMoreBtn} ${isSent ? styles.readMoreBtnSent : styles.readMoreBtnReceived}`}
+          onClick={toggle}
+        >
+          {expanded ? 'Show less ▲' : 'Read more ▼'}
+        </button>
+      )}
     </div>
   );
 }
@@ -544,7 +657,7 @@ export default function MessageBubble({
 
         const bubbleColumnWidthClass = msg.type === 'audio'
           ? styles.bubbleColumnAudio
-          : msg.type === 'image'
+          : msg.type === 'image' || msg.type === 'video'
           ? styles.bubbleColumnImage
           : styles.bubbleColumnText;
 
@@ -638,6 +751,11 @@ export default function MessageBubble({
                         <div className={styles.replyQuoteMetaRow}>
                           <i className={`fas fa-image ${styles.replyQuoteMetaIcon}`} />
                           <span>Photo</span>
+                        </div>
+                      ) : msg.replyTo.type === 'video' ? (
+                        <div className={styles.replyQuoteMetaRow}>
+                          <i className={`fas fa-video ${styles.replyQuoteMetaIcon}`} />
+                          <span>Video</span>
                         </div>
                       ) : msg.replyTo.type === 'file' ? (
                         <div className={styles.replyQuoteMetaRow}>
@@ -734,6 +852,20 @@ export default function MessageBubble({
                         {msg.fileName && <div className={styles.imageFileName}><i className="fas fa-camera" aria-hidden="true" /> {msg.fileName}</div>}
                       </div>
                     )}
+                    {/* Video */}
+                    {msg.type === 'video' && msg.fileUrl && (
+                      <div>
+                        <video
+                          src={msg.fileUrl + '#t=0.1'}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className={styles.messageImage}
+                          style={{ borderRadius: '8px', cursor: 'default' }}
+                        />
+                        {msg.fileName && <div className={styles.imageFileName}><i className="fas fa-video" aria-hidden="true" /> {msg.fileName}</div>}
+                      </div>
+                    )}
                     {/* Audio */}
                     {(msg.type === 'audio' || (msg.type === 'file' && msg.fileType?.startsWith('audio/'))) && msg.fileUrl && (
                       <MessageAudioPlayer
@@ -811,30 +943,32 @@ export default function MessageBubble({
                     })()}
                     {/* Text — supports fenced code blocks */}
                     {(!msg.type || msg.type === 'text') && (
-                      <div className={styles.messageTextWrapper}>
-                        <div className={`${styles.messageText} ${isSent ? styles.messageTextSent : styles.messageTextReceived} ${messageTextSpacingClass}`}>
-                          {parseCodeBlocks(msg.content).map((seg, si) =>
-                            seg.kind === 'code'
-                              ? <CodeBlock key={si} lang={seg.lang} content={seg.content} />
-                              : <span key={si} style={{ whiteSpace: 'pre-wrap' }}>{seg.content}</span>
+                      <CollapsibleText isSent={isSent}>
+                        <div className={styles.messageTextWrapper}>
+                          <div className={`${styles.messageText} ${isSent ? styles.messageTextSent : styles.messageTextReceived} ${messageTextSpacingClass}`}>
+                            {parseCodeBlocks(msg.content).map((seg, si) =>
+                              seg.kind === 'code'
+                                ? <CodeBlock key={si} lang={seg.lang} content={seg.content} />
+                                : <span key={si} style={{ whiteSpace: 'pre-wrap' }}>{seg.content}</span>
+                            )}
+                          </div>
+                          {msg.edited && !msg.unsent && (
+                            <span className={styles.editedMarker} aria-label="edited">
+                              <i className="fas fa-pen" aria-hidden="true" /> edited
+                            </span>
+                          )}
+                          {false && ttsSupported && (
+                            <button onClick={e => { e.stopPropagation(); speak(msg.id, msg.content); }}
+                              className={`${styles.ttsButton} ${isSent ? styles.ttsButtonSent : styles.ttsButtonReceived} ${speakingId === msg.id ? styles.ttsButtonActive : styles.ttsButtonInactive}`}>
+                              <i className={speakingId === msg.id ? 'fas fa-volume-up' : 'fas fa-volume-off'} />
+                            </button>
                           )}
                         </div>
-                        {msg.edited && !msg.unsent && (
-                          <span className={styles.editedMarker} aria-label="edited">
-                            <i className="fas fa-pen" aria-hidden="true" /> edited
-                          </span>
-                        )}
-                        {false && ttsSupported && (
-                          <button onClick={e => { e.stopPropagation(); speak(msg.id, msg.content); }}
-                            className={`${styles.ttsButton} ${isSent ? styles.ttsButtonSent : styles.ttsButtonReceived} ${speakingId === msg.id ? styles.ttsButtonActive : styles.ttsButtonInactive}`}>
-                            <i className={speakingId === msg.id ? 'fas fa-volume-up' : 'fas fa-volume-off'} />
-                          </button>
-                        )}
-                      </div>
+                      </CollapsibleText>
                     )}
                     {/* Timestamp */}
                     {!isGroupedWithNext && msg.type !== 'audio' && !(msg.type === 'file' && msg.fileType?.startsWith('audio/')) && (
-                      <div className={`${styles.timestamp} ${msg.type === 'image' || msg.type === 'file' ? styles.timestampWithMedia : ''}`}>
+                      <div className={`${styles.timestamp} ${msg.type === 'image' || msg.type === 'video' || msg.type === 'file' ? styles.timestampWithMedia : ''}`}>
                         {msg.timestamp.toLocaleTimeString()}
                       </div>
                     )}

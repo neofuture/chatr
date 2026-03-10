@@ -232,6 +232,8 @@ router.get('/history', authenticateToken as any, async (req: any, res: Response)
         fileName: true,
         fileSize: true,
         fileType: true,
+        audioWaveform: true,
+        audioDuration: true,
         createdAt: true,
       },
     });
@@ -261,7 +263,7 @@ const widgetStorage = IS_PRODUCTION
 
 const widgetUpload = multer({
   storage: widgetStorage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB (videos can be large)
 });
 
 router.post('/upload', authenticateToken as any, widgetUpload.single('file') as any, async (req: any, res: Response) => {
@@ -290,7 +292,8 @@ router.post('/upload', authenticateToken as any, widgetUpload.single('file') as 
     }
 
     const isImage = req.file.mimetype.startsWith('image/');
-    const msgType = isImage ? 'image' : 'file';
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const msgType = isImage ? 'image' : isVideo ? 'video' : 'file';
 
     const message = await prisma.message.create({
       data: {

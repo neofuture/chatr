@@ -148,10 +148,16 @@ export function parseCodeBlocks(text: string): Segment[] {
     const trimmed = line.trim();
 
     if (!inCode) {
+      // Self-contained fence: ```code here``` on a single line
+      const inlineMatch = trimmed.match(/^(`{3,})(.+?)\1\s*$/);
+      if (inlineMatch) {
+        flushText();
+        segments.push({ kind: 'code', lang: 'text', content: inlineMatch[2].trim() });
+        continue;
+      }
       // Opening fence: line starts with ``` (3+ backticks)
       if (/^`{3,}/.test(trimmed)) {
         flushText();
-        // Extract optional language after the backticks
         lang = trimmed.replace(/^`+/, '').trim();
         inCode = true;
         continue;
@@ -169,11 +175,16 @@ export function parseCodeBlocks(text: string): Segment[] {
   }
 
   // Unclosed block — render what we have rather than dumping raw backticks
-  if (inCode && codeLines.length > 0) {
-    flushCode();
-  } else {
-    flushText();
+  if (inCode) {
+    if (codeLines.length > 0) {
+      flushCode();
+    } else if (lang) {
+      // Only an opening fence with a "lang" that's actually content (e.g. "```something" with no close)
+      segments.push({ kind: 'code', lang: 'text', content: lang });
+      lang = '';
+    }
   }
+  flushText();
 
   return segments;
 }

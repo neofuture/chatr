@@ -10,11 +10,14 @@
     "test:backend": "cd backend && npm test",
     "test:export": "npm run test:export:frontend && npm run test:export:backend",
     "test:export:frontend": "cd frontend && npm run test:export",
-    "test:export:backend": "cd backend && npm run test:export"
+    "test:export:backend": "cd backend && npm run test:export",
+    "widget:build": "node widget-src/build.js",
+    "widget:watch": "node widget-src/build.js --watch"
   },
   "devDependencies": {
     "husky": "^9.1.7",
-    "is-ci": "^4.1.0"
+    "is-ci": "^4.1.0",
+    "terser": "^5.39.0"
   },
   "workspaces": [
     "frontend",

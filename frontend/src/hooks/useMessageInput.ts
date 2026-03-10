@@ -67,6 +67,18 @@ export function useMessageInput({
 
   const effectivelyOnline = connected;
 
+  // Populate the input when editing starts, clear when cancelled
+  const prevEditIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (editingMessage) {
+      setMessage(editingMessage.content ?? '');
+      prevEditIdRef.current = editingMessage.id;
+    } else if (prevEditIdRef.current) {
+      setMessage('');
+      prevEditIdRef.current = null;
+    }
+  }, [editingMessage]);
+
   // ── Typing indicators ────────────────────────────────
 
   const emitTypingStop = useCallback(() => {
@@ -77,7 +89,7 @@ export function useMessageInput({
     onTypingStop?.();
   }, [socket, recipientId, onTypingStop]);
 
-  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
     setMessage(val);
 
@@ -209,9 +221,10 @@ export function useMessageInput({
     const newFiles = Array.from(e.target.files ?? []);
     if (!newFiles.length) return;
 
-    const oversized = newFiles.filter(f => f.size > 10 * 1024 * 1024);
+    const maxSize = 50 * 1024 * 1024;
+    const oversized = newFiles.filter(f => f.size > maxSize);
     if (oversized.length) {
-      showToast(`${oversized.map(f => f.name).join(', ')} exceed 10 MB limit`, 'error');
+      showToast(`${oversized.map(f => f.name).join(', ')} exceed 50 MB limit`, 'error');
       return;
     }
 
@@ -228,6 +241,12 @@ export function useMessageInput({
             });
           };
           reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+          setFilePreviews(p => {
+            const next = [...p];
+            next[offset + idx] = URL.createObjectURL(file);
+            return next;
+          });
         } else {
           setFilePreviews(p => {
             const next = [...p];
@@ -259,7 +278,8 @@ export function useMessageInput({
     try {
       for (const file of selectedFiles) {
         const isAudio = file.type.startsWith('audio/');
-        const msgType = file.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : 'file';
+        const isVideo = file.type.startsWith('video/');
+        const msgType = file.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : isVideo ? 'video' : 'file';
 
         // For audio files, extract the real waveform BEFORE uploading so the
         // sender sees the correct waveform + duration immediately on send.

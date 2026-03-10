@@ -61,7 +61,7 @@ export function useGroupMessageInput({
     if (typingKeepaliveRef.current) { clearInterval(typingKeepaliveRef.current); typingKeepaliveRef.current = null; }
   }, [socket, groupId]);
 
-  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
     setMessage(val);
 
@@ -126,9 +126,10 @@ export function useGroupMessageInput({
     const newFiles = Array.from(e.target.files ?? []);
     if (!newFiles.length) return;
 
-    const oversized = newFiles.filter(f => f.size > 10 * 1024 * 1024);
+    const maxSize = 50 * 1024 * 1024;
+    const oversized = newFiles.filter(f => f.size > maxSize);
     if (oversized.length) {
-      showToast(`${oversized.map(f => f.name).join(', ')} exceed 10 MB limit`, 'error');
+      showToast(`${oversized.map(f => f.name).join(', ')} exceed 50 MB limit`, 'error');
       return;
     }
 
@@ -145,6 +146,12 @@ export function useGroupMessageInput({
             });
           };
           reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+          setFilePreviews(p => {
+            const next = [...p];
+            next[offset + idx] = URL.createObjectURL(file);
+            return next;
+          });
         } else {
           setFilePreviews(p => {
             const next = [...p];
@@ -176,7 +183,8 @@ export function useGroupMessageInput({
     try {
       for (const file of selectedFiles) {
         const isAudio = file.type.startsWith('audio/');
-        const msgType = file.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : 'file';
+        const isVideo = file.type.startsWith('video/');
+        const msgType = file.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : isVideo ? 'video' : 'file';
 
         // Pre-extract waveform so the sender sees correct waveform + duration immediately
         let preExtractedWaveform: number[] | undefined;

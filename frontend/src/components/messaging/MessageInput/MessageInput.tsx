@@ -49,7 +49,7 @@ export default function MessageInput({
   disabled = false,
 }: MessageInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
 
   const [currentUserId] = useState<string>(() => {
@@ -95,9 +95,21 @@ export default function MessageInput({
     handleVoiceRecordingStop,
   } = groupId ? groupInput : dmInput;
 
+  // Focus the textarea when entering edit mode
   useEffect(() => {
-    // editingMessage content is managed by the hook
+    if (editingMessage && inputRef.current) {
+      inputRef.current.focus();
+      const len = inputRef.current.value.length;
+      inputRef.current.setSelectionRange(len, len);
+    }
   }, [editingMessage]);
+
+  // Reset textarea height when message is cleared after send
+  useEffect(() => {
+    if (!message && inputRef.current) {
+      inputRef.current.style.height = 'auto';
+    }
+  }, [message]);
 
   const canSend = effectivelyOnline && !disabled;
   const inputBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
@@ -193,9 +205,14 @@ export default function MessageInput({
                 flexShrink: 0, position: 'relative', width: '72px', overflow: 'visible',
               }}>
                 {filePreviews[idx] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={filePreviews[idx]!} alt={file.name}
-                    style={{ width: '72px', height: '72px', borderRadius: '8px', objectFit: 'cover', display: 'block' }} />
+                  file.type.startsWith('video/') ? (
+                    <video src={filePreviews[idx]! + '#t=0.1'} muted playsInline preload="metadata"
+                      style={{ width: '72px', height: '72px', borderRadius: '8px', objectFit: 'cover', display: 'block' }} />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={filePreviews[idx]!} alt={file.name}
+                      style={{ width: '72px', height: '72px', borderRadius: '8px', objectFit: 'cover', display: 'block' }} />
+                  )
                 ) : (
                   <div style={{
                     width: '72px', height: '72px', borderRadius: '8px',
@@ -313,7 +330,7 @@ export default function MessageInput({
               multiple
               onChange={handleFileSelect}
               style={{ display: 'none' }}
-              accept="image/*,.pdf,.doc,.docx,.txt,.zip,.mp3,.wav,.ogg,.m4a,audio/*"
+              accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip,.mp3,.wav,.ogg,.m4a,audio/*"
             />
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -330,15 +347,27 @@ export default function MessageInput({
             >
               <i className="fas fa-paperclip" />
             </button>
-
-            {/* Text input */}
-            <input
+            {/* Text input — textarea so multi-line code blocks work */}
+            <textarea
               ref={inputRef}
-              type="text"
+              rows={1}
               value={message}
-              onChange={handleMessageChange}
+              onChange={(e) => {
+                handleMessageChange(e);
+                const el = e.target;
+                el.style.height = 'auto';
+                el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+                // Count open code fences to decide if Enter should insert newline
+                const openFences = (message.match(/^```/gm) || []).length % 2 !== 0;
+                if (e.key === 'Enter' && !e.shiftKey && !openFences) {
+                  e.preventDefault();
+                  handleSend();
+                  // Reset height after send
+                  const el = e.currentTarget;
+                  setTimeout(() => { el.style.height = 'auto'; }, 0);
+                }
                 if (e.key === 'ArrowUp' && !message && !editingMessage) {
                   e.preventDefault();
                   onEditLastSent?.();
@@ -365,6 +394,11 @@ export default function MessageInput({
                 outline: 'none',
                 opacity: canSend ? 1 : 0.5,
                 transition: 'border-color 0.15s, background-color 0.15s',
+                resize: 'none',
+                overflow: 'hidden',
+                lineHeight: '1.4',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box',
               }}
             />
 

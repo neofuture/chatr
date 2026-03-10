@@ -269,7 +269,7 @@ export function useConversation() {
         ...prev,
         [data.senderId]: {
           userId: data.senderId,
-          lastMessage: data.content || (data.type === 'audio' ? '🎤 Voice message' : data.type === 'image' ? '📷 Image' : '📎 File'),
+          lastMessage: data.content || (data.type === 'audio' ? '🎤 Voice message' : data.type === 'image' ? '📷 Image' : data.type === 'video' ? '🎬 Video' : '📎 File'),
           lastMessageAt: new Date(data.timestamp || Date.now()),
           unreadCount: isCurrentConversation ? 0 : ((prev[data.senderId]?.unreadCount ?? 0) + 1),
           lastSenderId: data.senderId,
@@ -603,9 +603,10 @@ export function useConversation() {
     const newFiles = Array.from(e.target.files ?? []);
     if (!newFiles.length) return;
 
-    const oversized = newFiles.filter(f => f.size > 10 * 1024 * 1024);
+    const maxSize = 50 * 1024 * 1024;
+    const oversized = newFiles.filter(f => f.size > maxSize);
     if (oversized.length) {
-      showToast(`${oversized.map(f => f.name).join(', ')} exceed 10 MB limit`, 'error');
+      showToast(`${oversized.map(f => f.name).join(', ')} exceed 50 MB limit`, 'error');
       return;
     }
 
@@ -624,6 +625,12 @@ export function useConversation() {
             });
           };
           reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+          setFilePreviews(p => {
+            const next = [...p];
+            next[offset + idx] = URL.createObjectURL(file);
+            return next;
+          });
         } else {
           setFilePreviews(p => {
             const next = [...p];
@@ -658,7 +665,8 @@ export function useConversation() {
       // Upload each file in sequence
       for (const file of selectedFiles) {
         const isAudio = file.type.startsWith('audio/');
-        const msgType = file.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : 'file';
+        const isVideo = file.type.startsWith('video/');
+        const msgType = file.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : isVideo ? 'video' : 'file';
         const fd = new FormData();
         fd.append('file', file);
         fd.append('recipientId', testRecipientId);

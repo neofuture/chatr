@@ -54,7 +54,7 @@ const storage = IS_PRODUCTION
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = [
       'image/jpeg','image/png','image/gif','image/webp',
@@ -784,7 +784,8 @@ router.post('/:id/upload', authenticateToken as any, upload.single('file') as an
       waveformData = generatePlaceholderWaveform(req.file.filename);
     }
 
-    const messageType = isAudio ? 'audio' : (type === 'image' ? 'image' : 'file');
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const messageType = isAudio ? 'audio' : isVideo ? 'video' : (type === 'image' ? 'image' : 'file');
 
     const message = await prisma.groupMessage.create({
       data: {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import styles from './MessageAudioPlayer.module.css';
 
 export interface MessageAudioPlayerProps {
@@ -26,8 +26,8 @@ export default function MessageAudioPlayer({
   messageId,
   senderId,
   onPlayStatusChange,
-  status,
-  isListening = false,
+  status: _status,
+  isListening: _isListening = false,
   isActivePlayer,
 }: MessageAudioPlayerProps) {
 
@@ -38,30 +38,81 @@ export default function MessageAudioPlayer({
     propDuration && !isNaN(propDuration) && isFinite(propDuration) && propDuration > 0 ? propDuration : 0
   );
 
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef  = useRef<HTMLAudioElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Always prefer propDuration (calculated from waveform samples — reliable across all browsers).
-  // Only fall back to audio.duration if propDuration is missing/invalid.
   const propDurationValid = propDuration && !isNaN(propDuration) && isFinite(propDuration) && propDuration > 0;
-
-  // Keep a ref so the useEffect closure always sees the current value (avoids stale closure)
   const propDurationValidRef = useRef(propDurationValid);
   useEffect(() => { propDurationValidRef.current = propDurationValid; }, [propDurationValid]);
   const propDurationRef = useRef(propDuration);
   useEffect(() => { propDurationRef.current = propDuration; }, [propDuration]);
+  const isPlayingRef = useRef(false);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
 
-  // Sync when propDuration arrives or changes (e.g. late socket patch)
   useEffect(() => {
-    if (propDurationValid) {
-      setActualDuration(propDuration);
-    }
+    if (propDurationValid) setActualDuration(propDuration);
   }, [propDuration, propDurationValid]);
 
   const waveformData = useMemo(() => {
     if (propWaveformData && propWaveformData.length > 0) return propWaveformData;
-    // Fallback placeholder
     return Array(60).fill(0).map((_, i) => 0.2 + 0.6 * Math.abs(Math.sin(i / 60 * Math.PI * 8 + i * 0.3)));
   }, [propWaveformData]);
+
+  // ── Canvas draw ──────────────────────────────────────────────────────────────
+  const drawnWidthRef = useRef(0);
+
+  const drawWave = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const cssW = rect.width;
+    const cssH = rect.height || 48;
+    if (cssW < 4) { requestAnimationFrame(drawWave); return; }
+    drawnWidthRef.current = cssW;
+    const dpr = window.devicePixelRatio || 1;
+    const newW = Math.round(cssW * dpr);
+    const newH = Math.round(cssH * dpr);
+    if (canvas.width !== newW || canvas.height !== newH) {
+      canvas.width  = newW;
+      canvas.height = newH;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const bars = waveformData.length;
+    const gap  = 1;
+    const barW = Math.max(1, (cssW - gap * (bars - 1)) / bars);
+    const prog = actualDuration > 0 ? currentTime / actualDuration : 0;
+    const progressX = prog * cssW;
+    ctx.clearRect(0, 0, cssW, cssH);
+    for (let i = 0; i < bars; i++) {
+      const amp    = Math.max(waveformData[i] ?? 0, 0.05);
+      const barH   = Math.round(amp * (cssH - 4));
+      const x      = i * (barW + gap);
+      const y      = (cssH - barH) / 2;
+      const barCenter = x + barW / 2;
+      const passed = prog > 0 && barCenter <= progressX;
+      ctx.fillStyle = passed
+        ? (isSent ? '#f97316' : '#3b82f6')
+        : 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, y, barW, barH, 1);
+      else ctx.rect(x, y, barW, barH);
+      ctx.fill();
+    }
+  }, [waveformData, currentTime, actualDuration, isSent]);
+
+  // Redraw whenever progress or waveform changes
+  useEffect(() => { drawWave(); }, [drawWave]);
+
+  // Redraw on resize
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ro = new ResizeObserver(() => drawWave());
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, [drawWave]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -72,35 +123,29 @@ export default function MessageAudioPlayer({
       if (!audioLoaded) setAudioLoaded(true);
     }, 2000);
 
-    // Only use audio.duration if we don't already have a valid propDuration.
-    // Chrome/Brave report Infinity for webm until fully buffered — never use that.
-    // Use refs so this closure always reads the current value, not the stale mount-time value.
+
     const syncDurationFromElement = () => {
-      if (propDurationValidRef.current) {
-        // propDuration is already valid — make sure actualDuration reflects it
-        setActualDuration(propDurationRef.current);
-        return;
-      }
       const d = audio.duration;
       if (d && !isNaN(d) && isFinite(d) && d > 0) {
         setActualDuration(d);
+        return;
+      }
+      if (propDurationValidRef.current) {
+        setActualDuration(propDurationRef.current);
       }
     };
 
     const handleLoadedMetadata = () => syncDurationFromElement();
     const handleDurationChange  = () => syncDurationFromElement();
-
     const handleCanPlay = () => {
       clearTimeout(loadTimeout);
       setAudioLoaded(true);
       syncDurationFromElement();
     };
-
     const handleTimeUpdate = () => {
-      if (!isPlaying) setCurrentTime(audio.currentTime);
+      if (!isPlayingRef.current) setCurrentTime(audio.currentTime);
       syncDurationFromElement();
     };
-
     const handleEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
@@ -110,7 +155,6 @@ export default function MessageAudioPlayer({
         onPlayStatusChange(messageId, senderId, false, true);
       }
     };
-
     const handleError = (e: Event) => {
       const el = e.target as HTMLAudioElement;
       console.error('🎵 Audio error:', { code: el.error?.code, message: el.error?.message, audioUrl });
@@ -201,14 +245,24 @@ export default function MessageAudioPlayer({
     }
   };
 
+  const handleSeek = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!audioRef.current || !audioLoaded || actualDuration <= 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width < 4) return;
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const newTime = pct * actualDuration;
+    audioRef.current.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
   const formatTime = (seconds: number) => {
     if (!seconds || isNaN(seconds) || !isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
-
-  const progress = actualDuration > 0 ? (currentTime / actualDuration) * 100 : 0;
 
   // Safe cross-origin check (no window access at module level)
   const isCrossOrigin = typeof window !== 'undefined'
@@ -225,12 +279,12 @@ export default function MessageAudioPlayer({
         {...(isCrossOrigin ? { crossOrigin: 'anonymous' } : {})}
       />
 
-      {/* Play button and waveform */}
       <div className={styles.controls}>
         <button
           onClick={togglePlayPause}
           disabled={!audioLoaded}
           className={styles.playBtn}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
         >
           {!audioLoaded
             ? <i className="fas fa-spinner fa-pulse" />
@@ -239,38 +293,16 @@ export default function MessageAudioPlayer({
             : <i className="fas fa-play" />}
         </button>
 
-        {/* Waveform — clickable for seeking */}
-        <div
-          onClick={(e) => {
-            if (!audioRef.current || !audioLoaded || actualDuration <= 0) return;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            const newTime = pct * actualDuration;
-            audioRef.current.currentTime = newTime;
-            setCurrentTime(newTime);
-          }}
-          className={`${styles.waveform} ${audioLoaded ? styles.waveformSeekable : styles.waveformStatic}`}
-        >
-          {waveformData.map((amplitude, index) => {
-            const isPassed = progress > 0 && (index / waveformData.length) * 100 < progress;
-            return (
-              <div
-                key={index}
-                className={styles.waveBar}
-                style={{
-                  height: `${Math.max(amplitude * 100, 5)}%`,
-                  backgroundColor: isPassed
-                    ? (isSent ? '#f97316' : '#3b82f6')
-                    : 'rgba(255, 255, 255, 0.4)',
-                  marginRight: index < waveformData.length - 1 ? '1px' : '0',
-                }}
-              />
-            );
-          })}
-        </div>
+        <canvas
+          ref={canvasRef}
+          className={styles.waveCanvas}
+          onClick={handleSeek}
+          style={{ cursor: audioLoaded ? 'pointer' : 'default' }}
+          aria-label="Audio waveform"
+          role="img"
+        />
       </div>
 
-      {/* Bottom row: elapsed / total  |  message timestamp */}
       <div className={`${styles.bottomRow} ${isSent ? styles.bottomRowSent : styles.bottomRowReceived}`}>
         <span>{formatTime(currentTime)} / {formatTime(actualDuration)}</span>
         <span>{timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>

@@ -74,39 +74,46 @@ export default function ChatView({
   const wasActiveRef   = useRef(false);
   const userScrolledUp = useRef(false);
   const hasInitialSnap = useRef(false);
+  const prevFirstMsgId = useRef<string | null>(null);
 
-  // ResizeObserver — fires whenever the scroll container changes size.
-  // This catches both the panel slide-in animation completing (container
-  // grows from 0 to full height) and images loading (content grows taller).
-  // We snap on every resize until the user manually scrolls up.
+  // Reset scroll state when conversation changes (first message ID differs)
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+    const firstId = messages.length > 0 ? messages[0].id : null;
+    if (firstId !== prevFirstMsgId.current) {
+      prevFirstMsgId.current = firstId;
+      userScrolledUp.current = false;
+      hasInitialSnap.current = false;
+    }
+  }, [messages]);
 
-    const observer = new ResizeObserver(() => {
-      if (!userScrolledUp.current) {
-        el.scrollTop = el.scrollHeight;
-        if (!hasInitialSnap.current && el.scrollHeight > el.clientHeight + 4) {
-          hasInitialSnap.current = true;
-        }
-      }
-    });
-
-    observer.observe(el);
-    // Also observe the inner content div so height changes from new messages trigger it
-    const inner = el.firstElementChild;
-    if (inner) observer.observe(inner);
-
-    return () => observer.disconnect();
-  }, []);
-
-  // When new messages arrive after initial load, smooth scroll to bottom
+  // Snap to bottom whenever messages change and user hasn't scrolled up.
+  // Polls briefly to catch async content (images, code blocks) finishing layout.
   useEffect(() => {
-    if (!hasInitialSnap.current) return; // still in initial load phase
     const el = scrollRef.current;
     if (!el || userScrolledUp.current) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    let lastHeight = 0;
+    let settled = 0;
+    let frame: number;
+
+    const snap = () => {
+      el.scrollTop = el.scrollHeight;
+      if (el.scrollHeight !== lastHeight) {
+        lastHeight = el.scrollHeight;
+        settled = 0;
+      } else {
+        settled++;
+      }
+      if (!hasInitialSnap.current && el.scrollHeight > el.clientHeight + 4) {
+        hasInitialSnap.current = true;
+      }
+      if (settled < 10) {
+        frame = requestAnimationFrame(snap);
+      }
+    };
+    frame = requestAnimationFrame(snap);
+
+    return () => cancelAnimationFrame(frame);
   }, [messages]);
 
   // Track manual scroll up/down
@@ -119,6 +126,33 @@ export default function ChatView({
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Anchor visible content on window resize — keeps the message the user
+  // is looking at in the same visual position as bubble widths reflow.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    let prevScrollHeight = el.scrollHeight;
+    let rafId = 0;
+
+    const onResize = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const delta = el.scrollHeight - prevScrollHeight;
+        if (Math.abs(delta) > 1) {
+          el.scrollTop += delta;
+        }
+        prevScrollHeight = el.scrollHeight;
+      });
+    };
+
+    window.addEventListener('resize', onResize, { passive: true });
+    return () => {
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const isActive = isRecipientTyping || isRecipientRecording || !!recipientGhostText;

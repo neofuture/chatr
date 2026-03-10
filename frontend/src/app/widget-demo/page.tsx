@@ -69,11 +69,11 @@ export default function WidgetDemoPage() {
       theme: wTheme,
     };
 
-    // 4. Re-inject script with cache-bust
+    // 4. Re-inject script with cache-bust — direct from backend, no Next.js proxy cache
     document.getElementById('chatr-widget-script')?.remove();
     const s = document.createElement('script');
     s.id = 'chatr-widget-script';
-    s.src = `/widget/chatr.js?t=${Date.now()}`;
+    s.src = `${API_URL}/widget/chatr.js?t=${Date.now()}`;
     s.setAttribute('data-accent-color', color1);
     s.setAttribute('data-accent-color-2', color2);
     s.setAttribute('data-theme', wTheme);
@@ -93,9 +93,10 @@ export default function WidgetDemoPage() {
       greeting: "Hi there 👋 Need help? We're here!",
       theme: 'auto',
     };
+    // Load directly from backend to bypass Next.js proxy cache
     const s = document.createElement('script');
     s.id = 'chatr-widget-script';
-    s.src = `/widget/chatr.js?t=${Date.now()}`;
+    s.src = `${API_URL}/widget/chatr.js?t=${Date.now()}`;
     s.setAttribute('data-accent-color', '#f97316');
     s.setAttribute('data-accent-color-2', '#c23000');
     s.setAttribute('data-theme', 'auto');
@@ -151,11 +152,11 @@ export default function WidgetDemoPage() {
 
   // ── Snippet ─────────────────────────────────────────────────────────────────
   const themeAttr = widgetTheme !== 'auto' ? `\n        data-theme="${widgetTheme}"` : '';
-  const snippetText = `<script src="https://api.chatr-app.online/widget/chatr.js"\n        data-accent-color="${c1}"\n        data-accent-color-2="${c2}"${themeAttr}></script>`;
+  const snippetText = `<script src="${API_URL}/widget/chatr.js"\n        data-accent-color="${c1}"\n        data-accent-color-2="${c2}"${themeAttr}></script>`;
 
   function handleCopy() {
     const themeAttrInline = widgetTheme !== 'auto' ? ` data-theme="${widgetTheme}"` : '';
-    const oneLine = `<script src="https://api.chatr-app.online/widget/chatr.js" data-accent-color="${c1}" data-accent-color-2="${c2}"${themeAttrInline}></script>`;
+    const oneLine = `<script src="${API_URL}/widget/chatr.js" data-accent-color="${c1}" data-accent-color-2="${c2}"${themeAttrInline}></script>`;
     navigator.clipboard.writeText(oneLine).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);

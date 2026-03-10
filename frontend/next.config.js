@@ -10,6 +10,17 @@ const nextConfig = {
   },
   outputFileTracingRoot: path.join(__dirname, '../'),
   devIndicators: false,
+  async headers() {
+    return [
+      {
+        source: '/widget/chatr.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
+          { key: 'Pragma', value: 'no-cache' },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       // Proxy the widget JS from the backend so localhost:3000/widget/chatr.js works
