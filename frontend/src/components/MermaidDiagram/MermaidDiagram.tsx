@@ -1,62 +1,71 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-
-// This component is loaded with next/dynamic { ssr: false } so mermaid
-// is never bundled for the server and won't cause build errors.
-
 import styles from './MermaidDiagram.module.css';
+
+const CDN_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
 
 interface Props {
   chart: string;
 }
 
+let mermaidPromise: Promise<any> | null = null;
+
+function loadMermaid() {
+  if (!mermaidPromise) {
+    mermaidPromise = import(/* webpackIgnore: true */ CDN_URL).then((mod) => {
+      const mermaid = mod.default;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'dark',
+        themeVariables: {
+          primaryColor: '#3b82f6',
+          primaryTextColor: '#e0f2fe',
+          primaryBorderColor: '#3b82f6',
+          lineColor: '#3b82f6',
+          secondaryColor: '#f97316',
+          tertiaryColor: '#1e3a5f',
+          background: '#0f172a',
+          mainBkg: '#1e293b',
+          secondBkg: '#334155',
+          textColor: '#e0f2fe',
+          border1: '#3b82f6',
+          border2: '#f97316',
+          arrowheadColor: '#3b82f6',
+          fontFamily: 'ui-monospace, monospace',
+          fontSize: '14px',
+        },
+        securityLevel: 'loose',
+      });
+      return mermaid;
+    });
+  }
+  return mermaidPromise;
+}
+
 export default function MermaidDiagram({ chart }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>('');
-  const initialized = useRef(false);
 
   useEffect(() => {
-    const render = async () => {
-      const { default: mermaid } = await import(/* webpackIgnore: true */ 'mermaid' as string);
+    if (!chart) return;
 
-      if (!initialized.current) {
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: 'dark',
-          themeVariables: {
-            primaryColor: '#3b82f6',
-            primaryTextColor: '#e0f2fe',
-            primaryBorderColor: '#3b82f6',
-            lineColor: '#3b82f6',
-            secondaryColor: '#f97316',
-            tertiaryColor: '#1e3a5f',
-            background: '#0f172a',
-            mainBkg: '#1e293b',
-            secondBkg: '#334155',
-            textColor: '#e0f2fe',
-            border1: '#3b82f6',
-            border2: '#f97316',
-            arrowheadColor: '#3b82f6',
-            fontFamily: 'ui-monospace, monospace',
-            fontSize: '14px',
-          },
-          securityLevel: 'loose',
-        });
-        initialized.current = true;
-      }
+    let cancelled = false;
 
-      try {
+    loadMermaid()
+      .then(async (mermaid) => {
+        if (cancelled) return;
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
         const { svg } = await mermaid.render(id, chart);
-        setSvg(svg);
-      } catch (err) {
+        if (!cancelled) setSvg(svg);
+      })
+      .catch((err) => {
         console.error('Mermaid render error:', err);
-        setSvg(`<pre style="color:#ef4444;">Error rendering diagram: ${err}</pre>`);
-      }
-    };
+        if (!cancelled)
+          setSvg(`<pre style="color:#ef4444;">Error rendering diagram: ${err}</pre>`);
+      });
 
-    if (chart) render();
+    return () => { cancelled = true; };
   }, [chart]);
 
   return (
