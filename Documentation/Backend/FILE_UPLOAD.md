@@ -2,7 +2,7 @@
 
 ## Overview
 
-File, image, and audio uploads are handled by the `file-upload.ts` route, mounted at `POST /api/messages/upload`. It uses [Multer](https://github.com/expressjs/multer) for multipart form parsing and disk storage.
+File, image, audio, and video uploads are handled by the `file-upload.ts` route, mounted at `POST /api/messages/upload`. It uses [Multer](https://github.com/expressjs/multer) for multipart form parsing and disk storage.
 
 ---
 
@@ -19,7 +19,7 @@ sequenceDiagram
 
     C->>M: POST /api/messages/upload (multipart/form-data)
     M->>M: Validate MIME type (allowedMimes list)
-    M->>M: Validate file size (max 10MB)
+    M->>M: Validate file size (max 50MB)
     M->>M: Save to /uploads/audio/ or /uploads/messages/
     M->>R: req.file populated
     R->>R: "Build fileUrl = BACKEND_URL/uploads/{subfolder}/{filename}"
@@ -48,6 +48,7 @@ sequenceDiagram
 backend/uploads/
 ├── messages/    # Images and document files
 │   └── {originalName}-{timestamp}-{random}{ext}
+│   └── ... (images, videos, and documents)
 └── audio/       # Audio and voice messages
     └── {originalName}-{timestamp}-{random}{ext}
 ```
@@ -71,7 +72,7 @@ Prevents collisions and preserves the original extension.
 
 ### File Size Limit
 
-**10 MB** per upload. Returns `400` if exceeded.
+**50 MB** per upload. Returns `400` if exceeded.
 
 ### Allowed MIME Types
 
@@ -79,7 +80,8 @@ Prevents collisions and preserves the original extension.
 |----------|-------|
 | Images | `image/jpeg`, `image/png`, `image/gif`, `image/webp` |
 | Audio | `audio/webm`, `audio/mp4`, `audio/mpeg`, `audio/ogg`, `audio/wav`, `audio/x-m4a` |
-| Documents | `application/pdf`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `text/plain` |
+| Video | `video/mp4`, `video/quicktime`, `video/webm` |
+| Documents | `application/pdf`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `text/plain`, `application/zip` |
 
 Unrecognised MIME types are rejected with `400`.
 
@@ -93,7 +95,7 @@ Unrecognised MIME types are rejected with `400`.
 |-------|------|----------|-------------|
 | `file` | File | Yes | The file to upload |
 | `recipientId` | String | Yes | Target user UUID |
-| `type` | String | No | `image`, `file`, or `audio` — used for non-audio type classification |
+| `type` | String | No | `image`, `file`, `audio`, or `video` — used for type classification |
 | `waveform` | String (JSON) | No | Pre-computed waveform array (from VoiceRecorder) |
 
 ---

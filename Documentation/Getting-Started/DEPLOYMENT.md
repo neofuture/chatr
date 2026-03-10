@@ -70,52 +70,46 @@ Route 53 / DNS
 
 ## Deployment Script
 
-The `deployAWS.sh` script (gitignored — contains secrets) runs the full 7-step deployment automatically on the EC2 instance. The sanitised version below shows the exact logic with secrets replaced by `<PLACEHOLDER>` values.
+The `deployAWS.sh` script (gitignored — contains secrets) runs the full 7-step deployment. When run **locally on macOS**, it automatically:
 
-> ⚠️  `deployAWS.sh` and `aws.sh` are listed in `.gitignore` and must **never** be committed.
+1. SCPs itself to the EC2 instance via the PEM key in the project root (`Chatr-key.pem`)
+2. SSHs into the server and executes the script remotely
+3. Cleans up the temporary copy on completion
+
+This means you never need to SSH manually — just run the script from your Mac.
+
+> ⚠️  `deployAWS.sh`, `aws.sh`, and `Chatr-key.pem` are listed in `.gitignore` and must **never** be committed.
 
 ### Quick start
 
 ```bash
-# Full deploy — all 7 steps
-bash aws.sh
+# Full deploy — all 7 steps (run from project root on your Mac)
+./deployAWS.sh
 
-# Backend only — git pull → build → prisma migrate → pm2 restart
-bash aws.sh backend
+# Backend only
+./deployAWS.sh backend
 
-# Frontend only — git pull → next build → pm2 restart
-bash aws.sh frontend
-
-# Docs only — rsync Documentation/ directly to server (no rebuild needed)
-bash aws.sh docs
+# Frontend only
+./deployAWS.sh frontend
 ```
 
-`aws.sh` handles everything automatically based on the target:
-
-| Command | What runs on server |
+| Command | What happens |
 |---|---|
-| `bash aws.sh` | Steps 1–7 (full deploy) |
-| `bash aws.sh backend` | `git pull` → build → migrate → `pm2 restart chatr-backend` |
-| `bash aws.sh frontend` | `git pull` → `next build` → `pm2 restart chatr-frontend` |
-| `bash aws.sh docs` | `rsync Documentation/` directly via SSH (no script needed) |
+| `./deployAWS.sh` | SCPs script to EC2 → runs Steps 1–7 remotely |
+| `./deployAWS.sh backend` | SCPs script → `git pull` → build → migrate → `pm2 restart chatr-backend` |
+| `./deployAWS.sh frontend` | SCPs script → `git pull` → `next build` → `pm2 restart chatr-frontend` |
 
-> ℹ️  `docs` is handled entirely in `aws.sh` via `rsync` — it never touches `deployAWS.sh` since docs are static markdown files served by the frontend.
+### Pre-deploy checklist
 
-Manual equivalents:
+Before deploying, rebuild the widget if you've changed the source:
 
 ```bash
-# Copy and run full deploy
-scp -i ~/.ssh/chatr-key.pem deployAWS.sh ubuntu@<EC2_IP>:~/
-ssh -i ~/.ssh/chatr-key.pem ubuntu@<EC2_IP> "bash ~/deployAWS.sh"
-
-# Copy and run backend only
-scp -i ~/.ssh/chatr-key.pem deployAWS.sh ubuntu@<EC2_IP>:~/
-ssh -i ~/.ssh/chatr-key.pem ubuntu@<EC2_IP> "bash ~/deployAWS.sh backend"
-
-# Sync docs directly (no script needed)
-rsync -az --delete -e "ssh -i ~/.ssh/chatr-key.pem" \
-  ./Documentation/ ubuntu@<EC2_IP>:/home/ubuntu/chatr/Documentation/
+npm run widget:build
+git add widget/chatr.js && git commit -m "rebuild widget"
+git push
 ```
+
+The widget is served statically from `/widget/` on the backend — no separate deploy step is needed beyond committing the built output.
 
 ---
 
@@ -125,7 +119,7 @@ rsync -az --delete -e "ssh -i ~/.ssh/chatr-key.pem" \
 #!/bin/bash
 # =============================================================================
 # Chatr AWS Deployment Script
-# Run ON the EC2 instance after SSHing in.
+# Run from your Mac — auto-forwards to EC2 via SCP + SSH.
 # ⚠️  NEVER commit this file — it contains secrets.
 # =============================================================================
 
@@ -349,7 +343,7 @@ step6_nginx() {
 server {
     listen 80;
     server_name chatr-app.online www.chatr-app.online;
-    client_max_body_size 20M;
+    client_max_body_size 55M;
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -363,7 +357,7 @@ server {
 server {
     listen 80;
     server_name api.chatr-app.online;
-    client_max_body_size 20M;
+    client_max_body_size 55M;
     location / {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;

@@ -97,6 +97,26 @@ module.exports = {
 }
 ```
 
+## Widget Tests
+
+Located in `widget-src/__tests__/widget.test.js`. Tests use Node.js (no DOM) to verify widget utility functions and the build pipeline.
+
+### Coverage areas
+
+| Test group | What's tested |
+|-----------|---------------|
+| Source sync | Verifies test implementations match widget source signatures |
+| Pure functions | `escHtml`, `firstName`, `formatFileSize`, `formatTime`, `fmtSecs`, `hexToHsl`, `hslToHex`, `deriveAccent2`, `tokeniseCode`, `parseCodeBlocks`, `normaliseMsg` |
+| Build pipeline | Source existence, minification, banner, Font Awesome removal, class name shortening, CSS custom property shortening, gzip budget (<15kB), REPLACE_MAP uniqueness, SVG icon files |
+
+### Running widget tests
+
+```bash
+npm run test:widget
+```
+
+Widget tests are also included in the root `npm test` command.
+
 ## Coverage
 
 Coverage reports are generated in `coverage/lcov-report/`. To view:

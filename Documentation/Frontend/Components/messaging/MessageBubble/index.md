@@ -15,7 +15,7 @@ export interface Message {
   direction:     'sent' | 'received';
   status:        'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   timestamp:     Date;
-  type?:         'text' | 'image' | 'file' | 'audio';
+  type?:         'text' | 'image' | 'file' | 'audio' | 'video';
   fileUrl?:      string;
   fileName?:     string;
   fileSize?:     number;
@@ -75,6 +75,15 @@ Consecutive messages from the same sender within a 5-minute window are visually 
 | `file` | Filename + size + download link |
 | `audio` | `MessageAudioPlayer` component |
 | `voice` | `MessageAudioPlayer` component |
+| `video` | Inline `<video>` element with controls and poster frame |
+
+## CollapsibleText
+
+Long text messages (over 300px) are wrapped in `CollapsibleText`, which truncates with a gradient fade and shows a 'Show more' / 'Show less' button. Expanding smoothly animates max-height and scrolls the chat to keep the message bottom anchored.
+
+## Video Rendering
+
+Video messages render an inline `<video>` element with controls and poster frame.
 
 ## Usage
 

@@ -170,11 +170,13 @@ graph TD
     chatr --> frontend
     chatr --> backend
     chatr --> prisma
+    chatr --> widgetsrc["widget-src/<br/>Widget source code (chatr.js)<br/>and build script (build.js).<br/>Not served publicly."]
+    chatr --> widgetout["widget/<br/>Minified widget output (chatr.js)<br/>and SVG icon assets (icons/).<br/>Served at /widget/."]
 
     frontend --> fapp["app/<br/>pages + layouts"]
     frontend --> fcomponents["components/<br/>UI library"]
     frontend --> fcontexts["contexts/<br/>WS · Theme · Toast · Panel<br/>Presence · Confirmation · Log · UserSettings"]
-    frontend --> fhooks["hooks/<br/>useAuth · useOfflineSync · useConversationList<br/>useConversationView · useMessageInput<br/>useFriends · useMessageToast · useTTS"]
+    frontend --> fhooks["hooks/<br/>useAuth · useOfflineSync · useConversationList<br/>useConversationView · useMessageInput · useGroupMessageInput<br/>useFriends · useMessageToast · useTTS"]
     frontend --> flib["lib/<br/>api · auth · db · offline<br/>imageServices · messageCache"]
     frontend --> ftypes["types/<br/>User · Message · Conversation · Group"]
     frontend --> futils["utils/<br/>extractWaveform"]

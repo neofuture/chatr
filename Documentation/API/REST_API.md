@@ -509,7 +509,7 @@ Upload a file, image or audio attachment and create a message record.
 | file | File | The attachment |
 | recipientId | String | Target user UUID |
 | senderId | String | Sender UUID |
-| type | String | `image`, `file`, or `audio` |
+| type | String | `image`, `file`, `audio`, or `video` |
 
 **Response `200`**
 ```json
@@ -597,6 +597,94 @@ Leave a group.
 
 ### GET `/api/groups/:id/messages`
 Get message history for a group.
+
+## Widget — `/api/widget`
+
+### POST `/api/widget/guest-session`
+Create or resume a guest chat session. No authentication required.
+
+**Body**
+```json
+{
+  "guestName": "John",
+  "guestId": "existing-guest-uuid-or-null"
+}
+```
+
+**Response `200`**
+```json
+{
+  "token": "jwt-token",
+  "guestId": "uuid",
+  "guestName": "John",
+  "supportAgentId": "uuid"
+}
+```
+
+---
+
+### GET `/api/widget/history` 🔒
+Retrieve chat history for the current widget guest session.
+
+**Response `200`**
+```json
+{
+  "messages": [
+    { "id": "uuid", "senderId": "uuid", "content": "Hello", "type": "text", "createdAt": "..." }
+  ]
+}
+```
+
+---
+
+### POST `/api/widget/upload` 🔒
+Upload a file attachment from the widget. Uses the same MIME type whitelist and 50MB limit as the main app.
+
+**Form data**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| file | File | The attachment |
+
+**Response `200`**
+```json
+{
+  "message": {
+    "id": "uuid",
+    "senderId": "uuid",
+    "content": "file content or URL",
+    "type": "image",
+    "fileName": "photo.jpg",
+    "fileSize": 12345,
+    "fileType": "image/jpeg",
+    "createdAt": "..."
+  }
+}
+```
+
+---
+
+### POST `/api/widget/end-chat` 🔒
+End the current widget chat session.
+
+**Response `200`**
+```json
+{ "success": true }
+```
+
+---
+
+### GET `/api/widget/support-agent`
+Retrieve the designated support agent's info. No authentication required.
+
+**Response `200`**
+```json
+{
+  "id": "uuid",
+  "displayName": "Support",
+  "username": "@support"
+}
+```
 
 ---
 

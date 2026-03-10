@@ -34,7 +34,7 @@ Send a direct message or deliver a pre-created file/audio message. The server ca
 {
   "recipientId": "uuid",
   "content": "Hello",
-  "type": "text | image | file | audio",
+  "type": "text | image | file | audio | video",
   "fileUrl": "/uploads/...",
   "fileName": "voice.webm",
   "fileSize": 48200,
@@ -207,7 +207,7 @@ Delivered to the **recipient** when a new direct message arrives.
   "senderDisplayName": "Alice",
   "senderProfileImage": "/profile/alice.jpg",
   "content": "Hello",
-  "type": "text",
+  "type": "text | image | file | audio | video",
   "timestamp": "2026-02-25T12:00:00Z",
   "status": "delivered",
   "fileUrl": null,

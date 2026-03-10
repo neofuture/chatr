@@ -41,10 +41,11 @@ Auto-resizing text input. Press **Enter** to send (Shift+Enter for newline). Pre
 Emoji button opens `EmojiPicker` overlay. Selected emoji is inserted at the cursor position.
 
 ### File Attachments
-Paperclip button opens a file picker supporting: images, PDFs, Word docs, Excel sheets, PowerPoints, text files, videos, audio, and ZIP archives. Multiple files can be selected. Each file shows a preview chip with a dismiss button.
+Paperclip button opens a file picker supporting: images, PDFs, Word docs, Excel sheets, PowerPoints, text files, videos (`video/mp4`, `video/quicktime`, `video/webm`), audio, and ZIP archives. Multiple files can be selected. The file size limit is 50MB. Each file shows a preview chip with a dismiss button.
 
 Special file previews:
 - **Images**: thumbnail preview
+- **Video**: `<video>` thumbnail preview
 - **Audio (MP3/WAV/OGG)**: waveform icon
 - **PDF/ZIP/Other**: generic file icon
 

@@ -101,6 +101,14 @@ Manages text input, file selection, voice recording, typing indicators, send/edi
 
 ---
 
+### `useGroupMessageInput`
+
+Group-specific version of `useMessageInput`, handling text, file, voice, and video input with group-aware socket events. Shares the same 50MB file size limit and supports the same MIME types.
+
+**Location:** `hooks/useGroupMessageInput.ts`
+
+---
+
 ## `useConversationList`
 
 **Location:** `src/hooks/useConversationList.ts`

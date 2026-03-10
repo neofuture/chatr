@@ -8,6 +8,9 @@
 | `image` | JPEG, PNG, GIF, WebP             | `/uploads/messages/`  |
 | `file`  | Any document/binary              | `/uploads/messages/`  |
 | `audio` | Uploaded MP3 / voice recording   | `/uploads/audio/`     |
+| `video` | MP4, MOV, WebM video content | `/uploads/messages/` |
+
+Video messages display an inline `<video>` player with controls in both the main app and the widget.
 
 Emoji-only messages (1-3 emoji) are rendered at 2-4x normal size without a bubble.
 
@@ -235,6 +238,18 @@ The reply snapshot is stored de-normalised in the `Message` row (`replyToId`, `r
 
 ---
 
+## Collapsible Long Messages (Read More)
+
+Text messages exceeding a threshold height (200px in widget, 300px in app) are automatically truncated with a gradient fade overlay and a "Read more" button.
+
+- **Expand**: Smoothly animates `max-height` open, scrolls the chat so the bottom of the message stays visible.
+- **Collapse**: Animates back to the truncated height, re-applies the fade overlay.
+- **Resize handling**: On browser width changes, the scroll position anchors to the bottom of the currently focused message bubble.
+
+Implemented in `CollapsibleText` (React component) and inline in the widget's `renderMessage` function.
+
+---
+
 ## Typing & Recording Indicators
 
 | Action                | Client emits              | Server broadcasts        |
@@ -338,3 +353,4 @@ Incoming messages trigger an orange `newmessage` toast notification:
 | `useConversation`      | Full messaging state machine for the Test Lab              |
 | `useFriends`           | Friend list, requests, accept/decline/cancel               |
 | `useMessageToast`      | Toast notifications for incoming messages                  |
+| `useGroupMessageInput` | Group-specific input: text, file, voice with group socket events |

@@ -1,4 +1,4 @@
-# Chatrr — AWS Deployment Guide
+# Chatr — AWS Deployment Guide
 
 > Complete beginner-friendly walkthrough. Takes about 45–60 minutes.
 > You need: an AWS account, your code in a Git repo (GitHub/GitLab/etc.), a terminal.
@@ -91,7 +91,7 @@ You should see the Ubuntu welcome message. You're now on your server.
    - Engine: **PostgreSQL** → version 16
    - Template: **Free tier** (for dev) or **Production** (for prod)
    - **DB instance identifier**: `chatr-db`
-   - **Master username**: `chatrr_user`
+   - **Master username**: `chatr_user`
    - **Master password**: create a strong password, save it!
    - **DB instance class**: `db.t3.micro` (free tier) or `db.t3.small`
    - **Storage**: 20 GB gp2
@@ -199,29 +199,29 @@ The **Modify** button on ElastiCache is often greyed out. Don't use it — inste
 If your code isn't in GitHub yet:
 ```bash
 # On your Mac:
-cd /Users/F7905607/Dropbox/Projects/chatrr
+cd /Users/F7905607/Dropbox/Projects/chatr
 git init  # if not already a repo
 git add .
 git commit -m "Initial commit"
 
 # Create a repo on github.com then:
-git remote add origin https://github.com/YOURNAME/chatrr.git
+git remote add origin https://github.com/YOURNAME/chatr.git
 git push -u origin main
 ```
 
 ---
 
-## Part 7 — Run the deploy script on EC2
+## Part 7 — Run the deploy script
 
 ### 7.1 Edit the script first (on your Mac)
-Open `/Users/F7905607/Dropbox/Projects/chatrr/deployAWS.sh` and fill in the config block at the top:
+Open `deployAWS.sh` in the project root and fill in the config block at the top:
 
 ```bash
 DOMAIN=""                    # Leave blank to use IP, or e.g. "chat.yourdomain.com"
-REPO_URL="https://github.com/YOURNAME/chatrr.git"
+REPO_URL="https://github.com/YOURNAME/chatr.git"
 DB_HOST="chatr-db.abc123.us-east-1.rds.amazonaws.com"   # your RDS endpoint
-DB_NAME="chatrr"
-DB_USER="chatrr_user"
+DB_NAME="chatr"
+DB_USER="chatr_user"
 DB_PASSWORD="your-strong-db-password"
 REDIS_HOST="chatr-redis.abc.cache.amazonaws.com"         # your ElastiCache endpoint
 JWT_SECRET=""                # run this on your Mac: openssl rand -hex 32
@@ -231,25 +231,23 @@ AWS_ACCESS_KEY_ID="AKIA..."
 AWS_SECRET_ACCESS_KEY="..."
 ```
 
-### 7.2 Copy the script to your server
+Also ensure the SSH config section at the top has the correct `SERVER_IP` and PEM key path.
+
+### 7.2 Run from your Mac
+
+The deploy script detects macOS and automatically SCPs itself to the server, then runs it remotely via SSH. No manual SSH required.
+
 ```bash
-# On your Mac:
-scp -i ~/.ssh/chatr-key.pem \
-  /Users/F7905607/Dropbox/Projects/chatrr/deployAWS.sh \
-  ubuntu@52.56.123.160:~/deployAWS.sh
+# Make executable (first time only)
+chmod +x deployAWS.sh
+
+# Deploy — runs on EC2 via SSH automatically
+./deployAWS.sh
 ```
 
-### 7.3 Run it on the server
-```bash
-# SSH into server:
-ssh -i ~/.ssh/chatr-key.pem ubuntu@52.56.123.160
+The PEM key (`Chatr-key.pem`) must be in the project root. The script sets its permissions to `600` automatically.
 
-# Make executable and run:
-chmod +x ~/deployAWS.sh
-~/deployAWS.sh
-```
-
-This will take about 5–10 minutes. You'll see step-by-step progress.
+This will take about 5–10 minutes. You'll see step-by-step progress streamed back to your terminal.
 
 ---
 
@@ -280,7 +278,7 @@ git add . && git commit -m "my changes" && git push
 # SSH into server and run:
 ssh -i ~/.ssh/chatr-key.pem ubuntu@52.56.123.160
 
-cd ~/chatrr
+cd ~/chatr
 
 # Pull latest code
 git pull
@@ -312,7 +310,7 @@ sudo nginx -t                # test Nginx config
 sudo systemctl reload nginx  # reload Nginx
 
 # Database: connect to RDS directly from EC2
-psql postgresql://chatrr_user:PASSWORD@RDS_ENDPOINT:5432/chatrr
+psql postgresql://chatr_user:PASSWORD@RDS_ENDPOINT:5432/chatr
 ```
 
 ---
@@ -336,7 +334,7 @@ psql postgresql://chatrr_user:PASSWORD@RDS_ENDPOINT:5432/chatrr
 
 **Script fails at `npm run build`**
 ```bash
-cd ~/chatrr/backend && npm run build  # see error
+cd ~/chatr/backend && npm run build  # see error
 ```
 
 **"Connection refused" on port 3001**
