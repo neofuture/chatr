@@ -101,11 +101,19 @@ app.get('/api/docs', swaggerUi.setup(swaggerSpec, {
 
 // Static file serving for uploads with CORS headers
 app.use('/uploads', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static(path.join(__dirname, '../uploads')));
+
+// Static public assets (default avatars etc) — open CORS, no user data
+app.use('/assets', (_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  next();
+}, express.static(path.join(__dirname, '../assets')));
 
 // REST API Routes (HTTP)
 app.use('/api/auth', authRoutes);

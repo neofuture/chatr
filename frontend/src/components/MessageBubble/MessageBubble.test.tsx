@@ -132,7 +132,7 @@ describe('MessageBubble', () => {
       expect(link).toHaveAttribute('href', '/files/doc.pdf');
     });
 
-    it('non-previewable file has download attribute', () => {
+    it('non-previewable file links to download endpoint', () => {
       const fileMsg: Message = {
         ...sentMsg,
         type: 'file',
@@ -143,10 +143,11 @@ describe('MessageBubble', () => {
       };
       render(<Wrapper messages={[fileMsg]} />);
       const link = screen.getByRole('link', { name: /archive\.zip/i });
-      expect(link).toHaveAttribute('download');
+      expect(link).toHaveAttribute('href', expect.stringContaining('/api/messages/download/'));
+      expect(link).not.toHaveAttribute('download');
     });
 
-    it('PDF file does not have download attribute (opens inline)', () => {
+    it('PDF file links directly to fileUrl (opens inline)', () => {
       const fileMsg: Message = {
         ...sentMsg,
         type: 'file',
@@ -156,7 +157,7 @@ describe('MessageBubble', () => {
       };
       render(<Wrapper messages={[fileMsg]} />);
       const link = screen.getByRole('link', { name: /open report\.pdf/i });
-      expect(link).not.toHaveAttribute('download');
+      expect(link).not.toHaveAttribute('href', expect.stringContaining('/api/messages/download/'));
     });
 
     it('video file does not have download attribute', () => {

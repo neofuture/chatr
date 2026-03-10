@@ -352,24 +352,40 @@
     '.chatr-typing span:nth-child(3){animation-delay:.4s}',
     '@keyframes chatr-bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}',
     /* Footer / input */
-    '#chatr-w-footer{padding:12px;border-top:1px solid var(--cw-border);background:var(--cw-bg);display:flex;gap:8px;align-items:flex-end;flex-shrink:0}',
+    '#chatr-w-footer{padding:10px 12px;border-top:1px solid var(--cw-border);background:var(--cw-bg);display:flex;gap:8px;align-items:center;flex-shrink:0}',
     '#chatr-w-input{',
       'flex:1;background:var(--cw-input-bg);border:1px solid var(--cw-border2);',
-      'border-radius:10px;padding:10px 12px;color:var(--cw-text);font-size:14px;',
+      'border-radius:20px;padding:10px 14px;color:var(--cw-text);font-size:14px;',
       'outline:none;resize:none;max-height:100px;overflow-y:auto;font-family:inherit;line-height:1.4;transition:border-color .2s;',
     '}',
     '#chatr-w-input:focus{border-color:' + ACCENT + '}',
     '#chatr-w-input::placeholder{color:var(--cw-text4)}',
-    '#chatr-w-send{width:38px;height:38px;background:' + ACCENT + ';border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s}',
+    '#chatr-w-attach{width:40px;height:40px;background:var(--cw-input-bg);border:1px solid var(--cw-border2);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s,border-color .2s;color:var(--cw-text3);font-size:16px;padding:0}',
+    '#chatr-w-attach:hover{background:var(--cw-bg2);border-color:' + ACCENT + ';color:' + ACCENT + '}',
+    '#chatr-w-send{width:40px;height:40px;background:' + ACCENT + ';border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s}',
     '#chatr-w-send:hover{opacity:.9}',
     '#chatr-w-send:disabled{opacity:.4;cursor:not-allowed}',
-    '#chatr-w-send svg{width:18px;height:18px;fill:#fff}',
+    '#chatr-w-file-input{display:none}',
+    '.chatr-file-bubble{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--cw-bg2);border:1px solid var(--cw-border2);border-radius:10px;font-size:13px;max-width:220px}',
+    '.chatr-file-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center;color:var(--cw-text3)}',
+    '.chatr-file-info{min-width:0}',
+    '.chatr-file-name{color:var(--cw-text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}',
+    '.chatr-file-size{color:var(--cw-text4);font-size:11px}',
+    '.chatr-img-bubble{max-width:200px;border-radius:10px;display:block;cursor:pointer}',
     '.chatr-system-msg{text-align:center;color:var(--cw-text4);font-size:12px;padding:4px 0}',
     '#chatr-w-powered{text-align:center;font-size:10px;color:var(--cw-powered);padding:4px 0 8px;flex-shrink:0;background:var(--cw-bg)}',
     '#chatr-w-powered a{color:var(--cw-powered-a);text-decoration:none}',
     '#chatr-w-powered a:hover{color:var(--cw-text4)}',
   ].join('');
   document.head.appendChild(style);
+
+  // Inject Font Awesome (free) from CDN if not already on the page
+  if (!document.querySelector('link[href*="font-awesome"]') && !document.querySelector('link[href*="fontawesome"]')) {
+    var faLink = document.createElement('link');
+    faLink.rel = 'stylesheet';
+    faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';
+    document.head.appendChild(faLink);
+  }
 
   // ── Build DOM ────────────────────────────────────────────────────────────────
   var btn = document.createElement('button');
@@ -399,9 +415,13 @@
     '</div>',
     '<div id="chatr-w-body" role="log" aria-live="polite"></div>',
     '<div id="chatr-w-footer" style="display:none">',
+      '<input type="file" id="chatr-w-file-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.mp3,.mp4" aria-label="Attach file"/>',
+      '<button id="chatr-w-attach" aria-label="Attach file" title="Attach file">',
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>',
+      '</button>',
       '<textarea id="chatr-w-input" placeholder="Type a message…" rows="1" aria-label="Message input"></textarea>',
       '<button id="chatr-w-send" aria-label="Send message">',
-        '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>',
+        '<i class="fa-solid fa-paper-plane" style="color:#fff;font-size:15px"></i>',
       '</button>',
     '</div>',
     '<div id="chatr-w-powered"><a href="https://chatr-app.online" target="_blank" rel="noopener">Powered by Chatr</a></div>',
@@ -415,6 +435,8 @@
   var elFooter     = document.getElementById('chatr-w-footer');
   var elInput      = document.getElementById('chatr-w-input');
   var elSend       = document.getElementById('chatr-w-send');
+  var elAttach     = document.getElementById('chatr-w-attach');
+  var elFileInput  = document.getElementById('chatr-w-file-input');
   var elAvatar     = document.getElementById('chatr-w-header-avatar');
   var elName       = document.getElementById('chatr-w-header-name');
   var elStatusTxt  = document.getElementById('chatr-w-status-text');
@@ -440,6 +462,24 @@
 
   function scrollBottom() {
     elBody.scrollTop = elBody.scrollHeight;
+  }
+
+  // Scroll to bottom and keep retrying until scrollHeight stops growing.
+  // This handles the race condition where images / file cards haven't
+  // finished laying out yet when the first scroll fires.
+  function scrollBottomHard() {
+    var attempts = 0;
+    var last = -1;
+    function tryScroll() {
+      elBody.scrollTop = elBody.scrollHeight;
+      var current = elBody.scrollHeight;
+      if (current !== last && attempts < 20) {
+        last = current;
+        attempts++;
+        setTimeout(tryScroll, 50);
+      }
+    }
+    tryScroll();
   }
 
   function persistMessages() {
@@ -487,13 +527,12 @@
       var img = document.createElement('img');
       img.src = url;
       img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
-      img.onerror = function () { setAvatarContent(null, name); };
+      img.onerror = function () { elAvatar.textContent = '?'; };
       elAvatar.innerHTML = '';
       elAvatar.appendChild(img);
     } else {
-      var initials = (name || 'S').split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
       elAvatar.innerHTML = '';
-      elAvatar.textContent = initials;
+      elAvatar.textContent = '?';
     }
   }
 
@@ -538,6 +577,25 @@
   }
 
   // ── Render a single message bubble ──────────────────────────────────────────
+  function formatFileSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function fileIcon(mime) {
+    if (!mime) return '<i class="fa-solid fa-file"></i>';
+    if (mime.startsWith('image/')) return '<i class="fa-solid fa-image"></i>';
+    if (mime.startsWith('audio/')) return '<i class="fa-solid fa-music"></i>';
+    if (mime.startsWith('video/')) return '<i class="fa-solid fa-film"></i>';
+    if (mime.includes('pdf')) return '<i class="fa-solid fa-file-pdf"></i>';
+    if (mime.includes('word') || mime.includes('document')) return '<i class="fa-solid fa-file-word"></i>';
+    if (mime.includes('sheet') || mime.includes('excel')) return '<i class="fa-solid fa-file-excel"></i>';
+    if (mime.includes('zip') || mime.includes('rar')) return '<i class="fa-solid fa-file-archive"></i>';
+    return '<i class="fa-solid fa-file"></i>';
+  }
+
   function renderMessage(msg) {
     var isSent = msg.senderId === state.guestId;
     var wrap = document.createElement('div');
@@ -546,18 +604,34 @@
 
     var avatarHtml = '';
     if (!isSent) {
-      var initials = (state.supportName || 'S').split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
-      var avatarUrl = buildAvatarUrl(state.supportAvatar);
-      if (avatarUrl) {
-        avatarHtml = '<div class="chatr-msg-avatar" aria-hidden="true"><img src="' + avatarUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML=\'' + initials + '\'"/></div>';
-      } else {
-        avatarHtml = '<div class="chatr-msg-avatar" aria-hidden="true">' + initials + '</div>';
-      }
+      var agentDefaultUrl = API_URL + '/assets/default-profile.jpg';
+      avatarHtml = '<div class="chatr-msg-avatar" aria-hidden="true"><img src="' + agentDefaultUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display=\'none\'"/></div>';
+    }
+
+    var bubbleHtml;
+    var isImageMsg = msg.type === 'image' || (msg.mimeType && msg.mimeType.startsWith('image/'));
+    var isFileMsg  = !isImageMsg && (msg.type === 'file' || (msg.fileName && msg.type !== 'text'));
+
+    if (isImageMsg) {
+      var uploading = msg._uploading ? 'opacity:.5' : '';
+      bubbleHtml = '<img class="chatr-img-bubble" src="' + escHtml(msg.content) + '" alt="' + escHtml(msg.fileName || 'image') + '" style="' + uploading + '" onclick="var a=document.createElement(\'a\');a.href=this.src;a.download=' + JSON.stringify(msg.fileName || 'image') + ';a.target=\'_blank\';a.click()" />';
+    } else if (isFileMsg) {
+      var uploading2 = msg._uploading ? 'opacity:.5' : '';
+      bubbleHtml = '<div class="chatr-file-bubble" style="' + uploading2 + '">' +
+        '<span class="chatr-file-icon">' + fileIcon(msg.mimeType) + '</span>' +
+        '<div class="chatr-file-info">' +
+          '<div class="chatr-file-name">' + escHtml(msg.fileName || 'File') + '</div>' +
+          '<div class="chatr-file-size">' + formatFileSize(msg.fileSize) + (msg._uploading ? ' · Uploading…' : '') + '</div>' +
+        '</div>' +
+        (msg.content && !msg._uploading ? '<a href="' + API_URL + '/api/messages/download/' + encodeURIComponent(msg.id || '') + '" target="_blank" rel="noopener" style="font-size:14px;text-decoration:none;flex-shrink:0;color:var(--cw-text3)" aria-label="Download"><i class="fa-solid fa-download"></i></a>' : '') +
+      '</div>';
+    } else {
+      bubbleHtml = '<div class="chatr-msg-bubble">' + escHtml(msg.content) + '</div>';
     }
 
     wrap.innerHTML = avatarHtml + [
-      '<div style="display:flex;flex-direction:column">',
-        '<div class="chatr-msg-bubble">' + escHtml(msg.content) + '</div>',
+      '<div style="display:flex;flex-direction:column;' + (isSent ? 'align-items:flex-end' : '') + '">',
+        bubbleHtml,
         '<div class="chatr-msg-time">' + formatTime(msg.createdAt || msg.timestamp) + '</div>',
       '</div>',
     ].join('');
@@ -581,11 +655,8 @@
     el.className = 'chatr-msg recv';
 
     // Avatar beside the typing dots (same as recv messages)
-    var initials = (state.supportName || 'S').split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
-    var avatarUrl = buildAvatarUrl(state.supportAvatar);
-    var avatarHtml = avatarUrl
-      ? '<div class="chatr-msg-avatar" aria-hidden="true"><img src="' + avatarUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentNode.innerHTML=\'' + initials + '\'"/></div>'
-      : '<div class="chatr-msg-avatar" aria-hidden="true">' + initials + '</div>';
+    var agentTypingUrl = API_URL + '/assets/default-profile.jpg';
+    var avatarHtml = '<div class="chatr-msg-avatar" aria-hidden="true"><img src="' + agentTypingUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display=\'none\'"/></div>';
 
     el.innerHTML = avatarHtml + '<div class="chatr-typing"><span></span><span></span><span></span></div>';
     elBody.appendChild(el);
@@ -661,6 +732,7 @@
     // Show any cached messages
     if (state.messages.length) {
       state.messages.forEach(renderMessage);
+      scrollBottomHard();
     } else if (isResume && state.token) {
       fetchHistory();
     }
@@ -672,6 +744,12 @@
     var newSend = elSend.cloneNode(true);
     elSend.parentNode.replaceChild(newSend, elSend);
     elSend = newSend;
+    var newAttach = elAttach.cloneNode(true);
+    elAttach.parentNode.replaceChild(newAttach, elAttach);
+    elAttach = newAttach;
+    var newFileInput = elFileInput.cloneNode(true);
+    elFileInput.parentNode.replaceChild(newFileInput, elFileInput);
+    elFileInput = newFileInput;
 
     elInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -688,6 +766,13 @@
       }
     });
     elSend.addEventListener('click', sendMessage);
+    elAttach.addEventListener('click', function () { elFileInput.click(); });
+    elFileInput.addEventListener('change', function () {
+      if (elFileInput.files && elFileInput.files[0]) {
+        sendFile(elFileInput.files[0]);
+        elFileInput.value = '';
+      }
+    });
     setTimeout(function () { elInput.focus(); }, 100);
   }
 
@@ -699,11 +784,26 @@
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (data) {
       if (!data || !data.messages || !data.messages.length) return;
-      state.messages = data.messages;
+      state.messages = data.messages.map(normaliseMsg);
       elBody.innerHTML = '';
       state.messages.forEach(renderMessage);
+      scrollBottomHard();
     })
     .catch(function () {});
+  }
+
+  // ── Normalise a message from the backend into widget format ─────────────────
+  function normaliseMsg(m) {
+    return {
+      id: m.id,
+      senderId: m.senderId,
+      content: m.fileUrl || m.content,
+      type: m.type || 'text',
+      fileName: m.fileName || null,
+      fileSize: m.fileSize || null,
+      mimeType: m.fileType || m.mimeType || null,
+      createdAt: m.createdAt || m.timestamp,
+    };
   }
 
   // ── Send a message ───────────────────────────────────────────────────────────
@@ -731,6 +831,69 @@
       recipientId: state.supportAgentId,
       content: content,
       type: 'text',
+    });
+  }
+
+  // ── Send a file attachment ───────────────────────────────────────────────────
+  function sendFile(file) {
+    if (!state.token || !state.supportAgentId) return;
+
+    // Show a temporary uploading placeholder
+    var tempId = 'temp_file_' + Date.now();
+    var isImage = file.type.startsWith('image/');
+    var tempMsg = {
+      id: tempId,
+      senderId: state.guestId,
+      content: isImage ? URL.createObjectURL(file) : '',
+      type: isImage ? 'image' : 'file',
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type,
+      createdAt: new Date().toISOString(),
+      _uploading: true,
+    };
+    renderMessage(tempMsg);
+    scrollBottom();
+
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch(API_URL + '/api/widget/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + state.token },
+      body: formData,
+    })
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+    .then(function (data) {
+      // Replace temp placeholder with the real message
+      var el = document.querySelector('[data-msg-id="' + tempId + '"]');
+      if (el) el.remove();
+      if (data.message) {
+        // Normalise backend field names → widget field names
+        var m = data.message;
+        var normMsg = {
+          id: m.id,
+          senderId: m.senderId,
+          content: m.fileUrl || m.content,
+          type: m.type,
+          fileName: m.fileName,
+          fileSize: m.fileSize,
+          mimeType: m.fileType || m.mimeType || null,
+          createdAt: m.createdAt,
+        };
+        state.messages.push(normMsg);
+        renderMessage(normMsg);
+        persistMessages();
+      }
+    })
+    .catch(function (err) {
+      console.error('[Chatr Widget] upload failed', err);
+      var el = document.querySelector('[data-msg-id="' + tempId + '"]');
+      if (el) {
+        el.style.opacity = '0.5';
+        var timeEl = el.querySelector('.chatr-msg-time');
+        if (timeEl) timeEl.textContent = 'Upload failed';
+      }
     });
   }
 
@@ -807,15 +970,29 @@
       // Only show messages from the support agent
       if (data.senderId !== state.supportAgentId) return;
 
+      console.log('[Chatr Widget] message:received raw:', JSON.stringify({
+        type: data.type, content: data.content, fileUrl: data.fileUrl,
+        fileName: data.fileName, fileType: data.fileType, senderId: data.senderId,
+      }));
+
       hideTyping();
       state.agentTyping = false;
 
-      var msg = {
+      var msg = normaliseMsg({
         id: data.id || data.messageId,
         senderId: data.senderId,
         content: data.content,
+        fileUrl: data.fileUrl,
+        type: data.type,
+        fileName: data.fileName,
+        fileSize: data.fileSize,
+        fileType: data.fileType || data.mimeType,
         createdAt: data.timestamp || data.createdAt || new Date().toISOString(),
-      };
+      });
+
+      console.log('[Chatr Widget] normalised msg:', JSON.stringify({
+        type: msg.type, content: msg.content, mimeType: msg.mimeType, fileName: msg.fileName,
+      }));
 
       state.messages.push(msg);
       renderMessage(msg);
@@ -967,9 +1144,14 @@
         if (data.id) {
           state.supportAgentId = data.id;
           state.supportName    = data.displayName || data.username || 'Support';
-          state.supportAvatar  = data.profileImage || null;
+          state.supportAvatar  = null; // always use default — never reveal real profile image
           elName.textContent   = firstName(state.supportName);
-          setAvatarContent(state.supportAvatar, state.supportName);
+          var defaultImg = document.createElement('img');
+          defaultImg.src = API_URL + '/assets/default-profile.jpg';
+          defaultImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
+          defaultImg.onerror = function () { elAvatar.textContent = '?'; };
+          elAvatar.innerHTML = '';
+          elAvatar.appendChild(defaultImg);
           elStatusTxt.textContent = 'Online';
         } else {
           elStatusTxt.textContent = 'Away';

@@ -3,10 +3,17 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Socket.IO reference — set after server starts
+let _widgetIo: any = null;
+export function setWidgetSocketIO(io: any) { _widgetIo = io; }
 
 // All widget endpoints are open to any origin (used by 3rd-party sites)
 const widgetCors = cors({ origin: '*', credentials: false });
@@ -221,6 +228,10 @@ router.get('/history', authenticateToken as any, async (req: any, res: Response)
         recipientId: true,
         content: true,
         type: true,
+        fileUrl: true,
+        fileName: true,
+        fileSize: true,
+        fileType: true,
         createdAt: true,
       },
     });
@@ -232,10 +243,82 @@ router.get('/history', authenticateToken as any, async (req: any, res: Response)
   }
 });
 
+// ── POST /api/widget/upload ───────────────────────────────────────────────────
+// Allows guest users to upload file attachments
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const messagesDir = path.join(__dirname, '../../uploads/messages');
+if (!IS_PRODUCTION && !fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
+
+const widgetStorage = IS_PRODUCTION
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (_req, _file, cb) => cb(null, messagesDir),
+      filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, `widget-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+      },
+    });
+
+const widgetUpload = multer({
+  storage: widgetStorage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+});
+
+router.post('/upload', authenticateToken as any, widgetUpload.single('file') as any, async (req: any, res: Response) => {
+  try {
+    const guestId = req.user?.userId;
+    if (!guestId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const guest = await prisma.user.findUnique({ where: { id: guestId }, select: { id: true, isGuest: true } });
+    if (!guest?.isGuest) return res.status(403).json({ error: 'Not a guest session' });
+
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const agent = await prisma.user.findFirst({ where: { isSupport: true, emailVerified: true }, select: { id: true } });
+    if (!agent) return res.status(503).json({ error: 'Support unavailable' });
+
+    let fileUrl: string;
+    if (IS_PRODUCTION) {
+      // Lazy-import S3 helper to avoid circular deps in dev
+      const { uploadToS3 } = await import('../lib/s3');
+      const ext = path.extname(req.file.originalname);
+      const key = `uploads/messages/widget-${Date.now()}${ext}`;
+      fileUrl = await uploadToS3(req.file.buffer, key, req.file.mimetype);
+    } else {
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+      fileUrl = `${backendUrl}/uploads/messages/${req.file.filename}`;
+    }
+
+    const isImage = req.file.mimetype.startsWith('image/');
+    const msgType = isImage ? 'image' : 'file';
+
+    const message = await prisma.message.create({
+      data: {
+        senderId: guestId,
+        recipientId: agent.id,
+        content: fileUrl,
+        type: msgType,
+        fileUrl: fileUrl,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        fileType: req.file.mimetype,
+      },
+      select: { id: true, senderId: true, recipientId: true, content: true, type: true, fileUrl: true, fileName: true, fileSize: true, fileType: true, createdAt: true },
+    });
+
+    if (_widgetIo) {
+      _widgetIo.to(`user:${agent.id}`).emit('message:received', message);
+    }
+
+    return res.json({ message });
+  } catch (err) {
+    console.error('❌ widget/upload error:', err);
+    return res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
 // ── POST /api/widget/end-chat ─────────────────────────────────────────────────
 // Also disconnects cleanly — does NOT delete the user (agent may still want to review).
-let _widgetIo: any = null;
-export function setWidgetSocketIO(io: any) { _widgetIo = io; }
 
 router.post('/end-chat', authenticateToken as any, async (req: any, res: Response) => {
   try {

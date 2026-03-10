@@ -777,11 +777,14 @@ export default function MessageBubble({
                       // Previewable in browser — open in new tab without forcing download
                       const canPreview = kind === 'pdf' || kind === 'video' || kind === 'audio';
                       const sizeKb = msg.fileSize ? `${(msg.fileSize / 1024).toFixed(1)} KB` : null;
+                      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                      const downloadHref = canPreview
+                        ? (msg.fileUrl || '')
+                        : `${API}/api/messages/download/${msg.id}`;
 
                       return (
                         <a
-                          href={msg.fileUrl}
-                          {...(!canPreview ? { download: msg.fileName } : {})}
+                          href={downloadHref}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={styles.fileLink}

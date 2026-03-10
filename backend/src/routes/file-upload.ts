@@ -6,7 +6,8 @@ import { PrismaClient } from '@prisma/client';
 import { Server } from 'socket.io';
 import fs from 'fs';
 import { generatePlaceholderWaveform, generateWaveformFromFile } from '../services/waveform';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { Readable } from 'stream';
 
 // ── S3 client (only used in production) ──────────────────────────────────────
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -333,6 +334,58 @@ router.post('/upload',
       fs.unlinkSync((req.file as any).path);
     }
     res.status(500).json({ error: 'File upload failed' });
+  }
+});
+
+// ── GET /api/messages/download/:messageId ─────────────────────────────────────
+// Proxies the file through the backend so Content-Disposition: attachment
+// with the original filename works in all environments, including S3.
+router.get('/download/:messageId', async (req: Request, res: Response) => {
+  try {
+    const message = await prisma.message.findUnique({
+      where: { id: req.params.messageId },
+      select: { fileUrl: true, fileName: true, fileType: true },
+    });
+
+    if (!message?.fileUrl) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const originalName = message.fileName || 'download';
+    res.setHeader('Content-Disposition', `attachment; filename="${originalName}"`);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    if (message.fileType) res.setHeader('Content-Type', message.fileType);
+
+    if (IS_PRODUCTION) {
+      // Extract the S3 key from the URL:
+      // e.g. https://bucket.s3.eu-west-2.amazonaws.com/uploads/messages/file-123.zip
+      // → uploads/messages/file-123.zip
+      const s3Url = new URL(message.fileUrl);
+      const s3Key = s3Url.pathname.replace(/^\//, '');
+
+      const command = new GetObjectCommand({ Bucket: S3_BUCKET, Key: s3Key });
+      const s3Response = await s3!.send(command);
+
+      if (s3Response.ContentLength) {
+        res.setHeader('Content-Length', s3Response.ContentLength);
+      }
+
+      (s3Response.Body as Readable).pipe(res);
+    } else {
+      // Dev — file is on disk
+      // fileUrl is like "http://localhost:3001/uploads/messages/file-123.zip"
+      const urlPath = message.fileUrl.replace(/^https?:\/\/[^/]+/, '');
+      const diskPath = path.resolve(path.join(__dirname, '../../', urlPath));
+
+      if (!fs.existsSync(diskPath)) {
+        return res.status(404).json({ error: 'File not found on disk' });
+      }
+
+      res.sendFile(diskPath);
+    }
+  } catch (err) {
+    console.error('❌ Download error:', err);
+    res.status(500).json({ error: 'Download failed' });
   }
 });
 
