@@ -253,7 +253,7 @@ function SuiteRow({ suite }: { suite: D }) {
     <div style={{ borderBottom: '1px solid var(--border)' }}>
       <div onClick={() => setOpen(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', cursor: 'pointer', fontSize: '0.8rem' }}>
         <i className={`fas fa-${allPassed ? 'check-circle' : 'times-circle'}`} style={{ color: allPassed ? '#10b981' : '#ef4444', fontSize: '0.7rem' }} />
-        <code style={{ color: '#60a5fa', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <code title={suite.file} style={{ color: '#60a5fa', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {suite.file.replace(/^(backend|frontend)\/src\//, '')}
         </code>
         <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
@@ -434,10 +434,14 @@ export default function DashboardPage() {
             {/* Dependency Vulnerabilities */}
             <div style={CARD}>
               <h2 style={H2}><Ico>fad fa-shield-exclamation</Ico> Dependency Security</h2>
+              {data.audit && (data.audit.backend?.critical + data.audit.backend?.high + data.audit.backend?.moderate + data.audit.backend?.low + data.audit.frontend?.critical + data.audit.frontend?.high + data.audit.frontend?.moderate + data.audit.frontend?.low) === 0 && (
+                <EmptyState message="No vulnerabilities detected — all clear!" />
+              )}
               {(['backend', 'frontend'] as const).map(area => {
                 const a = data.audit?.[area];
                 if (!a) return null;
                 const total = a.critical + a.high + a.moderate + a.low;
+                if (total === 0) return null;
                 const statusColor = a.critical > 0 ? '#ef4444' : a.high > 0 ? '#f59e0b' : total > 0 ? '#3b82f6' : '#10b981';
                 const statusLabel = a.critical > 0 ? 'CRITICAL' : a.high > 0 ? 'HIGH RISK' : total > 0 ? 'LOW RISK' : 'CLEAN';
                 return (
@@ -458,6 +462,22 @@ export default function DashboardPage() {
                         </span>
                       ))}
                     </div>
+                    {a.details?.length > 0 && (
+                      <div style={{ marginTop: 8, maxHeight: 160, overflow: 'auto', fontSize: '0.7rem' }}>
+                        {a.details.map((d: D, i: number) => {
+                          const sevColors: Record<string, string> = { critical: '#ef4444', high: '#f97316', moderate: '#f59e0b', low: '#3b82f6', info: '#6b7280' };
+                          const c = sevColors[d.severity] || '#6b7280';
+                          return (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', borderBottom: i < a.details.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: c, flexShrink: 0 }} />
+                              <code style={{ color: c, fontWeight: 600, flexShrink: 0 }}>{d.name}</code>
+                              <span title={d.via || d.severity} style={{ color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.via || d.severity}</span>
+                              {d.fixAvailable && <span style={{ fontSize: '0.6rem', padding: '0 4px', borderRadius: 3, background: '#10b98118', color: '#10b981' }}>fix</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -466,7 +486,11 @@ export default function DashboardPage() {
             {/* Build Health */}
             <div style={CARD}>
               <h2 style={H2}><Ico>fad fa-hammer</Ico> Build Health</h2>
+              {(data.buildChecks || []).every((bc: D) => bc.ok) && (
+                <EmptyState message="All builds compile cleanly — no errors!" />
+              )}
               {(data.buildChecks || []).map((bc: D) => {
+                if (bc.ok) return null;
                 const color = bc.ok ? '#10b981' : '#ef4444';
                 return (
                   <div key={bc.area} style={{ marginBottom: '0.75rem', padding: '0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: `1px solid ${color}22` }}>
@@ -528,10 +552,12 @@ export default function DashboardPage() {
             <div style={CARD}>
               <h2 id="sec-migrations" style={H2}><Ico>fad fa-database</Ico> Prisma Migrations ({data.migrationStatus?.applied || 0} applied)</h2>
               {!data.migrationStatus?.migrations?.length ? <EmptyState message="No migrations found" /> : (<>
-                {data.migrationStatus.pending > 0 && (
+                {data.migrationStatus.pending > 0 ? (
                   <div style={{ fontSize: '0.75rem', padding: '4px 8px', marginBottom: 8, borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
                     <i className="fas fa-exclamation-triangle" style={{ marginRight: 4 }} />{data.migrationStatus.pending} pending migration{data.migrationStatus.pending !== 1 ? 's' : ''}
                   </div>
+                ) : (
+                  <EmptyState message="All migrations applied — schema up to date!" />
                 )}
                 <div style={SCROLLBOX}>
                   {(data.migrationStatus.migrations as D[]).map((m: D) => (
@@ -556,7 +582,7 @@ export default function DashboardPage() {
                   transition: 'width 0.5s',
                 }} />
               </div>
-              {data.apiDocCoverage.undocumented?.length > 0 && (
+              {data.apiDocCoverage.undocumented?.length > 0 ? (
                 <div style={SCROLLBOX}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 4 }}>Undocumented endpoints:</div>
                   {(data.apiDocCoverage.undocumented as string[]).map((ep: string, i: number) => (
@@ -565,6 +591,8 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+              ) : (
+                <EmptyState message="All endpoints documented — nice work!" />
               )}
             </>)}
           </div>
@@ -698,7 +726,7 @@ export default function DashboardPage() {
                 <div style={SCROLLBOX}>
                   {data.hooks.map((h: D) => (
                     <div key={h.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}>
-                      <code style={{ color: '#c084fc', minWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.name}</code>
+                      <code title={h.name} style={{ color: '#c084fc', minWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.name}</code>
                       <MiniBar value={h.lines} max={data.hooks[0]?.lines || 1} color="#8b5cf6" />
                       <span style={{ ...SUB, minWidth: 40, textAlign: 'right' }}>{h.lines}</span>
                     </div>
@@ -709,7 +737,7 @@ export default function DashboardPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {data.contexts.map((c: D) => (
                     <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}>
-                      <code style={{ color: '#fbbf24', minWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</code>
+                      <code title={c.name} style={{ color: '#fbbf24', minWidth: 170, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</code>
                       <MiniBar value={c.lines} max={data.contexts[0]?.lines || 1} color="#f59e0b" />
                       <span style={{ ...SUB, minWidth: 40, textAlign: 'right' }}>{c.lines}</span>
                     </div>
@@ -1285,7 +1313,7 @@ export default function DashboardPage() {
                 {data.recentCommits.map((c: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.recentCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <code style={{ fontSize: '0.7rem', color: '#60a5fa', flexShrink: 0, fontWeight: 600 }}>{c.hash}</code>
-                    <span style={{ fontSize: '0.82rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.message}</span>
+                    <span title={c.message} style={{ fontSize: '0.82rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.message}</span>
                     <span style={{ fontSize: '0.7rem', color: '#34d399', flexShrink: 0 }}>+{c.added || 0}</span>
                     <span style={{ fontSize: '0.7rem', color: '#f87171', flexShrink: 0 }}>-{c.deleted || 0}</span>
                     <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{c.author}</span>

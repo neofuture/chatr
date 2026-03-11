@@ -296,6 +296,7 @@ const widgetUpload = multer({
   },
 });
 
+/** POST /upload — Upload a file attachment from a guest widget session */
 router.post('/upload', authenticateToken as any, widgetUpload.single('file') as any, async (req: any, res: Response) => {
   try {
     const guestId = req.user?.userId;

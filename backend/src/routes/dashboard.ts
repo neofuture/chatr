@@ -494,24 +494,35 @@ function buildDashboard(): object {
   } catch { /* */ }
 
   // ── Dependency vulnerabilities (npm audit) ────────────────────────────
-  type AuditSummary = { critical: number; high: number; moderate: number; low: number; info: number; total: number };
+  type VulnDetail = { name: string; severity: string; via: string; fixAvailable: boolean };
+  type AuditSummary = { critical: number; high: number; moderate: number; low: number; info: number; total: number; details: VulnDetail[] };
   function npmAudit(dir: string): AuditSummary {
+    const empty: AuditSummary = { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0, details: [] };
+    function parse(json: any): AuditSummary {
+      const v = json.metadata?.vulnerabilities || {};
+      const details: VulnDetail[] = [];
+      const vulns = json.vulnerabilities || {};
+      for (const [name, info] of Object.entries(vulns) as [string, any][]) {
+        const via = (info.via || []).map((v: any) => typeof v === 'string' ? v : v.title || v.name || '').filter(Boolean).join(', ');
+        details.push({ name, severity: info.severity || 'info', via, fixAvailable: !!info.fixAvailable });
+      }
+      details.sort((a, b) => {
+        const order: Record<string, number> = { critical: 0, high: 1, moderate: 2, low: 3, info: 4 };
+        return (order[a.severity] ?? 5) - (order[b.severity] ?? 5);
+      });
+      return { critical: v.critical || 0, high: v.high || 0, moderate: v.moderate || 0, low: v.low || 0, info: v.info || 0, total: v.total || 0, details };
+    }
     try {
       const raw = execSync('npm audit --json 2>/dev/null', { cwd: dir, timeout: 15_000, encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
-      const json = JSON.parse(raw);
-      const v = json.metadata?.vulnerabilities || {};
-      return { critical: v.critical || 0, high: v.high || 0, moderate: v.moderate || 0, low: v.low || 0, info: v.info || 0, total: v.total || 0 };
+      return parse(JSON.parse(raw));
     } catch (err: any) {
-      try {
-        const json = JSON.parse(err.stdout || '{}');
-        const v = json.metadata?.vulnerabilities || {};
-        return { critical: v.critical || 0, high: v.high || 0, moderate: v.moderate || 0, low: v.low || 0, info: v.info || 0, total: v.total || 0 };
-      } catch { return { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0 }; }
+      try { return parse(JSON.parse(err.stdout || '{}')); } catch { return empty; }
     }
   }
   const isTest = process.env.NODE_ENV === 'test';
-  const auditFrontend = isTest ? { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0 } : npmAudit(path.join(ROOT, 'frontend'));
-  const auditBackend = isTest ? { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0 } : npmAudit(path.join(ROOT, 'backend'));
+  const auditEmpty: AuditSummary = { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0, details: [] };
+  const auditFrontend = isTest ? auditEmpty : npmAudit(path.join(ROOT, 'frontend'));
+  const auditBackend = isTest ? auditEmpty : npmAudit(path.join(ROOT, 'backend'));
 
   // ── Build health (TypeScript compilation check) ──────────────────────
   type BuildCheck = { area: string; ok: boolean; errors: number; errorSample: string[] };
@@ -591,7 +602,6 @@ function buildDashboard(): object {
   {
     const routesDir = path.join(ROOT, 'backend/src/routes');
     const handlerRe = /router\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)/gi;
-    const commentRe = /\/\*\*[\s\S]*?\*\/|\/\/.*$/;
     try {
       for (const f of fs.readdirSync(routesDir)) {
         if (!f.endsWith('.ts')) continue;
@@ -600,12 +610,15 @@ function buildDashboard(): object {
         let m;
         while ((m = handlerRe.exec(content)) !== null) {
           apiDocCoverage.total++;
-          const charPos = m.index;
-          let lineIdx = content.substring(0, charPos).split('\n').length - 1;
-          const prevLines = lines.slice(Math.max(0, lineIdx - 3), lineIdx).join('\n');
-          if (commentRe.test(prevLines)) {
-            apiDocCoverage.documented++;
-          } else {
+          const lineIdx = content.substring(0, m.index).split('\n').length - 1;
+          let documented = false;
+          for (let i = lineIdx - 1; i >= Math.max(0, lineIdx - 60); i--) {
+            const trimmed = lines[i].trim();
+            if (trimmed === '' || trimmed.startsWith('*') || trimmed === '*/') continue;
+            if (trimmed.startsWith('/**') || trimmed.startsWith('//')) { documented = true; break; }
+            break;
+          }
+          if (documented) { apiDocCoverage.documented++; } else {
             apiDocCoverage.undocumented.push(`${m[1].toUpperCase()} ${m[2]} (${f})`);
           }
         }
@@ -917,6 +930,7 @@ function runTests(area: 'backend' | 'frontend'): TestReport {
 // Routes
 // ---------------------------------------------------------------------------
 
+/** GET / — Return full dashboard metrics (cached for performance) */
 router.get('/', async (_req: Request, res: Response) => {
   try {
     if (cache && Date.now() - cache.ts < CACHE_TTL) return res.json(cache.data);
@@ -929,11 +943,13 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
+/** POST /invalidate — Clear the dashboard cache to force a fresh rebuild */
 router.post('/invalidate', (_req: Request, res: Response) => {
   cache = null;
   res.json({ ok: true });
 });
 
+/** GET /tests/:area — Return cached test results for backend or frontend */
 router.get('/tests/:area', async (req: Request, res: Response) => {
   const area = req.params.area as 'backend' | 'frontend';
   if (area !== 'backend' && area !== 'frontend') {
@@ -955,6 +971,7 @@ router.get('/tests/:area', async (req: Request, res: Response) => {
   }
 });
 
+/** POST /tests/:area/run — Run a fresh test suite for backend or frontend, bypassing cache */
 router.post('/tests/:area/run', async (req: Request, res: Response) => {
   const area = req.params.area as 'backend' | 'frontend';
   if (area !== 'backend' && area !== 'frontend') {
