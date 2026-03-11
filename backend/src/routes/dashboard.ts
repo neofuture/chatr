@@ -5,7 +5,7 @@ import fs from 'fs';
 
 const router = Router();
 const ROOT = path.resolve(__dirname, '../../../');
-const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '__tests__', '.git']);
+const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.git']);
 
 let cache: { data: object; ts: number } | null = null;
 const CACHE_TTL = 30_000;
@@ -24,12 +24,13 @@ function run(cmd: string): string {
   catch { return ''; }
 }
 
-function walk(dir: string, extensions: string[], collect: (fullPath: string, name: string, lines: number) => void) {
+function walk(dir: string, extensions: string[], collect: (fullPath: string, name: string, lines: number) => void, extraSkip?: Set<string>) {
   try {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       if (SKIP.has(entry.name)) continue;
+      if (extraSkip && extraSkip.has(entry.name)) continue;
       const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) { walk(full, extensions, collect); }
+      if (entry.isDirectory()) { walk(full, extensions, collect, extraSkip); }
       else if (extensions.some(ext => entry.name.endsWith(ext)) && !entry.name.endsWith('.d.ts') && !entry.name.endsWith('.min.js')) {
         try { collect(full, entry.name, fs.readFileSync(full, 'utf8').split('\n').length); }
         catch { /* skip */ }
@@ -38,18 +39,20 @@ function walk(dir: string, extensions: string[], collect: (fullPath: string, nam
   } catch { /* skip */ }
 }
 
-function collectFiles(dir: string, extensions: string[]): { name: string; path: string; lines: number }[] {
+const SKIP_TESTS = new Set(['__tests__']);
+
+function collectFiles(dir: string, extensions: string[], skipTests = true): { name: string; path: string; lines: number }[] {
   const r: { name: string; path: string; lines: number }[] = [];
-  walk(dir, extensions, (fp, name, lines) => r.push({ name, path: fp.replace(ROOT + '/', ''), lines }));
+  walk(dir, extensions, (fp, name, lines) => r.push({ name, path: fp.replace(ROOT + '/', ''), lines }), skipTests ? SKIP_TESTS : undefined);
   return r;
 }
 
-function countLines(dir: string, extensions: string[]): number {
-  let t = 0; walk(dir, extensions, (_f, _n, l) => { t += l; }); return t;
+function countLines(dir: string, extensions: string[], skipTests = true): number {
+  let t = 0; walk(dir, extensions, (_f, _n, l) => { t += l; }, skipTests ? SKIP_TESTS : undefined); return t;
 }
 
-function countFiles(dir: string, extensions: string[]): number {
-  let t = 0; walk(dir, extensions, () => { t++; }); return t;
+function countFiles(dir: string, extensions: string[], skipTests = true): number {
+  let t = 0; walk(dir, extensions, () => { t++; }, skipTests ? SKIP_TESTS : undefined); return t;
 }
 
 function listDirNames(dir: string): string[] {
@@ -244,9 +247,9 @@ function buildDashboard(): object {
   const plainCss = cssFiles - moduleCss;
 
   // Tests
-  const feTestFiles = countFiles(frontendDir, ['.test.ts', '.test.tsx']);
-  const beTestFiles = countFiles(backendDir, ['.test.ts']);
-  const widgetTestFiles = countFiles(path.join(ROOT, 'widget-src'), ['.test.js']);
+  const feTestFiles = countFiles(frontendDir, ['.test.ts', '.test.tsx'], false);
+  const beTestFiles = countFiles(backendDir, ['.test.ts'], false);
+  const widgetTestFiles = countFiles(path.join(ROOT, 'widget-src'), ['.test.js'], false);
   const testFileTotal = feTestFiles + beTestFiles + widgetTestFiles;
 
   // Git metadata
