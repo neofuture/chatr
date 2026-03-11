@@ -61,6 +61,25 @@ STORYBOOK_PID=$!
 (cd "$SCRIPT_DIR" && npm run widget:watch > /tmp/widget-watch.log 2>&1) &
 WIDGET_PID=$!
 
+# Dashboard cache invalidator — watches source dirs and pings the backend
+# to clear cached metrics whenever files change
+(
+  sleep 5  # wait for backend to start
+  if command -v fswatch &>/dev/null; then
+    fswatch -r -l 2 --event Created --event Updated --event Removed \
+      "$SCRIPT_DIR/frontend/src" "$SCRIPT_DIR/backend/src" "$SCRIPT_DIR/widget-src" 2>/dev/null | \
+    while read -r _; do
+      curl -s -X POST http://localhost:3001/api/dashboard/invalidate > /dev/null 2>&1
+    done
+  else
+    while true; do
+      sleep 30
+      curl -s -X POST http://localhost:3001/api/dashboard/invalidate > /dev/null 2>&1
+    done
+  fi
+) > /tmp/dashboard-watch.log 2>&1 &
+DASHBOARD_PID=$!
+
 echo ""
 echo "✓ Servers started"
 echo "  Frontend:  http://localhost:3000"
@@ -69,12 +88,13 @@ echo "  API Docs:  http://localhost:3001/api/docs"
 echo "  Database:  http://localhost:5555"
 echo "  Storybook: http://localhost:6006 (logs: /tmp/storybook.log)"
 echo "  Widget:    watching widget-src/chatr.js (logs: /tmp/widget-watch.log)"
+echo "  Dashboard: live metrics at http://localhost:3000/dashboard"
 echo ""
 echo "Press Ctrl+C to stop"
 echo ""
 
 # Trap Ctrl+C
-trap 'echo ""; echo "Stopping..."; kill $BACKEND_PID $FRONTEND_PID $PRISMA_PID $WIDGET_PID 2>/dev/null; pkill -f "storybook dev" 2>/dev/null; echo "Stopping database containers..."; docker-compose down; exit 0' INT TERM
+trap 'echo ""; echo "Stopping..."; kill $BACKEND_PID $FRONTEND_PID $PRISMA_PID $WIDGET_PID $DASHBOARD_PID 2>/dev/null; pkill -f "storybook dev" 2>/dev/null; echo "Stopping database containers..."; docker-compose down; exit 0' INT TERM
 
 # Wait
 wait $BACKEND_PID $FRONTEND_PID $PRISMA_PID $WIDGET_PID

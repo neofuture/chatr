@@ -69,6 +69,17 @@ export default function BurgerMenu({ isDark }: BurgerMenuProps) {
             <span>Settings</span>
           </button>
 
+          <button
+            onClick={() => { setIsOpen(false); router.push('/dashboard'); }}
+            className={styles.menuItem}
+            style={{ color: textColor }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <i className={`fad fa-chart-line ${styles.menuItemIcon}`}></i>
+            <span>Dashboard</span>
+          </button>
+
           {/* Logout Button */}
           <button
             onClick={handleLogout}

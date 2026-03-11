@@ -22,7 +22,7 @@ cd ..
 bash dev.sh
 ```
 
-Visit `http://localhost:3000`
+Visit `http://localhost:3000` (dashboard: `http://localhost:3000/dashboard`)
 
 ## Project Structure
 
@@ -52,6 +52,7 @@ chatr/
 - Offline-first (IndexedDB)
 - Dark/light themes
 - Responsive design
+- Developer dashboard (git stats, LOC, architecture metrics)
 
 ## Documentation
 

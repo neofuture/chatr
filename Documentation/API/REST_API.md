@@ -98,7 +98,7 @@ Request a password reset code via email.
 ---
 
 ### POST `/api/auth/2fa/setup` 🔒
-Generate a TOTP secret and QR code for 2FA setup.
+Generate a TOTP secret and QR code for 2FA setup. Requires authentication.
 
 **Response `200`**
 ```json
@@ -111,7 +111,7 @@ Generate a TOTP secret and QR code for 2FA setup.
 ---
 
 ### POST `/api/auth/2fa/verify` 🔒
-Verify a TOTP code and enable 2FA on the account.
+Verify a TOTP code and enable 2FA on the account. Requires authentication.
 
 **Body**
 ```json
@@ -418,7 +418,7 @@ Retrieve message history between two users.
 | Param | Required | Description |
 |-------|----------|-------------|
 | otherUserId | Yes | The other participant's UUID |
-| limit | No | Default 50 |
+| limit | No | Default 50, max 100 |
 | before | No | Message ID cursor for pagination |
 
 **Response `200`** — array of Message objects
@@ -499,6 +499,11 @@ Retrieve the full edit-history audit trail for a message. Only the sender or rec
 
 ---
 
+### GET `/api/messages/download/:messageId` 🔒
+Download a file attachment. Requires authentication; caller must be the sender or recipient of the message.
+
+---
+
 ### POST `/api/messages/upload` 🔒
 Upload a file, image or audio attachment and create a message record.
 
@@ -523,7 +528,7 @@ Upload a file, image or audio attachment and create a message record.
 ---
 
 ### PATCH `/api/messages/:id/waveform` 🔒
-Update waveform data after client-side audio analysis. Triggers `audio:waveform` Socket.io event to both sender and recipient.
+Update waveform data after client-side audio analysis. Requires message ownership. Triggers `audio:waveform` Socket.io event to both sender and recipient.
 
 **Body**
 ```json
@@ -683,6 +688,23 @@ Retrieve the designated support agent's info. No authentication required.
   "id": "uuid",
   "displayName": "Support",
   "username": "@support"
+}
+```
+
+---
+
+## Dashboard — `/api/dashboard`
+
+### GET `/api/dashboard` 🔒
+Returns developer dashboard metrics: git stats, lines of code, architecture breakdown, recent commits.
+
+**Response `200`**
+```json
+{
+  "git": { "branch": "...", "commit": "...", "lastCommit": "..." },
+  "loc": { "frontend": 12345, "backend": 6789, "widget": 1234 },
+  "architecture": { ... },
+  "recentCommits": [ ... ]
 }
 ```
 

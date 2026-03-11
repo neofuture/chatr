@@ -4,6 +4,10 @@ Custom React hooks used throughout the Chatr frontend.
 
 ---
 
+Shared audio utilities live in `src/utils/audio.ts` (e.g. `getAudioDurationFromBlob`), used by hooks and components for waveform/voice handling.
+
+---
+
 ## `useConversationView`
 
 **Location:** `src/hooks/useConversationView.ts`

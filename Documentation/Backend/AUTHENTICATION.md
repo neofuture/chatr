@@ -102,7 +102,7 @@ The `authenticateToken` middleware (`backend/src/middleware/auth.ts`) validates 
 
 ## Two-Factor Authentication (TOTP)
 
-When 2FA is enabled, a TOTP code is required after password + OTP verification.
+When 2FA is enabled, a TOTP code is required after password + OTP verification. Both `/api/auth/2fa/setup` and `/api/auth/2fa/verify` require authentication via `authenticateToken` middleware.
 
 ```mermaid
 flowchart LR

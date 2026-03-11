@@ -179,9 +179,9 @@ graph TD
     frontend --> fhooks["hooks/<br/>useAuth · useOfflineSync · useConversationList<br/>useConversationView · useMessageInput · useGroupMessageInput<br/>useFriends · useMessageToast · useTTS"]
     frontend --> flib["lib/<br/>api · auth · db · offline<br/>imageServices · messageCache"]
     frontend --> ftypes["types/<br/>User · Message · Conversation · Group"]
-    frontend --> futils["utils/<br/>extractWaveform"]
+    frontend --> futils["utils/<br/>extractWaveform · audio"]
 
-    fapp --> apppages["login · register · setup-2fa<br/>demo · docs · email-preview"]
+    fapp --> apppages["login · register · setup-2fa<br/>demo · docs · dashboard · email-preview"]
     fapp --> appauth["app/ authenticated<br/>chat · friends · settings · groups · updates · test"]
 
     fcomponents --> messaging["messaging/<br/>ConversationsList · ConversationView<br/>ChatView · MessageInput · NewChatPanel<br/>MessageBubble · MessageAudioPlayer<br/>VoiceRecorder · EmojiPicker"]
@@ -198,7 +198,7 @@ graph TD
     backend --> bsrc["src/"]
     bsrc --> bindexts["index.ts<br/>Express + Socket.io entry"]
     bsrc --> bmiddleware["middleware/<br/>auth.ts — JWT"]
-    bsrc --> broutes["routes/<br/>auth · users · messages<br/>friends · conversations<br/>groups · file-upload · email-templates"]
+    bsrc --> broutes["routes/<br/>auth · users · messages<br/>friends · conversations<br/>groups · file-upload · email-templates · dashboard"]
     bsrc --> bsocket["socket/<br/>handlers.ts — events + presence"]
     bsrc --> blib["lib/<br/>redis.ts · conversation.ts"]
     bsrc --> bservices["services/<br/>email · sms · waveform"]

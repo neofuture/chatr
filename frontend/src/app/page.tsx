@@ -151,6 +151,11 @@ export default function HomePage() {
               <i className="fas fa-book"></i> Read Documentation →
             </Button>
           </Link>
+          <Link href="/dashboard">
+            <Button variant="orange">
+              <i className="fas fa-chart-line"></i> Project Dashboard →
+            </Button>
+          </Link>
           {process.env.NODE_ENV === 'development' && (
             <a href="http://localhost:5555" target="_blank" rel="noopener noreferrer">
               <Button variant="green">
