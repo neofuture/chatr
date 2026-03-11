@@ -670,7 +670,7 @@ export default function DashboardPage() {
           {/* ── TODO / FIXME + Test Distribution ───────────────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             {data.todos.length > 0 && (
-              <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="fad fa-thumbtack" defaultOpen={false}>
+              <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="fad fa-thumbtack">
                 <div style={{ display: 'flex', gap: 8, marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                   {Object.entries(data.todos.reduce((acc: Record<string, number>, t: D) => { acc[t.type] = (acc[t.type] || 0) + 1; return acc; }, {})).map(([type, count]) => (
                     <Badge key={type} color={TODO_COLORS[type] || '#94a3b8'}>{type}: {count as number}</Badge>
@@ -698,8 +698,8 @@ export default function DashboardPage() {
 
           {/* ── Recent Commits ─────────────────────────────────────── */}
           <div style={{ marginTop: '1rem' }}>
-            <Section title={`Recent Commits (${data.recentCommits.length})`} icon="fad fa-history" defaultOpen={false}>
-              <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 400, overflow: 'auto' }}>
+            <Section title={`Recent Commits (${data.recentCommits.length})`} icon="fad fa-history">
+              <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 320, overflow: 'auto', gap: 0 }}>
                 {data.recentCommits.map((c: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.recentCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
