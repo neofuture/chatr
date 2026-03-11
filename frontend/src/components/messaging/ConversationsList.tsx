@@ -334,10 +334,7 @@ export default function ConversationsList({
                   backgroundColor: unread > 0
                     ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)')
                     : 'transparent',
-                  borderLeft: unread > 0 ? '3px solid #ef4444'
-                    : user.isBot ? '3px solid #0891b2'
-                    : isGuest ? '3px solid var(--guest-color-from, #16a34a)'
-                    : '3px solid transparent',
+                  borderLeft: unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
                   transition: 'background-color 0.15s',
                 }}>
                   <PresenceAvatar
@@ -442,9 +439,7 @@ export default function ConversationsList({
                   width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
                   backgroundColor: unread > 0 ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)') : 'transparent',
-                  borderLeft: unread > 0 ? '3px solid #ef4444'
-                    : isGuest ? '3px solid var(--guest-color-from, #16a34a)'
-                    : '3px solid transparent',
+                  borderLeft: unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
                   transition: 'background-color 0.15s',
                 }}>
                   <PresenceAvatar
