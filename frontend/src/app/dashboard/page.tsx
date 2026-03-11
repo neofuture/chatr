@@ -36,6 +36,15 @@ function Ico({ children, size = 16 }: { children: string; size?: number }) {
 // Reusable small components
 // ---------------------------------------------------------------------------
 
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '1rem 0', textAlign: 'center' }}>
+      <i className="fad fa-check-circle" style={{ fontSize: '1.5rem', marginBottom: 6, display: 'block', opacity: 0.5 }} />
+      {message}
+    </div>
+  );
+}
+
 function StatCard({ label, value, sub, icon, color }: { label: string; value: string | number; sub?: string; icon: string; color: string }) {
   return (
     <div style={{ ...CARD, display: 'flex', alignItems: 'center', gap: '1rem', transition: 'transform 0.15s, box-shadow 0.15s', cursor: 'default' }}
@@ -680,6 +689,7 @@ export default function DashboardPage() {
             </Section>
 
             <Section title="Largest Files" icon="fad fa-ruler-vertical">
+              {data.largestFiles.length === 0 ? <EmptyState message="No file data available" /> : (
               <div style={{ ...SCROLLBOX, maxHeight: 240 }}>
                 {data.largestFiles.map((f: D, i: number) => (
                   <div key={f.path} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem' }}>
@@ -692,9 +702,11 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              )}
             </Section>
 
             <Section title="Recently Modified" icon="fad fa-clock">
+              {data.recentlyModified.length === 0 ? <EmptyState message="No recently modified files" /> : (
               <div style={{ ...SCROLLBOX, maxHeight: 240 }}>
                 {data.recentlyModified.map((f: string) => (
                   <div key={f} style={{ fontSize: '0.78rem', padding: '2px 0' }}>
@@ -702,12 +714,14 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              )}
             </Section>
           </div>
 
           {/* ── Code Churn + Stale Files ─────────────────────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             <Section title={`Code Churn — Hot Files (${data.codeChurn.length})`} icon="fad fa-fire-flame-curved">
+              {data.codeChurn.length === 0 ? <EmptyState message="No file churn data available" /> : (
               <div style={SCROLLBOX}>
                 {data.codeChurn.map((f: D, i: number) => (
                   <div key={f.file} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '2px 0' }}>
@@ -720,8 +734,10 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              )}
             </Section>
             <Section title={`Stale Files (${data.staleFiles.length})`} icon="fad fa-hourglass-half">
+              {data.staleFiles.length === 0 ? <EmptyState message="No stale files detected" /> : (
               <div style={SCROLLBOX}>
                 {data.staleFiles.map((f: D) => (
                   <div key={f.file} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '2px 0' }}>
@@ -732,12 +748,14 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              )}
             </Section>
           </div>
 
           {/* ── Code Ownership + Components Without Tests ──────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             <Section title="Code Ownership" icon="fad fa-users-viewfinder">
+              {data.codeOwnership.length === 0 ? <EmptyState message="No ownership data available" /> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {data.codeOwnership.map((o: D, i: number) => {
                   const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#6366f1'];
@@ -755,13 +773,11 @@ export default function DashboardPage() {
                   );
                 })}
               </div>
+              )}
             </Section>
             <Section title={`Untested Components (${data.componentsWithoutTests.length})`} icon="fad fa-triangle-exclamation">
               {data.componentsWithoutTests.length === 0 ? (
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '1rem 0', textAlign: 'center' }}>
-                  <i className="fad fa-check-circle" style={{ fontSize: '1.5rem', marginBottom: 6, display: 'block', opacity: 0.5 }} />
-                  All components have tests!
-                </div>
+                <EmptyState message="All components have tests!" />
               ) : (
                 <div style={SCROLLBOX}>
                   {data.componentsWithoutTests.map((c: D) => (
@@ -780,10 +796,7 @@ export default function DashboardPage() {
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="fad fa-thumbtack">
               {data.todos.length === 0 ? (
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '1rem 0', textAlign: 'center' }}>
-                  <i className="fad fa-check-circle" style={{ fontSize: '1.5rem', marginBottom: 6, display: 'block', opacity: 0.5 }} />
-                  No TODOs or FIXMEs — nice work!
-                </div>
+                <EmptyState message="No TODOs or FIXMEs — nice work!" />
               ) : (<>
                 <div style={{ display: 'flex', gap: 8, marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                   {Object.entries(data.todos.reduce((acc: Record<string, number>, t: D) => { acc[t.type] = (acc[t.type] || 0) + 1; return acc; }, {})).map(([type, count]) => (
@@ -813,6 +826,7 @@ export default function DashboardPage() {
           {/* ── Recent Commits ─────────────────────────────────────── */}
           <div style={{ marginTop: '1rem' }}>
             <Section title={`Recent Commits (${data.recentCommits.length})`} icon="fad fa-history">
+              {data.recentCommits.length === 0 ? <EmptyState message="No commits found" /> : (
               <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 320, overflow: 'auto', gap: 0 }}>
                 {data.recentCommits.map((c: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.recentCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
@@ -823,6 +837,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              )}
             </Section>
           </div>
 
