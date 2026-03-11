@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, useRef, KeyboardEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent, useRef, KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useToast } from '@/contexts/ToastContext';
@@ -23,7 +23,38 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
   const { closeAllPanels, openPanel } = usePanels();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
+  const handleResend = useCallback(async () => {
+    if (resendCooldown > 0) return;
+    setResendCooldown(60);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, type: verificationType === 'login' ? 'login' : 'email' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || 'Failed to resend code', 'error');
+        setResendCooldown(0);
+        return;
+      }
+      showToast('New verification code sent!', 'success');
+      setCode(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } catch {
+      showToast('Failed to resend code', 'error');
+      setResendCooldown(0);
+    }
+  }, [resendCooldown, userId, verificationType, showToast]);
 
   const handleChange = (index: number, value: string) => {
     // Only allow digits
@@ -290,12 +321,10 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
           <button
             type="button"
             className={styles.resendBtn}
-            onClick={() => {
-              // TODO: Implement resend functionality
-              alert('Resend functionality coming soon!');
-            }}
+            onClick={handleResend}
+            disabled={resendCooldown > 0}
           >
-            Resend
+            {resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend'}
           </button>
         </p>
       </div>

@@ -582,6 +582,60 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
   }
 });
 
+// POST /api/auth/resend-verification — resend a verification code
+router.post('/resend-verification', rateLimit('resend', 3, 300), async (req: Request, res: Response) => {
+  try {
+    const { userId, type } = req.body; // type: 'email' | 'login'
+
+    if (!userId || !type) {
+      return res.status(400).json({ error: 'userId and type are required' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 15 * 60 * 1000);
+
+    if (type === 'email') {
+      if (user.emailVerified) {
+        return res.status(400).json({ error: 'Email already verified' });
+      }
+      await prisma.user.update({
+        where: { id: userId },
+        data: { emailVerificationCode: code, verificationExpiry: expiry },
+      });
+      await storeVerificationCode('email', userId, code).catch(() => {});
+      if (user.email) {
+        await sendVerificationEmail(user.email, code, userId);
+      }
+      console.log(`🔄 Resent email verification code for ${user.email}: ${code}`);
+    } else if (type === 'login') {
+      const method = user.loginVerificationMethod || 'email';
+      await prisma.user.update({
+        where: { id: userId },
+        data: { loginVerificationCode: code, loginVerificationExpiry: expiry },
+      });
+      await storeVerificationCode('login', userId, code, { method }).catch(() => {});
+      if (method === 'sms' && user.phoneNumber) {
+        await sendLoginVerificationSMS(user.phoneNumber, code, user.username);
+      } else if (user.email) {
+        await sendLoginVerificationEmail(user.email, code, user.username);
+      }
+      console.log(`🔄 Resent login verification code for ${user.email}: ${code} (method: ${method})`);
+    } else {
+      return res.status(400).json({ error: 'Invalid type. Must be "email" or "login".' });
+    }
+
+    res.status(200).json({ message: 'Verification code resent' });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 /**
  * @swagger
  * /api/auth/2fa/setup:

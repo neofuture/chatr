@@ -336,17 +336,26 @@ describe('LoginVerification Component', () => {
 
   it('handles resend click', async () => {
     const user = userEvent.setup({ delay: null });
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: 'Verification code resent' }),
+    });
     renderLoginVerification();
 
     const resendButton = screen.getByText('Resend');
 
-    // Just verify button can be clicked (shows toast in real app)
     await act(async () => {
       await user.click(resendButton);
     });
 
-    // Button should still be in document after click
-    expect(resendButton).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/resend-verification'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Resend \(\d+s\)/)).toBeInTheDocument();
+    });
   });
 
   it('displays expiration message', () => {

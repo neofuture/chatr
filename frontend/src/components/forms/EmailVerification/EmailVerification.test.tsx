@@ -345,12 +345,25 @@ describe('EmailVerification Component', () => {
 
   it('handles resend click', async () => {
     const user = userEvent.setup({ delay: null });
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: 'Verification code resent' }),
+    });
     renderEmailVerification();
 
     const resendButton = screen.getByText('Resend');
-    await user.click(resendButton);
+    await act(async () => {
+      await user.click(resendButton);
+    });
 
-    expect(global.alert).toHaveBeenCalledWith('Resend functionality coming soon!');
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/resend-verification'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Resend \(\d+s\)/)).toBeInTheDocument();
+    });
   });
 
   it('displays expiration message', () => {
