@@ -163,7 +163,7 @@ sequenceDiagram
     participant API as REST API
     participant WS as WebSocket
 
-    C->>API: POST /api/messages/upload (multipart)
+    C->>API: POST /api/messages/upload (multipart + optional caption)
     API-->>C: { messageId, fileUrl, waveform }
     C->>WS: message:send { messageId, fileUrl, type, ... }
     Note over WS: message already in DB — just broadcasts
@@ -176,6 +176,16 @@ PATCH /api/messages/:id/waveform  { waveform: number[], duration: number }
 ```
 
 The server then pushes `audio:waveform` to both parties via WebSocket so the waveform renders in real time without a refresh.
+
+### Captions
+
+When uploading an image or video, users can include a text **caption** that appears above the media in the message bubble:
+
+- The current text input value is sent as a `caption` field in the `FormData` alongside the file
+- If provided, `caption` becomes the message's `content` (instead of the filename)
+- The `MessageBubble` component renders `content` above the image/video only when it differs from `fileName` (to avoid showing filenames for legacy messages)
+- The `MessageInput` placeholder changes to "Add a caption…" when files are selected
+- Captions work for both DMs and group messages
 
 ---
 

@@ -120,6 +120,21 @@ Verify a TOTP code and enable 2FA on the account. Requires authentication.
 
 ---
 
+### POST `/api/auth/resend-verification`
+Resend a verification code (email or SMS) during login or registration. Rate-limited to prevent abuse.
+
+**Body**
+```json
+{ "userId": "uuid", "method": "email" }
+```
+
+**Response `200`**
+```json
+{ "message": "Verification code resent" }
+```
+
+---
+
 ### POST `/api/auth/logout`
 Invalidate the current session.
 
@@ -515,6 +530,7 @@ Upload a file, image or audio attachment and create a message record.
 | recipientId | String | Target user UUID |
 | senderId | String | Sender UUID |
 | type | String | `image`, `file`, `audio`, or `video` |
+| caption | String | (Optional) Text displayed above the media in the chat bubble |
 
 **Response `200`**
 ```json
@@ -695,18 +711,35 @@ Retrieve the designated support agent's info. No authentication required.
 
 ## Dashboard — `/api/dashboard`
 
-### GET `/api/dashboard` 🔒
-Returns developer dashboard metrics: git stats, lines of code, architecture breakdown, recent commits.
+### GET `/api/dashboard`
+Returns developer dashboard metrics. Cached for 30 seconds.
 
-**Response `200`**
+**Response `200`** (abridged)
 ```json
 {
-  "git": { "branch": "...", "commit": "...", "lastCommit": "..." },
-  "loc": { "frontend": 12345, "backend": 6789, "widget": 1234 },
-  "architecture": { ... },
-  "recentCommits": [ ... ]
+  "generatedAt": "2026-03-11T15:00:00Z",
+  "overview": { "totalCommits": 500, "totalLines": 40000, "totalFiles": 200, "testFiles": 40, "daysActive": 30, "currentBranch": "main", "latestHash": "abc1234" },
+  "loc": { "typescript": 35000, "css": 3000, "javascript": 2000 },
+  "locByArea": { "frontend": 28000, "backend": 10000, "widget": 2000 },
+  "health": { "avgFileSize": 150, "testRatio": 20, "testCoverage": 65, "commitsPerDay": 8.5 },
+  "contributors": [{ "name": "...", "commits": 450, "firstCommit": "2026-02-10", "lastCommit": "2026-03-11" }],
+  "codeChurn": [{ "file": "frontend/src/app/dashboard/page.tsx", "changes": 42 }],
+  "commitStreaks": { "current": 5, "longest": 14 },
+  "linesChanged": { "added": 60000, "deleted": 20000, "net": 40000 },
+  "codeOwnership": [{ "author": "...", "added": 55000, "deleted": 18000, "net": 37000 }],
+  "branchCount": 3,
+  "tagCount": 0,
+  "bundleSizeBytes": 20971520,
+  "componentsWithoutTests": [{ "name": "settings", "lines": 735 }],
+  "staleFiles": [{ "file": "frontend/src/utils/old.ts", "lastModified": "2026-02-15" }],
+  "prismaComplexity": { "totalModels": 10, "totalFields": 85, "totalRelations": 12, "avgFieldsPerModel": 8.5 },
+  "heatmap": [{ "date": "2026-03-11", "count": 5, "level": 3 }],
+  "recentCommits": [{ "hash": "abc1234", "date": "2026-03-11", "message": "...", "author": "..." }]
 }
 ```
+
+### POST `/api/dashboard/invalidate`
+Force-clear the dashboard cache. Next GET will rebuild all metrics.
 
 ---
 

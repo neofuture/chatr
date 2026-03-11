@@ -8,7 +8,8 @@ All Express route files live in `backend/src/routes/`.
 | `users.ts` | `/api/users` | Profile, search, username check, profile/cover image upload |
 | `messages.ts` | `/api/messages` | Message history, conversations list |
 | `groups.ts` | `/api/groups` | Group CRUD, membership, group messages |
-| `file-upload.ts` | `/api/messages/upload` | File and image message upload |
+| `file-upload.ts` | `/api/messages/upload` | File, image, and video upload (with optional caption) |
+| `dashboard.ts` | `/api/dashboard` | Developer dashboard metrics |
 | `friends.ts` | `/api/friends` | Friend requests, friend list, search, accept/decline, block/unblock |
 | `conversations.ts` | `/api/conversations` | Message request management (accept, decline, nuke) |
 
@@ -125,10 +126,21 @@ See [File Upload](./File_Upload.md) for full detail.
 
 ---
 
+## Dashboard Route — `/api/dashboard`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/` | ❌ | Full developer dashboard (git stats, LOC, architecture, health gauges, code churn, commit streaks, code ownership, stale files, untested components, Prisma complexity, contribution heatmap) |
+| `POST` | `/invalidate` | ❌ | Force-clear the 30-second dashboard cache |
+
+The dashboard endpoint runs multiple `git` commands (`log`, `branch`, `tag`, `diff`), reads the filesystem (`du`, `find`, `wc`), and parses `schema.prisma` to build a comprehensive project metrics payload. Results are cached in-memory for 30 seconds.
+
+---
+
 ## See Also
 
 - [Authentication](./Authentication.md)
 - [File Upload](./File_Upload.md)
-- [API Reference](../API/Rest_Api.md)
+- [API Reference](../API/REST_API.md)
 - [Middleware](./Middleware.md)
 

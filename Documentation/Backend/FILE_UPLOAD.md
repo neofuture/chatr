@@ -96,6 +96,7 @@ Unrecognised MIME types are rejected with `400`.
 | `file` | File | Yes | The file to upload |
 | `recipientId` | String | Yes | Target user UUID |
 | `type` | String | No | `image`, `file`, `audio`, or `video` — used for type classification |
+| `caption` | String | No | Optional text displayed above media in the chat bubble (becomes the message's `content`) |
 | `waveform` | String (JSON) | No | Pre-computed waveform array (from VoiceRecorder) |
 
 ---

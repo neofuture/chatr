@@ -167,7 +167,7 @@ Monitors online/offline status. When the app comes back online, it processes the
 Authentication guard component wrapping all `/app/*` pages. On mount it reads `localStorage` for `token` and `user`. If either is missing, the user is immediately redirected to `/`. Also renders the `BottomNav` navigation and a header with a "New Chat" button.
 
 ### ConversationsList
-Scrollable list of conversations with tabbed views for "Chats" and "Message Requests". Supports local search by message content. Shows presence indicators, unread counts, friend badges, and "incoming request" markers. Dispatches `chatr:compose` custom events to open the New Chat panel.
+Scrollable list of conversations with tabbed views for "Chats" and "Message Requests". Supports local search by message content. Shows presence indicators, unread counts, friend badges, and "incoming request" markers. Dispatches `chatr:compose` custom events to open the New Chat panel. Unread conversations display a coloured left border (`borderLeft: 3px solid`) that is transparent for read conversations.
 
 ### ConversationView
 Panel wrapper for a single conversation. Renders `ChatView` and `MessageInput`. Displays an accept/decline bar for incoming message requests. Includes a floating "Nuke" button for testing conversation resets. Tracks conversation status dynamically via socket events.
@@ -184,10 +184,13 @@ Renders individual message bubbles. Handles all types:
 | Type | Rendering |
 |------|-----------|
 | `text` | Plain text with timestamps |
-| `image` | Thumbnail with lightbox on click |
+| `image` | Thumbnail with lightbox on click; caption shown above if present |
+| `video` | Inline `<video>` player with controls; caption shown above if present |
 | `file` | File icon, name, and size |
 | `audio` | `MessageAudioPlayer` component |
 | `voice` | `MessageAudioPlayer` with waveform |
+
+When a message has a `content` value that differs from its `fileName`, the content is rendered as a caption above the media.
 
 Groups consecutive messages from the same sender visually (hides repeated avatars). Shows delivery status (`sent` / `delivered` / `read` / `listening` / `listened`) below the sender's last message in a group.
 
@@ -275,7 +278,7 @@ Set at build time. In production written to `frontend/.env.production` by `deplo
 
 ## Theme System
 
-CSS custom properties on `:root` drive all colours. Components read the theme via `ThemeContext` and apply styles inline or via CSS modules.
+CSS custom properties on `:root` drive all colours. Component-specific styles have been extracted from `globals.css` into co-located CSS modules (e.g. `ConversationsList.module.css`, `MessageBubble.module.css`). Components read the theme via `ThemeContext` and apply styles inline or via their CSS module.
 
 | Property | Dark | Light |
 |----------|------|-------|

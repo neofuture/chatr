@@ -42,8 +42,8 @@ chatr/
 ## Key Features
 
 - Real-time messaging (Socket.io)
-- JWT authentication with email/SMS verification
-- Video, image, audio, and file sharing (50MB limit)
+- JWT authentication with email/SMS verification & resend
+- Video, image, audio, and file sharing (50MB limit) with optional captions
 - Embeddable support chat widget (vanilla JS, ~12 kB gzipped)
 - Profile and cover images
 - Message requests, friends, and presence
@@ -52,7 +52,7 @@ chatr/
 - Offline-first (IndexedDB)
 - Dark/light themes
 - Responsive design
-- Developer dashboard (git stats, LOC, architecture metrics)
+- Developer dashboard (git stats, LOC, code churn, commit streaks, code ownership, stale files, bundle size, branch/tag counts, untested components, Prisma complexity, contribution heatmap)
 
 ## Documentation
 

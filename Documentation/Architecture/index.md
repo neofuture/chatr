@@ -70,8 +70,8 @@ graph TB
 | File Upload | Multer | 1.x |
 | Password Hashing | bcryptjs (10 rounds) | — |
 | 2FA | speakeasy (TOTP) | — |
-| SMS | Twilio | — |
-| Email | Nodemailer | — |
+| SMS | SMS Works | — |
+| Email | Mailtrap (Nodemailer) | — |
 | API Docs | Swagger UI + swagger-jsdoc | — |
 
 ### Infrastructure (Production)

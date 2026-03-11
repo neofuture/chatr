@@ -22,6 +22,7 @@ graph LR
     routes --> rmessages[messages.ts]
     routes --> rgroups[groups.ts]
     routes --> rupload[file-upload.ts]
+    routes --> rdashboard[dashboard.ts]
 
     socket --> handlers[handlers.ts]
 
@@ -39,7 +40,8 @@ graph LR
 | `routes/` | `users.ts` | `/api/users/*` — profiles, image upload |
 | `routes/` | `messages.ts` | `/api/messages/*` — history, conversations |
 | `routes/` | `groups.ts` | `/api/groups/*` — group CRUD |
-| `routes/` | `file-upload.ts` | `/api/messages/upload` — file/audio |
+| `routes/` | `file-upload.ts` | `/api/messages/upload` — file/audio/video with optional caption |
+| `routes/` | `dashboard.ts` | `/api/dashboard` — developer dashboard metrics (git, LOC, churn, streaks, ownership) |
 | `socket/` | `handlers.ts` | Socket.io events and presence |
 | `services/` | `email.ts` | Mailtrap email sending |
 | `services/` | `sms.ts` | SMS Works SMS sending |
@@ -86,6 +88,7 @@ app.use('/api/messages', messageRoutes) // Message history, waveform
 app.use('/api/messages', fileRoutes)    // File/audio upload (same prefix)
 app.use('/api/groups',   groupRoutes)   // Group CRUD (stubs)
 app.use('/api',          emailRoutes)   // Email preview
+app.use('/api/dashboard', dashboardRoutes) // Developer dashboard metrics
 ```
 
 ---

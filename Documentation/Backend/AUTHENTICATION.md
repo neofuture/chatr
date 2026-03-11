@@ -20,7 +20,7 @@ flowchart TD
     F --> G[Generate 6-digit OTP, 15 min expiry]
     G --> H{Email or Phone?}
     H -- Email --> I[Send verification email]
-    H -- Phone --> J[Send SMS via Twilio]
+    H -- Phone --> J[Send SMS via SMS Works]
     I --> K[201 Created]
     J --> K
 
@@ -67,6 +67,19 @@ flowchart TD
 ```
 
 > ⚠️ `POST /api/auth/verify-login` is referenced in the login flow but is not yet a standalone endpoint. Login OTP verification is handled within the login route itself.
+
+---
+
+## Resend Verification
+
+If a verification code expires or is not received, the user can request a new one via `POST /api/auth/resend-verification`.
+
+| Field | Description |
+|-------|-------------|
+| `userId` | The user's UUID (returned from register or login) |
+| `method` | `"email"` or `"sms"` — which channel to resend on |
+
+A new 6-digit OTP is generated with a fresh 15-minute expiry, and the previous code is invalidated. This endpoint is rate-limited to prevent abuse.
 
 ---
 
@@ -151,7 +164,7 @@ flowchart TD
 
 Phone numbers are stored in E.164 format (e.g. `+447911123456`). The `validatePhoneNumber` and `formatPhoneNumber` helpers in `services/sms.ts` normalise input before storage.
 
-**Dev bypass:** A whitelist of dev phone numbers is hardcoded in `auth.ts`. These numbers skip duplicate checks and log OTPs to the console instead of sending real SMS — useful for local development without a real Twilio account.
+**Dev bypass:** A whitelist of dev phone numbers is hardcoded in `auth.ts`. These numbers skip duplicate checks and log OTPs to the console instead of sending real SMS — useful for local development without a real SMS Works account.
 
 ---
 

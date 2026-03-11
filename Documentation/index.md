@@ -8,7 +8,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 |---------|-------------|
 | [Architecture](./Architecture/index.md) | System design, component diagram, data flow |
 | [AWS Infrastructure](./Architecture/AWS.md) | EC2, RDS, Redis, S3, Nginx — ports and config |
-| [API Reference](./API/Rest_Api.md) | All REST endpoints, request/response schemas |
+| [API Reference](./API/REST_API.md) | All REST endpoints, request/response schemas |
 | [WebSocket](./WebSocket/Events.md) | Socket.io events, payloads, connection lifecycle |
 | [Database](./Database/Schema.md) | Prisma schema, models, indexes, migrations |
 | [Widget](./Widget/index.md) | Embeddable support chat widget — config, build, icons, API |
@@ -42,3 +42,11 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 - **Cache/Presence**: Redis
 - **File Storage**: Local (`/uploads`) → S3 in production (50MB limit)
 - **Widget**: `http://localhost:3001/widget/chatr.js`
+
+## Recent Additions
+
+- **Image/Video Captions**: File uploads accept an optional `caption` field — text displayed above the media in the chat bubble
+- **Resend Verification**: Users can resend email/SMS verification codes during login and registration
+- **Developer Dashboard Metrics**: Code churn (hot files), commit streaks, lines added/deleted, stale files, code ownership per contributor, bundle size, branch/tag counts, untested components, Prisma schema complexity
+- **CSS Modules Refactor**: Component-specific styles extracted from `globals.css` into co-located `.module.css` files
+- **App Versioning**: Auto-incremented build version displayed on the dashboard, amended into each commit via post-commit hook
