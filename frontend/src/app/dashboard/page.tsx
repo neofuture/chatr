@@ -92,7 +92,7 @@ function LangBar({ loc }: { loc: D }) {
     { label: 'TypeScript', value: loc.typescript || 0, color: '#3178c6' },
     { label: 'CSS', value: loc.css || 0, color: '#563d7c' },
     { label: 'JavaScript', value: loc.javascript || 0, color: '#f7df1e' },
-    { label: 'Shell', value: loc.shell || 0, color: '#4eaa25' },
+    { label: 'Shell', value: loc.shell || 0, color: '#e879f9' },
   ].filter(s => s.value > 0);
   return (
     <div>
@@ -629,7 +629,7 @@ export default function DashboardPage() {
                 { label: 'Frontend', value: data.locByArea.frontend, color: '#3b82f6' },
                 { label: 'Backend', value: data.locByArea.backend, color: '#10b981' },
                 { label: 'Widget', value: data.locByArea.widget, color: '#f59e0b' },
-                ...(data.locByArea.shell ? [{ label: 'Shell', value: data.locByArea.shell, color: '#4eaa25' }] : []),
+                ...(data.locByArea.shell ? [{ label: 'Shell', value: data.locByArea.shell, color: '#e879f9' }] : []),
               ]} />
             </div>
             <div style={CARD}>
@@ -640,7 +640,7 @@ export default function DashboardPage() {
                 { label: '.module.css', value: data.fileTypes.moduleCss, color: '#563d7c' },
                 { label: '.css', value: data.fileTypes.plainCss, color: '#a78bfa' },
                 { label: '.js', value: data.fileTypes.js, color: '#f7df1e' },
-                ...(data.fileTypes.sh ? [{ label: '.sh', value: data.fileTypes.sh, color: '#4eaa25' }] : []),
+                ...(data.fileTypes.sh ? [{ label: '.sh', value: data.fileTypes.sh, color: '#e879f9' }] : []),
               ]} size={110} />
             </div>
           </div>
