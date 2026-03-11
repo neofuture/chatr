@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { version } from '@/version';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const REFRESH_INTERVAL = 30_000;
@@ -536,6 +537,7 @@ export default function DashboardPage() {
             <h2 style={H2}><Ico>fad fa-cog</Ico> Environment</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
               {[
+                { label: 'Chatr', value: `v${version}` },
                 { label: 'Node.js', value: data.env.nodeVersion },
                 { label: 'npm', value: data.env.npmVersion },
                 { label: 'Git', value: data.env.gitVersion },
