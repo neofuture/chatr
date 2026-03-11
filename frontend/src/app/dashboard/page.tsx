@@ -211,15 +211,15 @@ function HealthGauge({ label, value, max, unit, color }: { label: string; value:
   const pct = Math.min((value / max) * 100, 100);
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ position: 'relative', width: 80, height: 44, margin: '0 auto 6px', overflow: 'hidden' }}>
+      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div>
+      <div style={{ position: 'relative', width: 80, height: 44, margin: '0 auto', overflow: 'hidden' }}>
         <svg width={80} height={44} viewBox="0 0 80 44">
           <path d="M 8 40 A 32 32 0 0 1 72 40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={6} strokeLinecap="round" />
           <path d="M 8 40 A 32 32 0 0 1 72 40" fill="none" stroke={color} strokeWidth={6} strokeLinecap="round"
             strokeDasharray={`${pct} ${100 - pct}`} style={{ transition: 'stroke-dasharray 0.5s' }} />
         </svg>
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, fontSize: '0.95rem', fontWeight: 700 }}>{value}{unit}</div>
       </div>
-      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{label}</div>
+      <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: 4 }}>{value}{unit}</div>
     </div>
   );
 }
