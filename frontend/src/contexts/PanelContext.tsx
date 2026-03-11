@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useRef, useEffect, useCallback, ReactNode } from 'react';
 
 export interface ActionSubmenuItem {
   icon: string;
@@ -37,6 +37,8 @@ interface PanelContextType {
   openPanel: (id: string, component: ReactNode, title?: string, titlePosition?: 'center' | 'left' | 'right', subTitle?: string, profileImage?: string, fullWidth?: boolean, actionIcons?: ActionIcon[], footer?: () => ReactNode, isGuest?: boolean) => void;
   /** Patch only the actionIcons of an existing panel — does NOT re-mount its component */
   updatePanelActionIcons: (id: string, actionIcons: ActionIcon[] | undefined) => void;
+  /** Patch title (and optionally subtitle / profileImage) of an existing panel */
+  updatePanelMeta: (id: string, meta: { title?: string; subTitle?: string; profileImage?: string | null }) => void;
   closePanel: (id: string) => void;
   closeTopPanel: () => void;
   closeAllPanels: () => void;
@@ -48,6 +50,23 @@ const PanelContext = createContext<PanelContextType | undefined>(undefined);
 
 export function PanelProvider({ children }: { children: ReactNode }) {
   const [panels, setPanels] = useState<Panel[]>([]);
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach(t => clearTimeout(t));
+      timersRef.current.clear();
+    };
+  }, []);
+
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      timersRef.current.delete(id);
+      fn();
+    }, ms);
+    timersRef.current.add(id);
+    return id;
+  }, []);
 
   const maxLevel = panels.length > 0 ? Math.max(...panels.map(p => p.level)) : -1;
 
@@ -102,9 +121,24 @@ export function PanelProvider({ children }: { children: ReactNode }) {
   const updatePanelActionIcons = (id: string, actionIcons: ActionIcon[] | undefined) => {
     setPanels((prev) => {
       const idx = prev.findIndex(p => p.id === id);
-      if (idx === -1) return prev; // panel not open, no-op
+      if (idx === -1) return prev;
       const next = [...prev];
       next[idx] = { ...next[idx], actionIcons };
+      return next;
+    });
+  };
+
+  const updatePanelMeta = (id: string, meta: { title?: string; subTitle?: string; profileImage?: string | null }) => {
+    setPanels((prev) => {
+      const idx = prev.findIndex(p => p.id === id);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      next[idx] = {
+        ...next[idx],
+        ...(meta.title !== undefined && { title: meta.title }),
+        ...(meta.subTitle !== undefined && { subTitle: meta.subTitle }),
+        ...(meta.profileImage !== undefined && { profileImage: meta.profileImage ?? undefined }),
+      };
       return next;
     });
   };
@@ -121,7 +155,7 @@ export function PanelProvider({ children }: { children: ReactNode }) {
     });
 
     // Remove the panels after animation completes
-    setTimeout(() => {
+    safeTimeout(() => {
       setPanels((prev) => {
         const panel = prev.find((p) => p.id === id);
         if (!panel) return prev;
@@ -142,7 +176,7 @@ export function PanelProvider({ children }: { children: ReactNode }) {
     });
 
     // Remove the top panel after animation completes
-    setTimeout(() => {
+    safeTimeout(() => {
       setPanels((prev) => {
         if (prev.length === 0) return prev;
         const maxLvl = Math.max(...prev.map((p) => p.level));
@@ -158,13 +192,13 @@ export function PanelProvider({ children }: { children: ReactNode }) {
     setPanels(prev => prev.map(p => ({ ...p, isClosing: true })));
 
     // Remove all panels after animation completes
-    setTimeout(() => {
+    safeTimeout(() => {
       setPanels([]);
     }, 300);
   };
 
   return (
-    <PanelContext.Provider value={{ panels, openPanel, updatePanelActionIcons, closePanel, closeTopPanel, closeAllPanels, maxLevel, effectiveMaxLevel }}>
+    <PanelContext.Provider value={{ panels, openPanel, updatePanelActionIcons, updatePanelMeta, closePanel, closeTopPanel, closeAllPanels, maxLevel, effectiveMaxLevel }}>
       {children}
     </PanelContext.Provider>
   );

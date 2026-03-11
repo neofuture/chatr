@@ -46,7 +46,7 @@ export default function PresenceAvatar({
     : info.status === 'away'                 ? 'var(--presence-away)'
     :                                          'var(--presence-offline)';
 
-  const ring   = 3;
+  const ring   = size <= 40 ? 1 : 2;
   const inner  = size - ring * 2;
   const dotSz  = Math.max(13, Math.round(size * 0.36)); // bigger, min 13px
 

@@ -7,6 +7,7 @@ import NewChatPanel from "@/components/messaging/NewChatPanel/NewChatPanel";
 import NewGroupPanel from "@/components/messaging/NewGroupPanel/NewGroupPanel";
 import GroupView from "@/components/messaging/GroupView/GroupView";
 import type { GroupData } from "@/components/messaging/GroupView/GroupView";
+import GroupProfilePanel from "@/components/GroupProfilePanel/GroupProfilePanel";
 import { useConversationList, type ConversationUser } from "@/hooks/useConversationList";
 import { useGroupsList, type GroupSummary } from "@/hooks/useGroupsList";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -17,6 +18,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { useConfirmation } from "@/contexts/ConfirmationContext";
 import { useFriends } from "@/hooks/useFriends";
 import { useMessageToast } from "@/hooks/useMessageToast";
+import { useOpenUserProfile } from "@/hooks/useOpenUserProfile";
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -344,7 +346,7 @@ export default function AppPage() {
       group.name,
       'left',
       `${memberCount} member${memberCount !== 1 ? 's' : ''}`,
-      undefined,
+      group.profileImage ?? undefined,
       true,
       buildGroupActionIcons(group.id, memberCount),
     );
@@ -399,6 +401,27 @@ export default function AppPage() {
     );
   }, [openPanel, isDark, handleSelectUser]);
 
+  const openGroupProfilePanel = useCallback((groupId: string) => {
+    const group = groups.find(g => g.id === groupId);
+    openPanel(
+      `group-profile-${groupId}`,
+      <GroupProfilePanel
+        groupId={groupId}
+        currentUserId={currentUserId}
+        onGroupLeft={() => {
+          closePanel(`group-profile-${groupId}`);
+          closePanel(`group-${groupId}`);
+          refreshGroups();
+        }}
+      />,
+      group?.name ?? 'Group Info',
+      'left',
+      undefined,
+      group?.profileImage ?? undefined,
+      true,
+    );
+  }, [openPanel, closePanel, groups, currentUserId, refreshGroups]);
+
   // Listen for compose events (header + button in ConversationsList)
   useEffect(() => {
     const handler = () => openNewChatPanel();
@@ -412,6 +435,27 @@ export default function AppPage() {
     window.addEventListener('chatr:new-group', handler);
     return () => window.removeEventListener('chatr:new-group', handler);
   }, [openNewGroupPanel]);
+
+  // Listen for group profile open events (from clicking group header title)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { groupId } = (e as CustomEvent).detail;
+      if (groupId) openGroupProfilePanel(groupId);
+    };
+    window.addEventListener('chatr:group-profile-open', handler);
+    return () => window.removeEventListener('chatr:group-profile-open', handler);
+  }, [openGroupProfilePanel]);
+
+  // Listen for user profile open events (from clicking chat header title)
+  const openUserProfile = useOpenUserProfile();
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { userId, title, profileImage } = (e as CustomEvent).detail;
+      if (userId) openUserProfile(userId, title, profileImage);
+    };
+    window.addEventListener('chatr:user-profile-open', handler);
+    return () => window.removeEventListener('chatr:user-profile-open', handler);
+  }, [openUserProfile]);
 
   useMessageToast(handleSelectUser, currentUserId);
 

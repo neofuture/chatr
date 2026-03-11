@@ -10,6 +10,7 @@ import MessageInput from '@/components/messaging/MessageInput/MessageInput';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import Lightbox from '@/components/Lightbox/Lightbox';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
+import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
 import styles from './GroupView.module.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -25,6 +26,8 @@ export interface GroupData {
   id: string;
   name: string;
   description?: string | null;
+  profileImage?: string | null;
+  coverImage?: string | null;
   ownerId: string;
   members: GroupMember[];
 }
@@ -42,6 +45,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
   const { socket } = useWebSocket();
   const { showToast } = useToast();
   const { showConfirmation } = useConfirmation();
+  const openUserProfile = useOpenUserProfile();
   const [group, setGroup] = useState<GroupData>(initialGroup);
   // Track whether the current user has accepted this group
   const [memberStatus, setMemberStatus] = useState<'pending' | 'accepted'>(
@@ -279,6 +283,11 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       onGroupDeleted?.();
     };
 
+    const onGroupUpdated = (data: any) => {
+      if (data.group?.id !== group.id) return;
+      setGroup(prev => ({ ...prev, ...data.group }));
+    };
+
     socket.on('group:message', onMessage);
     socket.on('group:typing', onTyping);
     socket.on('group:memberJoined', onMemberJoined);
@@ -288,6 +297,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     socket.on('group:ownerChanged', onOwnerChanged);
     socket.on('group:memberPromoted', onMemberPromoted);
     socket.on('group:memberDemoted', onMemberDemoted);
+    socket.on('group:updated', onGroupUpdated);
     return () => {
       socket.off('group:message', onMessage);
       socket.off('group:typing', onTyping);
@@ -298,6 +308,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       socket.off('group:ownerChanged', onOwnerChanged);
       socket.off('group:memberPromoted', onMemberPromoted);
       socket.off('group:memberDemoted', onMemberDemoted);
+      socket.off('group:updated', onGroupUpdated);
     };
   }, [socket, group.id, currentUserId, onGroupDeleted, showToast]);
 
@@ -527,6 +538,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
           activeAudioMessageId={activeAudioMessageId}
           currentUserId={currentUserId}
           conversationStatus="accepted"
+          onAvatarClick={(senderId, displayName, profileImage) => openUserProfile(senderId, displayName, profileImage)}
         />
       </div>
 

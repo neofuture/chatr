@@ -41,6 +41,11 @@ jest.mock('@/components/common/PaneSearchBox/PaneSearchBox', () => ({
   default: () => <div data-testid="pane-search" />,
 }));
 
+jest.mock('@/hooks/useOpenUserProfile', () => ({
+  __esModule: true,
+  useOpenUserProfile: () => jest.fn(),
+}));
+
 const mockGroup = {
   id: 'g1',
   name: 'Test Group',

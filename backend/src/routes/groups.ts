@@ -37,9 +37,13 @@ async function deleteFromS3(key: string): Promise<void> {
 
 const messagesDir = path.join(__dirname, '../../uploads/messages');
 const audioDir    = path.join(__dirname, '../../uploads/audio');
+const groupProfilesDir = path.join(__dirname, '../../uploads/group-profiles');
+const groupCoversDir   = path.join(__dirname, '../../uploads/group-covers');
 if (!IS_PRODUCTION) {
   if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
   if (!fs.existsSync(audioDir))    fs.mkdirSync(audioDir,    { recursive: true });
+  if (!fs.existsSync(groupProfilesDir)) fs.mkdirSync(groupProfilesDir, { recursive: true });
+  if (!fs.existsSync(groupCoversDir))   fs.mkdirSync(groupCoversDir,   { recursive: true });
 }
 
 const storage = IS_PRODUCTION
@@ -71,6 +75,27 @@ const upload = multer({
     cb(null, allowed.includes(file.mimetype));
   },
 });
+
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
+
+async function isGroupAdmin(userId: string, groupId: string): Promise<boolean> {
+  const group = await prisma.group.findUnique({ where: { id: groupId }, select: { ownerId: true } });
+  if (!group) return false;
+  if (group.ownerId === userId) return true;
+  const member = await prisma.groupMember.findUnique({ where: { userId_groupId: { userId, groupId } } });
+  return member?.role === 'admin';
+}
+
+function deleteLocalFile(filePath: string): void {
+  try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { /* ignore */ }
+}
 
 let _io: Server | null = null;
 export function setGroupsSocketIO(io: Server) { _io = io; }
@@ -462,9 +487,9 @@ router.patch('/:id', authenticateToken as any, async (req: any, res: Response) =
     const { id } = req.params;
     const { name, description } = req.body;
 
-    const group = await prisma.group.findUnique({ where: { id } });
-    if (!group) return res.status(404).json({ error: 'Group not found' });
-    if (group.ownerId !== userId) return res.status(403).json({ error: 'Only the owner can edit the group' });
+    if (!(await isGroupAdmin(userId, id))) {
+      return res.status(403).json({ error: 'Only admins can edit the group' });
+    }
 
     const updated = await prisma.group.update({
       where: { id },
@@ -849,6 +874,182 @@ router.post('/:id/upload', authenticateToken as any, upload.single('file') as an
     console.error('Group upload error:', err);
     if (!IS_PRODUCTION && req.file && req.file.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: 'File upload failed' });
+  }
+});
+
+// ── Upload group profile image (admin only) ──────────────────────────────────
+router.post('/:id/profile-image', authenticateToken as any, imageUpload.single('profileImage') as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    if (!(await isGroupAdmin(userId, groupId))) {
+      return res.status(403).json({ error: 'Only admins can change the group avatar' });
+    }
+
+    const ext = path.extname(req.file.originalname);
+    const filename = `${groupId}-${Date.now()}${ext}`;
+    let fileUrl: string;
+
+    if (IS_PRODUCTION) {
+      const s3Key = `uploads/group-profiles/${filename}`;
+      fileUrl = await uploadToS3(req.file.buffer, s3Key, req.file.mimetype);
+    } else {
+      const filepath = path.join(groupProfilesDir, filename);
+      fs.writeFileSync(filepath, req.file.buffer);
+      fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/group-profiles/${filename}`;
+    }
+
+    const existing = await prisma.group.findUnique({ where: { id: groupId }, select: { profileImage: true } });
+    await prisma.group.update({ where: { id: groupId }, data: { profileImage: fileUrl } });
+
+    if (existing?.profileImage) {
+      if (IS_PRODUCTION) {
+        try { const url = new URL(existing.profileImage); await deleteFromS3(url.pathname.replace(/^\//, '')); } catch {}
+      } else {
+        const rel = existing.profileImage.replace(/^.*\/uploads\//, '');
+        deleteLocalFile(path.join(__dirname, '../../uploads', rel));
+      }
+    }
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:updated', { group: { id: groupId, profileImage: fileUrl } });
+      }
+    }
+
+    res.json({ url: fileUrl });
+  } catch (err) {
+    console.error('Group profile image upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// ── Upload group cover image (admin only) ────────────────────────────────────
+router.post('/:id/cover-image', authenticateToken as any, imageUpload.single('coverImage') as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId } = req.params;
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    if (!(await isGroupAdmin(userId, groupId))) {
+      return res.status(403).json({ error: 'Only admins can change the group cover image' });
+    }
+
+    const ext = path.extname(req.file.originalname);
+    const filename = `${groupId}-${Date.now()}${ext}`;
+    let fileUrl: string;
+
+    if (IS_PRODUCTION) {
+      const s3Key = `uploads/group-covers/${filename}`;
+      fileUrl = await uploadToS3(req.file.buffer, s3Key, req.file.mimetype);
+    } else {
+      const filepath = path.join(groupCoversDir, filename);
+      fs.writeFileSync(filepath, req.file.buffer);
+      fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/group-covers/${filename}`;
+    }
+
+    const existing = await prisma.group.findUnique({ where: { id: groupId }, select: { coverImage: true } });
+    await prisma.group.update({ where: { id: groupId }, data: { coverImage: fileUrl } });
+
+    if (existing?.coverImage) {
+      if (IS_PRODUCTION) {
+        try { const url = new URL(existing.coverImage); await deleteFromS3(url.pathname.replace(/^\//, '')); } catch {}
+      } else {
+        const rel = existing.coverImage.replace(/^.*\/uploads\//, '');
+        deleteLocalFile(path.join(__dirname, '../../uploads', rel));
+      }
+    }
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:updated', { group: { id: groupId, coverImage: fileUrl } });
+      }
+    }
+
+    res.json({ url: fileUrl });
+  } catch (err) {
+    console.error('Group cover image upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// ── Delete group profile image (admin only) ──────────────────────────────────
+router.delete('/:id/profile-image', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId } = req.params;
+
+    if (!(await isGroupAdmin(userId, groupId))) {
+      return res.status(403).json({ error: 'Only admins can change the group avatar' });
+    }
+
+    const existing = await prisma.group.findUnique({ where: { id: groupId }, select: { profileImage: true } });
+    if (!existing?.profileImage) return res.json({ success: true });
+
+    await prisma.group.update({ where: { id: groupId }, data: { profileImage: null } });
+
+    if (IS_PRODUCTION) {
+      try { const url = new URL(existing.profileImage); await deleteFromS3(url.pathname.replace(/^\//, '')); } catch {}
+    } else {
+      const rel = existing.profileImage.replace(/^.*\/uploads\//, '');
+      deleteLocalFile(path.join(__dirname, '../../uploads', rel));
+    }
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:updated', { group: { id: groupId, profileImage: null } });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Group profile image delete error:', err);
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
+// ── Delete group cover image (admin only) ────────────────────────────────────
+router.delete('/:id/cover-image', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId } = req.params;
+
+    if (!(await isGroupAdmin(userId, groupId))) {
+      return res.status(403).json({ error: 'Only admins can change the group cover image' });
+    }
+
+    const existing = await prisma.group.findUnique({ where: { id: groupId }, select: { coverImage: true } });
+    if (!existing?.coverImage) return res.json({ success: true });
+
+    await prisma.group.update({ where: { id: groupId }, data: { coverImage: null } });
+
+    if (IS_PRODUCTION) {
+      try { const url = new URL(existing.coverImage); await deleteFromS3(url.pathname.replace(/^\//, '')); } catch {}
+    } else {
+      const rel = existing.coverImage.replace(/^.*\/uploads\//, '');
+      deleteLocalFile(path.join(__dirname, '../../uploads', rel));
+    }
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:updated', { group: { id: groupId, coverImage: null } });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Group cover image delete error:', err);
+    res.status(500).json({ error: 'Delete failed' });
   }
 });
 

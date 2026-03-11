@@ -248,11 +248,15 @@ export default function ConversationsList({
               }}>
                 <PresenceAvatar
                   displayName={group.name}
-                  profileImage={null}
+                  profileImage={group.profileImage ?? null}
                   info={{ status: 'offline', lastSeen: null }}
                   size={50}
                   showDot={false}
                   isGroup
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent('chatr:group-profile-open', { detail: { groupId: group.id } }));
+                  }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px' }}>

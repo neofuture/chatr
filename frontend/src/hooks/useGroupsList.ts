@@ -9,10 +9,13 @@ export interface GroupSummary {
   id: string;
   name: string;
   description?: string | null;
+  profileImage?: string | null;
+  coverImage?: string | null;
   ownerId: string;
   members: Array<{
     id: string;
     userId: string;
+    role?: string;
     user: { id: string; username: string; displayName: string | null; profileImage: string | null };
   }>;
   lastMessage: {
@@ -212,6 +215,13 @@ export function useGroupsList() {
       fetchGroups();
     };
 
+    // group:updated — partial update (name, profileImage, coverImage, etc.)
+    const handleGroupUpdated = (data: { group: Partial<GroupSummary> & { id: string } }) => {
+      setGroups(prev => prev.map(g =>
+        g.id === data.group.id ? { ...g, ...data.group } : g
+      ));
+    };
+
     socket.on('group:message', handleGroupMessage);
     socket.on('group:invite', handleGroupInvite);
     socket.on('group:inviteAccepted', handleInviteAccepted);
@@ -221,6 +231,7 @@ export function useGroupsList() {
     socket.on('group:deleted', handleGroupDeleted);
     socket.on('group:memberJoined', handleMemberJoined);
     socket.on('group:memberLeft', handleMemberLeft);
+    socket.on('group:updated', handleGroupUpdated);
     return () => {
       socket.off('group:message', handleGroupMessage);
       socket.off('group:invite', handleGroupInvite);
@@ -231,6 +242,7 @@ export function useGroupsList() {
       socket.off('group:deleted', handleGroupDeleted);
       socket.off('group:memberJoined', handleMemberJoined);
       socket.off('group:memberLeft', handleMemberLeft);
+      socket.off('group:updated', handleGroupUpdated);
     };
   }, [socket, fetchGroups]);
 

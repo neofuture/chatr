@@ -23,7 +23,7 @@ function PresenceAvatarForPanel({ panelId, profileImage, title, isGuest }: { pan
   const userId = panelId.startsWith('chat-') ? panelId.slice(5) : null;
 
   if (isGroup) {
-    return <PresenceAvatar displayName={title} profileImage={null} info={{ status: 'offline', lastSeen: null }} size={36} showDot={false} isGroup />;
+    return <PresenceAvatar displayName={title} profileImage={profileImage ?? null} info={{ status: 'offline', lastSeen: null }} size={36} showDot={false} isGroup />;
   }
 
   if (!userId) return profileImage ? <img src={profileImage} alt={title} /> : null;
@@ -234,28 +234,33 @@ function Panel({ id, title, children, level, effectiveMaxLevel, isClosing, title
           <button onClick={handleClose} className="auth-panel-back">
             ‹
           </button>
-          <div
+            <div
             className={`auth-panel-title ${titlePosition === 'center' ? styles.titleBlockCenter : styles.titleBlockLeft} ${styles.titleBlock}`}
-            style={{ gap: '0.75rem' }}
+            style={{ gap: '0.75rem', cursor: (id.startsWith('group-') && !id.startsWith('group-profile-')) || id.startsWith('chat-') ? 'pointer' : undefined }}
+            onClick={() => {
+              if (id.startsWith('group-') && !id.startsWith('group-profile-')) {
+                const groupId = id.replace('group-', '');
+                window.dispatchEvent(new CustomEvent('chatr:group-profile-open', { detail: { groupId } }));
+              } else if (id.startsWith('chat-')) {
+                const userId = id.slice(5);
+                window.dispatchEvent(new CustomEvent('chatr:user-profile-open', { detail: { userId, title, profileImage: currentProfileImage } }));
+              }
+            }}
           >
             {(() => {
               const userId = id.startsWith('chat-') ? id.slice(5) : null;
               const isGroup = id.startsWith('group-');
+              const isUserProfile = id.startsWith('user-profile-');
               if (userId || isGroup) {
-                // Always render for chat and group panels
                 return (
                   <PresenceAvatarForPanel panelId={id} profileImage={currentProfileImage} title={title} isGuest={isGuest} />
                 );
               }
-              // Non-chat panels: only show image if one is provided
+              if (isUserProfile && currentProfileImage) {
+                return <PresenceAvatar displayName={title} profileImage={currentProfileImage} info={{ status: 'offline', lastSeen: null }} size={36} showDot={false} />;
+              }
               if (currentProfileImage) {
-                return (
-                  <img
-                    src={currentProfileImage}
-                    alt="Profile"
-                    className={styles.profileImg}
-                  />
-                );
+                return <PresenceAvatar displayName={title} profileImage={currentProfileImage} info={{ status: 'offline', lastSeen: null }} size={36} showDot={false} />;
               }
               return null;
             })()}

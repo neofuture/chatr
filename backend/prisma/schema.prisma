@@ -147,15 +147,17 @@ model GroupMessage {
 }
 
 model Group {
-  id          String         @id @default(uuid())
-  name        String
-  description String?
-  ownerId     String
-  owner       User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  members     GroupMember[]
-  messages    GroupMessage[]
+  id            String         @id @default(uuid())
+  name          String
+  description   String?
+  profileImage  String?
+  coverImage    String?
+  ownerId       String
+  owner         User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  members       GroupMember[]
+  messages      GroupMessage[]
 
   @@index([ownerId])
 }
