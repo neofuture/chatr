@@ -734,7 +734,7 @@ router.post('/:id/upload', authenticateToken as any, upload.single('file') as an
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const { id: groupId } = req.params;
-    const { type, waveform, duration: durationParam } = req.body;
+    const { type, waveform, duration: durationParam, caption } = req.body;
 
     // Verify membership
     const member = await prisma.groupMember.findFirst({ where: { userId, groupId } });
@@ -791,7 +791,7 @@ router.post('/:id/upload', authenticateToken as any, upload.single('file') as an
       data: {
         groupId,
         senderId: userId,
-        content: isAudio ? 'Voice message' : req.file.originalname,
+        content: isAudio ? 'Voice message' : (caption?.trim() || req.file.originalname),
         type: messageType,
         fileUrl,
         fileName: req.file.originalname,

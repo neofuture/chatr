@@ -380,6 +380,7 @@ export default function MessageInput({
               placeholder={
                 disabled ? "You can't reply to this conversation"
                 : editingMessage ? 'Edit your message…'
+                : selectedFiles.length > 0 ? 'Add a caption…'
                 : effectivelyOnline ? (groupId ? 'Message group…' : 'Message…')
                 : 'Offline — reconnecting…'
               }

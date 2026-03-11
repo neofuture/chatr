@@ -262,15 +262,16 @@ export function useMessageInput({
   const sendFiles = useCallback(async () => {
     if (!selectedFiles.length || !recipientId || !socket || !effectivelyOnline) return;
     setUploadingFile(true);
+    const caption = message.trim();
     const token = localStorage.getItem('token');
     try {
-      for (const file of selectedFiles) {
+      for (let fi = 0; fi < selectedFiles.length; fi++) {
+        const file = selectedFiles[fi];
         const isAudio = file.type.startsWith('audio/');
         const isVideo = file.type.startsWith('video/');
         const msgType = file.type.startsWith('image/') ? 'image' : isAudio ? 'audio' : isVideo ? 'video' : 'file';
+        const fileCaption = fi === 0 && !isAudio ? caption : '';
 
-        // For audio files, extract the real waveform BEFORE uploading so the
-        // sender sees the correct waveform + duration immediately on send.
         let preExtractedWaveform: number[] | undefined;
         let preExtractedDuration: number | undefined;
         if (isAudio) {
@@ -287,7 +288,7 @@ export function useMessageInput({
         fd.append('file', file);
         fd.append('recipientId', recipientId);
         fd.append('type', msgType);
-        // Send the real waveform to the upload endpoint so it saves audioDuration too
+        if (fileCaption) fd.append('caption', fileCaption);
         if (preExtractedWaveform) {
           fd.append('waveform', JSON.stringify(preExtractedWaveform));
         }
@@ -302,13 +303,13 @@ export function useMessageInput({
         if (!res.ok) { showToast(`Upload failed for ${file.name}`, 'error'); continue; }
         const data = await res.json();
 
-        // Use pre-extracted values if available, else fall back to server response
         const finalWaveform = preExtractedWaveform ?? data.waveform;
         const finalDuration = preExtractedDuration ?? data.duration;
+        const contentText = isAudio ? 'Voice message' : (fileCaption || file.name);
 
         const msg: Message = {
           id: data.messageId || Date.now().toString(),
-          content: isAudio ? 'Voice message' : file.name,
+          content: contentText,
           senderId: currentUserId,
           recipientId,
           direction: 'sent',
@@ -344,13 +345,14 @@ export function useMessageInput({
       }
       showToast(selectedFiles.length === 1 ? 'File sent' : `${selectedFiles.length} files sent`, 'success');
       cancelFileSelection();
+      if (caption) setMessage('');
     } catch (err) {
       console.error(err);
       showToast('Failed to send files', 'error');
     } finally {
       setUploadingFile(false);
     }
-  }, [selectedFiles, recipientId, socket, effectivelyOnline, currentUserId, showToast, cancelFileSelection, onMessageSent]);
+  }, [selectedFiles, recipientId, socket, effectivelyOnline, currentUserId, message, showToast, cancelFileSelection, onMessageSent]);
 
   // ── Voice recording ───────────────────────────────────
 

@@ -196,7 +196,7 @@ router.post('/upload',
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const { recipientId, type, waveform, duration: durationParam } = req.body;
+    const { recipientId, type, waveform, duration: durationParam, caption } = req.body;
 
     if (!recipientId) {
       if (!IS_PRODUCTION && req.file.path) fs.unlinkSync(req.file.path);
@@ -265,7 +265,7 @@ router.post('/upload',
       data: {
         senderId: userId,
         recipientId,
-        content: isAudio ? 'Voice message' : req.file.originalname,
+        content: isAudio ? 'Voice message' : (caption?.trim() || req.file.originalname),
         type: messageType,
         status: 'sent',
         fileUrl,

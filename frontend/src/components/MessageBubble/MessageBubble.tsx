@@ -845,6 +845,9 @@ export default function MessageBubble({
                     {/* Image */}
                     {msg.type === 'image' && msg.fileUrl && (
                       <div>
+                        {msg.content && msg.content !== msg.fileName && (
+                          <div style={{ padding: '6px 4px 4px', fontSize: '0.9rem', lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
+                        )}
                         <img src={msg.fileUrl} alt={msg.fileName || 'Shared image'} className={styles.messageImage}
                           onClick={() => { if (onImageClick) onImageClick(msg.fileUrl!, msg.fileName || ''); }} />
                         {msg.fileName && <div className={styles.imageFileName}><i className="fas fa-camera" aria-hidden="true" /> {msg.fileName}</div>}
@@ -853,6 +856,9 @@ export default function MessageBubble({
                     {/* Video */}
                     {msg.type === 'video' && msg.fileUrl && (
                       <div>
+                        {msg.content && msg.content !== msg.fileName && (
+                          <div style={{ padding: '6px 4px 4px', fontSize: '0.9rem', lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
+                        )}
                         <video
                           src={msg.fileUrl + '#t=0.1'}
                           controls
