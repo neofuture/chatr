@@ -458,14 +458,11 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Components + Hooks + Contexts ──────────────────────── */}
-          <div className="db-grid2" style={{ ...GRID2, gridTemplateRows: 'minmax(0, 1fr)' }}>
-            <div style={{ ...CARD, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <h2 style={{ ...H2, cursor: 'pointer', userSelect: 'none' }}>
-                <Ico>fad fa-puzzle-piece</Ico> {`Components (${data.components.length})`}
-              </h2>
-              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div className="db-grid2" style={GRID2}>
+            <Section title={`Components (${data.components.length})`} icon="fad fa-puzzle-piece">
+              <div style={SCROLLBOX}>
                 {data.components.map((c: D) => (
-                  <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: '0.78rem', flexShrink: 0 }}>
+                  <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: '0.78rem' }}>
                     <code style={{ color: '#60a5fa', minWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</code>
                     <MiniBar value={c.lines} max={data.components[0]?.lines || 1} />
                     <span style={{ ...SUB, minWidth: 48, textAlign: 'right' }}>{c.lines.toLocaleString()}</span>
@@ -477,7 +474,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Section>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <Section title={`Hooks (${data.hooks.length})`} icon="fad fa-link">
                 <div style={SCROLLBOX}>
