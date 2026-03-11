@@ -280,6 +280,8 @@ export default function DashboardPage() {
           .db-content { padding: 1rem 0.75rem 2rem !important; }
           .db-overview { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important; gap: 0.5rem !important; }
           .db-grid2, .db-grid3 { grid-template-columns: 1fr !important; }
+          .db-grid2 code, .db-grid3 code { min-width: 0 !important; flex: 1 !important; }
+          .db-badges { display: none !important; }
         }
       `}</style>
 
@@ -438,7 +440,7 @@ export default function DashboardPage() {
                     <code style={{ color: '#60a5fa', minWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</code>
                     <MiniBar value={c.lines} max={data.components[0]?.lines || 1} />
                     <span style={{ ...SUB, minWidth: 48, textAlign: 'right' }}>{c.lines.toLocaleString()}</span>
-                    <span style={{ display: 'flex', gap: 3, minWidth: 70 }}>
+                    <span className="db-badges" style={{ display: 'flex', gap: 3, minWidth: 70 }}>
                       {c.hasTest && <Badge color="#10b981">test</Badge>}
                       {c.hasStory && <Badge color="#f59e0b">story</Badge>}
                       {c.hasCss && <Badge color="#8b5cf6">css</Badge>}
@@ -642,7 +644,7 @@ export default function DashboardPage() {
             <Section title="Largest Files" icon="📏">
               <div style={{ ...SCROLLBOX, maxHeight: 240 }}>
                 {data.largestFiles.map((f: D, i: number) => (
-                  <div key={f.path} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem' }}>
+                  <div key={f.path} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem' }}>
                     <span style={{ color: 'var(--text-secondary)', minWidth: 16, textAlign: 'right' }}>#{i + 1}</span>
                     <code style={{ color: '#fbbf24', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.path}>
                       {f.path.replace(/^(frontend\/src|backend\/src|widget-src)\//, '')}
@@ -657,7 +659,7 @@ export default function DashboardPage() {
             <Section title="Recently Modified" icon="🕐">
               <div style={{ ...SCROLLBOX, maxHeight: 240 }}>
                 {data.recentlyModified.map((f: string) => (
-                  <div key={f} style={{ fontSize: '0.72rem', padding: '2px 0' }}>
+                  <div key={f} style={{ fontSize: '0.78rem', padding: '2px 0' }}>
                     <code style={{ color: '#67e8f9' }} title={f}>{f.replace(/^(frontend\/src|backend\/src|widget-src)\//, '')}</code>
                   </div>
                 ))}
