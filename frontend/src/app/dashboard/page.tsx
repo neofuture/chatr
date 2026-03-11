@@ -272,8 +272,19 @@ export default function DashboardPage() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     } as React.CSSProperties}>
 
+      <style>{`
+        @media (max-width: 768px) {
+          .db-header { flex-direction: column !important; padding: 0.75rem 1rem !important; gap: 0.5rem !important; align-items: flex-start !important; }
+          .db-header-right { flex-wrap: wrap !important; font-size: 0.7rem !important; gap: 0.5rem !important; }
+          .db-header-branch { display: none !important; }
+          .db-content { padding: 1rem 0.75rem 2rem !important; }
+          .db-overview { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important; gap: 0.5rem !important; }
+          .db-grid2, .db-grid3 { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div style={{ borderBottom: '1px solid var(--border)', padding: '0.75rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 10, background: 'rgba(15,23,42,0.85)' }}>
+      <div className="db-header" style={{ borderBottom: '1px solid var(--border)', padding: '0.75rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 10, background: 'rgba(15,23,42,0.85)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Link href="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.85rem' }}>← Home</Link>
           <span style={{ color: 'var(--text-secondary)' }}>/</span>
@@ -281,24 +292,24 @@ export default function DashboardPage() {
             <Ico size={20}>📊</Ico> Project Dashboard
           </h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+        <div className="db-header-right" style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
           {lastRefresh && <span>Updated {lastRefresh.toLocaleTimeString()}</span>}
           <button onClick={() => setAutoRefresh(p => !p)} style={{ background: autoRefresh ? '#10b98133' : 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '3px 10px', color: autoRefresh ? '#10b981' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}>
             {autoRefresh ? '● Live' : '○ Paused'}
           </button>
           <button onClick={fetchData} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '3px 10px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}>↻ Refresh</button>
-          {data && <span>⎇ {data.overview.currentBranch} <code style={{ color: '#60a5fa', marginLeft: 4 }}>{data.overview.latestHash}</code></span>}
+          {data && <span className="db-header-branch">⎇ {data.overview.currentBranch} <code style={{ color: '#60a5fa', marginLeft: 4 }}>{data.overview.latestHash}</code></span>}
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 2rem 3rem' }}>
+      <div className="db-content" style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 2rem 3rem' }}>
         {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '1rem', color: '#fca5a5', marginBottom: '1rem' }}>{error}</div>}
         {!data && !error && <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}><div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>Loading metrics...</div>}
 
         {data && (<>
 
           {/* ── Overview Cards ──────────────────────────────────────── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <div className="db-overview" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
             <StatCard label="Total Commits" value={data.overview.totalCommits} sub={`${data.health.commitsPerDay}/day avg`} icon="📝" color="#3b82f6" />
             <StatCard label="Lines of Code" value={data.overview.totalLines} sub={`~${Math.round(data.overview.totalLines / 1000)}k`} icon="💻" color="#8b5cf6" />
             <StatCard label="Source Files" value={data.overview.totalFiles} sub={`${data.health.avgFileSize} avg loc`} icon="📁" color="#06b6d4" />
@@ -327,7 +338,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Daily + Weekly ─────────────────────────────────────── */}
-          <div style={GRID2}>
+          <div className="db-grid2" style={GRID2}>
             <div style={CARD}>
               <h2 style={H2}><Ico>📊</Ico> Daily Commits</h2>
               <BarChart data={data.dailyCommits.map((d: D) => ({ label: d.date, value: d.count }))} />
@@ -345,7 +356,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Activity Patterns ──────────────────────────────────── */}
-          <div style={GRID2}>
+          <div className="db-grid2" style={GRID2}>
             <div style={CARD}>
               <h2 style={H2}><Ico>🕐</Ico> Activity by Hour</h2>
               <BarChart data={(data.activityByHour as number[]).map((v: number, i: number) => ({ label: `${i}:00`, value: v }))} maxBars={24} color="linear-gradient(to top,#f59e0b,#fbbf24)" />
@@ -368,7 +379,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Language + Area + File Types ────────────────────────── */}
-          <div style={GRID3}>
+          <div className="db-grid3" style={GRID3}>
             <div style={CARD}>
               <h2 style={H2}><Ico>🌐</Ico> Language Breakdown</h2>
               <LangBar loc={data.loc} />
@@ -419,7 +430,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Components + Hooks + Contexts ──────────────────────── */}
-          <div style={GRID2}>
+          <div className="db-grid2" style={GRID2}>
             <Section title={`Components (${data.components.length})`} icon="🧩">
               <div style={SCROLLBOX}>
                 {data.components.map((c: D) => (
@@ -463,7 +474,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── API Endpoints + Socket Events ──────────────────────── */}
-          <div style={{ ...GRID2, marginTop: '1rem' }}>
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             <Section title={`API Endpoints (${data.endpoints.length})`} icon="🌐">
               <div style={SCROLLBOX}>
                 {data.endpoints.map((ep: D, i: number) => (
@@ -488,7 +499,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Routes + DB Models + Pages ──────────────────────────── */}
-          <div style={{ ...GRID3, marginTop: '1rem' }}>
+          <div className="db-grid3" style={{ ...GRID3, marginTop: '1rem' }}>
             <Section title="API Routes" icon="🖧">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {data.routes.map((r: D) => (
@@ -563,7 +574,7 @@ export default function DashboardPage() {
           </Section>
 
           {/* ── Commit Message Analytics ────────────────────────────── */}
-          <div style={{ ...GRID2, marginTop: '1rem' }}>
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             <Section title="Commit Message Analytics" icon="💬">
               <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem' }}>
                 Average message length: <strong>{data.commitStats.avgMsgLength} chars</strong>
@@ -602,7 +613,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Dependencies + Largest + Recently Modified ──────────── */}
-          <div style={{ ...GRID3, marginTop: '1rem' }}>
+          <div className="db-grid3" style={{ ...GRID3, marginTop: '1rem' }}>
             <Section title={`Dependencies (${data.dependencies.total})`} icon="📦">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {[
@@ -655,7 +666,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── TODO / FIXME + Test Distribution ───────────────────── */}
-          <div style={{ ...GRID2, marginTop: '1rem' }}>
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             {data.todos.length > 0 && (
               <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="📌" defaultOpen={false}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: '0.75rem', flexWrap: 'wrap' }}>
