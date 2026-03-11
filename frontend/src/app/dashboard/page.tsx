@@ -715,7 +715,7 @@ export default function DashboardPage() {
               <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 320, overflow: 'auto', gap: 0 }}>
                 {data.recentCommits.map((c: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.recentCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
+                    <code style={{ fontSize: '0.7rem', color: '#60a5fa', flexShrink: 0, fontWeight: 600 }}>{c.hash}</code>
                     <span style={{ fontSize: '0.82rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.message}</span>
                     <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{c.author}</span>
                     <span style={{ ...SUB, flexShrink: 0 }}>{fmtDate(c.date)}</span>

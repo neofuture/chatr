@@ -149,8 +149,8 @@ function scanSocketEvents(dir: string): { event: string; direction: 'emit' | 'on
 // ---------------------------------------------------------------------------
 
 function buildDashboard(): object {
-  const logRaw = git('log --format="%aI|%aN|%s" --no-merges');
-  const commits: { date: string; iso: string; author: string; message: string; hour: number; day: number }[] = [];
+  const logRaw = git('log --format="%h|%aI|%aN|%s" --no-merges');
+  const commits: { hash: string; date: string; iso: string; author: string; message: string; hour: number; day: number }[] = [];
   const dailyMap: Record<string, number> = {};
   const weeklyMap: Record<string, number> = {};
   const authorMap: Record<string, number> = {};
@@ -161,9 +161,12 @@ function buildDashboard(): object {
 
   if (logRaw) {
     for (const line of logRaw.split('\n')) {
-      const p1 = line.indexOf('|'); if (p1 === -1) continue;
-      const iso = line.substring(0, p1);
-      const rest = line.substring(p1 + 1);
+      const p0 = line.indexOf('|'); if (p0 === -1) continue;
+      const hash = line.substring(0, p0);
+      const afterHash = line.substring(p0 + 1);
+      const p1 = afterHash.indexOf('|'); if (p1 === -1) continue;
+      const iso = afterHash.substring(0, p1);
+      const rest = afterHash.substring(p1 + 1);
       const p2 = rest.indexOf('|');
       const author = p2 !== -1 ? rest.substring(0, p2) : 'Unknown';
       const message = p2 !== -1 ? rest.substring(p2 + 1) : rest;
@@ -176,7 +179,7 @@ function buildDashboard(): object {
       const wk = Math.ceil(((d.getTime() - new Date(yr, 0, 1).getTime()) / 86400000 + new Date(yr, 0, 1).getDay() + 1) / 7);
       const weekKey = `${yr}-W${String(wk).padStart(2, '0')}`;
 
-      commits.push({ date, iso, author, message, hour, day });
+      commits.push({ hash, date, iso, author, message, hour, day });
       dailyMap[date] = (dailyMap[date] || 0) + 1;
       weeklyMap[weekKey] = (weeklyMap[weekKey] || 0) + 1;
       authorMap[author] = (authorMap[author] || 0) + 1;
@@ -252,7 +255,7 @@ function buildDashboard(): object {
   const currentBranch = git('rev-parse --abbrev-ref HEAD');
   const latestHash = git('log -1 --format=%h');
   const latestMessage = git('log -1 --format=%s');
-  const recentCommits = commits.slice(0, 30).map(c => ({ date: c.date, message: c.message, author: c.author }));
+  const recentCommits = commits.slice(0, 30).map(c => ({ hash: c.hash, date: c.date, message: c.message, author: c.author }));
 
   // Components
   const componentsDir = path.join(frontendDir, 'components');
