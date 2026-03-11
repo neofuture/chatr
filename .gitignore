@@ -5,6 +5,10 @@
 *.pem
 *.key
 
+# Uploaded files
+backend/uploads/**/*
+!backend/uploads/**/.gitkeep
+
 # Node modules
 /node_modules/
 **/node_modules/
