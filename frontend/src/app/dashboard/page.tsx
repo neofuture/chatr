@@ -10,6 +10,11 @@ const REFRESH_INTERVAL = 30_000;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type D = any;
 
+function fmtDate(d: string) {
+  const [y, m, day] = d.split('-');
+  return `${day}/${m}/${y.slice(2)}`;
+}
+
 // ---------------------------------------------------------------------------
 // Shared styles
 // ---------------------------------------------------------------------------
@@ -159,7 +164,7 @@ function Heatmap({ data }: { data: { date: string; count: number; level: number 
           {weeks.map((w, wi) => (
             <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {w[0] && w[0].dayOfWeek > 0 && wi === 0 && Array.from({ length: w[0].dayOfWeek }).map((_, pi) => <div key={`p-${pi}`} style={{ width: 10, height: 10 }} />)}
-              {w.map((d, di) => <div key={`${wi}-${di}`} title={`${d.date}: ${d.count} commits`} style={{ width: 10, height: 10, borderRadius: 2, background: levels[d.level], cursor: 'default' }} />)}
+              {w.map((d, di) => <div key={`${wi}-${di}`} title={`${fmtDate(d.date)}: ${d.count} commits`} style={{ width: 10, height: 10, borderRadius: 2, background: levels[d.level], cursor: 'default' }} />)}
             </div>
           ))}
         </div>
@@ -344,9 +349,9 @@ export default function DashboardPage() {
           <div className="db-grid2" style={GRID2}>
             <div style={CARD}>
               <h2 style={H2}><Ico>fad fa-chart-bar</Ico> Daily Commits</h2>
-              <BarChart data={data.dailyCommits.map((d: D) => ({ label: d.date, value: d.count }))} />
+              <BarChart data={data.dailyCommits.map((d: D) => ({ label: fmtDate(d.date), value: d.count }))} />
               <div style={{ display: 'flex', justifyContent: 'space-between', ...SUB, marginTop: 6 }}>
-                <span>{data.dailyCommits[0]?.date}</span><span>{data.dailyCommits.at(-1)?.date}</span>
+                <span>{data.dailyCommits[0]?.date && fmtDate(data.dailyCommits[0].date)}</span><span>{data.dailyCommits.at(-1)?.date && fmtDate(data.dailyCommits.at(-1).date)}</span>
               </div>
             </div>
             <div style={CARD}>
@@ -567,7 +572,7 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600 }}>{c.name}</div>
-                      <div style={SUB}>{c.firstCommit} → {c.lastCommit}</div>
+                      <div style={SUB}>{c.firstCommit && fmtDate(c.firstCommit)} → {c.lastCommit && fmtDate(c.lastCommit)}</div>
                     </div>
                     <MiniBar value={c.commits} max={data.contributors[0]?.commits || 1} color={colors[i % 5]} />
                     <span style={{ fontWeight: 700, minWidth: 40, textAlign: 'right' }}>{c.commits}</span>
@@ -713,7 +718,7 @@ export default function DashboardPage() {
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
                     <span style={{ fontSize: '0.82rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.message}</span>
                     <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{c.author}</span>
-                    <span style={{ ...SUB, flexShrink: 0 }}>{c.date}</span>
+                    <span style={{ ...SUB, flexShrink: 0 }}>{fmtDate(c.date)}</span>
                   </div>
                 ))}
               </div>
