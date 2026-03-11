@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">93.47% </span>
+                <span class="strong">87.03% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>43/46</span>
+                <span class='fraction'>47/54</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">81.81% </span>
+                <span class="strong">73.52% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>18/22</span>
+                <span class='fraction'>25/34</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">93.33% </span>
+                <span class="strong">93.75% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>14/15</span>
+                <span class='fraction'>15/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">93.47% </span>
+                <span class="strong">88.67% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>43/46</span>
+                <span class='fraction'>47/53</span>
             </div>
         
             
@@ -185,10 +185,22 @@
 <a name='L120'></a><a href='#L120'>120</a>
 <a name='L121'></a><a href='#L121'>121</a>
 <a name='L122'></a><a href='#L122'>122</a>
-<a name='L123'></a><a href='#L123'>123</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">46x</span>
@@ -197,18 +209,14 @@
 <span class="cline-any cline-yes">46x</span>
 <span class="cline-any cline-yes">46x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">46x</span>
 <span class="cline-any cline-yes">46x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">46x</span>
 <span class="cline-any cline-yes">24x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -260,6 +268,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -311,6 +333,7 @@
 &nbsp;
 import { useEffect, useRef, useState } from 'react';
 import { useToast, Toast } from '@/contexts/ToastContext';
+import styles from './ToastContainer.module.css';
 &nbsp;
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () =&gt; void }) {
   const [isPaused, setIsPaused] = useState(false);
@@ -319,19 +342,15 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () =&gt; void 
   const startTimeRef = useRef&lt;number&gt;(Date.now());
   const remainingTimeRef = useRef&lt;number&gt;(toast.duration || <span class="branch-1 cbranch-no" title="branch not covered" >4000);</span>
 &nbsp;
-  // Get title based on toast type
   const getTitle = () =&gt; {
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (toast.title) <span class="cstat-no" title="statement not covered" >return toast.title;</span>
     switch (toast.type) {
-      case 'success':
-        return 'Success';
-      case 'error':
-        return 'Error';
-      case 'info':
-        return 'Info';
-      case 'warning':
-        return 'Warning';
-<span class="branch-4 cbranch-no" title="branch not covered" >      default:</span>
-<span class="cstat-no" title="statement not covered" >        return '';</span>
+      case 'success': return 'Success';
+      case 'error':   return 'Error';
+      case 'info':    return 'Info';
+      case 'warning': return 'Warning';
+<span class="branch-4 cbranch-no" title="branch not covered" >      case 'newmessage': <span class="cstat-no" title="statement not covered" >return 'New Message';</span></span>
+<span class="branch-5 cbranch-no" title="branch not covered" >      default:        <span class="cstat-no" title="statement not covered" >return '';</span></span>
     }
   };
 &nbsp;
@@ -383,31 +402,45 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () =&gt; void 
 &nbsp;
   return (
     &lt;div
-      className={`toast toast-${toast.type} ${isExiting ? 'toast-exit' : ''}`}
+      className={`${styles['toast']} ${styles[`toast-${toast.type}`]} ${isExiting ? styles['toast-exit'] : ''} ${toast.onClick ? <span class="branch-0 cbranch-no" title="branch not covered" >styles['toast-clickable'] </span>: ''}`}
+      data-testid={`toast-${toast.type}`}
+      data-exiting={isExiting || undefined}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleMouseEnter}
       onTouchEnd={handleMouseLeave}
-      onClick={handleClose}
+      onClick={() =&gt; {
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (toast.onClick) {
+<span class="cstat-no" title="statement not covered" >          toast.onClick();</span>
+<span class="cstat-no" title="statement not covered" >          handleClose();</span>
+        } else {
+          handleClose();
+        }
+      }}
     &gt;
-      &lt;div className="toast-icon"&gt;
+      &lt;div className={styles['toast-icon']} data-testid="toast-icon"&gt;
         {toast.type === 'success' &amp;&amp; &lt;i className="fas fa-check"&gt;&lt;/i&gt;}
         {toast.type === 'error' &amp;&amp; &lt;i className="fas fa-times"&gt;&lt;/i&gt;}
         {toast.type === 'info' &amp;&amp; &lt;i className="fas fa-info-circle"&gt;&lt;/i&gt;}
         {toast.type === 'warning' &amp;&amp; &lt;i className="fas fa-exclamation-triangle"&gt;&lt;/i&gt;}
+        {toast.type === 'newmessage' &amp;&amp; &lt;i className="fas fa-comment"&gt;&lt;/i&gt;}
       &lt;/div&gt;
-      &lt;div className="toast-message"&gt;
-        &lt;div className="toast-title"&gt;{getTitle()}&lt;/div&gt;
-        &lt;div className="toast-text"&gt;{toast.message}&lt;/div&gt;
+      &lt;div className={styles['toast-message']} data-testid="toast-message"&gt;
+        &lt;div className={styles['toast-title']} data-testid="toast-title"&gt;{getTitle()}&lt;/div&gt;
+        &lt;div className={styles['toast-text']} data-testid="toast-text"&gt;{toast.message}&lt;/div&gt;
+        {toast.onClick &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >toast.actionLabel </span>&amp;&amp; (
+          &lt;div className={styles['toast-action']} data-testid="toast-action"&gt;{toast.actionLabel}&lt;/div&gt;
+        )}
       &lt;/div&gt;
       &lt;button
-        className="toast-close"
+        className={styles['toast-close']}
+        data-testid="toast-close"
         onClick={(e) =&gt; {
           e.stopPropagation();
           handleClose();
         }}
       &gt;
-        ✕
+        &lt;i className="fas fa-times"&gt;&lt;/i&gt;
       &lt;/button&gt;
     &lt;/div&gt;
   );
@@ -417,7 +450,7 @@ export default function ToastContainer() {
   const { toasts, removeToast } = useToast();
 &nbsp;
   return (
-    &lt;div className="toast-container"&gt;
+    &lt;div className={styles['toast-container']} data-testid="toast-container"&gt;
       {toasts.map((toast) =&gt; (
         &lt;ToastItem
           key={toast.id}
@@ -436,7 +469,7 @@ export default function ToastContainer() {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-17T23:39:20.738Z
+                at 2026-03-11T19:13:04.962Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">41.17% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/34</span>
+                <span class='fraction'>14/34</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">47.05% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/17</span>
+                <span class='fraction'>8/17</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">16.66% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>1/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">41.17% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/34</span>
+                <span class='fraction'>14/34</span>
             </div>
         
             
@@ -219,23 +219,23 @@
 <a name='L154'></a><a href='#L154'>154</a>
 <a name='L155'></a><a href='#L155'>155</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -373,23 +373,23 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">'use client';
 &nbsp;
-import { useState, FormEvent } from <span class="cstat-no" title="statement not covered" >'react';</span>
-import { useRouter } from <span class="cstat-no" title="statement not covered" >'next/navigation';</span>
-import Image from <span class="cstat-no" title="statement not covered" >'next/image';</span>
-import api from <span class="cstat-no" title="statement not covered" >'@/lib/api';</span>
+import { useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import api from '@/lib/api';
 &nbsp;
-const PRODUCT_NAME = <span class="cstat-no" title="statement not covered" >process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';</span>
+const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 &nbsp;
-export default function <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >LoginPage() {</span></span>
-  const router = <span class="cstat-no" title="statement not covered" >useRouter();</span>
-  const [email, setEmail] = <span class="cstat-no" title="statement not covered" >useState('');</span>
-  const [password, setPassword] = <span class="cstat-no" title="statement not covered" >useState('');</span>
-  const [twoFactorCode, setTwoFactorCode] = <span class="cstat-no" title="statement not covered" >useState('');</span>
-  const [requiresTwoFactor, setRequiresTwoFactor] = <span class="cstat-no" title="statement not covered" >useState(false);</span>
-  const [error, setError] = <span class="cstat-no" title="statement not covered" >useState('');</span>
-  const [loading, setLoading] = <span class="cstat-no" title="statement not covered" >useState(false);</span>
+export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 &nbsp;
-  const handleSubmit = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async (e</span>: FormEvent) =&gt; {</span>
+  const handleSubmit = <span class="fstat-no" title="function not covered" >async (e</span>: FormEvent) =&gt; {
 <span class="cstat-no" title="statement not covered" >    e.preventDefault();</span>
 <span class="cstat-no" title="statement not covered" >    setError('');</span>
 <span class="cstat-no" title="statement not covered" >    setLoading(true);</span>
@@ -433,18 +433,18 @@ export default function <span class="cstat-no" title="statement not covered" ><s
 &nbsp;
           &lt;h1&gt;Welcome back&lt;/h1&gt;
           &lt;p className="subtitle"&gt;
-            {requiresTwoFactor ? 'Enter your 2FA code' : 'Sign in to your account'}
+            {requiresTwoFactor ? <span class="branch-0 cbranch-no" title="branch not covered" >'Enter your 2FA code' : '</span>Sign in to your account'}
           &lt;/p&gt;
 &nbsp;
           {/* Error Message */}
-          {<span class="branch-0 cbranch-no" title="branch not covered" >error &amp;&amp; (</span>
+          {error &amp;&amp; (
             &lt;div className="error-message"&gt;{error}&lt;/div&gt;
           )}
 &nbsp;
           {/* Form */}
           &lt;form onSubmit={handleSubmit}&gt;
             {!requiresTwoFactor ? (
-<span class="branch-0 cbranch-no" title="branch not covered" >              &lt;&gt;</span>
+              &lt;&gt;
                 &lt;div className="form-group"&gt;
                   &lt;label className="form-label"&gt;Email or Username&lt;/label&gt;
                   &lt;input
@@ -491,11 +491,11 @@ export default function <span class="cstat-no" title="statement not covered" ><s
             )}
 &nbsp;
             &lt;button type="submit" className="btn btn-primary" disabled={loading}&gt;
-              {loading ? 'Signing in...' : (requiresTwoFactor ? 'Verify Code' : 'Sign In')}
+              {loading ? <span class="branch-0 cbranch-no" title="branch not covered" >'Signing in...' : (r</span>equiresTwoFactor ? <span class="branch-0 cbranch-no" title="branch not covered" >'Verify Code' : '</span>Sign In')}
             &lt;/button&gt;
           &lt;/form&gt;
 &nbsp;
-          {<span class="branch-0 cbranch-no" title="branch not covered" >requiresTwoFactor &amp;&amp; (</span>
+          {requiresTwoFactor &amp;&amp; (
             &lt;div className="text-center mt-4"&gt;
               &lt;button
                 onClick={<span class="fstat-no" title="function not covered" >() =&gt; {</span>
@@ -532,7 +532,7 @@ export default function <span class="cstat-no" title="statement not covered" ><s
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-02-17T23:39:20.738Z
+                at 2026-03-11T19:13:04.962Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
