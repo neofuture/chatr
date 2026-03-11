@@ -60,17 +60,18 @@ function listDirNames(dir: string): string[] {
   } catch { return []; }
 }
 
-function parsePrismaModels(): { name: string; fields: number }[] {
+function parsePrismaModels(): { name: string; fields: number; relations: number }[] {
   try {
     const schema = fs.readFileSync(path.join(ROOT, 'backend/prisma/schema.prisma'), 'utf8');
-    const models: { name: string; fields: number }[] = [];
+    const models: { name: string; fields: number; relations: number }[] = [];
     const blocks = schema.split(/^model\s+/gm).slice(1);
     for (const block of blocks) {
       const nameMatch = block.match(/^(\w+)/);
       if (!nameMatch) continue;
       const body = block.substring(block.indexOf('{') + 1, block.indexOf('}'));
-      const fields = body.split('\n').filter(l => l.trim() && !l.trim().startsWith('//') && !l.trim().startsWith('@@')).length;
-      models.push({ name: nameMatch[1], fields });
+      const lines = body.split('\n').filter(l => l.trim() && !l.trim().startsWith('//') && !l.trim().startsWith('@@'));
+      const relations = lines.filter(l => l.includes('@relation')).length;
+      models.push({ name: nameMatch[1], fields: lines.length, relations });
     }
     return models;
   } catch { return []; }
@@ -355,6 +356,138 @@ function buildDashboard(): object {
   const commitsPerDay = dailyCommits.length > 0 ? +(totalCommits / dailyCommits.length).toFixed(1) : 0;
   const componentCount = countFiles(componentsDir, ['.tsx']);
 
+  // ── New metrics ──────────────────────────────────────────────────────────
+
+  // Code Churn — most frequently changed files
+  const churnRaw = git('log --format="" --name-only --no-merges');
+  const churnMap: Record<string, number> = {};
+  if (churnRaw) {
+    for (const line of churnRaw.split('\n')) {
+      const f = line.trim();
+      if (f && !f.includes('node_modules') && !f.includes('.next')) {
+        churnMap[f] = (churnMap[f] || 0) + 1;
+      }
+    }
+  }
+  const codeChurn = Object.entries(churnMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20)
+    .map(([file, changes]) => ({ file, changes }));
+
+  // Commit Streaks — current and longest consecutive-day streaks
+  let currentStreak = 0;
+  let longestStreak = 0;
+  const sortedDays = Object.keys(dailyMap).sort();
+  if (sortedDays.length > 0) {
+    // Longest streak
+    let streak = 1;
+    for (let i = 1; i < sortedDays.length; i++) {
+      const prev = new Date(sortedDays[i - 1]);
+      const curr = new Date(sortedDays[i]);
+      if ((curr.getTime() - prev.getTime()) / 86400000 === 1) { streak++; }
+      else { longestStreak = Math.max(longestStreak, streak); streak = 1; }
+    }
+    longestStreak = Math.max(longestStreak, streak);
+
+    // Current streak (counting back from today)
+    const todayStr = today.toISOString().substring(0, 10);
+    let d = new Date(todayStr);
+    if (!dailyMap[todayStr]) { d.setDate(d.getDate() - 1); }
+    while (dailyMap[d.toISOString().substring(0, 10)]) {
+      currentStreak++;
+      d.setDate(d.getDate() - 1);
+    }
+  }
+
+  // Lines Added vs Deleted
+  const shortstatRaw = git('log --shortstat --no-merges --format=""');
+  let linesAdded = 0;
+  let linesDeleted = 0;
+  if (shortstatRaw) {
+    for (const line of shortstatRaw.split('\n')) {
+      const addMatch = line.match(/(\d+) insertion/);
+      const delMatch = line.match(/(\d+) deletion/);
+      if (addMatch) linesAdded += parseInt(addMatch[1], 10);
+      if (delMatch) linesDeleted += parseInt(delMatch[1], 10);
+    }
+  }
+
+  // Code Ownership — lines added per author
+  const ownershipRaw = git('log --format="AUTHOR:%aN" --numstat --no-merges');
+  const ownershipMap: Record<string, { added: number; deleted: number }> = {};
+  let currentAuthor = '';
+  if (ownershipRaw) {
+    for (const line of ownershipRaw.split('\n')) {
+      if (line.startsWith('AUTHOR:')) {
+        currentAuthor = line.substring(7);
+        if (!ownershipMap[currentAuthor]) ownershipMap[currentAuthor] = { added: 0, deleted: 0 };
+      } else {
+        const parts = line.trim().split('\t');
+        if (parts.length >= 3 && currentAuthor) {
+          const a = parseInt(parts[0], 10);
+          const d2 = parseInt(parts[1], 10);
+          if (!isNaN(a)) ownershipMap[currentAuthor].added += a;
+          if (!isNaN(d2)) ownershipMap[currentAuthor].deleted += d2;
+        }
+      }
+    }
+  }
+  const codeOwnership = Object.entries(ownershipMap)
+    .map(([author, stats]) => ({ author, added: stats.added, deleted: stats.deleted, net: stats.added - stats.deleted }))
+    .sort((a, b) => b.net - a.net);
+
+  // Branch and Tag count
+  const branchesRaw = git('branch -a');
+  const branchCount = branchesRaw ? branchesRaw.split('\n').filter(l => l.trim()).length : 0;
+  const tagsRaw = git('tag');
+  const tagCount = tagsRaw ? tagsRaw.split('\n').filter(l => l.trim()).length : 0;
+
+  // Bundle size (.next build output)
+  let bundleSizeBytes = 0;
+  const nextDir = path.join(ROOT, 'frontend/.next');
+  try {
+    if (fs.existsSync(nextDir)) {
+      const duOut = run(`du -sk "${nextDir}"`);
+      bundleSizeBytes = parseInt(duOut.split('\t')[0] || '0', 10) * 1024;
+    }
+  } catch { /* */ }
+
+  // Components without tests
+  const componentsWithoutTests = componentDetails.filter(c => !c.hasTest).map(c => ({ name: c.name, lines: c.lines }));
+
+  // Prisma schema complexity (totals)
+  const prismaComplexity = {
+    totalModels: prismaModels.length,
+    totalFields: prismaModels.reduce((s, m) => s + m.fields, 0),
+    totalRelations: prismaModels.reduce((s, m) => s + m.relations, 0),
+    avgFieldsPerModel: prismaModels.length > 0 ? +(prismaModels.reduce((s, m) => s + m.fields, 0) / prismaModels.length).toFixed(1) : 0,
+  };
+
+  // Stale files — source files whose last commit is oldest
+  const fileLastCommit: Record<string, string> = {};
+  if (churnRaw) {
+    let commitDate = '';
+    const logWithDates = git('log --format="DATE:%aI" --name-only --no-merges');
+    if (logWithDates) {
+      for (const line of logWithDates.split('\n')) {
+        if (line.startsWith('DATE:')) {
+          commitDate = line.substring(5, 15);
+        } else {
+          const f = line.trim();
+          if (f && !f.includes('node_modules') && !f.includes('.next') && !fileLastCommit[f]) {
+            fileLastCommit[f] = commitDate;
+          }
+        }
+      }
+    }
+  }
+  const staleFiles = Object.entries(fileLastCommit)
+    .filter(([f]) => (f.startsWith('frontend/src/') || f.startsWith('backend/src/') || f.startsWith('widget-src/')) &&
+      (f.endsWith('.ts') || f.endsWith('.tsx') || f.endsWith('.css') || f.endsWith('.js')))
+    .sort((a, b) => a[1].localeCompare(b[1]))
+    .slice(0, 15)
+    .map(([file, lastModified]) => ({ file, lastModified }));
+
   return {
     generatedAt: new Date().toISOString(),
     overview: {
@@ -392,12 +525,22 @@ function buildDashboard(): object {
     backendLib: beLibFiles,
     pages: pageNames,
     prismaModels,
+    prismaComplexity,
     scripts,
     dependencies: {
       root: rootDeps, frontend: frontendDeps, backend: backendDeps,
       total: rootDeps.prod + rootDeps.dev + frontendDeps.prod + frontendDeps.dev + backendDeps.prod + backendDeps.dev,
     },
     largestFiles, todos, recentlyModified, dailyCommits, weeklyCommits, recentCommits,
+    codeChurn,
+    commitStreaks: { current: currentStreak, longest: longestStreak },
+    linesChanged: { added: linesAdded, deleted: linesDeleted, net: linesAdded - linesDeleted },
+    codeOwnership,
+    branchCount,
+    tagCount,
+    bundleSizeBytes,
+    componentsWithoutTests,
+    staleFiles,
   };
 }
 

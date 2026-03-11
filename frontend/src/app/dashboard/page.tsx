@@ -236,7 +236,7 @@ const TODO_COLORS: Record<string, string> = { TODO: '#3b82f6', FIXME: '#ef4444',
 function Section({ title, icon, children, defaultOpen = true, fill }: { title: string; icon: string; children: React.ReactNode; defaultOpen?: boolean; fill?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ ...CARD, ...(fill ? { display: 'flex', flexDirection: 'column' as const } : {}) }}>
+    <div style={{ ...CARD, ...(fill ? { display: 'flex', flexDirection: 'column' as const, minHeight: 0, overflow: 'hidden' } : {}) }}>
       <h2 style={{ ...H2, cursor: 'pointer', userSelect: 'none' }} onClick={() => setOpen(p => !p)}>
         <Ico>{icon}</Ico> {title}
         <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ marginLeft: 'auto', fontSize: '0.6rem', color: 'var(--text-secondary)' }} />
@@ -325,6 +325,10 @@ export default function DashboardPage() {
             <StatCard label="Days Active" value={data.overview.daysActive} icon="fas fa-calendar" color="#f59e0b" />
             <StatCard label="Dependencies" value={data.dependencies.total} icon="fas fa-box" color="#ec4899" />
             <StatCard label="Contributors" value={data.contributors.length} icon="fas fa-users" color="#6366f1" />
+            <StatCard label="Commit Streak" value={data.commitStreaks.current} sub={`${data.commitStreaks.longest} day best`} icon="fas fa-fire-flame-curved" color="#ef4444" />
+            <StatCard label="Branches" value={data.branchCount} icon="fas fa-code-branch" color="#14b8a6" />
+            {data.tagCount > 0 && <StatCard label="Tags" value={data.tagCount} icon="fas fa-tag" color="#a855f7" />}
+            {data.bundleSizeBytes > 0 && <StatCard label="Bundle Size" value={`${(data.bundleSizeBytes / 1048576).toFixed(0)}MB`} icon="fas fa-weight-hanging" color="#f97316" />}
           </div>
 
           {/* ── Code Health ────────────────────────────────────────── */}
@@ -337,6 +341,22 @@ export default function DashboardPage() {
               <HealthGauge label="Commits/Day" value={data.health.commitsPerDay} max={10} unit="" color="#8b5cf6" />
               <HealthGauge label="Largest File" value={data.health.largestFile?.lines || 0} max={1000} unit=" loc" color="#ec4899" />
             </div>
+            {data.linesChanged && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10b981' }}>+{data.linesChanged.added.toLocaleString()}</div>
+                  <div style={SUB}>added</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ef4444' }}>-{data.linesChanged.deleted.toLocaleString()}</div>
+                  <div style={SUB}>deleted</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: data.linesChanged.net >= 0 ? '#3b82f6' : '#f59e0b' }}>{data.linesChanged.net >= 0 ? '+' : ''}{data.linesChanged.net.toLocaleString()}</div>
+                  <div style={SUB}>net</div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Heatmap ────────────────────────────────────────────── */}
@@ -440,7 +460,7 @@ export default function DashboardPage() {
           {/* ── Components + Hooks + Contexts ──────────────────────── */}
           <div className="db-grid2" style={GRID2}>
             <Section title={`Components (${data.components.length})`} icon="fad fa-puzzle-piece" fill>
-              <div style={{ ...SCROLLBOX, flex: 1, maxHeight: 'none' }}>
+              <div style={{ ...SCROLLBOX, flex: 1, maxHeight: 'none', minHeight: 0 }}>
                 {data.components.map((c: D) => (
                   <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: '0.78rem' }}>
                     <code style={{ color: '#60a5fa', minWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</code>
@@ -524,10 +544,15 @@ export default function DashboardPage() {
                 {data.prismaModels.map((m: D) => (
                   <div key={m.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
                     <Pill>{m.name}</Pill>
-                    <span style={SUB}>{m.fields} fields</span>
+                    <span style={SUB}>{m.fields} fields{m.relations > 0 && ` · ${m.relations} rel`}</span>
                   </div>
                 ))}
-                <div style={{ ...SUB, marginTop: 4 }}>{data.architecture.dbMigrations} migrations applied</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', ...SUB, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+                  <span>{data.prismaComplexity.totalFields} fields</span>
+                  <span>{data.prismaComplexity.totalRelations} relations</span>
+                  <span>{data.prismaComplexity.avgFieldsPerModel} avg/model</span>
+                  <span>{data.architecture.dbMigrations} migrations</span>
+                </div>
               </div>
             </Section>
             <Section title="Pages" icon="fad fa-file-lines">
@@ -672,6 +697,77 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+            </Section>
+          </div>
+
+          {/* ── Code Churn + Stale Files ─────────────────────────── */}
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
+            <Section title={`Code Churn — Hot Files (${data.codeChurn.length})`} icon="fad fa-fire-flame-curved">
+              <div style={SCROLLBOX}>
+                {data.codeChurn.map((f: D, i: number) => (
+                  <div key={f.file} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '2px 0' }}>
+                    <span style={{ color: 'var(--text-secondary)', minWidth: 16, textAlign: 'right', fontSize: '0.65rem' }}>#{i + 1}</span>
+                    <code style={{ color: '#fb923c', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.file}>
+                      {f.file.replace(/^(frontend\/src|backend\/src|widget-src)\//, '')}
+                    </code>
+                    <MiniBar value={f.changes} max={data.codeChurn[0]?.changes || 1} color="#f97316" />
+                    <span style={{ ...SUB, minWidth: 36, textAlign: 'right' }}>{f.changes}x</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+            <Section title={`Stale Files (${data.staleFiles.length})`} icon="fad fa-hourglass-half">
+              <div style={SCROLLBOX}>
+                {data.staleFiles.map((f: D) => (
+                  <div key={f.file} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '2px 0' }}>
+                    <code style={{ color: '#94a3b8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={f.file}>
+                      {f.file.replace(/^(frontend\/src|backend\/src|widget-src)\//, '')}
+                    </code>
+                    <span style={{ ...SUB, flexShrink: 0 }}>{fmtDate(f.lastModified)}</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+
+          {/* ── Code Ownership + Components Without Tests ──────────── */}
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
+            <Section title="Code Ownership" icon="fad fa-users-viewfinder">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {data.codeOwnership.map((o: D, i: number) => {
+                  const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#6366f1'];
+                  const total = data.codeOwnership.reduce((s: number, x: D) => s + x.net, 0) || 1;
+                  return (
+                    <div key={o.author}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>{o.author}</span>
+                        <span style={SUB}>+{o.added.toLocaleString()} / -{o.deleted.toLocaleString()} = <strong style={{ color: 'var(--text)' }}>{o.net.toLocaleString()}</strong> net</span>
+                      </div>
+                      <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min((o.net / total) * 100, 100)}%`, height: '100%', background: colors[i % colors.length], borderRadius: 3, transition: 'width 0.3s' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+            <Section title={`Untested Components (${data.componentsWithoutTests.length})`} icon="fad fa-triangle-exclamation">
+              {data.componentsWithoutTests.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '1rem 0', textAlign: 'center' }}>
+                  <i className="fad fa-check-circle" style={{ fontSize: '1.5rem', marginBottom: 6, display: 'block', opacity: 0.5 }} />
+                  All components have tests!
+                </div>
+              ) : (
+                <div style={SCROLLBOX}>
+                  {data.componentsWithoutTests.map((c: D) => (
+                    <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '2px 0' }}>
+                      <i className="fas fa-xmark" style={{ color: '#ef4444', fontSize: '0.65rem', width: 12 }} />
+                      <code style={{ color: '#fca5a5', flex: 1 }}>{c.name}</code>
+                      <span style={SUB}>{c.lines} lines</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Section>
           </div>
 
