@@ -52,7 +52,7 @@ describe('ToastContainer Component', () => {
 
   it('does not render any toasts initially', () => {
     renderWithProvider();
-    const toastContainer = document.querySelector('.toast-container');
+    const toastContainer = screen.getByTestId('toast-container');
     expect(toastContainer).toBeInTheDocument();
     expect(toastContainer?.children).toHaveLength(0);
   });
@@ -66,7 +66,7 @@ describe('ToastContainer Component', () => {
 
     expect(screen.getByText('Success')).toBeInTheDocument();
     expect(screen.getByText('Success message')).toBeInTheDocument();
-    expect(document.querySelector('.toast-success')).toBeInTheDocument();
+    expect(screen.getByTestId('toast-success')).toBeInTheDocument();
   });
 
   it('renders error toast when triggered', async () => {
@@ -78,7 +78,7 @@ describe('ToastContainer Component', () => {
 
     expect(screen.getByText('Error')).toBeInTheDocument();
     expect(screen.getByText('Error message')).toBeInTheDocument();
-    expect(document.querySelector('.toast-error')).toBeInTheDocument();
+    expect(screen.getByTestId('toast-error')).toBeInTheDocument();
   });
 
   it('renders info toast when triggered', async () => {
@@ -90,7 +90,7 @@ describe('ToastContainer Component', () => {
 
     expect(screen.getByText('Info')).toBeInTheDocument();
     expect(screen.getByText('Info message')).toBeInTheDocument();
-    expect(document.querySelector('.toast-info')).toBeInTheDocument();
+    expect(screen.getByTestId('toast-info')).toBeInTheDocument();
   });
 
   it('renders warning toast when triggered', async () => {
@@ -102,7 +102,7 @@ describe('ToastContainer Component', () => {
 
     expect(screen.getByText('Warning')).toBeInTheDocument();
     expect(screen.getByText('Warning message')).toBeInTheDocument();
-    expect(document.querySelector('.toast-warning')).toBeInTheDocument();
+    expect(screen.getByTestId('toast-warning')).toBeInTheDocument();
   });
 
   it('displays correct icon for each toast type', async () => {
@@ -159,15 +159,8 @@ describe('ToastContainer Component', () => {
 
     expect(screen.getByText('Success message')).toBeInTheDocument();
 
-    // Find close button by className (now uses Font Awesome icon instead of emoji)
-    const closeButtons = screen.getAllByRole('button');
-    const toastCloseButton = closeButtons.find(btn =>
-      btn.className.includes('toast-close')
-    );
-
-    if (toastCloseButton) {
-      await user.click(toastCloseButton);
-    }
+    const toastCloseButton = screen.getByTestId('toast-close');
+    await user.click(toastCloseButton);
 
     // Wait for exit animation
     act(() => {
@@ -188,10 +181,8 @@ describe('ToastContainer Component', () => {
 
     expect(screen.getByText('Success message')).toBeInTheDocument();
 
-    const toast = document.querySelector('.toast-success');
-    if (toast) {
-      await user.click(toast as Element);
-    }
+    const toast = screen.getByTestId('toast-success');
+    await user.click(toast);
 
     // Wait for exit animation
     act(() => {
@@ -246,22 +237,22 @@ describe('ToastContainer Component', () => {
 
     await user.click(screen.getByText('Show Success'));
 
-    const toast = document.querySelector('.toast-success');
+    const toast = screen.getByTestId('toast-success');
     expect(toast).toBeInTheDocument();
 
-    const icon = toast?.querySelector('.toast-icon');
+    const icon = screen.getByTestId('toast-icon');
     expect(icon).toBeInTheDocument();
 
-    const message = toast?.querySelector('.toast-message');
+    const message = screen.getByTestId('toast-message');
     expect(message).toBeInTheDocument();
 
-    const title = toast?.querySelector('.toast-title');
+    const title = screen.getByTestId('toast-title');
     expect(title).toBeInTheDocument();
 
-    const text = toast?.querySelector('.toast-text');
+    const text = screen.getByTestId('toast-text');
     expect(text).toBeInTheDocument();
 
-    const closeBtn = toast?.querySelector('.toast-close');
+    const closeBtn = screen.getByTestId('toast-close');
     expect(closeBtn).toBeInTheDocument();
   });
 
@@ -271,22 +262,13 @@ describe('ToastContainer Component', () => {
 
     await user.click(screen.getByText('Show Success'));
 
-    const toast = document.querySelector('.toast-success');
-    expect(toast).not.toHaveClass('toast-exit');
+    const toast = screen.getByTestId('toast-success');
+    expect(toast).not.toHaveAttribute('data-exiting');
 
-    // Trigger close (now uses Font Awesome icon instead of emoji)
-    const closeButtons = screen.getAllByRole('button');
-    const toastCloseButton = closeButtons.find(btn =>
-      btn.className.includes('toast-close')
-    );
+    const toastCloseButton = screen.getByTestId('toast-close');
+    await user.click(toastCloseButton);
 
-    if (toastCloseButton) {
-      await user.click(toastCloseButton);
-    }
-
-    // Check for exit class before removal
-    const exitingToast = document.querySelector('.toast-exit');
-    expect(exitingToast).toBeInTheDocument();
+    expect(toast).toHaveAttribute('data-exiting', 'true');
   });
 });
 

@@ -1,0 +1,41 @@
+/* Logo */
+:global(.logo) {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+:global(.logo-box) {
+  width: 3rem;
+  height: 3rem;
+  background: linear-gradient(135deg, var(--orange-500), var(--orange-600));
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 15px -3px var(--shadow-orange);
+}
+
+:global(.logo-letter) {
+  color: white;
+  font-size: 1.875rem;
+  font-weight: bold;
+}
+
+:global(.logo-text) {
+  font-size: 1.875rem;
+  font-weight: bold;
+  background: linear-gradient(90deg, var(--orange-500), var(--orange-600));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Logo for auth pages (horizontal) */
+:global(.logo-image) {
+  height: auto;
+  margin: 0 auto;
+  display: block;
+}

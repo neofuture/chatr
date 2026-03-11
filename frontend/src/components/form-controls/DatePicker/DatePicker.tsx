@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, forwardRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Calendar from '@/components/form-controls/Calendar/Calendar';
+import styles from './DatePicker.module.css';
 
 interface DatePickerProps {
   label?: string;
@@ -655,7 +656,7 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
           <div
             key="month"
             ref={monthRef}
-            className="date-picker-wheel"
+            className={styles['date-picker-wheel']}
             onScroll={handleMonthScroll}
             style={{ flex: 2 }}
           >
@@ -663,7 +664,7 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
             {infiniteMonths.map((month, index) => (
               <div
                 key={`${month}-${index}`}
-                className="date-picker-item"
+                className={styles['date-picker-item']}
                 style={getItemStyle(index, monthScrollPosition)}
                 onClick={() => handleMonthClick(index)}
               >
@@ -726,7 +727,7 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
             <div
               key="day-main"
               ref={dayRef}
-              className="date-picker-wheel"
+              className={styles['date-picker-wheel']}
               onScroll={handleDayScroll}
               style={{
                 flex: 0.8,
@@ -738,7 +739,7 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
               {infiniteDays.map((day, index) => (
                 <div
                   key={`day-main-${day}-${index}-${days.length}`}
-                  className="date-picker-item"
+                  className={styles['date-picker-item']}
                   style={getItemStyle(index, dayScrollPosition)}
                   onClick={() => handleDayClick(index)}
                 >
@@ -807,7 +808,7 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
           <div
             key="year"
             ref={yearRef}
-            className="date-picker-wheel"
+            className={styles['date-picker-wheel']}
             onScroll={handleYearScroll}
             style={{ flex: 0.8 }}
           >
@@ -815,7 +816,7 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
             {infiniteYears.map((year, index) => (
               <div
                 key={`${year}-${index}`}
-                className="date-picker-item"
+                className={styles['date-picker-item']}
                 style={getItemStyle(index, yearScrollPosition)}
                 onClick={() => handleYearClick(index)}
               >
@@ -877,14 +878,14 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
           <div
             key="hour"
             ref={hourRef}
-            className="date-picker-wheel"
+            className={styles['date-picker-wheel']}
             onScroll={handleHourScroll}
           >
             <div style={{ height: '67px' }} />
             {infiniteHours.map((hour, index) => (
               <div
                 key={`${hour}-${index}`}
-                className="date-picker-item"
+                className={styles['date-picker-item']}
                 style={getItemStyle(index, hourScrollPosition)}
                 onClick={() => handleHourClick(index)}
               >
@@ -946,14 +947,14 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
           <div
             key="minute"
             ref={minuteRef}
-            className="date-picker-wheel"
+            className={styles['date-picker-wheel']}
             onScroll={handleMinuteScroll}
           >
             <div style={{ height: '67px' }} />
             {infiniteMinutes.map((minute, index) => (
               <div
                 key={`${minute}-${index}`}
-                className="date-picker-item"
+                className={styles['date-picker-item']}
                 style={getItemStyle(index, minuteScrollPosition)}
                 onClick={() => handleMinuteClick(index)}
               >
@@ -1014,7 +1015,8 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
         {/* Display Input */}
         <div
           onClick={() => setIsOpen(true)}
-          className="date-picker-input"
+          className={styles['date-picker-input']}
+          data-testid="date-picker-input"
         >
           <span style={{ color: selectedDate ? 'var(--blue-100)' : 'rgba(147, 197, 253, 0.5)' }}>
             {mode === 'time'
@@ -1046,12 +1048,12 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
         {/* Calendar Modal (Full Screen Overlay - Rendered at Page Level via Portal) */}
         {showCalendar && typeof window !== 'undefined' && createPortal(
           <div
-            className="date-picker-overlay"
+            className={styles['date-picker-overlay']}
             onClick={() => setShowCalendar(false)}
             style={{ zIndex: 10000 }}
           >
             <div
-              className="date-picker-modal"
+              className={styles['date-picker-modal']}
               onClick={(e) => e.stopPropagation()}
               style={{ maxWidth: '400px', margin: 'auto' }}
             >
@@ -1075,31 +1077,33 @@ const DatePicker = forwardRef<HTMLDivElement, DatePickerProps>(
         {/* iOS-style Picker Modal */}
         {isOpen && (
           <div
-            className="date-picker-overlay"
+            className={styles['date-picker-overlay']}
             onClick={handleCancel}
             onTouchMove={(e) => e.preventDefault()}
             onWheel={(e) => e.preventDefault()}
+            data-testid="date-picker-overlay"
           >
-            <div className="date-picker-modal" onClick={(e) => e.stopPropagation()}>
+            <div className={styles['date-picker-modal']} onClick={(e) => e.stopPropagation()}>
               {/* Header */}
-              <div className="date-picker-header">
-                <button onClick={handleCancel} className="date-picker-button">
+              <div className={styles['date-picker-header']}>
+                <button onClick={handleCancel} className={styles['date-picker-button']}>
                   Cancel
                 </button>
-                <h3 className="date-picker-title">
+                <h3 className={styles['date-picker-title']}>
                   {mode === 'time' ? 'Select Time' : mode === 'date' ? 'Select Date' : 'Select Date & Time'}
                 </h3>
-                <button onClick={handleConfirm} className="date-picker-button date-picker-button-primary">
+                <button onClick={handleConfirm} className={`${styles['date-picker-button']} ${styles['date-picker-button-primary']}`}>
                   Done
                 </button>
               </div>
 
               {/* Picker Wheels */}
-              <div className="date-picker-wheels">
+              <div className={styles['date-picker-wheels']}>
                 {/* Clickable highlight area to submit date */}
                 <div
-                  className="date-picker-highlight"
+                  className={styles['date-picker-highlight']}
                   onClick={handleConfirm}
+                  data-testid="date-picker-highlight"
                   style={{ cursor: 'pointer' }}
                   title="Click to select"
                 />

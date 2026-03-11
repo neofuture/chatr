@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import './Logo.module.css';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';

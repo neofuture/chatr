@@ -130,10 +130,10 @@ describe('ConfirmationDialog Component', () => {
       expect(screen.getByRole('alertdialog')).toBeInTheDocument();
     });
 
-    const backdrop = document.querySelector('.confirmation-backdrop');
+    const backdrop = screen.getByTestId('confirmation-backdrop');
     expect(backdrop).toBeInTheDocument();
 
-    await user.click(backdrop as Element);
+    await user.click(backdrop);
 
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
@@ -195,7 +195,7 @@ describe('ConfirmationDialog Component', () => {
     await user.click(showButton);
 
     await waitFor(() => {
-      const backdrop = document.querySelector('.confirmation-backdrop');
+      const backdrop = screen.getByTestId('confirmation-backdrop');
       expect(backdrop).toBeInTheDocument();
     });
   });
@@ -269,7 +269,7 @@ describe('ConfirmationDialog Component', () => {
     await user.click(showButton);
 
     await waitFor(() => {
-      const backdrop = document.querySelector('.confirmation-backdrop') as HTMLElement;
+      const backdrop = screen.getByTestId('confirmation-backdrop');
       const dialog = screen.getByRole('alertdialog');
 
       expect(backdrop).toHaveStyle({ zIndex: '10500' });

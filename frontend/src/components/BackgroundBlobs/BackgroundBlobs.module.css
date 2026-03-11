@@ -1,0 +1,59 @@
+@keyframes floatBlob1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30vw, -20vh) scale(1.1); }
+  50% { transform: translate(-20vw, 30vh) scale(0.9); }
+  75% { transform: translate(20vw, 10vh) scale(1.05); }
+}
+
+@keyframes floatBlob2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-25vw, -25vh) scale(1.15); }
+  66% { transform: translate(25vw, 20vh) scale(0.95); }
+}
+
+@keyframes floatBlob3 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(calc(-50% + 15vw), calc(-50% - 15vh)) scale(1.2); }
+}
+
+.bg-effects {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bg-blob {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.3;
+  filter: blur(80px);
+  will-change: transform;
+}
+
+.bg-blob-1 {
+  top: 10%;
+  left: 10%;
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, var(--color-orange-500), var(--color-orange-600));
+  animation: floatBlob1 25s ease-in-out infinite;
+}
+
+.bg-blob-2 {
+  bottom: 10%;
+  right: 10%;
+  width: 350px;
+  height: 350px;
+  background: linear-gradient(135deg, var(--color-blue-400), var(--color-blue-500));
+  animation: floatBlob2 30s ease-in-out infinite;
+}
+
+.bg-blob-3 {
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, var(--color-purple-500), var(--color-purple-600));
+  animation: floatBlob3 20s ease-in-out infinite;
+}

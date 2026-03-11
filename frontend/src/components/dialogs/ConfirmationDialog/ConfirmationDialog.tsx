@@ -46,7 +46,8 @@ export default function ConfirmationDialog() {
     <>
       {/* Backdrop */}
       <div
-        className={`confirmation-backdrop ${styles.backdrop}`}
+        className={styles.backdrop}
+        data-testid="confirmation-backdrop"
         onClick={() => closeConfirmation(undefined)}
         onTouchMove={(e) => e.preventDefault()}
         onWheel={(e) => e.preventDefault()}
@@ -55,7 +56,7 @@ export default function ConfirmationDialog() {
 
       {/* Dialog */}
       <div
-        className={`confirmation-dialog ${styles.dialog}`}
+        className={styles.dialog}
         role="alertdialog"
         aria-labelledby="confirmation-title"
         aria-describedby="confirmation-message"

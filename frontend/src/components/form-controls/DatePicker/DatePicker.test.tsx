@@ -158,7 +158,7 @@ describe('DatePicker', () => {
       await user.click(input);
 
       // Click overlay
-      const overlay = container.querySelector('.date-picker-overlay');
+      const overlay = container.querySelector('[data-testid="date-picker-overlay"]');
       if (overlay) {
         fireEvent.click(overlay);
       }
@@ -235,7 +235,7 @@ describe('DatePicker', () => {
       }), { exact: false });
       await user.click(input);
 
-      const highlight = container.querySelector('.date-picker-highlight');
+      const highlight = container.querySelector('[data-testid="date-picker-highlight"]');
       expect(highlight).toBeInTheDocument();
     });
   });
@@ -278,7 +278,7 @@ describe('DatePicker', () => {
     it('should apply date-picker-input class', () => {
       const { container } = render(<DatePicker mode="date" />);
 
-      const input = container.querySelector('.date-picker-input');
+      const input = container.querySelector('[data-testid="date-picker-input"]');
       expect(input).toBeInTheDocument();
     });
 

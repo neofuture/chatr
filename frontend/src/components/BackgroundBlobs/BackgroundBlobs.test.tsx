@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import BackgroundBlobs from './BackgroundBlobs';
 
 describe('BackgroundBlobs Component', () => {
@@ -8,23 +8,24 @@ describe('BackgroundBlobs Component', () => {
   });
 
   it('renders the bg-effects container', () => {
-    const { container } = render(<BackgroundBlobs />);
-    const bgEffects = container.querySelector('.bg-effects');
+    render(<BackgroundBlobs />);
+    const bgEffects = screen.getByTestId('bg-effects');
     expect(bgEffects).toBeInTheDocument();
   });
 
   it('renders three blob elements', () => {
-    const { container } = render(<BackgroundBlobs />);
-    const blobs = container.querySelectorAll('.bg-blob');
-    expect(blobs).toHaveLength(3);
+    render(<BackgroundBlobs />);
+    expect(screen.getByTestId('bg-blob-1')).toBeInTheDocument();
+    expect(screen.getByTestId('bg-blob-2')).toBeInTheDocument();
+    expect(screen.getByTestId('bg-blob-3')).toBeInTheDocument();
   });
 
   it('renders blob with correct class names', () => {
-    const { container } = render(<BackgroundBlobs />);
+    render(<BackgroundBlobs />);
 
-    const blob1 = container.querySelector('.bg-blob-1');
-    const blob2 = container.querySelector('.bg-blob-2');
-    const blob3 = container.querySelector('.bg-blob-3');
+    const blob1 = screen.getByTestId('bg-blob-1');
+    const blob2 = screen.getByTestId('bg-blob-2');
+    const blob3 = screen.getByTestId('bg-blob-3');
 
     expect(blob1).toBeInTheDocument();
     expect(blob2).toBeInTheDocument();
@@ -32,44 +33,39 @@ describe('BackgroundBlobs Component', () => {
   });
 
   it('applies correct structure', () => {
-    const { container } = render(<BackgroundBlobs />);
+    render(<BackgroundBlobs />);
 
-    const bgEffects = container.querySelector('.bg-effects');
-    expect(bgEffects?.children).toHaveLength(3);
-
-    Array.from(bgEffects?.children || []).forEach((child) => {
-      expect(child).toHaveClass('bg-blob');
-    });
+    const bgEffects = screen.getByTestId('bg-effects');
+    expect(bgEffects.children).toHaveLength(3);
   });
 
   it('each blob has both bg-blob and specific class', () => {
-    const { container } = render(<BackgroundBlobs />);
+    render(<BackgroundBlobs />);
 
-    const blob1 = container.querySelector('.bg-blob-1');
-    const blob2 = container.querySelector('.bg-blob-2');
-    const blob3 = container.querySelector('.bg-blob-3');
+    const blob1 = screen.getByTestId('bg-blob-1');
+    const blob2 = screen.getByTestId('bg-blob-2');
+    const blob3 = screen.getByTestId('bg-blob-3');
 
-    expect(blob1).toHaveClass('bg-blob', 'bg-blob-1');
-    expect(blob2).toHaveClass('bg-blob', 'bg-blob-2');
-    expect(blob3).toHaveClass('bg-blob', 'bg-blob-3');
+    expect(blob1.className).toContain('bg-blob');
+    expect(blob2.className).toContain('bg-blob');
+    expect(blob3.className).toContain('bg-blob');
   });
 
   it('renders as a client component', () => {
-    // This test verifies the component can be rendered
-    // Client components should render without server-side issues
     expect(() => render(<BackgroundBlobs />)).not.toThrow();
   });
 
   it('has stable structure across renders', () => {
-    const { container, rerender } = render(<BackgroundBlobs />);
+    const { rerender } = render(<BackgroundBlobs />);
 
-    const initialBlobs = container.querySelectorAll('.bg-blob');
-    expect(initialBlobs).toHaveLength(3);
+    expect(screen.getByTestId('bg-blob-1')).toBeInTheDocument();
+    expect(screen.getByTestId('bg-blob-2')).toBeInTheDocument();
+    expect(screen.getByTestId('bg-blob-3')).toBeInTheDocument();
 
     rerender(<BackgroundBlobs />);
 
-    const rerenderBlobs = container.querySelectorAll('.bg-blob');
-    expect(rerenderBlobs).toHaveLength(3);
+    expect(screen.getByTestId('bg-blob-1')).toBeInTheDocument();
+    expect(screen.getByTestId('bg-blob-2')).toBeInTheDocument();
+    expect(screen.getByTestId('bg-blob-3')).toBeInTheDocument();
   });
 });
-

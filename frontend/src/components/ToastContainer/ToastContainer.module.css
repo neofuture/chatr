@@ -1,0 +1,204 @@
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 500px;
+  width: 90%;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px var(--overlay-black-30);
+  backdrop-filter: blur(10px);
+  border: 1px solid;
+  cursor: pointer;
+  pointer-events: auto;
+  animation: slideDown 0.3s ease-out;
+  transition: opacity 0.3s ease-out,
+              transform 0.3s ease-out,
+              max-height 0.3s ease-out,
+              padding 0.3s ease-out,
+              margin 0.3s ease-out,
+              border-width 0.3s ease-out;
+  overflow: hidden;
+  max-height: 200px;
+}
+
+.toast:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px var(--overlay-black-40);
+}
+
+.toast-exit {
+  opacity: 0 !important;
+  transform: translateY(-30px) scale(0.9) !important;
+  pointer-events: none;
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: -0.75rem !important;
+  margin-bottom: 0 !important;
+  border-width: 0 !important;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+    max-height: 200px;
+  }
+}
+
+.toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 0.875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  color: white;
+  margin-top: 0.125rem;
+}
+
+.toast-message {
+  flex: 1;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.toast-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+
+.toast-text {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  opacity: 0.9;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  opacity: 0.8;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.toast-close:hover {
+  background: var(--overlay-white-20);
+  color: var(--color-white);
+}
+
+.toast-clickable {
+  cursor: pointer;
+}
+
+.toast-clickable:hover {
+  filter: brightness(1.1);
+}
+
+.toast-action {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.75;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Toast Types */
+.toast-success {
+  background: var(--overlay-green-20) !important;
+  border-color: var(--overlay-green-50);
+  backdrop-filter: blur(10px);
+}
+
+.toast-success .toast-icon {
+  background: var(--overlay-green-40);
+  color: white;
+}
+
+.toast-error {
+  background: var(--overlay-red-20) !important;
+  border-color: var(--overlay-red-50);
+  backdrop-filter: blur(10px);
+}
+
+.toast-error .toast-icon {
+  background: var(--overlay-red-40);
+  color: white;
+}
+
+.toast-info {
+  background: var(--overlay-blue-20) !important;
+  border-color: var(--overlay-blue-50);
+  backdrop-filter: blur(10px);
+}
+
+.toast-info .toast-icon {
+  background: var(--overlay-blue-40);
+  color: white;
+}
+
+.toast-warning {
+  background: var(--overlay-orange-20) !important;
+  border-color: var(--overlay-orange-50);
+  backdrop-filter: blur(10px);
+}
+
+.toast-warning .toast-icon {
+  background: var(--overlay-orange-40);
+  color: white;
+}
+
+.toast-newmessage {
+  background: var(--overlay-green-20) !important;
+  border-color: var(--overlay-green-50);
+  backdrop-filter: blur(10px);
+}
+
+.toast-newmessage .toast-icon {
+  background: var(--overlay-green-40);
+  color: white;
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    width: calc(100% - 2rem);
+    max-width: none;
+  }
+}

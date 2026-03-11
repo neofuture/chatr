@@ -8,6 +8,7 @@ import AuthPanel from '@/components/panels/AuthPanel/AuthPanel';
 import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 import Button from '@/components/form-controls/Button/Button';
 import { useRouter } from 'next/navigation';
+import styles from './Hero.module.css';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -51,7 +52,7 @@ export default function HomePage() {
 
 
   return (
-    <div className="hero-container">
+    <div className={styles['hero-container']}>
       <BackgroundBlobs />
 
       {/* Theme Toggle */}
@@ -64,34 +65,34 @@ export default function HomePage() {
         <ThemeToggle />
       </div>
 
-      <div className="hero-content">
+      <div className={styles['hero-content']}>
         {/* Logo */}
-        <div className="hero-logo-wrapper">
+        <div className={styles['hero-logo-wrapper']}>
           <Image
             src="/images/logo-vertical.png"
             alt={PRODUCT_NAME}
             width={200}
             height={200}
             priority
-            className="hero-logo-image"
+            className={styles['hero-logo-image']}
           />
         </div>
 
         {/* Tagline */}
-        <p className="hero-tagline">Connect. Chat. Collaborate.</p>
-        <p className="hero-description">
+        <p className={styles['hero-tagline']}>Connect. Chat. Collaborate.</p>
+        <p className={styles['hero-description']}>
           Real-time messaging with friends and groups. Stay connected anytime, anywhere.
         </p>
 
         {/* CTA Buttons */}
-        <div className="quote-card">
-          <div className="cta-buttons">
-            <button onClick={openRegister} className="cta-btn cta-primary">
+        <div className={styles['quote-card']}>
+          <div className={styles['cta-buttons']}>
+            <button onClick={openRegister} className={`${styles['cta-btn']} ${styles['cta-primary']}`}>
               <span>Create Account</span>
               <span>›</span>
             </button>
 
-            <button onClick={openLogin} className="cta-btn cta-secondary">
+            <button onClick={openLogin} className={`${styles['cta-btn']} ${styles['cta-secondary']}`}>
               <span>Sign In</span>
               <span>›</span>
             </button>
@@ -99,42 +100,42 @@ export default function HomePage() {
         </div>
 
         {/* Feature Cards */}
-        <div className="feature-grid">
-          <div className="feature-card">
-            <div className="feature-icon"><i className="fas fa-bolt"></i></div>
-            <h3 className="feature-title">Real-time</h3>
-            <p className="feature-description">Instant message delivery with live updates</p>
+        <div className={styles['feature-grid']}>
+          <div className={styles['feature-card']}>
+            <div className={styles['feature-icon']}><i className="fas fa-bolt"></i></div>
+            <h3 className={styles['feature-title']}>Real-time</h3>
+            <p className={styles['feature-description']}>Instant message delivery with live updates</p>
           </div>
 
-          <div className="feature-card">
-            <div className="feature-icon"><i className="fas fa-lock"></i></div>
-            <h3 className="feature-title">Secure</h3>
-            <p className="feature-description">Your conversations are private and protected</p>
+          <div className={styles['feature-card']}>
+            <div className={styles['feature-icon']}><i className="fas fa-lock"></i></div>
+            <h3 className={styles['feature-title']}>Secure</h3>
+            <p className={styles['feature-description']}>Your conversations are private and protected</p>
           </div>
 
-          <div className="feature-card">
-            <div className="feature-icon"><i className="fas fa-mobile-alt"></i></div>
-            <h3 className="feature-title">Offline Mode</h3>
-            <p className="feature-description">Messages sync when you reconnect</p>
+          <div className={styles['feature-card']}>
+            <div className={styles['feature-icon']}><i className="fas fa-mobile-alt"></i></div>
+            <h3 className={styles['feature-title']}>Offline Mode</h3>
+            <p className={styles['feature-description']}>Messages sync when you reconnect</p>
           </div>
         </div>
 
         {/* Features List */}
-        <div className="features-list">
-          <div className="feature-item">
-            <span className="check-icon"><i className="fas fa-check"></i></span>
+        <div className={styles['features-list']}>
+          <div className={styles['feature-item']}>
+            <span className={styles['check-icon']}><i className="fas fa-check"></i></span>
             <span>Private messaging</span>
           </div>
-          <div className="feature-item">
-            <span className="check-icon"><i className="fas fa-check"></i></span>
+          <div className={styles['feature-item']}>
+            <span className={styles['check-icon']}><i className="fas fa-check"></i></span>
             <span>Group chats</span>
           </div>
-          <div className="feature-item">
-            <span className="check-icon"><i className="fas fa-check"></i></span>
+          <div className={styles['feature-item']}>
+            <span className={styles['check-icon']}><i className="fas fa-check"></i></span>
             <span>User search</span>
           </div>
-          <div className="feature-item">
-            <span className="check-icon"><i className="fas fa-check"></i></span>
+          <div className={styles['feature-item']}>
+            <span className={styles['check-icon']}><i className="fas fa-check"></i></span>
             <span>Always free</span>
           </div>
         </div>

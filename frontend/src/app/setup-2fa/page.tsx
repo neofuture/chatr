@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import api from '@/lib/api';
 import { saveAuthToken } from '@/lib/authUtils';
+import heroStyles from '../Hero.module.css';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -114,8 +115,8 @@ function Setup2FAContent() {
           {/* QR Code */}
           {qrCode && (
             <div className="mb-6">
-              <div className="qr-code-container">
-                <img src={qrCode} alt="QR Code" className="qr-code" />
+              <div className={heroStyles['qr-code-container']}>
+                <img src={qrCode} alt="QR Code" className={heroStyles['qr-code']} />
               </div>
 
               <div className="mt-4 p-4" style={{

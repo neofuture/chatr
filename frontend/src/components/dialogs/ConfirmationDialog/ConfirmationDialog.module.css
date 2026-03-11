@@ -6,6 +6,7 @@
   -webkit-backdrop-filter: blur(4px);
   z-index: 10500;
   animation: fadeIn 0.2s ease-out;
+  touch-action: none;
 }
 
 @keyframes fadeIn {
@@ -65,6 +66,7 @@
 }
 
 .actionBtn {
+  position: relative;
   width: 100%;
   padding: 0.875rem 1rem;
   font-size: 1.0625rem;

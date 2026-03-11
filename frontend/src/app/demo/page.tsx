@@ -14,6 +14,7 @@ import Button from '@/components/form-controls/Button/Button';
 import DatePicker from '@/components/form-controls/DatePicker/DatePicker';
 
 import { version } from '@/version';
+import heroStyles from '../Hero.module.css';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -153,10 +154,10 @@ export default function DemoPage() {
   };
 
   return (
-    <div className="hero-container">
+    <div className={heroStyles['hero-container']}>
       <BackgroundBlobs />
 
-      <div className="hero-content">
+      <div className={heroStyles['hero-content']}>
         {/* Theme Toggle - Top Right */}
         <div style={{
           position: 'fixed',

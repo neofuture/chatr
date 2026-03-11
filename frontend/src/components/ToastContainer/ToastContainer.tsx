@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useToast, Toast } from '@/contexts/ToastContext';
+import styles from './ToastContainer.module.css';
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) {
   const [isPaused, setIsPaused] = useState(false);
@@ -70,7 +71,9 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
 
   return (
     <div
-      className={`toast toast-${toast.type} ${isExiting ? 'toast-exit' : ''} ${toast.onClick ? 'toast-clickable' : ''}`}
+      className={`${styles['toast']} ${styles[`toast-${toast.type}`]} ${isExiting ? styles['toast-exit'] : ''} ${toast.onClick ? styles['toast-clickable'] : ''}`}
+      data-testid={`toast-${toast.type}`}
+      data-exiting={isExiting || undefined}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleMouseEnter}
@@ -84,22 +87,23 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
         }
       }}
     >
-      <div className="toast-icon">
+      <div className={styles['toast-icon']} data-testid="toast-icon">
         {toast.type === 'success' && <i className="fas fa-check"></i>}
         {toast.type === 'error' && <i className="fas fa-times"></i>}
         {toast.type === 'info' && <i className="fas fa-info-circle"></i>}
         {toast.type === 'warning' && <i className="fas fa-exclamation-triangle"></i>}
         {toast.type === 'newmessage' && <i className="fas fa-comment"></i>}
       </div>
-      <div className="toast-message">
-        <div className="toast-title">{getTitle()}</div>
-        <div className="toast-text">{toast.message}</div>
+      <div className={styles['toast-message']} data-testid="toast-message">
+        <div className={styles['toast-title']} data-testid="toast-title">{getTitle()}</div>
+        <div className={styles['toast-text']} data-testid="toast-text">{toast.message}</div>
         {toast.onClick && toast.actionLabel && (
-          <div className="toast-action">{toast.actionLabel}</div>
+          <div className={styles['toast-action']} data-testid="toast-action">{toast.actionLabel}</div>
         )}
       </div>
       <button
-        className="toast-close"
+        className={styles['toast-close']}
+        data-testid="toast-close"
         onClick={(e) => {
           e.stopPropagation();
           handleClose();
@@ -115,7 +119,7 @@ export default function ToastContainer() {
   const { toasts, removeToast } = useToast();
 
   return (
-    <div className="toast-container">
+    <div className={styles['toast-container']} data-testid="toast-container">
       {toasts.map((toast) => (
         <ToastItem
           key={toast.id}

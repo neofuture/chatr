@@ -10,6 +10,7 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import docStyles from './Docs.module.css';
 
 // Mermaid is browser-only — load with ssr:false so webpack never bundles it for the server
 const MermaidDiagram = dynamic(
@@ -924,7 +925,7 @@ export default function DocsPage() {
               Loading documentation...
             </div>
           ) : selectedFile ? (
-            <div className="markdown-content">
+            <div className={docStyles['markdown-content']}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkUnwrapParagraphs]}
                 rehypePlugins={[
