@@ -364,7 +364,7 @@ function buildDashboard(): object {
   if (churnRaw) {
     for (const line of churnRaw.split('\n')) {
       const f = line.trim();
-      if (f && !f.includes('node_modules') && !f.includes('.next')) {
+      if (f && !f.includes('node_modules') && !f.includes('.next') && !f.endsWith('version.ts')) {
         churnMap[f] = (churnMap[f] || 0) + 1;
       }
     }
