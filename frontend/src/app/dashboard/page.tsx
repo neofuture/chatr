@@ -233,10 +233,10 @@ function HealthGauge({ label, value, max, unit, color }: { label: string; value:
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TODO_COLORS: Record<string, string> = { TODO: '#3b82f6', FIXME: '#ef4444', HACK: '#f59e0b', XXX: '#ec4899', WARN: '#f97316' };
 
-function Section({ title, icon, children, defaultOpen = true, fill }: { title: string; icon: string; children: React.ReactNode; defaultOpen?: boolean; fill?: boolean }) {
+function Section({ title, icon, children, defaultOpen = true }: { title: string; icon: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ ...CARD, ...(fill ? { display: 'flex', flexDirection: 'column' as const, minHeight: 0, overflow: 'hidden' } : {}) }}>
+    <div style={CARD}>
       <h2 style={{ ...H2, cursor: 'pointer', userSelect: 'none' }} onClick={() => setOpen(p => !p)}>
         <Ico>{icon}</Ico> {title}
         <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ marginLeft: 'auto', fontSize: '0.6rem', color: 'var(--text-secondary)' }} />
@@ -458,9 +458,9 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Components + Hooks + Contexts ──────────────────────── */}
-          <div className="db-grid2" style={GRID2}>
-            <Section title={`Components (${data.components.length})`} icon="fad fa-puzzle-piece" fill>
-              <div style={{ ...SCROLLBOX, flex: 1, maxHeight: 'none', minHeight: 0 }}>
+          <div className="db-grid2" style={{ ...GRID2, alignItems: 'start' }}>
+            <Section title={`Components (${data.components.length})`} icon="fad fa-puzzle-piece">
+              <div style={SCROLLBOX}>
                 {data.components.map((c: D) => (
                   <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: '0.78rem' }}>
                     <code style={{ color: '#60a5fa', minWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</code>
