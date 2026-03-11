@@ -45,9 +45,15 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function StatCard({ label, value, sub, icon, color }: { label: string; value: string | number; sub?: string; icon: string; color: string }) {
+function StatCard({ label, value, sub, icon, color, scrollTo }: { label: string; value: string | number; sub?: string; icon: string; color: string; scrollTo?: string }) {
+  const handleClick = () => {
+    if (!scrollTo) return;
+    const el = document.getElementById(scrollTo);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   return (
-    <div style={{ ...CARD, display: 'flex', alignItems: 'center', gap: '1rem', transition: 'transform 0.15s, box-shadow 0.15s', cursor: 'default' }}
+    <div style={{ ...CARD, display: 'flex', alignItems: 'center', gap: '1rem', transition: 'transform 0.15s, box-shadow 0.15s', cursor: scrollTo ? 'pointer' : 'default' }}
+      onClick={handleClick}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
       <div style={{ width: 44, height: 44, borderRadius: 10, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0, color: '#fff' }}>
@@ -80,13 +86,14 @@ function BarChart({ data, maxBars = 60, color = 'linear-gradient(to top,#3b82f6,
 }
 
 function LangBar({ loc }: { loc: D }) {
-  const total = loc.typescript + loc.css + loc.javascript;
+  const total = (loc.typescript || 0) + (loc.css || 0) + (loc.javascript || 0) + (loc.shell || 0);
   if (!total) return null;
   const segs = [
-    { label: 'TypeScript', value: loc.typescript, color: '#3178c6' },
-    { label: 'CSS', value: loc.css, color: '#563d7c' },
-    { label: 'JavaScript', value: loc.javascript, color: '#f7df1e' },
-  ];
+    { label: 'TypeScript', value: loc.typescript || 0, color: '#3178c6' },
+    { label: 'CSS', value: loc.css || 0, color: '#563d7c' },
+    { label: 'JavaScript', value: loc.javascript || 0, color: '#f7df1e' },
+    { label: 'Shell', value: loc.shell || 0, color: '#4eaa25' },
+  ].filter(s => s.value > 0);
   return (
     <div>
       <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', height: 14, marginBottom: '0.75rem' }}>
@@ -229,9 +236,9 @@ function HealthGauge({ label, value, max, unit, color }: { label: string; value:
       <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div>
       <div style={{ position: 'relative', width: 80, height: 44, margin: '0 auto', overflow: 'hidden' }}>
         <svg width={80} height={44} viewBox="0 0 80 44">
-          <path d="M 8 40 A 32 32 0 0 1 72 40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={6} strokeLinecap="round" />
+          <path d="M 8 40 A 32 32 0 0 1 72 40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={6} strokeLinecap="round" pathLength={100} />
           <path d="M 8 40 A 32 32 0 0 1 72 40" fill="none" stroke={color} strokeWidth={6} strokeLinecap="round"
-            strokeDasharray={`${pct} ${100 - pct}`} style={{ transition: 'stroke-dasharray 0.5s' }} />
+            pathLength={100} strokeDasharray={`${pct} 100`} style={{ transition: 'stroke-dasharray 0.5s' }} />
         </svg>
       </div>
       <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: 4 }}>{value}{unit}</div>
@@ -239,13 +246,47 @@ function HealthGauge({ label, value, max, unit, color }: { label: string; value:
   );
 }
 
+function SuiteRow({ suite }: { suite: D }) {
+  const [open, setOpen] = useState(false);
+  const allPassed = suite.tests.every((t: D) => t.status === 'passed');
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
+      <div onClick={() => setOpen(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', cursor: 'pointer', fontSize: '0.8rem' }}>
+        <i className={`fas fa-${allPassed ? 'check-circle' : 'times-circle'}`} style={{ color: allPassed ? '#10b981' : '#ef4444', fontSize: '0.7rem' }} />
+        <code style={{ color: '#60a5fa', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {suite.file.replace(/^(backend|frontend)\/src\//, '')}
+        </code>
+        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+          {suite.tests.filter((t: D) => t.status === 'passed').length}/{suite.tests.length}
+        </span>
+        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', minWidth: 40, textAlign: 'right' }}>
+          {(suite.duration / 1000).toFixed(1)}s
+        </span>
+        <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }} />
+      </div>
+      {open && (
+        <div style={{ paddingLeft: 20, paddingBottom: 6 }}>
+          {suite.tests.map((t: D, i: number) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', padding: '2px 0' }}>
+              <i className={`fas fa-${t.status === 'passed' ? 'check' : 'xmark'}`}
+                style={{ color: t.status === 'passed' ? '#10b981' : '#ef4444', fontSize: '0.6rem', width: 10 }} />
+              <span style={{ flex: 1, color: t.status === 'passed' ? 'var(--text-secondary)' : '#fca5a5' }}>{t.name}</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{t.duration}ms</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TODO_COLORS: Record<string, string> = { TODO: '#3b82f6', FIXME: '#ef4444', HACK: '#f59e0b', XXX: '#ec4899', WARN: '#f97316' };
 
-function Section({ title, icon, children, defaultOpen = true }: { title: string; icon: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function Section({ title, icon, children, defaultOpen = true, id }: { title: string; icon: string; children: React.ReactNode; defaultOpen?: boolean; id?: string }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={CARD}>
+    <div id={id} style={CARD}>
       <h2 style={{ ...H2, cursor: 'pointer', userSelect: 'none' }} onClick={() => setOpen(p => !p)}>
         <Ico>{icon}</Ico> {title}
         <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ marginLeft: 'auto', fontSize: '0.6rem', color: 'var(--text-secondary)' }} />
@@ -264,12 +305,26 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [testReport, setTestReport] = useState<D>(null);
+  const [testArea, setTestArea] = useState<'backend' | 'frontend'>('backend');
+  const [testsRunning, setTestsRunning] = useState(false);
 
   const fetchData = useCallback(() => {
     fetch(`${API}/api/dashboard`)
       .then(r => r.ok ? r.json() : Promise.reject('Failed to load'))
       .then(d => { setData(d); setLastRefresh(new Date()); setError(null); })
       .catch(e => setError(String(e)));
+  }, []);
+
+  const runTests = useCallback((area: 'backend' | 'frontend', forceRun = false) => {
+    setTestsRunning(true);
+    setTestArea(area);
+    const endpoint = forceRun ? `${API}/api/dashboard/tests/${area}/run` : `${API}/api/dashboard/tests/${area}`;
+    const opts = forceRun ? { method: 'POST' } : {};
+    fetch(endpoint, opts)
+      .then(r => r.ok ? r.json() : Promise.reject('Failed to run tests'))
+      .then(d => { setTestReport(d); setTestsRunning(false); })
+      .catch(() => { setTestsRunning(false); });
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -327,17 +382,23 @@ export default function DashboardPage() {
 
           {/* ── Overview Cards ──────────────────────────────────────── */}
           <div className="db-overview" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <StatCard label="Total Commits" value={data.overview.totalCommits} sub={`${data.health.commitsPerDay}/day avg`} icon="fas fa-code-commit" color="#3b82f6" />
-            <StatCard label="Lines of Code" value={data.overview.totalLines} sub={`~${Math.round(data.overview.totalLines / 1000)}k`} icon="fas fa-laptop-code" color="#8b5cf6" />
-            <StatCard label="Source Files" value={data.overview.totalFiles} sub={`${data.health.avgFileSize} avg loc`} icon="fas fa-folder" color="#06b6d4" />
-            <StatCard label="Test Files" value={data.overview.testFiles} sub={`${data.health.testRatio}% ratio`} icon="fas fa-flask" color="#10b981" />
-            <StatCard label="Days Active" value={data.overview.daysActive} icon="fas fa-calendar" color="#f59e0b" />
-            <StatCard label="Dependencies" value={data.dependencies.total} icon="fas fa-box" color="#ec4899" />
-            <StatCard label="Contributors" value={data.contributors.length} icon="fas fa-users" color="#6366f1" />
-            <StatCard label="Commit Streak" value={data.commitStreaks.current} sub={`${data.commitStreaks.longest} day best`} icon="fas fa-fire-flame-curved" color="#ef4444" />
-            <StatCard label="Branches" value={data.branchCount} icon="fas fa-code-branch" color="#14b8a6" />
-            {data.tagCount > 0 && <StatCard label="Tags" value={data.tagCount} icon="fas fa-tag" color="#a855f7" />}
-            {data.bundleSizeBytes > 0 && <StatCard label="Bundle Size" value={`${(data.bundleSizeBytes / 1048576).toFixed(0)}MB`} icon="fas fa-weight-hanging" color="#f97316" />}
+            <StatCard label="Total Commits" value={data.overview.totalCommits} sub={`${data.health.commitsPerDay}/day avg`} icon="fas fa-code-commit" color="#3b82f6" scrollTo="sec-activity" />
+            <StatCard label="Lines of Code" value={data.overview.totalLines} sub={`~${Math.round(data.overview.totalLines / 1000)}k`} icon="fas fa-laptop-code" color="#8b5cf6" scrollTo="sec-languages" />
+            <StatCard label="Source Files" value={data.overview.totalFiles} sub={`${data.health.avgFileSize} avg loc`} icon="fas fa-folder" color="#06b6d4" scrollTo="sec-largest" />
+            <StatCard label="Test Files" value={data.overview.testFiles} sub={`${data.testBreakdown.frontend}fe / ${data.testBreakdown.backend}be / ${data.testBreakdown.widget}w`} icon="fas fa-flask" color="#10b981" scrollTo="sec-test-results" />
+            <StatCard label="API Endpoints" value={data.endpoints?.length || 0} sub={`${data.architecture.apiRoutes} route files`} icon="fas fa-network-wired" color="#f97316" scrollTo="sec-endpoints" />
+            <StatCard label="Components" value={data.architecture.components} sub={`${data.architecture.hooks} hooks / ${data.architecture.contexts} ctx`} icon="fas fa-puzzle-piece" color="#ec4899" scrollTo="sec-architecture" />
+            <StatCard label="DB Models" value={data.architecture.dbModels} sub={`${data.architecture.dbMigrations} migrations`} icon="fas fa-database" color="#14b8a6" scrollTo="sec-migrations" />
+            <StatCard label="Dependencies" value={data.dependencies.total} sub={`${data.dependencies.frontend.prod + data.dependencies.backend.prod} prod`} icon="fas fa-box" color="#a855f7" scrollTo="sec-dependencies" />
+            <StatCard label="Days Active" value={data.overview.daysActive} sub={data.overview.firstCommitDate?.substring(0, 10)} icon="fas fa-calendar" color="#f59e0b" scrollTo="sec-heatmap" />
+            <StatCard label="Contributors" value={data.contributors.length} icon="fas fa-users" color="#6366f1" scrollTo="sec-contributors" />
+            <StatCard label="Commit Streak" value={data.commitStreaks.current} sub={`${data.commitStreaks.longest} day best`} icon="fas fa-fire-flame-curved" color="#ef4444" scrollTo="sec-heatmap" />
+            <StatCard label="Branches" value={data.branchCount} icon="fas fa-code-branch" color="#0ea5e9" scrollTo="sec-branches" />
+            <StatCard label="Socket Events" value={data.socketEvents?.length || 0} icon="fas fa-plug" color="#84cc16" scrollTo="sec-socket" />
+            <StatCard label="TODOs" value={data.todos?.length || 0} sub="in codebase" icon="fas fa-thumbtack" color="#fb923c" scrollTo="sec-todos" />
+            <StatCard label="Pages" value={data.architecture.pages} sub={`${data.architecture.middleware} middleware`} icon="fas fa-file-lines" color="#38bdf8" scrollTo="sec-pages" />
+            {data.bundleSizeBytes > 0 && <StatCard label="Bundle Size" value={`${(data.bundleSizeBytes / 1048576).toFixed(0)}MB`} icon="fas fa-weight-hanging" color="#f43f5e" />}
+            {data.tagCount > 0 && <StatCard label="Tags" value={data.tagCount} icon="fas fa-tag" color="#c084fc" />}
           </div>
 
           {/* ── Code Health ────────────────────────────────────────── */}
@@ -345,8 +406,8 @@ export default function DashboardPage() {
             <h2 style={H2}><Ico>fad fa-heartbeat</Ico> Code Health</h2>
             <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '1rem' }}>
               <HealthGauge label="Avg File Size" value={data.health.avgFileSize} max={300} unit=" loc" color="#3b82f6" />
-              <HealthGauge label="Test Ratio" value={data.health.testRatio} max={100} unit="%" color="#10b981" />
-              <HealthGauge label="Component Tests" value={data.health.testCoverage} max={100} unit="%" color="#f59e0b" />
+              <HealthGauge label="Backend Coverage" value={data.backendModules?.length ? +((data.backendTestedCount / data.backendModules.length) * 100).toFixed(0) : 0} max={100} unit="%" color="#10b981" />
+              <HealthGauge label="Frontend Coverage" value={data.frontendModules?.length ? +(((data.frontendTestedCount ?? 0) / data.frontendModules.length) * 100).toFixed(0) : 0} max={100} unit="%" color="#f59e0b" />
               <HealthGauge label="Commits/Day" value={data.health.commitsPerDay} max={10} unit="" color="#8b5cf6" />
               <HealthGauge label="Largest File" value={data.health.largestFile?.lines || 0} max={1000} unit=" loc" color="#ec4899" />
             </div>
@@ -368,14 +429,154 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* ── Security & Build Status ──────────────────────────── */}
+          <div className="db-grid2" style={GRID2}>
+            {/* Dependency Vulnerabilities */}
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-shield-exclamation</Ico> Dependency Security</h2>
+              {(['backend', 'frontend'] as const).map(area => {
+                const a = data.audit?.[area];
+                if (!a) return null;
+                const total = a.critical + a.high + a.moderate + a.low;
+                const statusColor = a.critical > 0 ? '#ef4444' : a.high > 0 ? '#f59e0b' : total > 0 ? '#3b82f6' : '#10b981';
+                const statusLabel = a.critical > 0 ? 'CRITICAL' : a.high > 0 ? 'HIGH RISK' : total > 0 ? 'LOW RISK' : 'CLEAN';
+                return (
+                  <div key={area} style={{ marginBottom: '0.75rem', padding: '0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: `1px solid ${statusColor}22` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize' }}>{area}</span>
+                      <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: 4, background: `${statusColor}18`, color: statusColor, fontWeight: 700 }}>{statusLabel}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {[
+                        { label: 'Critical', val: a.critical, color: '#ef4444' },
+                        { label: 'High', val: a.high, color: '#f97316' },
+                        { label: 'Moderate', val: a.moderate, color: '#f59e0b' },
+                        { label: 'Low', val: a.low, color: '#3b82f6' },
+                      ].map(v => (
+                        <span key={v.label} style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: v.val > 0 ? `${v.color}15` : 'rgba(255,255,255,0.04)', color: v.val > 0 ? v.color : 'var(--text-secondary)' }}>
+                          {v.label}: {v.val}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Build Health */}
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-hammer</Ico> Build Health</h2>
+              {(data.buildChecks || []).map((bc: D) => {
+                const color = bc.ok ? '#10b981' : '#ef4444';
+                return (
+                  <div key={bc.area} style={{ marginBottom: '0.75rem', padding: '0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: `1px solid ${color}22` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize' }}>
+                        <i className={`fas fa-${bc.ok ? 'check-circle' : 'times-circle'}`} style={{ color, marginRight: 6 }} />
+                        {bc.area}
+                      </span>
+                      <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: 4, background: `${color}18`, color, fontWeight: 700 }}>
+                        {bc.ok ? 'COMPILES' : `${bc.errors} ERROR${bc.errors !== 1 ? 'S' : ''}`}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                        tsc --noEmit
+                      </span>
+                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: bc.ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: bc.ok ? '#10b981' : '#ef4444' }}>
+                        {bc.ok ? '0 errors' : `${bc.errors} error${bc.errors !== 1 ? 's' : ''}`}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                        strict mode
+                      </span>
+                    </div>
+                    {!bc.ok && bc.errorSample?.length > 0 && (
+                      <div style={{ marginTop: 6, fontSize: '0.65rem', color: '#fca5a5', fontFamily: 'monospace', maxHeight: 200, overflow: 'auto' }}>
+                        {bc.errorSample.map((e: string, i: number) => <div key={i} style={{ padding: '1px 0' }}>{e}</div>)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Branches, Migrations, API Docs ─────────────────── */}
+          <div className="db-grid2" style={GRID2}>
+            <div style={CARD}>
+              <h2 id="sec-branches" style={H2}><Ico>fad fa-code-branch</Ico> Git Branches ({data.branches?.length || 0})</h2>
+              {!data.branches?.length ? <EmptyState message="No branches found" /> : (
+                <div style={SCROLLBOX}>
+                  {(data.branches as D[]).map((b: D) => (
+                    <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '3px 0' }}>
+                      {b.isCurrent && <i className="fas fa-circle" style={{ color: '#10b981', fontSize: '0.4rem' }} />}
+                      <code style={{ color: b.isCurrent ? '#6ee7b7' : '#93c5fd', flex: 1 }}>{b.name}</code>
+                      <span style={{ ...SUB, whiteSpace: 'nowrap' }}>{b.author}</span>
+                      <span style={{
+                        fontSize: '0.65rem', padding: '1px 6px', borderRadius: 3, whiteSpace: 'nowrap',
+                        background: b.daysAgo > 90 ? 'rgba(239,68,68,0.12)' : b.daysAgo > 30 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
+                        color: b.daysAgo > 90 ? '#ef4444' : b.daysAgo > 30 ? '#f59e0b' : '#10b981',
+                      }}>
+                        {b.daysAgo === 0 ? 'today' : `${b.daysAgo}d ago`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={CARD}>
+              <h2 id="sec-migrations" style={H2}><Ico>fad fa-database</Ico> Prisma Migrations ({data.migrationStatus?.applied || 0} applied)</h2>
+              {!data.migrationStatus?.migrations?.length ? <EmptyState message="No migrations found" /> : (<>
+                {data.migrationStatus.pending > 0 && (
+                  <div style={{ fontSize: '0.75rem', padding: '4px 8px', marginBottom: 8, borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+                    <i className="fas fa-exclamation-triangle" style={{ marginRight: 4 }} />{data.migrationStatus.pending} pending migration{data.migrationStatus.pending !== 1 ? 's' : ''}
+                  </div>
+                )}
+                <div style={SCROLLBOX}>
+                  {(data.migrationStatus.migrations as D[]).map((m: D) => (
+                    <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '2px 0' }}>
+                      <i className={`fas fa-${m.applied ? 'check-circle' : 'clock'}`} style={{ color: m.applied ? '#10b981' : '#f59e0b', fontSize: '0.6rem' }} />
+                      <code style={{ color: m.applied ? '#94a3b8' : '#fca5a5', fontSize: '0.7rem' }}>{m.name}</code>
+                    </div>
+                  ))}
+                </div>
+              </>)}
+            </div>
+          </div>
+
+          <div style={{ ...CARD, marginBottom: '1.5rem' }}>
+            <h2 style={H2}><Ico>fad fa-book</Ico> API Documentation ({data.apiDocCoverage?.documented || 0}/{data.apiDocCoverage?.total || 0})</h2>
+            {!data.apiDocCoverage || data.apiDocCoverage.total === 0 ? <EmptyState message="No endpoints found" /> : (<>
+              <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                <div style={{
+                  width: `${data.apiDocCoverage.total > 0 ? (data.apiDocCoverage.documented / data.apiDocCoverage.total) * 100 : 0}%`,
+                  height: '100%', borderRadius: 4,
+                  background: data.apiDocCoverage.documented === data.apiDocCoverage.total ? 'linear-gradient(to right, #10b981, #34d399)' : 'linear-gradient(to right, #f59e0b, #fbbf24)',
+                  transition: 'width 0.5s',
+                }} />
+              </div>
+              {data.apiDocCoverage.undocumented?.length > 0 && (
+                <div style={SCROLLBOX}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 4 }}>Undocumented endpoints:</div>
+                  {(data.apiDocCoverage.undocumented as string[]).map((ep: string, i: number) => (
+                    <div key={i} style={{ fontSize: '0.7rem', padding: '2px 0', color: '#fca5a5' }}>
+                      <code>{ep}</code>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>)}
+          </div>
+
           {/* ── Heatmap ────────────────────────────────────────────── */}
-          <div style={{ ...CARD, marginBottom: '1.5rem', overflow: 'auto' }}>
+          <div id="sec-heatmap" style={{ ...CARD, marginBottom: '1.5rem', overflow: 'auto' }}>
             <h2 style={H2}><Ico>fad fa-fire</Ico> Contribution Activity (Last 52 Weeks)</h2>
             <Heatmap data={data.heatmap} />
           </div>
 
           {/* ── Daily + Weekly ─────────────────────────────────────── */}
-          <div className="db-grid2" style={GRID2}>
+          <div id="sec-activity" className="db-grid2" style={GRID2}>
             <div style={CARD}>
               <h2 style={H2}><Ico>fad fa-chart-bar</Ico> Daily Commits</h2>
               <BarChart data={data.dailyCommits.map((d: D) => ({ label: fmtDate(d.date), value: d.count }))} />
@@ -401,21 +602,22 @@ export default function DashboardPage() {
             </div>
             <div style={CARD}>
               <h2 style={H2}><Ico>fad fa-calendar-day</Ico> Activity by Day</h2>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 110, justifyContent: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 110, width: '100%' }}>
                 {(data.activityByDay as number[]).map((v: number, i: number) => {
                   const max = Math.max(...(data.activityByDay as number[]), 1);
                   return (
-                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <div style={{ width: 32, height: `${(v / max) * 90}px`, background: 'linear-gradient(to top,#ec4899,#f472b6)', borderRadius: '4px 4px 0 0', minHeight: 3, transition: 'height 0.3s' }} title={`${DAYS[i]}: ${v}`} />
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{DAYS[i]}</span>
-                    </div>
+                    <div key={i} style={{ flex: 1, height: `${(v / max) * 100}%`, background: 'linear-gradient(to top,#ec4899,#f472b6)', borderRadius: '3px 3px 0 0', minHeight: v > 0 ? 3 : 1, transition: 'height 0.3s' }} title={`${DAYS[i]}: ${v}`} />
                   );
                 })}
+              </div>
+              <div style={{ display: 'flex', gap: 4, ...SUB, marginTop: 6 }}>
+                {DAYS.map(d => <span key={d} style={{ flex: 1, textAlign: 'center' }}>{d}</span>)}
               </div>
             </div>
           </div>
 
           {/* ── Language + Area + File Types ────────────────────────── */}
+          <div id="sec-languages" />
           <div className="db-grid3" style={GRID3}>
             <div style={CARD}>
               <h2 style={H2}><Ico>fad fa-globe</Ico> Language Breakdown</h2>
@@ -427,6 +629,7 @@ export default function DashboardPage() {
                 { label: 'Frontend', value: data.locByArea.frontend, color: '#3b82f6' },
                 { label: 'Backend', value: data.locByArea.backend, color: '#10b981' },
                 { label: 'Widget', value: data.locByArea.widget, color: '#f59e0b' },
+                ...(data.locByArea.shell ? [{ label: 'Shell', value: data.locByArea.shell, color: '#4eaa25' }] : []),
               ]} />
             </div>
             <div style={CARD}>
@@ -437,12 +640,13 @@ export default function DashboardPage() {
                 { label: '.module.css', value: data.fileTypes.moduleCss, color: '#563d7c' },
                 { label: '.css', value: data.fileTypes.plainCss, color: '#a78bfa' },
                 { label: '.js', value: data.fileTypes.js, color: '#f7df1e' },
+                ...(data.fileTypes.sh ? [{ label: '.sh', value: data.fileTypes.sh, color: '#4eaa25' }] : []),
               ]} size={110} />
             </div>
           </div>
 
           {/* ── Architecture Overview ──────────────────────────────── */}
-          <div style={{ ...CARD, marginBottom: '1.5rem' }}>
+          <div id="sec-architecture" style={{ ...CARD, marginBottom: '1.5rem' }}>
             <h2 style={H2}><Ico>fad fa-building</Ico> Architecture Overview</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
               {[
@@ -516,7 +720,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── API Endpoints + Socket Events ──────────────────────── */}
-          <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
+          <div id="sec-endpoints" className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             <Section title={`API Endpoints (${data.endpoints.length})`} icon="fad fa-network-wired">
               <div style={SCROLLBOX}>
                 {data.endpoints.map((ep: D, i: number) => (
@@ -528,7 +732,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             </Section>
-            <Section title={`Socket Events (${data.socketEvents.length})`} icon="fad fa-plug">
+            <Section title={`Socket Events (${data.socketEvents.length})`} icon="fad fa-plug" id="sec-socket">
               <div style={SCROLLBOX}>
                 {data.socketEvents.map((ev: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '2px 0' }}>
@@ -569,7 +773,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </Section>
-            <Section title="Pages" icon="fad fa-file-lines">
+            <Section title="Pages" icon="fad fa-file-lines" id="sec-pages">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {data.pages.map((p: string) => <div key={p} style={{ fontSize: '0.78rem' }}><code style={{ color: '#67e8f9' }}>/{p}</code></div>)}
               </div>
@@ -600,7 +804,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Contributors ───────────────────────────────────────── */}
-          <Section title={`Contributors (${data.contributors.length})`} icon="fad fa-users" defaultOpen={true}>
+          <Section title={`Contributors (${data.contributors.length})`} icon="fad fa-users" defaultOpen={true} id="sec-contributors">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {data.contributors.map((c: D, i: number) => {
                 const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'];
@@ -663,7 +867,7 @@ export default function DashboardPage() {
 
           {/* ── Dependencies + Largest + Recently Modified ──────────── */}
           <div className="db-grid3" style={{ ...GRID3, marginTop: '1rem' }}>
-            <Section title={`Dependencies (${data.dependencies.total})`} icon="fad fa-box-open">
+            <Section title={`Dependencies (${data.dependencies.total})`} icon="fad fa-box-open" id="sec-dependencies">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {[
                   { label: 'Frontend', d: data.dependencies.frontend },
@@ -688,7 +892,7 @@ export default function DashboardPage() {
               </div>
             </Section>
 
-            <Section title="Largest Files" icon="fad fa-ruler-vertical">
+            <Section title="Largest Files" icon="fad fa-ruler-vertical" id="sec-largest">
               {data.largestFiles.length === 0 ? <EmptyState message="No file data available" /> : (
               <div style={{ ...SCROLLBOX, maxHeight: 240 }}>
                 {data.largestFiles.map((f: D, i: number) => (
@@ -752,9 +956,9 @@ export default function DashboardPage() {
             </Section>
           </div>
 
-          {/* ── Code Ownership + Components Without Tests ──────────── */}
-          <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
-            <Section title="Code Ownership" icon="fad fa-users-viewfinder">
+          {/* ── Code Ownership ─────────────────────────────────────── */}
+          <div style={{ ...CARD, marginTop: '1rem', marginBottom: '1rem' }}>
+            <h2 style={H2}><Ico>fad fa-users-viewfinder</Ico> Code Ownership</h2>
               {data.codeOwnership.length === 0 ? <EmptyState message="No ownership data available" /> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {data.codeOwnership.map((o: D, i: number) => {
@@ -774,27 +978,100 @@ export default function DashboardPage() {
                 })}
               </div>
               )}
-            </Section>
-            <Section title={`Untested Components (${data.componentsWithoutTests.length})`} icon="fad fa-triangle-exclamation">
-              {data.componentsWithoutTests.length === 0 ? (
-                <EmptyState message="All components have tests!" />
-              ) : (
+          </div>
+
+          {/* ── Backend Test Coverage + Untested Components ─────────── */}
+          <div className="db-grid2" style={GRID2}>
+            <Section title={`Backend Test Coverage (${data.backendTestedCount}/${data.backendModules?.length || 0})`} icon="fad fa-shield-check">
+              {!data.backendModules || data.backendModules.length === 0 ? <EmptyState message="No backend modules found" /> : (<>
+                <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                  <div style={{
+                    width: `${data.backendModules.length > 0 ? (data.backendTestedCount / data.backendModules.length) * 100 : 0}%`,
+                    height: '100%', borderRadius: 4,
+                    background: 'linear-gradient(to right, #10b981, #34d399)',
+                    transition: 'width 0.5s',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                  {['route', 'middleware', 'lib', 'service', 'socket'].map(cat => {
+                    const items = (data.backendModules as D[]).filter((m: D) => m.category === cat);
+                    if (items.length === 0) return null;
+                    const tested = items.filter((m: D) => m.hasTest).length;
+                    const color = tested === items.length ? '#10b981' : tested > 0 ? '#f59e0b' : '#ef4444';
+                    return (
+                      <span key={cat} style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: 4, background: `${color}18`, color, fontWeight: 600 }}>
+                        {cat}: {tested}/{items.length}
+                      </span>
+                    );
+                  })}
+                </div>
                 <div style={SCROLLBOX}>
-                  {data.componentsWithoutTests.map((c: D) => (
-                    <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '2px 0' }}>
-                      <i className="fas fa-xmark" style={{ color: '#ef4444', fontSize: '0.65rem', width: 12 }} />
-                      <code style={{ color: '#fca5a5', flex: 1 }}>{c.name}</code>
-                      <span style={SUB}>{c.lines} lines</span>
+                  {(data.backendModules as D[]).map((m: D) => (
+                    <div key={`${m.category}-${m.name}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '3px 0' }}>
+                      <i className={`fas fa-${m.hasTest ? 'check-circle' : 'xmark-circle'}`}
+                        style={{ color: m.hasTest ? '#10b981' : '#ef4444', fontSize: '0.65rem', width: 12 }} />
+                      <code style={{ color: m.hasTest ? '#6ee7b7' : '#fca5a5', flex: 1 }}>{m.name}</code>
+                      <Badge color={
+                        m.category === 'route' ? '#3b82f6' :
+                        m.category === 'middleware' ? '#8b5cf6' :
+                        m.category === 'lib' ? '#06b6d4' :
+                        m.category === 'service' ? '#f59e0b' :
+                        '#ec4899'
+                      }>{m.category}</Badge>
+                      <span style={SUB}>{m.lines}</span>
                     </div>
                   ))}
                 </div>
-              )}
+              </>)}
+            </Section>
+            <Section title={`Frontend Test Coverage (${data.frontendTestedCount ?? 0}/${data.frontendModules?.length || 0})`} icon="fad fa-shield-check">
+              {!data.frontendModules || data.frontendModules.length === 0 ? <EmptyState message="No frontend modules found" /> : (<>
+                <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                  <div style={{
+                    width: `${data.frontendModules.length > 0 ? ((data.frontendTestedCount ?? 0) / data.frontendModules.length) * 100 : 0}%`,
+                    height: '100%', borderRadius: 4,
+                    background: 'linear-gradient(to right, #3b82f6, #60a5fa)',
+                    transition: 'width 0.5s',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                  {['component', 'hook', 'context', 'util', 'page', 'widget'].map(cat => {
+                    const items = (data.frontendModules as D[]).filter((m: D) => m.category === cat);
+                    if (items.length === 0) return null;
+                    const tested = items.filter((m: D) => m.hasTest).length;
+                    const color = tested === items.length ? '#10b981' : tested > 0 ? '#f59e0b' : '#ef4444';
+                    return (
+                      <span key={cat} style={{ fontSize: '0.65rem', padding: '2px 7px', borderRadius: 4, background: `${color}18`, color, fontWeight: 600 }}>
+                        {cat}: {tested}/{items.length}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div style={SCROLLBOX}>
+                  {(data.frontendModules as D[]).map((m: D) => (
+                    <div key={`${m.category}-${m.name}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '3px 0' }}>
+                      <i className={`fas fa-${m.hasTest ? 'check-circle' : 'xmark-circle'}`}
+                        style={{ color: m.hasTest ? '#10b981' : '#ef4444', fontSize: '0.65rem', width: 12 }} />
+                      <code style={{ color: m.hasTest ? '#93c5fd' : '#fca5a5', flex: 1 }}>{m.name}</code>
+                      <Badge color={
+                        m.category === 'component' ? '#3b82f6' :
+                        m.category === 'hook' ? '#8b5cf6' :
+                        m.category === 'context' ? '#f59e0b' :
+                        m.category === 'util' ? '#06b6d4' :
+                        m.category === 'widget' ? '#f97316' :
+                        '#ec4899'
+                      }>{m.category}</Badge>
+                      <span style={SUB}>{m.lines}</span>
+                    </div>
+                  ))}
+                </div>
+              </>)}
             </Section>
           </div>
 
           {/* ── TODO / FIXME + Test Distribution ───────────────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
-            <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="fad fa-thumbtack">
+            <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="fad fa-thumbtack" id="sec-todos">
               {data.todos.length === 0 ? (
                 <EmptyState message="No TODOs or FIXMEs — nice work!" />
               ) : (<>
@@ -823,6 +1100,183 @@ export default function DashboardPage() {
             </Section>
           </div>
 
+          {/* ── Test Results ──────────────────────────────────────── */}
+          <div id="sec-test-results" style={{ ...CARD, marginTop: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <h2 style={{ ...H2, margin: 0 }}><Ico>fad fa-vial</Ico> Test Results</h2>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['backend', 'frontend'] as const).map(area => (
+                  <button key={area} onClick={() => runTests(area)}
+                    title={`Load cached ${area} test results (runs tests if no cache)`}
+                    style={{
+                      background: testArea === area && testReport ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${testArea === area && testReport ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem',
+                      color: testArea === area && testReport ? '#60a5fa' : 'var(--text-secondary)',
+                    }}>
+                    <i className={`fas fa-${area === 'backend' ? 'server' : 'browser'}`} style={{ marginRight: 4 }} />
+                    {area === 'backend' ? 'Backend Results' : 'Frontend Results'}
+                  </button>
+                ))}
+                <button onClick={() => runTests(testArea, true)}
+                  disabled={testsRunning}
+                  title={`Run all ${testArea} tests now (ignores cache)`}
+                  style={{
+                    background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
+                    borderRadius: 6, padding: '3px 10px', cursor: testsRunning ? 'wait' : 'pointer',
+                    fontSize: '0.75rem', color: '#10b981', opacity: testsRunning ? 0.6 : 1,
+                  }}>
+                  {testsRunning ? <><i className="fad fa-spinner-third fa-spin" style={{ marginRight: 4 }} /> Running...</> : <><i className="fas fa-play" style={{ marginRight: 4 }} /> Run Fresh</>}
+                </button>
+              </div>
+            </div>
+
+            {!testReport && !testsRunning && (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                <i className="fad fa-flask" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8, opacity: 0.4 }} />
+                Click <strong>Backend Results</strong> or <strong>Frontend Results</strong> to load cached reports, or <strong>Run Fresh</strong> to execute a live test run
+              </div>
+            )}
+
+            {testsRunning && !testReport && (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8 }} />
+                Running {testArea} tests...
+              </div>
+            )}
+
+            {testReport && (
+              <div>
+                {/* Summary bar */}
+                <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: testReport.summary.failed === 0 ? '#10b981' : '#ef4444' }}>
+                      {testReport.summary.passed}/{testReport.summary.total}
+                    </div>
+                    <div style={SUB}>tests passed</div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3b82f6' }}>{testReport.summary.suites}</div>
+                    <div style={SUB}>suites</div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{(testReport.summary.duration / 1000).toFixed(1)}s</div>
+                    <div style={SUB}>duration</div>
+                  </div>
+                  {testReport.summary.failed > 0 && (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{testReport.summary.failed}</div>
+                      <div style={SUB}>failed</div>
+                    </div>
+                  )}
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{
+                      width: 10, height: 10, borderRadius: '50%',
+                      background: testReport.summary.failed === 0 ? '#10b981' : '#ef4444',
+                      boxShadow: `0 0 8px ${testReport.summary.failed === 0 ? '#10b981' : '#ef4444'}`,
+                    }} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: testReport.summary.failed === 0 ? '#10b981' : '#ef4444' }}>
+                      {testReport.summary.failed === 0 ? 'ALL PASSING' : 'FAILURES DETECTED'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pass rate bar */}
+                <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem' }}>
+                  <div style={{
+                    width: `${testReport.summary.total > 0 ? (testReport.summary.passed / testReport.summary.total) * 100 : 0}%`,
+                    height: '100%', borderRadius: 4, transition: 'width 0.5s',
+                    background: testReport.summary.failed === 0
+                      ? 'linear-gradient(to right, #10b981, #34d399)'
+                      : 'linear-gradient(to right, #10b981, #f59e0b, #ef4444)',
+                  }} />
+                </div>
+
+                {/* Coverage */}
+                {testReport.coverage && (
+                  <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                    {(['statements', 'branches', 'functions', 'lines'] as const).map(key => (
+                      <div key={key} style={{ textAlign: 'center' }}>
+                        <div style={{
+                          fontSize: '1.1rem', fontWeight: 700,
+                          color: testReport.coverage[key] >= 80 ? '#10b981' : testReport.coverage[key] >= 50 ? '#f59e0b' : '#ef4444',
+                        }}>
+                          {testReport.coverage[key]}%
+                        </div>
+                        <div style={{ ...SUB, textTransform: 'capitalize' }}>{key}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Suites */}
+                <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
+                  {testReport.suites.map((suite: D) => (
+                    <SuiteRow key={suite.file} suite={suite} />
+                  ))}
+                </div>
+
+                {testReport.generatedAt && (
+                  <div style={{ ...SUB, marginTop: 8, textAlign: 'right' }}>
+                    Results from {new Date(testReport.generatedAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Commit Size Graph ──────────────────────────────────── */}
+          {data.recentCommits.length > 0 && (() => {
+            const commits = [...data.recentCommits].reverse();
+            const maxLines = Math.max(...commits.map((c: D) => Math.max(c.added || 0, c.deleted || 0)), 1);
+            const W = 960, H = 200, PAD = 50, GRAPH_W = W - PAD * 2, GRAPH_H = H - 50;
+            const step = commits.length > 1 ? GRAPH_W / (commits.length - 1) : 0;
+            const logMax = Math.log10(Math.max(maxLines, 1));
+            const toY = (v: number) => {
+              if (v <= 0) return 30 + GRAPH_H;
+              return 30 + GRAPH_H - (Math.log10(v) / logMax) * GRAPH_H;
+            };
+            const addedPts = commits.map((c: D, i: number) => `${PAD + i * step},${toY(c.added || 0)}`).join(' ');
+            const deletedPts = commits.map((c: D, i: number) => `${PAD + i * step},${toY(c.deleted || 0)}`).join(' ');
+            const addedArea = `${PAD},${toY(0)} ${addedPts} ${PAD + (commits.length - 1) * step},${toY(0)}`;
+            const deletedArea = `${PAD},${toY(0)} ${deletedPts} ${PAD + (commits.length - 1) * step},${toY(0)}`;
+            const gridLines: number[] = [];
+            for (let p = 0; p <= Math.ceil(logMax); p++) {
+              const v = Math.pow(10, p);
+              if (v <= maxLines) gridLines.push(v);
+            }
+            if (!gridLines.includes(maxLines)) gridLines.push(maxLines);
+            return (
+              <div style={{ marginTop: '1rem' }}>
+                <Section title={`Commit Size (Last ${commits.length})`} icon="fad fa-chart-line">
+                  <div style={{ overflowX: 'auto' }}>
+                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
+                      {gridLines.map((v, i) => (
+                        <g key={i}>
+                          <line x1={PAD} y1={toY(v)} x2={W - PAD} y2={toY(v)} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+                          <text x={PAD - 6} y={toY(v) + 4} textAnchor="end" fill="var(--text-secondary)" fontSize={9}>{v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : v}</text>
+                        </g>
+                      ))}
+                      <polyline points={deletedPts} fill="none" stroke="#f87171" strokeWidth={1} strokeDasharray="4 2" />
+                      <polyline points={addedPts} fill="none" stroke="#34d399" strokeWidth={1} />
+                      {commits.map((c: D, i: number) => (
+                        <g key={i}>
+                          <circle cx={PAD + i * step} cy={toY(c.added || 0)} r={1.5} fill="#34d399" />
+                          <circle cx={PAD + i * step} cy={toY(c.deleted || 0)} r={1.5} fill="#f87171" />
+                          <title>{`${c.hash}: +${c.added || 0} / -${c.deleted || 0}\n${c.message}`}</title>
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                  <div style={{ display: 'flex', gap: '1.5rem', marginTop: 6, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#34d399', borderRadius: 2, marginRight: 6 }} />Insertions</span>
+                    <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#f87171', borderRadius: 2, marginRight: 6, borderTop: '1px dashed #f87171' }} />Deletions</span>
+                  </div>
+                </Section>
+              </div>
+            );
+          })()}
+
           {/* ── Recent Commits ─────────────────────────────────────── */}
           <div style={{ marginTop: '1rem' }}>
             <Section title={`Recent Commits (${data.recentCommits.length})`} icon="fad fa-history">
@@ -832,6 +1286,8 @@ export default function DashboardPage() {
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.recentCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <code style={{ fontSize: '0.7rem', color: '#60a5fa', flexShrink: 0, fontWeight: 600 }}>{c.hash}</code>
                     <span style={{ fontSize: '0.82rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.message}</span>
+                    <span style={{ fontSize: '0.7rem', color: '#34d399', flexShrink: 0 }}>+{c.added || 0}</span>
+                    <span style={{ fontSize: '0.7rem', color: '#f87171', flexShrink: 0 }}>-{c.deleted || 0}</span>
                     <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{c.author}</span>
                     <span style={{ ...SUB, flexShrink: 0 }}>{fmtDate(c.date)}</span>
                   </div>

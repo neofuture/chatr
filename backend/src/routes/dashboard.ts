@@ -233,6 +233,16 @@ function buildDashboard(): object {
   const tsLines = countLines(frontendDir, ['.ts', '.tsx']) + countLines(backendDir, ['.ts']);
   const cssLines = countLines(frontendDir, ['.css']);
   const jsLines = countLines(widgetDir, ['.js']);
+  let shellLines = 0;
+  let shellFiles = 0;
+  try {
+    for (const f of fs.readdirSync(ROOT)) {
+      if (f.endsWith('.sh')) {
+        shellFiles++;
+        shellLines += fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n').length;
+      }
+    }
+  } catch { /* */ }
   const feLines = countLines(frontendDir, ['.ts', '.tsx', '.css']);
   const beLines = countLines(backendDir, ['.ts']);
   const wLines = countLines(widgetDir, ['.js']);
@@ -259,7 +269,35 @@ function buildDashboard(): object {
   const currentBranch = git('rev-parse --abbrev-ref HEAD');
   const latestHash = git('log -1 --format=%h');
   const latestMessage = git('log -1 --format=%s');
-  const recentCommits = commits.slice(0, 30).map(c => ({ hash: c.hash, date: c.date, message: c.message, author: c.author }));
+  // Recent commits with per-commit size (insertions/deletions) — exclude version bumps
+  const commitSizeRaw = git('log -80 --no-merges --format="HASH:%h|%s" --shortstat');
+  const commitSizes: Record<string, { added: number; deleted: number }> = {};
+  const bumpHashes = new Set<string>();
+  if (commitSizeRaw) {
+    let currentHash = '';
+    for (const line of commitSizeRaw.split('\n')) {
+      if (line.startsWith('HASH:')) {
+        const [hash, ...msgParts] = line.substring(5).split('|');
+        currentHash = hash;
+        const msg = msgParts.join('|').toLowerCase();
+        if (msg.includes('chore') && msg.includes('bump') && msg.includes('version')) {
+          bumpHashes.add(currentHash);
+        }
+      } else if (currentHash && line.includes('changed')) {
+        const addMatch = line.match(/(\d+) insertion/);
+        const delMatch = line.match(/(\d+) deletion/);
+        commitSizes[currentHash] = { added: addMatch ? parseInt(addMatch[1], 10) : 0, deleted: delMatch ? parseInt(delMatch[1], 10) : 0 };
+      }
+    }
+  }
+  const recentCommits = commits
+    .filter(c => !bumpHashes.has(c.hash))
+    .slice(0, 50)
+    .map(c => ({
+      hash: c.hash, date: c.date, message: c.message, author: c.author,
+      added: commitSizes[c.hash]?.added ?? 0,
+      deleted: commitSizes[c.hash]?.deleted ?? 0,
+    }));
 
   // Components
   const componentsDir = path.join(frontendDir, 'components');
@@ -350,8 +388,8 @@ function buildDashboard(): object {
   try { env.typescriptVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'frontend/node_modules/typescript/package.json'), 'utf8')).version; } catch { /* */ }
 
   // Health
-  const totalSourceFiles = tsFiles + cssFiles + jsFiles;
-  const totalLoc = tsLines + cssLines + jsLines;
+  const totalSourceFiles = tsFiles + cssFiles + jsFiles + shellFiles;
+  const totalLoc = tsLines + cssLines + jsLines + shellLines;
   const avgFileSize = totalSourceFiles > 0 ? Math.round(totalLoc / totalSourceFiles) : 0;
   const testRatio = totalSourceFiles > 0 ? +(testFileTotal / totalSourceFiles * 100).toFixed(1) : 0;
   const componentsWithTests = componentDetails.filter(c => c.hasTest).length;
@@ -455,8 +493,215 @@ function buildDashboard(): object {
     }
   } catch { /* */ }
 
-  // Components without tests
-  const componentsWithoutTests = componentDetails.filter(c => !c.hasTest).map(c => ({ name: c.name, lines: c.lines }));
+  // ── Dependency vulnerabilities (npm audit) ────────────────────────────
+  type AuditSummary = { critical: number; high: number; moderate: number; low: number; info: number; total: number };
+  function npmAudit(dir: string): AuditSummary {
+    try {
+      const raw = execSync('npm audit --json 2>/dev/null', { cwd: dir, timeout: 15_000, encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 });
+      const json = JSON.parse(raw);
+      const v = json.metadata?.vulnerabilities || {};
+      return { critical: v.critical || 0, high: v.high || 0, moderate: v.moderate || 0, low: v.low || 0, info: v.info || 0, total: v.total || 0 };
+    } catch (err: any) {
+      try {
+        const json = JSON.parse(err.stdout || '{}');
+        const v = json.metadata?.vulnerabilities || {};
+        return { critical: v.critical || 0, high: v.high || 0, moderate: v.moderate || 0, low: v.low || 0, info: v.info || 0, total: v.total || 0 };
+      } catch { return { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0 }; }
+    }
+  }
+  const isTest = process.env.NODE_ENV === 'test';
+  const auditFrontend = isTest ? { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0 } : npmAudit(path.join(ROOT, 'frontend'));
+  const auditBackend = isTest ? { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0 } : npmAudit(path.join(ROOT, 'backend'));
+
+  // ── Build health (TypeScript compilation check) ──────────────────────
+  type BuildCheck = { area: string; ok: boolean; errors: number; errorSample: string[] };
+  function tscCheck(dir: string, area: string): BuildCheck {
+    try {
+      execSync('npx tsc --noEmit 2>&1', { cwd: dir, timeout: 30_000, encoding: 'utf8' });
+      return { area, ok: true, errors: 0, errorSample: [] };
+    } catch (err: any) {
+      const out: string = err.stdout || err.stderr || '';
+      const errLines = out.split('\n').filter((l: string) => l.includes('error TS'));
+      return { area, ok: false, errors: errLines.length, errorSample: errLines.slice(0, 10) };
+    }
+  }
+  const buildChecks = isTest
+    ? [{ area: 'backend', ok: true, errors: 0, errorSample: [] }, { area: 'frontend', ok: true, errors: 0, errorSample: [] }]
+    : [tscCheck(path.join(ROOT, 'backend'), 'backend'), tscCheck(path.join(ROOT, 'frontend'), 'frontend')];
+
+  // ── Git branches with staleness ──────────────────────────────────────
+  type BranchInfo = { name: string; lastCommit: string; author: string; daysAgo: number; isCurrent: boolean };
+  const branches: BranchInfo[] = [];
+  try {
+    const branchDetail = git('for-each-ref --sort=-committerdate refs/heads/ --format="%(refname:short)|%(committerdate:iso)|%(authorname)"');
+    const currentBranchName = git('rev-parse --abbrev-ref HEAD');
+    if (branchDetail) {
+      for (const line of branchDetail.split('\n').filter(l => l.trim())) {
+        const [name, dateStr, author] = line.split('|');
+        const d = new Date(dateStr);
+        const daysAgo = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+        branches.push({ name, lastCommit: dateStr.substring(0, 10), author, daysAgo, isCurrent: name === currentBranchName });
+      }
+    }
+  } catch { /* */ }
+
+  // ── Prisma migration status ──────────────────────────────────────────
+  type MigrationStatus = { applied: number; pending: number; migrations: { name: string; applied: boolean }[] };
+  let migrationStatus: MigrationStatus = { applied: 0, pending: 0, migrations: [] };
+  try {
+    const migrationsDir = path.join(ROOT, 'backend/prisma/migrations');
+    if (fs.existsSync(migrationsDir)) {
+      const migDirs = fs.readdirSync(migrationsDir, { withFileTypes: true })
+        .filter(d => d.isDirectory() && d.name !== 'migration_lock.toml')
+        .map(d => d.name)
+        .sort();
+      const appliedMigrations = new Set<string>();
+      if (isTest) {
+        migDirs.forEach(m => appliedMigrations.add(m));
+      } else {
+        try {
+          const statusRaw = execSync('npx prisma migrate status 2>&1', {
+            cwd: path.join(ROOT, 'backend'), timeout: 15_000, encoding: 'utf8',
+          });
+          if (statusRaw.includes('up to date') || statusRaw.includes('have been applied')) {
+            migDirs.forEach(m => appliedMigrations.add(m));
+          } else if (statusRaw.includes('not yet been applied')) {
+            const notAppliedRe = /Following migration.*not yet been applied[\s\S]*$/i;
+            const notAppliedBlock = statusRaw.match(notAppliedRe)?.[0] || '';
+            migDirs.forEach(m => {
+              if (!notAppliedBlock.includes(m)) appliedMigrations.add(m);
+            });
+          } else {
+            migDirs.forEach(m => appliedMigrations.add(m));
+          }
+        } catch { migDirs.forEach(m => appliedMigrations.add(m)); }
+      }
+
+      migrationStatus = {
+        applied: appliedMigrations.size,
+        pending: migDirs.length - appliedMigrations.size,
+        migrations: migDirs.map(m => ({ name: m, applied: appliedMigrations.has(m) })),
+      };
+    }
+  } catch { /* */ }
+
+  // ── API documentation completeness ───────────────────────────────────
+  type DocCoverage = { total: number; documented: number; undocumented: string[] };
+  const apiDocCoverage: DocCoverage = { total: 0, documented: 0, undocumented: [] };
+  {
+    const routesDir = path.join(ROOT, 'backend/src/routes');
+    const handlerRe = /router\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)/gi;
+    const commentRe = /\/\*\*[\s\S]*?\*\/|\/\/.*$/;
+    try {
+      for (const f of fs.readdirSync(routesDir)) {
+        if (!f.endsWith('.ts')) continue;
+        const content = fs.readFileSync(path.join(routesDir, f), 'utf8');
+        const lines = content.split('\n');
+        let m;
+        while ((m = handlerRe.exec(content)) !== null) {
+          apiDocCoverage.total++;
+          const charPos = m.index;
+          let lineIdx = content.substring(0, charPos).split('\n').length - 1;
+          const prevLines = lines.slice(Math.max(0, lineIdx - 3), lineIdx).join('\n');
+          if (commentRe.test(prevLines)) {
+            apiDocCoverage.documented++;
+          } else {
+            apiDocCoverage.undocumented.push(`${m[1].toUpperCase()} ${m[2]} (${f})`);
+          }
+        }
+        handlerRe.lastIndex = 0;
+      }
+    } catch { /* */ }
+  }
+
+  // Frontend test coverage — which source modules have matching test files
+  type FrontendModule = { name: string; category: string; lines: number; hasTest: boolean };
+  const frontendModules: FrontendModule[] = [];
+
+  // Components (already have hasTest from componentDetails)
+  for (const c of componentDetails) {
+    frontendModules.push({ name: c.name, category: 'component', lines: c.lines, hasTest: c.hasTest });
+  }
+
+  // Hooks — check for .test.ts sibling
+  for (const h of hookDetails) {
+    const testPath = path.join(hooksDir, `${h.name}.test.ts`);
+    const hasTest = fs.existsSync(testPath);
+    frontendModules.push({ name: h.name, category: 'hook', lines: h.lines, hasTest });
+  }
+
+  // Contexts — check for .test.tsx / .test.ts sibling
+  for (const c of contextDetails) {
+    const hasTest = fs.existsSync(path.join(contextsDir, `${c.name}.test.tsx`)) || fs.existsSync(path.join(contextsDir, `${c.name}.test.ts`));
+    frontendModules.push({ name: c.name, category: 'context', lines: c.lines, hasTest });
+  }
+
+  // Utils — check for .test.ts sibling
+  const feUtilsDir = path.join(frontendDir, 'utils');
+  for (const u of feUtilFiles) {
+    const hasTest = fs.existsSync(path.join(feUtilsDir, `${u.name}.test.ts`)) || fs.existsSync(path.join(feUtilsDir, `${u.name}.test.tsx`));
+    frontendModules.push({ name: u.name, category: 'util', lines: u.lines, hasTest });
+  }
+
+  // Pages — check for test files inside each page directory
+  for (const p of pageNames) {
+    const pageDir = path.join(appDir, p);
+    const pageLines = countLines(pageDir, ['.tsx', '.ts', '.css']);
+    const hasTest = countFiles(pageDir, ['.test.tsx', '.test.ts'], false) > 0;
+    frontendModules.push({ name: p, category: 'page', lines: pageLines, hasTest });
+  }
+
+  // Widget — scan widget-src .js files (excluding build tooling)
+  const widgetTestDir = path.join(widgetDir, '__tests__');
+  const widgetTestNames = new Set<string>();
+  try {
+    for (const f of fs.readdirSync(widgetTestDir)) {
+      if (f.endsWith('.test.js')) widgetTestNames.add(f.replace('.test.js', ''));
+    }
+  } catch { /* */ }
+  const SKIP_WIDGET = new Set(['build', 'jest.config']);
+  const widgetFiles = collectFiles(widgetDir, ['.js'])
+    .filter(f => !f.name.includes('.test.') && !SKIP_WIDGET.has(f.name.replace('.js', '')));
+  for (const w of widgetFiles) {
+    const baseName = w.name.replace('.js', '');
+    frontendModules.push({ name: baseName, category: 'widget', lines: w.lines, hasTest: widgetTestNames.has(baseName) || widgetTestNames.has('widget') });
+  }
+
+  const frontendTestedCount = frontendModules.filter(m => m.hasTest).length;
+  const frontendUntestedModules = frontendModules.filter(m => !m.hasTest);
+
+  // Backend test coverage — which source modules have matching test files
+  const beTestDir = path.join(backendDir, '__tests__');
+  const beTestNames = new Set<string>();
+  try {
+    for (const f of fs.readdirSync(beTestDir)) {
+      if (f.endsWith('.test.ts')) beTestNames.add(f.replace('.test.ts', ''));
+    }
+  } catch { /* */ }
+
+  type BackendModule = { name: string; category: string; lines: number; hasTest: boolean };
+  const backendModules: BackendModule[] = [];
+
+  const addModules = (items: { name: string; lines: number }[], category: string) => {
+    for (const item of items) {
+      backendModules.push({ name: item.name, category, lines: item.lines, hasTest: beTestNames.has(item.name) });
+    }
+  };
+
+  addModules(routeDetails, 'route');
+  addModules(middlewareFiles, 'middleware');
+  addModules(beLibFiles, 'lib');
+
+  const beServicesDir = path.join(backendDir, 'services');
+  const SKIP_SERVICE_MODULES = new Set(['logo-base64-constant']);
+  const serviceFiles = collectFiles(beServicesDir, ['.ts'])
+    .filter(f => !f.name.includes('.test.') && !SKIP_SERVICE_MODULES.has(f.name.replace('.ts', '')))
+    .map(f => ({ name: f.name.replace('.ts', ''), lines: f.lines }));
+  addModules(serviceFiles, 'service');
+  addModules(socketFiles, 'socket');
+
+  const backendTestedCount = backendModules.filter(m => m.hasTest).length;
+  const backendUntestedModules = backendModules.filter(m => !m.hasTest);
 
   // Prisma schema complexity (totals)
   const prismaComplexity = {
@@ -498,10 +743,10 @@ function buildDashboard(): object {
       firstCommitDate, latestCommitDate, currentBranch, latestHash, latestMessage,
       daysActive: firstCommitDate && latestCommitDate ? Math.ceil((new Date(latestCommitDate).getTime() - new Date(firstCommitDate).getTime()) / 86400000) + 1 : 0,
     },
-    loc: { typescript: tsLines, css: cssLines, javascript: jsLines },
-    locByArea: { frontend: feLines, backend: beLines, widget: wLines },
-    files: { typescript: tsFiles, css: cssFiles, javascript: jsFiles },
-    fileTypes: { tsx: tsxFiles, ts: pureTs, moduleCss, plainCss, js: jsFiles },
+    loc: { typescript: tsLines, css: cssLines, javascript: jsLines, shell: shellLines },
+    locByArea: { frontend: feLines, backend: beLines, widget: wLines, shell: shellLines },
+    files: { typescript: tsFiles, css: cssFiles, javascript: jsFiles, shell: shellFiles },
+    fileTypes: { tsx: tsxFiles, ts: pureTs, moduleCss, plainCss, js: jsFiles, sh: shellFiles },
     testBreakdown: { frontend: feTestFiles, backend: beTestFiles, widget: widgetTestFiles },
     architecture: {
       components: componentCount, hooks: hookDetails.length, apiRoutes: routeDetails.length,
@@ -542,8 +787,129 @@ function buildDashboard(): object {
     branchCount,
     tagCount,
     bundleSizeBytes,
-    componentsWithoutTests,
     staleFiles,
+    backendModules,
+    backendTestedCount,
+    backendUntestedModules,
+    frontendModules,
+    frontendTestedCount,
+    frontendUntestedModules,
+    audit: { frontend: auditFrontend, backend: auditBackend },
+    buildChecks,
+    branches,
+    migrationStatus,
+    apiDocCoverage,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Test results helpers
+// ---------------------------------------------------------------------------
+
+interface TestResult {
+  name: string;
+  status: 'passed' | 'failed';
+  duration: number;
+}
+
+interface TestSuite {
+  file: string;
+  status: 'passed' | 'failed';
+  tests: TestResult[];
+  duration: number;
+}
+
+interface TestReport {
+  generatedAt: string;
+  summary: { total: number; passed: number; failed: number; suites: number; duration: number };
+  suites: TestSuite[];
+  coverage: { statements: number; branches: number; functions: number; lines: number } | null;
+}
+
+const testCache: Record<string, { data: TestReport; ts: number }> = {};
+const TEST_CACHE_TTL = 300_000; // 5 min — tests don't change that often
+
+function runTests(area: 'backend' | 'frontend'): TestReport {
+  const dir = area === 'backend'
+    ? path.join(ROOT, 'backend')
+    : path.join(ROOT, 'frontend');
+
+  let raw: string;
+  try {
+    raw = execSync('npx jest --json --coverage --passWithNoTests 2>/dev/null', {
+      cwd: dir,
+      timeout: 120_000,
+      maxBuffer: 10 * 1024 * 1024,
+      encoding: 'utf8',
+      env: { ...process.env, CI: 'true', NODE_ENV: 'test' },
+    });
+  } catch (err: any) {
+    raw = err.stdout || '{}';
+  }
+
+  let json: any;
+  try {
+    const jsonStart = raw.indexOf('{');
+    json = JSON.parse(jsonStart >= 0 ? raw.substring(jsonStart) : raw);
+  } catch {
+    return {
+      generatedAt: new Date().toISOString(),
+      summary: { total: 0, passed: 0, failed: 0, suites: 0, duration: 0 },
+      suites: [],
+      coverage: null,
+    };
+  }
+
+  const suites: TestSuite[] = (json.testResults || []).map((s: any) => ({
+    file: (s.name || '').replace(ROOT + '/', ''),
+    status: s.status === 'passed' ? 'passed' : 'failed',
+    duration: s.endTime - s.startTime,
+    tests: (s.assertionResults || []).map((t: any) => ({
+      name: t.ancestorTitles?.length ? `${t.ancestorTitles.join(' > ')} > ${t.title}` : t.title,
+      status: t.status === 'passed' ? 'passed' : 'failed',
+      duration: t.duration || 0,
+    })),
+  }));
+
+  const total = json.numTotalTests || 0;
+  const passed = json.numPassedTests || 0;
+  const failed = json.numFailedTests || 0;
+
+  let coverage: TestReport['coverage'] = null;
+  if (json.coverageMap) {
+    let stmtTotal = 0, stmtCov = 0;
+    let brTotal = 0, brCov = 0;
+    let fnTotal = 0, fnCov = 0;
+    let lineTotal = 0, lineCov = 0;
+    for (const file of Object.values(json.coverageMap) as any[]) {
+      const s = file.s || {};
+      for (const v of Object.values(s) as number[]) { stmtTotal++; if (v > 0) stmtCov++; }
+      const b = file.b || {};
+      for (const arr of Object.values(b) as number[][]) { for (const v of arr) { brTotal++; if (v > 0) brCov++; } }
+      const f = file.f || {};
+      for (const v of Object.values(f) as number[]) { fnTotal++; if (v > 0) fnCov++; }
+      const lm = file.getLineCoverage?.() || {};
+      for (const v of Object.values(lm) as number[]) { lineTotal++; if (v > 0) lineCov++; }
+    }
+    coverage = {
+      statements: stmtTotal > 0 ? +((stmtCov / stmtTotal) * 100).toFixed(1) : 0,
+      branches: brTotal > 0 ? +((brCov / brTotal) * 100).toFixed(1) : 0,
+      functions: fnTotal > 0 ? +((fnCov / fnTotal) * 100).toFixed(1) : 0,
+      lines: lineTotal > 0 ? +((lineCov / lineTotal) * 100).toFixed(1) : 0,
+    };
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    summary: {
+      total,
+      passed,
+      failed,
+      suites: suites.length,
+      duration: json.testResults?.reduce((s: number, r: any) => s + (r.endTime - r.startTime), 0) || 0,
+    },
+    suites,
+    coverage,
   };
 }
 
@@ -566,6 +932,45 @@ router.get('/', async (_req: Request, res: Response) => {
 router.post('/invalidate', (_req: Request, res: Response) => {
   cache = null;
   res.json({ ok: true });
+});
+
+router.get('/tests/:area', async (req: Request, res: Response) => {
+  const area = req.params.area as 'backend' | 'frontend';
+  if (area !== 'backend' && area !== 'frontend') {
+    return res.status(400).json({ error: 'Area must be "backend" or "frontend"' });
+  }
+
+  try {
+    const cacheKey = `tests_${area}`;
+    const cached = testCache[cacheKey];
+    if (cached && Date.now() - cached.ts < TEST_CACHE_TTL) {
+      return res.json(cached.data);
+    }
+    const report = runTests(area);
+    testCache[cacheKey] = { data: report, ts: Date.now() };
+    res.json(report);
+  } catch (err) {
+    console.error(`Test runner error (${area}):`, err);
+    res.status(500).json({ error: 'Failed to run tests' });
+  }
+});
+
+router.post('/tests/:area/run', async (req: Request, res: Response) => {
+  const area = req.params.area as 'backend' | 'frontend';
+  if (area !== 'backend' && area !== 'frontend') {
+    return res.status(400).json({ error: 'Area must be "backend" or "frontend"' });
+  }
+
+  try {
+    const cacheKey = `tests_${area}`;
+    delete testCache[cacheKey];
+    const report = runTests(area);
+    testCache[cacheKey] = { data: report, ts: Date.now() };
+    res.json(report);
+  } catch (err) {
+    console.error(`Test runner error (${area}):`, err);
+    res.status(500).json({ error: 'Failed to run tests' });
+  }
 });
 
 export default router;
