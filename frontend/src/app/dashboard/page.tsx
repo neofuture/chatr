@@ -669,8 +669,13 @@ export default function DashboardPage() {
 
           {/* ── TODO / FIXME + Test Distribution ───────────────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
-            {data.todos.length > 0 && (
-              <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="fad fa-thumbtack">
+            <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="fad fa-thumbtack">
+              {data.todos.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '1rem 0', textAlign: 'center' }}>
+                  <i className="fad fa-check-circle" style={{ fontSize: '1.5rem', marginBottom: 6, display: 'block', opacity: 0.5 }} />
+                  No TODOs or FIXMEs — nice work!
+                </div>
+              ) : (<>
                 <div style={{ display: 'flex', gap: 8, marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                   {Object.entries(data.todos.reduce((acc: Record<string, number>, t: D) => { acc[t.type] = (acc[t.type] || 0) + 1; return acc; }, {})).map(([type, count]) => (
                     <Badge key={type} color={TODO_COLORS[type] || '#94a3b8'}>{type}: {count as number}</Badge>
@@ -685,8 +690,8 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
-              </Section>
-            )}
+              </>)}
+            </Section>
             <Section title="Test Distribution" icon="fad fa-flask">
               <Donut label="test files" segments={[
                 { label: 'Frontend', value: data.testBreakdown.frontend, color: '#3b82f6' },
