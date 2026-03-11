@@ -5,19 +5,18 @@ const path = require('path');
 const hookPath = path.join(__dirname, '..', '.git', 'Hooks', 'post-commit');
 
 const hookContent = `#!/bin/sh
-# Skip if this is already a version bump commit (prevents infinite loop)
-LAST_MSG=$(git log -1 --pretty=%s)
-if [ "$LAST_MSG" = "chore: bump version" ]; then
-  exit 0
-fi
-
 # Fix for GUI apps (GitHub Desktop) not loading PATH correctly
 export PATH=$PATH:/usr/local/bin:/opt/homebrew/bin
+
+# Prevent infinite loop when amending
+if [ "$SKIP_POST_COMMIT" = "1" ]; then
+  exit 0
+fi
 
 cd "$(git rev-parse --show-toplevel)"
 node frontend/scripts/increment-version.js
 git add frontend/src/version.ts
-git commit --no-verify -m "chore: bump version"
+SKIP_POST_COMMIT=1 git commit --amend --no-edit --no-verify
 `;
 
 try {

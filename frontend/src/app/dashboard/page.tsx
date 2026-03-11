@@ -538,6 +538,7 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
               {[
                 { label: 'Chatr', value: `v${version}` },
+                { label: 'SHA', value: data.overview.latestHash },
                 { label: 'Node.js', value: data.env.nodeVersion },
                 { label: 'npm', value: data.env.npmVersion },
                 { label: 'Git', value: data.env.gitVersion },
