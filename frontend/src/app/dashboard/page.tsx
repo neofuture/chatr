@@ -459,22 +459,27 @@ export default function DashboardPage() {
 
           {/* ── Components + Hooks + Contexts ──────────────────────── */}
           <div className="db-grid2" style={GRID2}>
-            <Section title={`Components (${data.components.length})`} icon="fad fa-puzzle-piece">
-              <div style={SCROLLBOX}>
-                {data.components.map((c: D) => (
-                  <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: '0.78rem' }}>
-                    <code style={{ color: '#60a5fa', minWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</code>
-                    <MiniBar value={c.lines} max={data.components[0]?.lines || 1} />
-                    <span style={{ ...SUB, minWidth: 48, textAlign: 'right' }}>{c.lines.toLocaleString()}</span>
-                    <span className="db-badges" style={{ display: 'flex', gap: 3, minWidth: 70 }}>
-                      {c.hasTest && <Badge color="#10b981">test</Badge>}
-                      {c.hasStory && <Badge color="#f59e0b">story</Badge>}
-                      {c.hasCss && <Badge color="#8b5cf6">css</Badge>}
-                    </span>
-                  </div>
-                ))}
+            <div style={{ ...CARD, display: 'flex', flexDirection: 'column' }}>
+              <h2 style={{ ...H2, cursor: 'pointer', userSelect: 'none' }}>
+                <Ico>fad fa-puzzle-piece</Ico> {`Components (${data.components.length})`}
+              </h2>
+              <div style={{ flex: 1, position: 'relative', minHeight: 200 }}>
+                <div style={{ position: 'absolute', inset: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {data.components.map((c: D) => (
+                    <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: '0.78rem', flexShrink: 0 }}>
+                      <code style={{ color: '#60a5fa', minWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.name}>{c.name}</code>
+                      <MiniBar value={c.lines} max={data.components[0]?.lines || 1} />
+                      <span style={{ ...SUB, minWidth: 48, textAlign: 'right' }}>{c.lines.toLocaleString()}</span>
+                      <span className="db-badges" style={{ display: 'flex', gap: 3, minWidth: 70 }}>
+                        {c.hasTest && <Badge color="#10b981">test</Badge>}
+                        {c.hasStory && <Badge color="#f59e0b">story</Badge>}
+                        {c.hasCss && <Badge color="#8b5cf6">css</Badge>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </Section>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <Section title={`Hooks (${data.hooks.length})`} icon="fad fa-link">
                 <div style={SCROLLBOX}>
