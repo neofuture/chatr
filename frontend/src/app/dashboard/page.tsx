@@ -20,10 +20,10 @@ const SCROLLBOX: React.CSSProperties = { maxHeight: 320, overflowY: 'auto', disp
 const SUB: React.CSSProperties = { fontSize: '0.7rem', color: 'var(--text-secondary)' };
 
 // ---------------------------------------------------------------------------
-// Icon helper (emoji, zero FA dependency)
+// Icon helper (Font Awesome)
 // ---------------------------------------------------------------------------
 function Ico({ children, size = 16 }: { children: string; size?: number }) {
-  return <span style={{ fontSize: size, lineHeight: 1, flexShrink: 0 }} role="img">{children}</span>;
+  return <i className={children} style={{ fontSize: size, lineHeight: 1, flexShrink: 0, width: size, textAlign: 'center' }} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,8 +35,8 @@ function StatCard({ label, value, sub, icon, color }: { label: string; value: st
     <div style={{ ...CARD, display: 'flex', alignItems: 'center', gap: '1rem', transition: 'transform 0.15s, box-shadow 0.15s', cursor: 'default' }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
-      <div style={{ width: 44, height: 44, borderRadius: 10, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', flexShrink: 0 }}>
-        {icon}
+      <div style={{ width: 44, height: 44, borderRadius: 10, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0, color: '#fff' }}>
+        <i className={icon} />
       </div>
       <div>
         <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.1, color: 'var(--text)' }}>
@@ -233,7 +233,7 @@ function Section({ title, icon, children, defaultOpen = true }: { title: string;
     <div style={CARD}>
       <h2 style={{ ...H2, cursor: 'pointer', userSelect: 'none' }} onClick={() => setOpen(p => !p)}>
         <Ico>{icon}</Ico> {title}
-        <span style={{ marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{open ? '▲' : '▼'}</span>
+        <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ marginLeft: 'auto', fontSize: '0.6rem', color: 'var(--text-secondary)' }} />
       </h2>
       {open && children}
     </div>
@@ -291,7 +291,7 @@ export default function DashboardPage() {
           <Link href="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.85rem' }}>← Home</Link>
           <span style={{ color: 'var(--text-secondary)' }}>/</span>
           <h1 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
-            <Ico size={20}>📊</Ico> Project Dashboard
+            <Ico size={20}>fad fa-chart-column</Ico> Project Dashboard
           </h1>
         </div>
         <div className="db-header-right" style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
@@ -300,30 +300,30 @@ export default function DashboardPage() {
             {autoRefresh ? '● Live' : '○ Paused'}
           </button>
           <button onClick={fetchData} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '3px 10px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}>↻ Refresh</button>
-          {data && <span className="db-header-branch">⎇ {data.overview.currentBranch} <code style={{ color: '#60a5fa', marginLeft: 4 }}>{data.overview.latestHash}</code></span>}
+          {data && <span className="db-header-branch"><i className="fas fa-code-branch" /> {data.overview.currentBranch} <code style={{ color: '#60a5fa', marginLeft: 4 }}>{data.overview.latestHash}</code></span>}
         </div>
       </div>
 
       <div className="db-content" style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 2rem 3rem' }}>
         {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '1rem', color: '#fca5a5', marginBottom: '1rem' }}>{error}</div>}
-        {!data && !error && <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}><div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>Loading metrics...</div>}
+        {!data && !error && <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}><div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><i className="fad fa-spinner-third fa-spin" /></div>Loading metrics...</div>}
 
         {data && (<>
 
           {/* ── Overview Cards ──────────────────────────────────────── */}
           <div className="db-overview" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <StatCard label="Total Commits" value={data.overview.totalCommits} sub={`${data.health.commitsPerDay}/day avg`} icon="📝" color="#3b82f6" />
-            <StatCard label="Lines of Code" value={data.overview.totalLines} sub={`~${Math.round(data.overview.totalLines / 1000)}k`} icon="💻" color="#8b5cf6" />
-            <StatCard label="Source Files" value={data.overview.totalFiles} sub={`${data.health.avgFileSize} avg loc`} icon="📁" color="#06b6d4" />
-            <StatCard label="Test Files" value={data.overview.testFiles} sub={`${data.health.testRatio}% ratio`} icon="🧪" color="#10b981" />
-            <StatCard label="Days Active" value={data.overview.daysActive} icon="📅" color="#f59e0b" />
-            <StatCard label="Dependencies" value={data.dependencies.total} icon="📦" color="#ec4899" />
-            <StatCard label="Contributors" value={data.contributors.length} icon="👥" color="#6366f1" />
+            <StatCard label="Total Commits" value={data.overview.totalCommits} sub={`${data.health.commitsPerDay}/day avg`} icon="fas fa-code-commit" color="#3b82f6" />
+            <StatCard label="Lines of Code" value={data.overview.totalLines} sub={`~${Math.round(data.overview.totalLines / 1000)}k`} icon="fas fa-laptop-code" color="#8b5cf6" />
+            <StatCard label="Source Files" value={data.overview.totalFiles} sub={`${data.health.avgFileSize} avg loc`} icon="fas fa-folder" color="#06b6d4" />
+            <StatCard label="Test Files" value={data.overview.testFiles} sub={`${data.health.testRatio}% ratio`} icon="fas fa-flask" color="#10b981" />
+            <StatCard label="Days Active" value={data.overview.daysActive} icon="fas fa-calendar" color="#f59e0b" />
+            <StatCard label="Dependencies" value={data.dependencies.total} icon="fas fa-box" color="#ec4899" />
+            <StatCard label="Contributors" value={data.contributors.length} icon="fas fa-users" color="#6366f1" />
           </div>
 
           {/* ── Code Health ────────────────────────────────────────── */}
           <div style={{ ...CARD, marginBottom: '1.5rem' }}>
-            <h2 style={H2}><Ico>💓</Ico> Code Health</h2>
+            <h2 style={H2}><Ico>fad fa-heartbeat</Ico> Code Health</h2>
             <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '1rem' }}>
               <HealthGauge label="Avg File Size" value={data.health.avgFileSize} max={300} unit=" loc" color="#3b82f6" />
               <HealthGauge label="Test Ratio" value={data.health.testRatio} max={100} unit="%" color="#10b981" />
@@ -335,21 +335,21 @@ export default function DashboardPage() {
 
           {/* ── Heatmap ────────────────────────────────────────────── */}
           <div style={{ ...CARD, marginBottom: '1.5rem', overflow: 'auto' }}>
-            <h2 style={H2}><Ico>🔥</Ico> Contribution Activity (Last 52 Weeks)</h2>
+            <h2 style={H2}><Ico>fad fa-fire</Ico> Contribution Activity (Last 52 Weeks)</h2>
             <Heatmap data={data.heatmap} />
           </div>
 
           {/* ── Daily + Weekly ─────────────────────────────────────── */}
           <div className="db-grid2" style={GRID2}>
             <div style={CARD}>
-              <h2 style={H2}><Ico>📊</Ico> Daily Commits</h2>
+              <h2 style={H2}><Ico>fad fa-chart-bar</Ico> Daily Commits</h2>
               <BarChart data={data.dailyCommits.map((d: D) => ({ label: d.date, value: d.count }))} />
               <div style={{ display: 'flex', justifyContent: 'space-between', ...SUB, marginTop: 6 }}>
                 <span>{data.dailyCommits[0]?.date}</span><span>{data.dailyCommits.at(-1)?.date}</span>
               </div>
             </div>
             <div style={CARD}>
-              <h2 style={H2}><Ico>📈</Ico> Weekly Trend</h2>
+              <h2 style={H2}><Ico>fad fa-chart-line</Ico> Weekly Trend</h2>
               <BarChart data={data.weeklyCommits.map((d: D) => ({ label: d.week, value: d.count }))} color="linear-gradient(to top,#10b981,#34d399)" />
               <div style={{ display: 'flex', justifyContent: 'space-between', ...SUB, marginTop: 6 }}>
                 <span>{data.weeklyCommits[0]?.week}</span><span>{data.weeklyCommits.at(-1)?.week}</span>
@@ -360,12 +360,12 @@ export default function DashboardPage() {
           {/* ── Activity Patterns ──────────────────────────────────── */}
           <div className="db-grid2" style={GRID2}>
             <div style={CARD}>
-              <h2 style={H2}><Ico>🕐</Ico> Activity by Hour</h2>
+              <h2 style={H2}><Ico>fad fa-clock</Ico> Activity by Hour</h2>
               <BarChart data={(data.activityByHour as number[]).map((v: number, i: number) => ({ label: `${i}:00`, value: v }))} maxBars={24} color="linear-gradient(to top,#f59e0b,#fbbf24)" />
               <div style={{ display: 'flex', justifyContent: 'space-between', ...SUB, marginTop: 6 }}><span>0:00</span><span>12:00</span><span>23:00</span></div>
             </div>
             <div style={CARD}>
-              <h2 style={H2}><Ico>📆</Ico> Activity by Day</h2>
+              <h2 style={H2}><Ico>fad fa-calendar-day</Ico> Activity by Day</h2>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 110, justifyContent: 'center' }}>
                 {(data.activityByDay as number[]).map((v: number, i: number) => {
                   const max = Math.max(...(data.activityByDay as number[]), 1);
@@ -383,11 +383,11 @@ export default function DashboardPage() {
           {/* ── Language + Area + File Types ────────────────────────── */}
           <div className="db-grid3" style={GRID3}>
             <div style={CARD}>
-              <h2 style={H2}><Ico>🌐</Ico> Language Breakdown</h2>
+              <h2 style={H2}><Ico>fad fa-globe</Ico> Language Breakdown</h2>
               <LangBar loc={data.loc} />
             </div>
             <div style={CARD}>
-              <h2 style={H2}><Ico>📂</Ico> LOC by Area</h2>
+              <h2 style={H2}><Ico>fad fa-folder-open</Ico> LOC by Area</h2>
               <Donut label="lines" segments={[
                 { label: 'Frontend', value: data.locByArea.frontend, color: '#3b82f6' },
                 { label: 'Backend', value: data.locByArea.backend, color: '#10b981' },
@@ -395,7 +395,7 @@ export default function DashboardPage() {
               ]} />
             </div>
             <div style={CARD}>
-              <h2 style={H2}><Ico>📄</Ico> File Types</h2>
+              <h2 style={H2}><Ico>fad fa-file-lines</Ico> File Types</h2>
               <Donut label="files" segments={[
                 { label: '.tsx', value: data.fileTypes.tsx, color: '#3178c6' },
                 { label: '.ts', value: data.fileTypes.ts, color: '#60a5fa' },
@@ -408,19 +408,19 @@ export default function DashboardPage() {
 
           {/* ── Architecture Overview ──────────────────────────────── */}
           <div style={{ ...CARD, marginBottom: '1.5rem' }}>
-            <h2 style={H2}><Ico>🏗️</Ico> Architecture Overview</h2>
+            <h2 style={H2}><Ico>fad fa-building</Ico> Architecture Overview</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
               {[
-                { label: 'Components', value: data.architecture.components, icon: '🧩' },
-                { label: 'Hooks', value: data.architecture.hooks, icon: '🔗' },
-                { label: 'Contexts', value: data.architecture.contexts, icon: '🔄' },
-                { label: 'API Routes', value: data.architecture.apiRoutes, icon: '🖧' },
-                { label: 'Middleware', value: data.architecture.middleware, icon: '🛡️' },
-                { label: 'Utilities', value: data.architecture.utils, icon: '🔧' },
-                { label: 'Pages', value: data.architecture.pages, icon: '📄' },
-                { label: 'DB Models', value: data.architecture.dbModels, icon: '🗃️' },
-                { label: 'Migrations', value: data.architecture.dbMigrations, icon: '📋' },
-                { label: 'Socket Lines', value: data.architecture.socketHandlerLines, icon: '🔌' },
+                { label: 'Components', value: data.architecture.components, icon: 'fad fa-puzzle-piece' },
+                { label: 'Hooks', value: data.architecture.hooks, icon: 'fad fa-link' },
+                { label: 'Contexts', value: data.architecture.contexts, icon: 'fad fa-sync-alt' },
+                { label: 'API Routes', value: data.architecture.apiRoutes, icon: 'fad fa-route' },
+                { label: 'Middleware', value: data.architecture.middleware, icon: 'fad fa-shield' },
+                { label: 'Utilities', value: data.architecture.utils, icon: 'fad fa-wrench' },
+                { label: 'Pages', value: data.architecture.pages, icon: 'fad fa-file-lines' },
+                { label: 'DB Models', value: data.architecture.dbModels, icon: 'fad fa-database' },
+                { label: 'Migrations', value: data.architecture.dbMigrations, icon: 'fad fa-clipboard-list' },
+                { label: 'Socket Lines', value: data.architecture.socketHandlerLines, icon: 'fad fa-plug' },
               ].map(item => (
                 <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Ico>{item.icon}</Ico>
@@ -433,7 +433,7 @@ export default function DashboardPage() {
 
           {/* ── Components + Hooks + Contexts ──────────────────────── */}
           <div className="db-grid2" style={GRID2}>
-            <Section title={`Components (${data.components.length})`} icon="🧩">
+            <Section title={`Components (${data.components.length})`} icon="fad fa-puzzle-piece">
               <div style={SCROLLBOX}>
                 {data.components.map((c: D) => (
                   <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: '0.78rem' }}>
@@ -450,7 +450,7 @@ export default function DashboardPage() {
               </div>
             </Section>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <Section title={`Hooks (${data.hooks.length})`} icon="🔗">
+              <Section title={`Hooks (${data.hooks.length})`} icon="fad fa-link">
                 <div style={SCROLLBOX}>
                   {data.hooks.map((h: D) => (
                     <div key={h.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}>
@@ -461,7 +461,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </Section>
-              <Section title={`Contexts (${data.contexts.length})`} icon="🔄">
+              <Section title={`Contexts (${data.contexts.length})`} icon="fad fa-sync-alt">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {data.contexts.map((c: D) => (
                     <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}>
@@ -477,7 +477,7 @@ export default function DashboardPage() {
 
           {/* ── API Endpoints + Socket Events ──────────────────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
-            <Section title={`API Endpoints (${data.endpoints.length})`} icon="🌐">
+            <Section title={`API Endpoints (${data.endpoints.length})`} icon="fad fa-network-wired">
               <div style={SCROLLBOX}>
                 {data.endpoints.map((ep: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '2px 0' }}>
@@ -488,7 +488,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             </Section>
-            <Section title={`Socket Events (${data.socketEvents.length})`} icon="🔌">
+            <Section title={`Socket Events (${data.socketEvents.length})`} icon="fad fa-plug">
               <div style={SCROLLBOX}>
                 {data.socketEvents.map((ev: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '2px 0' }}>
@@ -502,7 +502,7 @@ export default function DashboardPage() {
 
           {/* ── Routes + DB Models + Pages ──────────────────────────── */}
           <div className="db-grid3" style={{ ...GRID3, marginTop: '1rem' }}>
-            <Section title="API Routes" icon="🖧">
+            <Section title="API Routes" icon="fad fa-route">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {data.routes.map((r: D) => (
                   <div key={r.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}>
@@ -513,7 +513,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             </Section>
-            <Section title="Database" icon="🗃️">
+            <Section title="Database" icon="fad fa-database">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {data.prismaModels.map((m: D) => (
                   <div key={m.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem' }}>
@@ -524,7 +524,7 @@ export default function DashboardPage() {
                 <div style={{ ...SUB, marginTop: 4 }}>{data.architecture.dbMigrations} migrations applied</div>
               </div>
             </Section>
-            <Section title="Pages" icon="📄">
+            <Section title="Pages" icon="fad fa-file-lines">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 {data.pages.map((p: string) => <div key={p} style={{ fontSize: '0.78rem' }}><code style={{ color: '#67e8f9' }}>/{p}</code></div>)}
               </div>
@@ -533,7 +533,7 @@ export default function DashboardPage() {
 
           {/* ── Environment Info ────────────────────────────────────── */}
           <div style={{ ...CARD, marginTop: '1rem', marginBottom: '1.5rem' }}>
-            <h2 style={H2}><Ico>⚙️</Ico> Environment</h2>
+            <h2 style={H2}><Ico>fad fa-cog</Ico> Environment</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
               {[
                 { label: 'Node.js', value: data.env.nodeVersion },
@@ -553,7 +553,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Contributors ───────────────────────────────────────── */}
-          <Section title={`Contributors (${data.contributors.length})`} icon="👥" defaultOpen={true}>
+          <Section title={`Contributors (${data.contributors.length})`} icon="fad fa-users" defaultOpen={true}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {data.contributors.map((c: D, i: number) => {
                 const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'];
@@ -577,7 +577,7 @@ export default function DashboardPage() {
 
           {/* ── Commit Message Analytics ────────────────────────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
-            <Section title="Commit Message Analytics" icon="💬">
+            <Section title="Commit Message Analytics" icon="fad fa-comment-dots">
               <div style={{ marginBottom: '0.75rem', fontSize: '0.8rem' }}>
                 Average message length: <strong>{data.commitStats.avgMsgLength} chars</strong>
               </div>
@@ -598,7 +598,7 @@ export default function DashboardPage() {
             </Section>
 
             {/* ── NPM Scripts ──────────────────────────────────────── */}
-            <Section title="NPM Scripts" icon="📜">
+            <Section title="NPM Scripts" icon="fad fa-scroll">
               {(['root', 'frontend', 'backend'] as const).map(area => (
                 <div key={area} style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize', marginBottom: 4 }}>{area}</div>
@@ -616,7 +616,7 @@ export default function DashboardPage() {
 
           {/* ── Dependencies + Largest + Recently Modified ──────────── */}
           <div className="db-grid3" style={{ ...GRID3, marginTop: '1rem' }}>
-            <Section title={`Dependencies (${data.dependencies.total})`} icon="📦">
+            <Section title={`Dependencies (${data.dependencies.total})`} icon="fad fa-box-open">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {[
                   { label: 'Frontend', d: data.dependencies.frontend },
@@ -641,7 +641,7 @@ export default function DashboardPage() {
               </div>
             </Section>
 
-            <Section title="Largest Files" icon="📏">
+            <Section title="Largest Files" icon="fad fa-ruler-vertical">
               <div style={{ ...SCROLLBOX, maxHeight: 240 }}>
                 {data.largestFiles.map((f: D, i: number) => (
                   <div key={f.path} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem' }}>
@@ -656,7 +656,7 @@ export default function DashboardPage() {
               </div>
             </Section>
 
-            <Section title="Recently Modified" icon="🕐">
+            <Section title="Recently Modified" icon="fad fa-clock">
               <div style={{ ...SCROLLBOX, maxHeight: 240 }}>
                 {data.recentlyModified.map((f: string) => (
                   <div key={f} style={{ fontSize: '0.78rem', padding: '2px 0' }}>
@@ -670,7 +670,7 @@ export default function DashboardPage() {
           {/* ── TODO / FIXME + Test Distribution ───────────────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1rem' }}>
             {data.todos.length > 0 && (
-              <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="📌" defaultOpen={false}>
+              <Section title={`TODOs & FIXMEs (${data.todos.length})`} icon="fad fa-thumbtack" defaultOpen={false}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                   {Object.entries(data.todos.reduce((acc: Record<string, number>, t: D) => { acc[t.type] = (acc[t.type] || 0) + 1; return acc; }, {})).map(([type, count]) => (
                     <Badge key={type} color={TODO_COLORS[type] || '#94a3b8'}>{type}: {count as number}</Badge>
@@ -687,7 +687,7 @@ export default function DashboardPage() {
                 </div>
               </Section>
             )}
-            <Section title="Test Distribution" icon="🧪">
+            <Section title="Test Distribution" icon="fad fa-flask">
               <Donut label="test files" segments={[
                 { label: 'Frontend', value: data.testBreakdown.frontend, color: '#3b82f6' },
                 { label: 'Backend', value: data.testBreakdown.backend, color: '#10b981' },
@@ -698,7 +698,7 @@ export default function DashboardPage() {
 
           {/* ── Recent Commits ─────────────────────────────────────── */}
           <div style={{ marginTop: '1rem' }}>
-            <Section title={`Recent Commits (${data.recentCommits.length})`} icon="🕘" defaultOpen={false}>
+            <Section title={`Recent Commits (${data.recentCommits.length})`} icon="fad fa-history" defaultOpen={false}>
               <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 400, overflow: 'auto' }}>
                 {data.recentCommits.map((c: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.recentCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
