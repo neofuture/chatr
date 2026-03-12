@@ -328,7 +328,7 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
 
       // Fire-and-forget: regenerate AI summary if threshold met
       if (convo) {
-        maybeRegenerateDMSummary(convo.id, currentUserId, user.id, convo.summaryMessageCount, convo.summaryGeneratedAt).catch(() => {});
+        maybeRegenerateDMSummary(convo.id, currentUserId, user.id, convo.summaryMessageCount, convo.summaryGeneratedAt);
       }
 
       return {

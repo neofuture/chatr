@@ -100,7 +100,7 @@ describe('GroupProfilePanel', () => {
     });
   });
 
-  it('renders all members with correct roles', async () => {
+  it('renders all members with correct role sections', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({ group: mockGroup }),
@@ -110,8 +110,8 @@ describe('GroupProfilePanel', () => {
     await waitFor(() => {
       expect(screen.getAllByText(/Alice/).length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText(/Bob/).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText('Owner')).toBeInTheDocument();
-      expect(screen.getByText('Member')).toBeInTheDocument();
+      expect(screen.getByText(/Owner/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Members/).length).toBeGreaterThanOrEqual(1);
     });
   });
 

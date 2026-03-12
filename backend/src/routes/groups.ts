@@ -175,7 +175,7 @@ router.get('/', authenticateToken as any, async (req: any, res: Response) => {
 
     const groups = memberships.map(m => {
       // Fire-and-forget: regenerate AI summary if threshold met
-      maybeRegenerateGroupSummary(m.group.id, m.group.summaryMessageCount, m.group.summaryGeneratedAt).catch(() => {});
+      maybeRegenerateGroupSummary(m.group.id, m.group.summaryMessageCount, m.group.summaryGeneratedAt);
       return {
         ...m.group,
         lastMessage: m.group.messages[0] ?? null,

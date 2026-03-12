@@ -19,6 +19,10 @@ function loadModule() {
   return mod;
 }
 
+function flush() {
+  return new Promise<void>(r => setImmediate(() => setImmediate(r)));
+}
+
 describe('summaryEngine', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -34,7 +38,8 @@ describe('summaryEngine', () => {
       const { maybeRegenerateDMSummary } = loadModule();
       const recentDate = new Date(Date.now() - 1000);
 
-      await maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', 50, recentDate);
+      maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', 50, recentDate);
+      await flush();
 
       expect(mockPrisma.message.count).not.toHaveBeenCalled();
     });
@@ -43,7 +48,8 @@ describe('summaryEngine', () => {
       const { maybeRegenerateDMSummary } = loadModule();
       mockPrisma.message.count.mockResolvedValue(5);
 
-      await maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      await flush();
 
       expect(mockPrisma.message.findMany).not.toHaveBeenCalled();
     });
@@ -52,7 +58,8 @@ describe('summaryEngine', () => {
       const { maybeRegenerateDMSummary } = loadModule();
       mockPrisma.message.count.mockResolvedValue(15);
 
-      await maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', 12, null);
+      maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', 12, null);
+      await flush();
 
       expect(mockPrisma.message.findMany).not.toHaveBeenCalled();
     });
@@ -68,7 +75,8 @@ describe('summaryEngine', () => {
       );
       mockGenerateSummary.mockResolvedValue('Catching up about weekend plans');
 
-      await maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      await flush();
 
       expect(mockGenerateSummary).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -95,7 +103,8 @@ describe('summaryEngine', () => {
       );
       mockGenerateSummary.mockResolvedValue('');
 
-      await maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      await flush();
 
       expect(mockPrisma.conversation.update).not.toHaveBeenCalled();
     });
@@ -110,7 +119,8 @@ describe('summaryEngine', () => {
         })),
       );
 
-      await maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      await flush();
 
       expect(mockGenerateSummary).not.toHaveBeenCalled();
     });
@@ -119,9 +129,8 @@ describe('summaryEngine', () => {
       const { maybeRegenerateDMSummary } = loadModule();
       mockPrisma.message.count.mockRejectedValue(new Error('DB error'));
 
-      await expect(
-        maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null),
-      ).resolves.toBeUndefined();
+      maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      await flush();
     });
 
     it('should use username fallback when displayName is null', async () => {
@@ -135,7 +144,8 @@ describe('summaryEngine', () => {
       );
       mockGenerateSummary.mockResolvedValue('Chat summary');
 
-      await maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      maybeRegenerateDMSummary('conv-1', 'user-a', 'user-b', null, null);
+      await flush();
 
       expect(mockGenerateSummary).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -150,7 +160,8 @@ describe('summaryEngine', () => {
       const { maybeRegenerateGroupSummary } = loadModule();
       const recentDate = new Date(Date.now() - 1000);
 
-      await maybeRegenerateGroupSummary('group-1', 50, recentDate);
+      maybeRegenerateGroupSummary('group-1', 50, recentDate);
+      await flush();
 
       expect(mockPrisma.groupMessage.count).not.toHaveBeenCalled();
     });
@@ -159,7 +170,8 @@ describe('summaryEngine', () => {
       const { maybeRegenerateGroupSummary } = loadModule();
       mockPrisma.groupMessage.count.mockResolvedValue(5);
 
-      await maybeRegenerateGroupSummary('group-1', null, null);
+      maybeRegenerateGroupSummary('group-1', null, null);
+      await flush();
 
       expect(mockPrisma.groupMessage.findMany).not.toHaveBeenCalled();
     });
@@ -175,7 +187,8 @@ describe('summaryEngine', () => {
       );
       mockGenerateSummary.mockResolvedValue('Discussing project roadmap');
 
-      await maybeRegenerateGroupSummary('group-1', null, null);
+      maybeRegenerateGroupSummary('group-1', null, null);
+      await flush();
 
       expect(mockPrisma.group.update).toHaveBeenCalledWith({
         where: { id: 'group-1' },
@@ -197,7 +210,8 @@ describe('summaryEngine', () => {
       );
       mockGenerateSummary.mockResolvedValue('');
 
-      await maybeRegenerateGroupSummary('group-1', null, null);
+      maybeRegenerateGroupSummary('group-1', null, null);
+      await flush();
 
       expect(mockPrisma.group.update).not.toHaveBeenCalled();
     });
@@ -206,9 +220,8 @@ describe('summaryEngine', () => {
       const { maybeRegenerateGroupSummary } = loadModule();
       mockPrisma.groupMessage.count.mockRejectedValue(new Error('DB error'));
 
-      await expect(
-        maybeRegenerateGroupSummary('group-1', null, null),
-      ).resolves.toBeUndefined();
+      maybeRegenerateGroupSummary('group-1', null, null);
+      await flush();
     });
 
     it('should regenerate when no prior summary exists', async () => {
@@ -222,7 +235,8 @@ describe('summaryEngine', () => {
       );
       mockGenerateSummary.mockResolvedValue('A lively group chat');
 
-      await maybeRegenerateGroupSummary('group-1', undefined, undefined);
+      maybeRegenerateGroupSummary('group-1', undefined, undefined);
+      await flush();
 
       expect(mockGenerateSummary).toHaveBeenCalled();
       expect(mockPrisma.group.update).toHaveBeenCalled();
@@ -238,7 +252,8 @@ describe('summaryEngine', () => {
       };
 
       setSummaryPrisma(customPrisma as any);
-      await maybeRegenerateDMSummary('conv-1', 'a', 'b', null, null);
+      maybeRegenerateDMSummary('conv-1', 'a', 'b', null, null);
+      await flush();
 
       expect(customPrisma.message.count).toHaveBeenCalled();
     });

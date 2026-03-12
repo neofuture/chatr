@@ -9,6 +9,7 @@ import CoverImageCropper from '@/components/image-manip/CoverImageCropper/CoverI
 import ProfileImageCropper from '@/components/image-manip/ProfileImageCropper/ProfileImageCropper';
 import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
 import SettingsPanel from '@/components/settings/SettingsPanel';
+import AddGroupMembersPanel from './AddGroupMembersPanel';
 import styles from './GroupProfilePanel.module.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -163,11 +164,15 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   const isOwner = group.ownerId === currentUserId;
   const isAdmin = isOwner || myMember?.role === 'admin';
 
-  const sortedMembers = [...group.members].sort((a, b) => {
-    const rank = (m: GroupMember) =>
-      m.status === 'pending' ? 10 : m.userId === group.ownerId ? 0 : m.role === 'admin' ? 1 : 2;
-    return rank(a) - rank(b);
-  });
+  const nameOf = (m: GroupMember) =>
+    (m.user.displayName || m.user.username.replace(/^@/, '')).toLowerCase();
+  const alphSort = (a: GroupMember, b: GroupMember) => nameOf(a).localeCompare(nameOf(b));
+
+  const activeMembers = group.members.filter(m => m.status !== 'pending');
+  const owners = activeMembers.filter(m => m.userId === group.ownerId).sort(alphSort);
+  const admins = activeMembers.filter(m => m.role === 'admin' && m.userId !== group.ownerId).sort(alphSort);
+  const regulars = activeMembers.filter(m => m.role !== 'admin' && m.userId !== group.ownerId).sort(alphSort);
+  const pending = group.members.filter(m => m.status === 'pending').sort(alphSort);
 
   const getInitial = (name: string) => name.charAt(0).toUpperCase();
 
@@ -308,6 +313,16 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   // ── Member actions ───────────────────────────────────────────────────
   const handlePromote = async (member: GroupMember) => {
     const name = member.user.displayName || member.user.username.replace(/^@/, '');
+    const confirmed = await showConfirmation({
+      title: 'Make Admin',
+      message: `Make ${name} an admin? They will be able to edit the group, manage members, and remove other members.`,
+      urgency: 'info',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Make Admin', variant: 'primary', value: true },
+      ],
+    });
+    if (confirmed !== true) return;
     try {
       const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API}/api/groups/${groupId}/members/${member.userId}/promote`, {
@@ -333,6 +348,16 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
 
   const handleDemote = async (member: GroupMember) => {
     const name = member.user.displayName || member.user.username.replace(/^@/, '');
+    const confirmed = await showConfirmation({
+      title: 'Remove Admin',
+      message: `Remove admin privileges from ${name}? They will become a regular member.`,
+      urgency: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Remove Admin', variant: 'destructive', value: true },
+      ],
+    });
+    if (confirmed !== true) return;
     try {
       const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API}/api/groups/${groupId}/members/${member.userId}/demote`, {
@@ -354,6 +379,25 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
     } catch {
       showToast('Failed to demote member', 'error');
     }
+  };
+
+  const openAddMembersPanel = () => {
+    const panelId = `add-members-${groupId}`;
+    openPanel(
+      panelId,
+      <AddGroupMembersPanel
+        groupId={groupId}
+        existingMemberIds={group.members.map(m => m.userId)}
+        onMembersAdded={() => {
+          fetchGroup();
+        }}
+      />,
+      'Add Members',
+      'center',
+      undefined,
+      undefined,
+      true,
+    );
   };
 
   const startEditingName = () => {
@@ -638,76 +682,127 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
           </p>
         </div>
 
-        {/* Members */}
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>Members</h3>
-          <div className={styles.sectionBody}>
-            {sortedMembers.map(member => {
-              const name = member.user.displayName || member.user.username.replace(/^@/, '');
-              const memberIsOwner = member.userId === group.ownerId;
-              const memberIsAdmin = member.role === 'admin';
-              const isSelf = member.userId === currentUserId;
-
-              const handleMemberClick = () => {
-                if (isSelf) {
-                  openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
-                } else {
-                  openUserProfile(member.userId, name, member.user.profileImage);
-                }
-              };
-
-              const isPending = member.status === 'pending';
-
-              return (
-                <div key={member.userId} className={styles.memberRow} style={isPending ? { opacity: 0.5 } : undefined}>
-                  <PresenceAvatar
-                    displayName={name}
-                    profileImage={member.user.profileImage}
-                    info={{ status: 'offline', lastSeen: null }}
-                    size={40}
-                    onClick={handleMemberClick}
-                  />
-                  <div className={styles.memberInfo}>
-                    <span
-                      className={styles.memberName}
-                      style={{ cursor: 'pointer' }}
-                      onClick={handleMemberClick}
-                    >
-                      {name}{isSelf ? ' (you)' : ''}
-                    </span>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      {isPending ? (
-                        <span className={styles.memberBadge} style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
-                          <i className="fas fa-clock" style={{ fontSize: '8px' }} /> Pending
-                        </span>
-                      ) : (
-                        <>
-                          {memberIsOwner && <span className={styles.ownerBadge}><i className="fas fa-crown" style={{ fontSize: '8px' }} /> Owner</span>}
-                          {memberIsAdmin && !memberIsOwner && <span className={styles.adminBadge}><i className="fas fa-shield" style={{ fontSize: '8px' }} /> Admin</span>}
-                          {!memberIsAdmin && <span className={styles.memberBadge}>Member</span>}
-                        </>
-                      )}
+        {/* Member groups */}
+        {owners.length > 0 && (
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>
+              <i className="fas fa-crown" style={{ fontSize: '10px', color: '#f59e0b' }} />{' '}
+              Owner{owners.length !== 1 ? 's' : ''}
+            </h3>
+            <div className={styles.sectionBody}>
+              {owners.map(member => {
+                const name = member.user.displayName || member.user.username.replace(/^@/, '');
+                const isSelf = member.userId === currentUserId;
+                const handleClick = () => {
+                  if (isSelf) openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
+                  else openUserProfile(member.userId, name, member.user.profileImage);
+                };
+                return (
+                  <div key={member.userId} className={styles.memberRow}>
+                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={{ status: 'offline', lastSeen: null }} size={40} onClick={handleClick} />
+                    <div className={styles.memberInfo}>
+                      <span className={styles.memberName} style={{ cursor: 'pointer' }} onClick={handleClick}>{name}{isSelf ? ' (you)' : ''}</span>
                     </div>
                   </div>
-                  {isAdmin && !isSelf && !memberIsOwner && !isPending && (
-                    <div className={styles.memberActions}>
-                      {!memberIsAdmin && (
-                        <button className={styles.actionBtn} onClick={() => handlePromote(member)} title={`Make ${name} admin`}>
-                          <i className="fas fa-shield" /> Make Admin
-                        </button>
-                      )}
-                      {isOwner && memberIsAdmin && (
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {admins.length > 0 && (
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>
+              <i className="fas fa-shield" style={{ fontSize: '10px', color: '#6366f1' }} />{' '}
+              Admin{admins.length !== 1 ? 's' : ''}
+            </h3>
+            <div className={styles.sectionBody}>
+              {admins.map(member => {
+                const name = member.user.displayName || member.user.username.replace(/^@/, '');
+                const isSelf = member.userId === currentUserId;
+                const handleClick = () => {
+                  if (isSelf) openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
+                  else openUserProfile(member.userId, name, member.user.profileImage);
+                };
+                return (
+                  <div key={member.userId} className={styles.memberRow}>
+                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={{ status: 'offline', lastSeen: null }} size={40} onClick={handleClick} />
+                    <div className={styles.memberInfo}>
+                      <span className={styles.memberName} style={{ cursor: 'pointer' }} onClick={handleClick}>{name}{isSelf ? ' (you)' : ''}</span>
+                    </div>
+                    {isOwner && !isSelf && (
+                      <div className={styles.memberActions}>
                         <button className={styles.actionBtn} onClick={() => handleDemote(member)} title={`Remove admin from ${name}`}>
                           <i className="fas fa-shield-xmark" /> Remove
                         </button>
-                      )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {(regulars.length > 0 || pending.length > 0) && (
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>
+              <i className="fas fa-users" style={{ fontSize: '10px' }} />{' '}
+              Members
+            </h3>
+            <div className={styles.sectionBody}>
+              {regulars.map(member => {
+                const name = member.user.displayName || member.user.username.replace(/^@/, '');
+                const isSelf = member.userId === currentUserId;
+                const handleClick = () => {
+                  if (isSelf) openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
+                  else openUserProfile(member.userId, name, member.user.profileImage);
+                };
+                return (
+                  <div key={member.userId} className={styles.memberRow}>
+                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={{ status: 'offline', lastSeen: null }} size={40} onClick={handleClick} />
+                    <div className={styles.memberInfo}>
+                      <span className={styles.memberName} style={{ cursor: 'pointer' }} onClick={handleClick}>{name}{isSelf ? ' (you)' : ''}</span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                    {isAdmin && !isSelf && (
+                      <div className={styles.memberActions}>
+                        <button className={styles.actionBtn} onClick={() => handlePromote(member)} title={`Make ${name} admin`}>
+                          <i className="fas fa-shield" /> Make Admin
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {pending.map(member => {
+                const name = member.user.displayName || member.user.username.replace(/^@/, '');
+                const isSelf = member.userId === currentUserId;
+                const handleClick = () => {
+                  if (isSelf) openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
+                  else openUserProfile(member.userId, name, member.user.profileImage);
+                };
+                return (
+                  <div key={member.userId} className={styles.memberRow} style={{ opacity: 0.5 }}>
+                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={{ status: 'offline', lastSeen: null }} size={40} onClick={handleClick} />
+                    <div className={styles.memberInfo}>
+                      <span className={styles.memberName} style={{ cursor: 'pointer' }} onClick={handleClick}>{name}{isSelf ? ' (you)' : ''}</span>
+                      <span className={styles.memberBadge} style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+                        <i className="fas fa-clock" style={{ fontSize: '8px' }} /> Pending
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Add Members */}
+        {isAdmin && (
+          <button className={styles.addMembersBtn} onClick={openAddMembersPanel}>
+            <i className="fas fa-user-plus" /> Add Members
+          </button>
+        )}
 
         {/* Leave */}
         <div className={styles.actions}>

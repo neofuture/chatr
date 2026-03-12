@@ -378,6 +378,31 @@
   color: var(--text-primary);
 }
 
+/* ── Add members button ── */
+.addMembersBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 0;
+  border-radius: 14px;
+  border: 1px dashed var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.addMembersBtn:hover {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
 /* ── Footer actions ── */
 .actions {
   width: 100%;
