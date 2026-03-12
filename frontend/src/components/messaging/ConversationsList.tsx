@@ -40,6 +40,7 @@ interface Props {
   search: string;
   onSearchChange: (val: string) => void;
   loading: boolean;
+  syncing?: boolean;
   groups: GroupSummary[];
   groupsLoading: boolean;
   selectedGroupId: string;
@@ -59,6 +60,7 @@ export default function ConversationsList({
   search,
   onSearchChange,
   loading,
+  syncing,
   groups,
   groupsLoading,
   selectedGroupId,
@@ -89,6 +91,26 @@ export default function ConversationsList({
     timer = setTimeout(tick, durations[0]);
     return () => clearTimeout(timer);
   }, []);
+
+  // Syncing banner: show while syncing, keep visible for exit animation
+  const [showSyncBanner, setShowSyncBanner] = useState(false);
+  const [syncExiting, setSyncExiting] = useState(false);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    if (syncing) {
+      clearTimeout(syncTimerRef.current);
+      setSyncExiting(false);
+      setShowSyncBanner(true);
+    } else if (showSyncBanner) {
+      setSyncExiting(true);
+      syncTimerRef.current = setTimeout(() => {
+        setShowSyncBanner(false);
+        setSyncExiting(false);
+      }, 250);
+    }
+    return () => clearTimeout(syncTimerRef.current);
+  }, [syncing]);
 
   const isSearching = search.trim().length > 0;
 
@@ -152,6 +174,14 @@ export default function ConversationsList({
 
       {/* Search */}
       <PaneSearchBox value={search} onChange={onSearchChange} placeholder="Search messages..." />
+
+      {/* Syncing banner */}
+      {showSyncBanner && (
+        <div className={`${styles.syncBanner} ${syncExiting ? styles.syncBannerHide : ''}`}>
+          <div className={styles.syncSpinner} />
+          Syncing…
+        </div>
+      )}
 
       {/* Tabs — only shown when there is more than one tab to display */}
       {(isSearching || hasRequests) && (

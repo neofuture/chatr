@@ -16,7 +16,7 @@ import { db, OutboundMessage } from './db';
 import type { Message } from '@/components/MessageBubble';
 
 /** Add a message to the outbound queue */
-export async function enqueue(msg: Message): Promise<void> {
+export async function enqueue(msg: Message, groupId?: string): Promise<void> {
   const entry: OutboundMessage = {
     tempId: msg.id,
     recipientId: msg.recipientId,
@@ -34,6 +34,7 @@ export async function enqueue(msg: Message): Promise<void> {
     status: 'sending',
     attempts: 1,
     queuedAt: Date.now(),
+    groupId: groupId ?? null,
   };
   await db.outboundQueue.put(entry);
 }
@@ -61,6 +62,19 @@ export async function loadAllQueued(senderId: string): Promise<OutboundMessage[]
   return db.outboundQueue
     .where('senderId').equals(senderId)
     .sortBy('queuedAt');
+}
+
+/** Load queued messages for a specific group, oldest first */
+export async function loadQueueForGroup(
+  senderId: string,
+  groupId: string
+): Promise<Message[]> {
+  const rows = await db.outboundQueue
+    .where('recipientId').equals(groupId)
+    .filter(r => r.senderId === senderId && r.groupId === groupId)
+    .sortBy('queuedAt');
+
+  return rows.map(r => queuedToMessage(r));
 }
 
 /** Mark a queued message as failed and increment attempt count */

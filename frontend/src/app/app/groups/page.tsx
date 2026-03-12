@@ -42,6 +42,7 @@ export default function GroupsPage() {
     groups,
     invites: groupInvites,
     loading,
+    syncing,
     refresh: refreshGroups,
     clearUnread: clearGroupUnread,
     acceptInvite: acceptGroupInvite,
@@ -51,6 +52,26 @@ export default function GroupsPage() {
   const [search, setSearch] = useState('');
   const [flipPhase, setFlipPhase] = useState<0 | 1>(0); // 0=message, 1=AI summary
   const prevFlipRef = useRef(0);
+
+  // Syncing banner state
+  const [showSyncBanner, setShowSyncBanner] = useState(false);
+  const [syncExiting, setSyncExiting] = useState(false);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    if (syncing) {
+      clearTimeout(syncTimerRef.current);
+      setSyncExiting(false);
+      setShowSyncBanner(true);
+    } else if (showSyncBanner) {
+      setSyncExiting(true);
+      syncTimerRef.current = setTimeout(() => {
+        setShowSyncBanner(false);
+        setSyncExiting(false);
+      }, 250);
+    }
+    return () => clearTimeout(syncTimerRef.current);
+  }, [syncing]);
 
   useEffect(() => {
     const t = setTimeout(() => { prevFlipRef.current = flipPhase; }, 550);
@@ -196,6 +217,13 @@ export default function GroupsPage() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <PaneSearchBox value={search} onChange={setSearch} placeholder="Search groups..." />
+
+      {showSyncBanner && (
+        <div className={`${styles.syncBanner} ${syncExiting ? styles.syncBannerHide : ''}`}>
+          <div className={styles.syncSpinner} />
+          Syncing…
+        </div>
+      )}
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {/* Group invites */}

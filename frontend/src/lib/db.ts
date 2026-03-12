@@ -74,7 +74,7 @@ export interface CachedMessage {
 // Queued outbound message — persists until server confirms delivery
 export interface OutboundMessage {
   tempId: string;          // Primary key — the temp-XXXX id we assigned locally
-  recipientId: string;
+  recipientId: string;     // For DMs: userId, for groups: groupId
   senderId: string;
   content: string;
   type: string;
@@ -89,6 +89,7 @@ export interface OutboundMessage {
   status: 'sending' | 'failed';
   attempts: number;
   queuedAt: number;        // epoch ms — when first queued
+  groupId?: string | null;  // Set for group messages, null/undefined for DMs
 }
 
 // Dexie database class

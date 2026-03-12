@@ -1,20 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { PanelProvider } from '@/contexts/PanelContext';
-import { ToastProvider } from '@/contexts/ToastContext';
-import { ConfirmationProvider } from '@/contexts/ConfirmationContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { WebSocketProvider } from '@/contexts/WebSocketContext';
-import { PresenceProvider } from '@/contexts/PresenceContext';
-import { UserSettingsProvider } from '@/contexts/UserSettingsContext';
-import { LogProvider } from '@/contexts/LogContext';
-import { FriendsProvider } from '@/contexts/FriendsContext';
-import PanelContainer from '@/components/panels/PanelContainer/PanelContainer';
-import ToastContainer from '@/components/ToastContainer/ToastContainer';
-import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog/ConfirmationDialog';
-import RoutePreloader from '@/components/RoutePreloader';
 import * as versionModule from '@/version';
+import ClientProviders from '@/components/ClientProviders';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -69,29 +57,9 @@ export default function RootLayout({
         <link rel="manifest" href="/favicon/site.webmanifest" />
       </head>
       <body className={inter.className}>
-        <RoutePreloader />
-        <ThemeProvider>
-          <LogProvider>
-          <UserSettingsProvider>
-          <WebSocketProvider>
-            <PresenceProvider>
-            <ToastProvider>
-              <PanelProvider>
-                <ConfirmationProvider>
-                  <FriendsProvider>
-                    {children}
-                    <PanelContainer />
-                    <ToastContainer />
-                    <ConfirmationDialog />
-                  </FriendsProvider>
-                </ConfirmationProvider>
-              </PanelProvider>
-            </ToastProvider>
-            </PresenceProvider>
-          </WebSocketProvider>
-          </UserSettingsProvider>
-          </LogProvider>
-        </ThemeProvider>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

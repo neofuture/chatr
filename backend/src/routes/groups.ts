@@ -175,7 +175,7 @@ router.get('/', authenticateToken as any, async (req: any, res: Response) => {
 
     const groups = memberships.map(m => {
       // Fire-and-forget: regenerate AI summary if threshold met
-      maybeRegenerateGroupSummary(m.group.id).catch(() => {});
+      maybeRegenerateGroupSummary(m.group.id, m.group.summaryMessageCount, m.group.summaryGeneratedAt).catch(() => {});
       return {
         ...m.group,
         lastMessage: m.group.messages[0] ?? null,
@@ -340,7 +340,7 @@ router.get('/:id', authenticateToken as any, async (req: any, res: Response) => 
       where: { id },
       include: {
         members: {
-          where: { status: 'accepted' },
+          where: { status: { in: ['accepted', 'pending'] } },
           include: { user: { select: { id: true, username: true, displayName: true, profileImage: true } } },
         },
       },

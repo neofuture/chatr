@@ -565,7 +565,8 @@ function buildDashboard(): object {
       const migDirs = fs.readdirSync(migrationsDir, { withFileTypes: true })
         .filter(d => d.isDirectory() && d.name !== 'migration_lock.toml')
         .map(d => d.name)
-        .sort();
+        .sort()
+        .reverse();
       const appliedMigrations = new Set<string>();
       if (isTest) {
         migDirs.forEach(m => appliedMigrations.add(m));

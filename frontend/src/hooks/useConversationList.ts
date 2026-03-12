@@ -48,22 +48,50 @@ function getToken() {
   return localStorage.getItem('token') || '';
 }
 
+const CONVERSATIONS_CACHE_KEY = 'chatr:conversations';
+
+function loadCachedConversations(): ConversationUser[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CONVERSATIONS_CACHE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+function saveCachedConversations(list: ConversationUser[]) {
+  try { localStorage.setItem(CONVERSATIONS_CACHE_KEY, JSON.stringify(list)); } catch {}
+}
+
 export function useConversationList() {
   const { socket } = useWebSocket();
   const { addLog } = useLog();
-  const [conversations, setConversations] = useState<ConversationUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = useRef(loadCachedConversations());
+  const [conversations, setConversations] = useState<ConversationUser[]>(cached.current);
+  const [loading, setLoading] = useState(cached.current.length === 0);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
+  // Persist to localStorage whenever conversations change
+  useEffect(() => {
+    saveCachedConversations(conversations);
+  }, [conversations]);
+
   // ── Fetch conversations ──────────────────────────────────────────────────
   const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const abortRef = useRef<AbortController | null>(null);
   const fetchConversations = useCallback(async (background = false, retries = 2) => {
     try {
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
       if (!background) setLoading(true);
+      if (background) setSyncing(true);
       const res = await fetch(`${getApiBase()}/api/users/conversations`, {
         headers: { Authorization: `Bearer ${getToken()}` },
+        signal: ac.signal,
       });
       if (!res.ok) throw new Error('Failed to fetch conversations');
       const data = await res.json();
@@ -71,6 +99,7 @@ export function useConversationList() {
       setError(null);
       addLog('info', 'conversations:loaded', { count: (data.conversations ?? []).length });
     } catch (e: any) {
+      if (e.name === 'AbortError') return;
       if (retries > 0) {
         retryTimer.current = setTimeout(() => fetchConversations(true, retries - 1), 1500);
         return;
@@ -78,13 +107,17 @@ export function useConversationList() {
       setError(e.message);
       addLog('error', 'conversations:load-failed', { error: e.message });
     } finally {
-      if (!background) setLoading(false);
+      setLoading(false);
+      setSyncing(false);
     }
   }, [addLog]);
 
   useEffect(() => {
-    fetchConversations();
-    return () => clearTimeout(retryTimer.current);
+    fetchConversations(cached.current.length > 0);
+    return () => {
+      clearTimeout(retryTimer.current);
+      abortRef.current?.abort();
+    };
   }, [fetchConversations]);
 
   // Re-fetch when local block/unblock happens (fired by FriendsContext).
@@ -305,6 +338,7 @@ export function useConversationList() {
   return {
     conversations: displayList,
     loading,
+    syncing,
     error,
     search,
     setSearch,

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
 import { getAudioDurationFromBlob } from '@/utils/audio';
+import { enqueue, loadAllQueued } from '@/lib/outboundQueue';
 import type { Message } from '@/components/MessageBubble';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -70,15 +71,34 @@ export function useGroupMessageInput({
     }
   }, [socket, groupId, effectivelyOnline, emitTypingStop]);
 
+  // ── Flush queued group messages on reconnect ─────────────────────────────
+  useEffect(() => {
+    if (!socket || !connected || !currentUserId) return;
+
+    loadAllQueued(currentUserId).then(queued => {
+      const groupQueued = queued.filter(item => item.groupId === groupId);
+      if (!groupQueued.length) return;
+      for (const item of groupQueued) {
+        socket.emit('group:message', {
+          groupId: item.groupId,
+          content: item.content,
+          type: item.type,
+          tempId: item.tempId,
+        });
+      }
+    }).catch(console.error);
+  }, [socket, connected, currentUserId, groupId]);
+
   // ── Send text ─────────────────────────────────────────────────────────────
 
   const handleSend = useCallback(() => {
     const content = message.trim();
-    if (!socket || !effectivelyOnline || !groupId || !content) return;
+    if (!groupId || !content) return;
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     emitTypingStop();
 
+    const isOnline = socket && effectivelyOnline;
     const tempId = `temp-${Date.now()}`;
     const msg: Message = {
       id: tempId,
@@ -86,15 +106,22 @@ export function useGroupMessageInput({
       senderId: currentUserId,
       recipientId: groupId,
       direction: 'sent',
-      status: 'sending',
+      status: isOnline ? 'sending' : 'queued',
       timestamp: new Date(),
       type: 'text',
     };
 
+    enqueue(msg, groupId).catch(console.error);
+
     onMessageSent?.(msg);
     setMessage('');
-    socket.emit('group:message', { groupId, content, type: 'text', tempId });
-  }, [socket, effectivelyOnline, message, groupId, currentUserId, emitTypingStop, onMessageSent]);
+
+    if (isOnline) {
+      socket.emit('group:message', { groupId, content, type: 'text', tempId });
+    } else {
+      showToast('Message queued — will send when online', 'info');
+    }
+  }, [socket, effectivelyOnline, message, groupId, currentUserId, emitTypingStop, onMessageSent, showToast]);
 
   // ── Emoji ─────────────────────────────────────────────────────────────────
 

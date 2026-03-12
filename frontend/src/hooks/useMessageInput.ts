@@ -103,13 +103,14 @@ export function useMessageInput({
 
   // ── Message send ─────────────────────────────────────
 
-  // Flush queued messages on reconnect
+  // Flush queued DM messages on reconnect
   useEffect(() => {
     if (!socket || !connected || !currentUserId) return;
 
     loadAllQueued(currentUserId).then(queued => {
-      if (!queued.length) return;
-      for (const item of queued) {
+      const dmQueued = queued.filter(item => !item.groupId);
+      if (!dmQueued.length) return;
+      for (const item of dmQueued) {
         socket.emit('message:send', {
           recipientId: item.recipientId,
           content: item.content,
@@ -121,7 +122,6 @@ export function useMessageInput({
           fileType: item.fileType ?? undefined,
           waveform: item.waveformData ?? undefined,
           duration: item.duration ?? undefined,
-          // Pass tempId so the server/client can match confirmation back
           tempId: item.tempId,
         });
       }
@@ -129,10 +129,7 @@ export function useMessageInput({
   }, [socket, connected, currentUserId]);
 
   const handleSend = useCallback(() => {
-    if (!socket || !effectivelyOnline || !recipientId) {
-      showToast('Not connected', 'error');
-      return;
-    }
+    if (!recipientId) { showToast('Select a recipient', 'error'); return; }
 
     const trimmed = message.trim();
     if (!trimmed) return;
@@ -140,7 +137,9 @@ export function useMessageInput({
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     emitTypingStop();
 
+    // Edits require a live connection
     if (editingMessage) {
+      if (!socket || !effectivelyOnline) { showToast('Not connected — can\'t edit', 'error'); return; }
       socket.emit('message:edit', { messageId: editingMessage.id, content: trimmed, recipientId });
       onEditSaved?.(editingMessage.id, trimmed);
       onCancelEdit?.();
@@ -148,6 +147,7 @@ export function useMessageInput({
       return;
     }
 
+    const isOnline = socket && effectivelyOnline;
     const tempId = `temp-${Date.now()}`;
     const msg: Message = {
       id: tempId,
@@ -155,7 +155,7 @@ export function useMessageInput({
       senderId: currentUserId,
       recipientId,
       direction: 'sent',
-      status: 'sending',
+      status: isOnline ? 'sending' : 'queued',
       timestamp: new Date(),
       type: 'text',
       replyTo: replyingTo ? {
@@ -168,27 +168,31 @@ export function useMessageInput({
       } : undefined,
     };
 
-    // Persist to outbound queue BEFORE emitting so it survives navigation
+    // Persist to outbound queue so it survives navigation and offline
     enqueue(msg).catch(console.error);
 
     onMessageSent?.(msg);
     onCancelReply?.();
     setMessage('');
 
-    socket.emit('message:send', {
-      recipientId,
-      content: trimmed,
-      type: 'text',
-      replyTo: replyingTo ? {
-        id: replyingTo.id,
-        content: replyingTo.content,
-        senderDisplayName: replyingTo.senderDisplayName,
-        senderUsername: replyingTo.senderUsername,
-        type: replyingTo.type,
-        duration: replyingTo.duration,
-      } : undefined,
-      tempId,
-    });
+    if (isOnline) {
+      socket.emit('message:send', {
+        recipientId,
+        content: trimmed,
+        type: 'text',
+        replyTo: replyingTo ? {
+          id: replyingTo.id,
+          content: replyingTo.content,
+          senderDisplayName: replyingTo.senderDisplayName,
+          senderUsername: replyingTo.senderUsername,
+          type: replyingTo.type,
+          duration: replyingTo.duration,
+        } : undefined,
+        tempId,
+      });
+    } else {
+      showToast('Message queued — will send when online', 'info');
+    }
   }, [socket, effectivelyOnline, recipientId, message, editingMessage, currentUserId, replyingTo, showToast, emitTypingStop, onMessageSent, onEditSaved, onCancelEdit, onCancelReply]);
 
   // ── Emoji insert ─────────────────────────────────────

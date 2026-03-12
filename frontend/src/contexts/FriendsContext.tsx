@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
 import type { FriendEntry, FriendRequest, FriendUser, AvailableUser } from '@/types/types';
@@ -34,40 +34,70 @@ interface FriendsContextValue {
 
 const FriendsContext = createContext<FriendsContextValue | null>(null);
 
+const FRIENDS_CACHE_KEY = 'chatr:friends-data';
+
+function loadFriendsCache() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(FRIENDS_CACHE_KEY);
+    if (raw) return JSON.parse(raw) as { friends: FriendEntry[]; incoming: FriendRequest[]; outgoing: FriendRequest[]; blocked: FriendEntry[] };
+  } catch {}
+  return null;
+}
+
+function saveFriendsCache(data: { friends: FriendEntry[]; incoming: FriendRequest[]; outgoing: FriendRequest[]; blocked: FriendEntry[] }) {
+  try { localStorage.setItem(FRIENDS_CACHE_KEY, JSON.stringify(data)); } catch {}
+}
+
 export function FriendsProvider({ children }: { children: ReactNode }) {
   const { socket } = useWebSocket();
   const { showToast } = useToast();
+  const cachedFriends = useRef(loadFriendsCache());
 
-  const [friends, setFriends] = useState<FriendEntry[]>([]);
-  const [incoming, setIncoming] = useState<FriendRequest[]>([]);
-  const [outgoing, setOutgoing] = useState<FriendRequest[]>([]);
-  const [blocked, setBlocked] = useState<FriendEntry[]>([]);
+  const [friends, setFriends] = useState<FriendEntry[]>(cachedFriends.current?.friends ?? []);
+  const [incoming, setIncoming] = useState<FriendRequest[]>(cachedFriends.current?.incoming ?? []);
+  const [outgoing, setOutgoing] = useState<FriendRequest[]>(cachedFriends.current?.outgoing ?? []);
+  const [blocked, setBlocked] = useState<FriendEntry[]>(cachedFriends.current?.blocked ?? []);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FriendUser[]>([]);
   const [searching, setSearching] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(cachedFriends.current === null);
+
+  // Persist friends data to localStorage on changes
+  useEffect(() => {
+    saveFriendsCache({ friends, incoming, outgoing, blocked });
+  }, [friends, incoming, outgoing, blocked]);
 
   // ── Load all friend data ──────────────────────────────────────────────────
+  const friendsAbortRef = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
     try {
+      friendsAbortRef.current?.abort();
+      const ac = new AbortController();
+      friendsAbortRef.current = ac;
+      const opts = { headers: authHeaders(), signal: ac.signal };
       const [fr, inc, out, bl] = await Promise.all([
-        fetch(`${API}/api/friends`, { headers: authHeaders() }).then(r => r.json()),
-        fetch(`${API}/api/friends/requests/incoming`, { headers: authHeaders() }).then(r => r.json()),
-        fetch(`${API}/api/friends/requests/outgoing`, { headers: authHeaders() }).then(r => r.json()),
-        fetch(`${API}/api/friends/blocked`, { headers: authHeaders() }).then(r => r.json()),
+        fetch(`${API}/api/friends`, opts).then(r => r.json()),
+        fetch(`${API}/api/friends/requests/incoming`, opts).then(r => r.json()),
+        fetch(`${API}/api/friends/requests/outgoing`, opts).then(r => r.json()),
+        fetch(`${API}/api/friends/blocked`, opts).then(r => r.json()),
       ]);
       setFriends(fr.friends ?? []);
       setIncoming(inc.requests ?? []);
       setOutgoing(out.requests ?? []);
       setBlocked(bl.blocked ?? []);
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error('FriendsContext refresh error', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+    return () => { friendsAbortRef.current?.abort(); };
+  }, [refresh]);
 
   // ── Real-time socket events ───────────────────────────────────────────────
   useEffect(() => {
@@ -104,6 +134,7 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
   }, [socket, refresh, showToast]);
 
   // ── Search ────────────────────────────────────────────────────────────────
+  const searchAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setSearchResults([]);
@@ -112,18 +143,26 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
+        searchAbortRef.current?.abort();
+        const ac = new AbortController();
+        searchAbortRef.current = ac;
         const res = await fetch(`${API}/api/friends/search?q=${encodeURIComponent(searchQuery)}`, {
           headers: authHeaders(),
+          signal: ac.signal,
         });
         const data = await res.json();
         setSearchResults(data.users ?? []);
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
         console.error('friend search error', err);
       } finally {
         setSearching(false);
       }
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      searchAbortRef.current?.abort();
+    };
   }, [searchQuery]);
 
   // ── Actions ───────────────────────────────────────────────────────────────

@@ -476,7 +476,7 @@ function CollapsibleText({ isSent, isBot, isGuest, children }: { isSent: boolean
           className={`${styles.readMoreBtn} ${isSent ? styles.readMoreBtnSent : isBot ? styles.readMoreBtnBot : isGuest ? styles.readMoreBtnGuest : styles.readMoreBtnReceived}`}
           onClick={toggle}
         >
-          {expanded ? 'Show less ▲' : 'Read more ▼'}
+          {expanded ? <>Show less <i className="fas fa-chevron-up" style={{ fontSize: '9px', marginLeft: '4px' }} /></> : <>Read more <i className="fas fa-chevron-down" style={{ fontSize: '9px', marginLeft: '4px' }} /></>}
         </button>
       )}
     </div>

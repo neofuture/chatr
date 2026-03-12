@@ -98,6 +98,7 @@ export function useConversation() {
   useEffect(() => {
     if (!currentUserId || !testRecipientId) return;
     let cancelled = false;
+    const ac = new AbortController();
     const token = localStorage.getItem('token');
 
     const run = async () => {
@@ -113,6 +114,7 @@ export function useConversation() {
       try {
         const res = await fetch(`${API}/api/messages/history?otherUserId=${testRecipientId}&limit=50`, {
           headers: { Authorization: `Bearer ${token}` },
+          signal: ac.signal,
         });
         if (!res.ok || cancelled) return;
         const data = await res.json();
@@ -147,24 +149,26 @@ export function useConversation() {
           await cacheMessages(mapped, currentUserId);
           addLog('info', 'history:loaded', { count: mapped.length, userId: testRecipientId });
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
         addLog('error', 'history:load-failed', { error: err, userId: testRecipientId });
       }
     };
 
     run();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; ac.abort(); };
   }, [currentUserId, testRecipientId, addLog]);
 
   // ── Fetch users ──────────────────────────────────────
   useEffect(() => {
     if (!currentUserId) return;
+    const ac = new AbortController();
     const run = async () => {
       const token = localStorage.getItem('token');
       if (!token) return;
       setLoadingUsers(true);
       try {
-        const res = await fetch(`${API}/api/users`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch(`${API}/api/users`, { headers: { Authorization: `Bearer ${token}` }, signal: ac.signal });
         if (!res.ok) return;
         const data = await res.json();
         const others: AvailableUser[] = data.users
@@ -188,6 +192,7 @@ export function useConversation() {
         try {
           const convRes = await fetch(`${API}/api/users/conversations`, {
             headers: { Authorization: `Bearer ${token}` },
+            signal: ac.signal,
           });
           if (convRes.ok) {
             const convData = await convRes.json();
@@ -206,7 +211,8 @@ export function useConversation() {
             setConversations(summaries);
             addLog('info', 'conversations:preloaded', { count: Object.keys(summaries).length });
           }
-        } catch (e) {
+        } catch (e: any) {
+          if (e.name === 'AbortError') return;
           addLog('error', 'conversations:preload-error', { error: e });
         }
 
@@ -220,10 +226,14 @@ export function useConversation() {
             s.emit('presence:request', ids);
           }
         }
-      } catch (e) { addLog('error', 'users:fetch-error', { error: e }); }
+      } catch (e: any) {
+        if (e.name === 'AbortError') return;
+        addLog('error', 'users:fetch-error', { error: e });
+      }
       finally { setLoadingUsers(false); }
     };
     run();
+    return () => ac.abort();
   }, [currentUserId, addLog]);
 
   // ── Drain queue when back online ─────────────────────

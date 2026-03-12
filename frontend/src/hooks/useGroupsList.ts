@@ -38,20 +38,49 @@ export interface GroupInvite {
   invitedById?: string | null;
 }
 
+const GROUPS_CACHE_KEY = 'chatr:groups';
+const INVITES_CACHE_KEY = 'chatr:group-invites';
+
+function loadCached<T>(key: string): T[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+function saveCache<T>(key: string, list: T[]) {
+  try { localStorage.setItem(key, JSON.stringify(list)); } catch {}
+}
+
 export function useGroupsList() {
-  const [groups, setGroups] = useState<GroupSummary[]>([]);
-  const [invites, setInvites] = useState<GroupInvite[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedGroups = useRef(loadCached<GroupSummary>(GROUPS_CACHE_KEY));
+  const cachedInvites = useRef(loadCached<GroupInvite>(INVITES_CACHE_KEY));
+  const [groups, setGroups] = useState<GroupSummary[]>(cachedGroups.current);
+  const [invites, setInvites] = useState<GroupInvite[]>(cachedInvites.current);
+  const [loading, setLoading] = useState(cachedGroups.current.length === 0);
+  const [syncing, setSyncing] = useState(false);
   const { socket } = useWebSocket();
   const unreadRef = useRef<Record<string, number>>({});
 
+  // Persist to localStorage whenever lists change
+  useEffect(() => { saveCache(GROUPS_CACHE_KEY, groups); }, [groups]);
+  useEffect(() => { saveCache(INVITES_CACHE_KEY, invites); }, [invites]);
+
   const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchGroups = useCallback(async (retries = 2) => {
     try {
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      setSyncing(true);
       const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API}/api/groups`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: ac.signal,
       });
       if (!res.ok) throw new Error('Failed to fetch groups');
       const data = await res.json();
@@ -60,6 +89,7 @@ export function useGroupsList() {
         unreadCount: unreadRef.current[g.id] ?? 0,
       })));
     } catch (e: any) {
+      if (e.name === 'AbortError') return;
       if (retries > 0) {
         retryTimer.current = setTimeout(() => fetchGroups(retries - 1), 1500);
         return;
@@ -67,19 +97,26 @@ export function useGroupsList() {
       console.error('useGroupsList fetch error:', e);
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
   }, []);
 
+  const inviteAbortRef = useRef<AbortController | null>(null);
   const fetchInvites = useCallback(async (retries = 2) => {
     try {
+      inviteAbortRef.current?.abort();
+      const ac = new AbortController();
+      inviteAbortRef.current = ac;
       const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API}/api/groups/invites`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: ac.signal,
       });
       if (!res.ok) return;
       const data = await res.json();
       setInvites(data.invites ?? []);
     } catch (e: any) {
+      if (e.name === 'AbortError') return;
       if (retries > 0) {
         setTimeout(() => fetchInvites(retries - 1), 1500);
         return;
@@ -91,7 +128,11 @@ export function useGroupsList() {
   useEffect(() => {
     fetchGroups();
     fetchInvites();
-    return () => clearTimeout(retryTimer.current);
+    return () => {
+      clearTimeout(retryTimer.current);
+      abortRef.current?.abort();
+      inviteAbortRef.current?.abort();
+    };
   }, [fetchGroups, fetchInvites]);
 
   // Accept a group invite
@@ -269,7 +310,7 @@ export function useGroupsList() {
     setGroups(prev => prev.map(g => g.id === groupId ? { ...g, unreadCount: 0 } : g));
   }, []);
 
-  return { groups, invites, loading, refresh: fetchGroups, refreshInvites: fetchInvites, clearUnread, acceptInvite, declineInvite };
+  return { groups, invites, loading, syncing, refresh: fetchGroups, refreshInvites: fetchInvites, clearUnread, acceptInvite, declineInvite };
 }
 
 

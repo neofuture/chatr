@@ -1,11 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import { generateConversationSummary, type SummaryMessage } from './openai';
 
-const prisma = new PrismaClient();
+let _prisma: PrismaClient;
+function getPrisma() {
+  if (!_prisma) _prisma = new PrismaClient();
+  return _prisma;
+}
+
+export function setSummaryPrisma(client: PrismaClient) { _prisma = client; }
 
 const MIN_MESSAGES_FOR_SUMMARY = 10;
 const REGEN_THRESHOLD = 10;
 const MAX_MESSAGES_TO_SUMMARISE = 30;
+const MIN_REGEN_INTERVAL_MS = 5 * 60 * 1000;
 
 // ── DM conversations ──────────────────────────────────────────────────────────
 
@@ -13,13 +20,13 @@ export async function maybeRegenerateDMSummary(
   conversationId: string,
   participantA: string,
   participantB: string,
+  existingSummaryCount?: number | null,
+  existingSummaryGeneratedAt?: Date | null,
 ): Promise<void> {
   try {
-    const convo = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      select: { summaryMessageCount: true, summaryGeneratedAt: true },
-    });
-    if (!convo) return;
+    if (existingSummaryGeneratedAt && Date.now() - existingSummaryGeneratedAt.getTime() < MIN_REGEN_INTERVAL_MS) return;
+
+    const prisma = getPrisma();
 
     const currentCount = await prisma.message.count({
       where: {
@@ -31,7 +38,7 @@ export async function maybeRegenerateDMSummary(
       },
     });
 
-    if (!shouldRegenerate(currentCount, convo.summaryMessageCount)) return;
+    if (!shouldRegenerate(currentCount, existingSummaryCount ?? null)) return;
 
     const messages = await prisma.message.findMany({
       where: {
@@ -76,19 +83,19 @@ export async function maybeRegenerateDMSummary(
 
 export async function maybeRegenerateGroupSummary(
   groupId: string,
+  existingSummaryCount?: number | null,
+  existingSummaryGeneratedAt?: Date | null,
 ): Promise<void> {
   try {
-    const group = await prisma.group.findUnique({
-      where: { id: groupId },
-      select: { summaryMessageCount: true, summaryGeneratedAt: true },
-    });
-    if (!group) return;
+    if (existingSummaryGeneratedAt && Date.now() - existingSummaryGeneratedAt.getTime() < MIN_REGEN_INTERVAL_MS) return;
+
+    const prisma = getPrisma();
 
     const currentCount = await prisma.groupMessage.count({
       where: { groupId },
     });
 
-    if (!shouldRegenerate(currentCount, group.summaryMessageCount)) return;
+    if (!shouldRegenerate(currentCount, existingSummaryCount ?? null)) return;
 
     const messages = await prisma.groupMessage.findMany({
       where: { groupId, type: 'text' },

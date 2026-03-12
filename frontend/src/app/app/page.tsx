@@ -29,6 +29,7 @@ export default function AppPage() {
   const {
     conversations,
     loading,
+    syncing: convSyncing,
     search,
     setSearch,
     refresh,
@@ -42,7 +43,7 @@ export default function AppPage() {
   const { blockUser, removeFriend, unblockUser } = useFriends();
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
-  const { groups, invites: groupInvites, loading: groupsLoading, refresh: refreshGroups, clearUnread: clearGroupUnread, acceptInvite: acceptGroupInvite, declineInvite: declineGroupInvite } = useGroupsList();
+  const { groups, invites: groupInvites, loading: groupsLoading, syncing: groupsSyncing, refresh: refreshGroups, clearUnread: clearGroupUnread, acceptInvite: acceptGroupInvite, declineInvite: declineGroupInvite } = useGroupsList();
   // Per-user nuke ref map — ConversationView stores its nuke handler here on mount
   const nukeRefs = useRef<Record<string, React.MutableRefObject<(() => Promise<void>) | null>>>({});
 
@@ -473,6 +474,7 @@ export default function AppPage() {
         search={search}
         onSearchChange={setSearch}
         loading={loading}
+        syncing={convSyncing || groupsSyncing}
         groups={groups}
         groupsLoading={groupsLoading}
         selectedGroupId={selectedGroupId}

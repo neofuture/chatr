@@ -96,6 +96,9 @@ model Message {
 
   @@index([senderId])
   @@index([recipientId])
+  @@index([senderId, recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, senderId, createdAt(sort: Desc)])
+  @@index([recipientId, isRead, deletedAt])
 }
 
 // Immutable audit log — one row per edit, never deleted

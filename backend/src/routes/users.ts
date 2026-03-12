@@ -7,11 +7,12 @@ import { authenticateToken } from '../middleware/auth';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getCachedConversations, setCachedConversations, invalidateConversationCache } from '../lib/redis';
 import { getConnectedUserIds } from '../lib/conversation';
-import { maybeRegenerateDMSummary } from '../services/summaryEngine';
+import { maybeRegenerateDMSummary, setSummaryPrisma } from '../services/summaryEngine';
 import { Server } from 'socket.io';
 
 const router = Router();
 const prisma = new PrismaClient();
+setSummaryPrisma(prisma);
 
 let _io: Server | null = null;
 export function setUsersSocketIO(io: Server) { _io = io; }
@@ -203,24 +204,15 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
       }
     } catch (_) { /* cache miss or Redis down — fall through to DB */ }
 
-    // Find distinct user IDs we've exchanged messages with
-    const sentTo = await prisma.message.findMany({
-      where: { senderId: currentUserId },
-      select: { recipientId: true },
-      distinct: ['recipientId'],
-    });
-    const receivedFrom = await prisma.message.findMany({
-      where: { recipientId: currentUserId },
-      select: { senderId: true },
-      distinct: ['senderId'],
-    });
-
-    const conversationPartnerIds = [
-      ...new Set([
-        ...sentTo.map(m => m.recipientId),
-        ...receivedFrom.map(m => m.senderId),
-      ]),
-    ];
+    // Find distinct user IDs we've exchanged messages with (single query)
+    const partners: { partner_id: string }[] = await prisma.$queryRaw`
+      SELECT DISTINCT
+        CASE WHEN "senderId" = ${currentUserId} THEN "recipientId" ELSE "senderId" END AS partner_id
+      FROM "Message"
+      WHERE ("senderId" = ${currentUserId} OR "recipientId" = ${currentUserId})
+        AND "deletedAt" IS NULL
+    `;
+    const conversationPartnerIds = partners.map(p => p.partner_id);
 
     if (conversationPartnerIds.length === 0) {
       const result = { conversations: [] };
@@ -228,46 +220,88 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
       return res.json(result);
     }
 
-    // Fetch only users we've actually messaged
-    const users = await prisma.user.findMany({
-      where: { id: { in: conversationPartnerIds } },
-      select: {
-        id: true,
-        username: true,
-        displayName: true,
-        firstName: true,
-        lastName: true,
-        profileImage: true,
-        lastSeen: true,
-        isBot: true,
-        isGuest: true,
-      },
-    });
+    // Run all independent queries in parallel
+    const [users, convos, friendships, blocks, lastMessages, unreadCounts] = await Promise.all([
+      // Fetch only users we've actually messaged
+      prisma.user.findMany({
+        where: { id: { in: conversationPartnerIds } },
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          firstName: true,
+          lastName: true,
+          profileImage: true,
+          lastSeen: true,
+          isBot: true,
+          isGuest: true,
+        },
+      }),
+      // Batch-fetch all Conversation rows for this user
+      prisma.conversation.findMany({
+        where: {
+          OR: [
+            { participantA: currentUserId },
+            { participantB: currentUserId },
+          ],
+        },
+      }),
+      // Batch-fetch friendships to mark isFriend
+      prisma.friendship.findMany({
+        where: {
+          status: 'accepted',
+          OR: [
+            { requesterId: currentUserId, addresseeId: { in: conversationPartnerIds } },
+            { addresseeId: currentUserId, requesterId: { in: conversationPartnerIds } },
+          ],
+        },
+      }),
+      // Batch-fetch blocks (either direction) to mark isBlocked / blockedByMe
+      prisma.friendship.findMany({
+        where: {
+          status: 'blocked',
+          OR: [
+            { requesterId: currentUserId, addresseeId: { in: conversationPartnerIds } },
+            { addresseeId: currentUserId, requesterId: { in: conversationPartnerIds } },
+          ],
+        },
+        select: { requesterId: true, addresseeId: true },
+      }),
+      // Last message per conversation partner (single query using DISTINCT ON)
+      prisma.$queryRaw<any[]>`
+        SELECT DISTINCT ON (partner_id) *
+        FROM (
+          SELECT
+            m.id, m.content, m.type, m."createdAt", m."senderId", m."isRead", m."fileType",
+            CASE WHEN m."senderId" = ${currentUserId} THEN m."recipientId" ELSE m."senderId" END AS partner_id
+          FROM "Message" m
+          WHERE m."deletedAt" IS NULL
+            AND (m."senderId" = ${currentUserId} OR m."recipientId" = ${currentUserId})
+            AND (
+              (m."senderId" = ${currentUserId} AND m."recipientId" = ANY(${conversationPartnerIds}))
+              OR (m."recipientId" = ${currentUserId} AND m."senderId" = ANY(${conversationPartnerIds}))
+            )
+        ) sub
+        ORDER BY partner_id, "createdAt" DESC
+      `,
+      // Unread counts per sender (single query with GROUP BY)
+      prisma.message.groupBy({
+        by: ['senderId'],
+        where: {
+          recipientId: currentUserId,
+          isRead: false,
+          deletedAt: null,
+          senderId: { in: conversationPartnerIds },
+        },
+        _count: true,
+      }),
+    ]);
 
-    // Batch-fetch all Conversation rows for this user
-    const convos = await prisma.conversation.findMany({
-      where: {
-        OR: [
-          { participantA: currentUserId },
-          { participantB: currentUserId },
-        ],
-      },
-    });
     const convoMap = new Map(convos.map(c => {
       const otherId = c.participantA === currentUserId ? c.participantB : c.participantA;
       return [otherId, c];
     }));
 
-    // Batch-fetch friendships to mark isFriend
-    const friendships = await prisma.friendship.findMany({
-      where: {
-        status: 'accepted',
-        OR: [
-          { requesterId: currentUserId, addresseeId: { in: conversationPartnerIds } },
-          { addresseeId: currentUserId, requesterId: { in: conversationPartnerIds } },
-        ],
-      },
-    });
     const friendIds = new Set(friendships.map(f =>
       f.requesterId === currentUserId ? f.addresseeId : f.requesterId
     ));
@@ -277,17 +311,6 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
       friendshipIdMap.set(otherId, f.id);
     }
 
-    // Batch-fetch blocks (either direction) to mark isBlocked / blockedByMe
-    const blocks = await prisma.friendship.findMany({
-      where: {
-        status: 'blocked',
-        OR: [
-          { requesterId: currentUserId, addresseeId: { in: conversationPartnerIds } },
-          { addresseeId: currentUserId, requesterId: { in: conversationPartnerIds } },
-        ],
-      },
-      select: { requesterId: true, addresseeId: true },
-    });
     const blockedByMeIds = new Set<string>();
     const blockedMeIds = new Set<string>();
     for (const b of blocks) {
@@ -295,60 +318,42 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
       else blockedMeIds.add(b.requesterId);
     }
 
-    const withMessages = await Promise.all(
-      users.map(async (user) => {
-        const lastMessage = await prisma.message.findFirst({
-          where: {
-            deletedAt: null,
-            OR: [
-              { senderId: currentUserId, recipientId: user.id },
-              { senderId: user.id,       recipientId: currentUserId },
-            ],
-          },
-          orderBy: { createdAt: 'desc' },
-          select: {
-            id: true,
-            content: true,
-            type: true,
-            createdAt: true,
-            senderId: true,
-            isRead: true,
-            fileType: true,
-          },
-        });
+    const lastMessageMap = new Map(lastMessages.map(m => [m.partner_id, m]));
+    const unreadMap = new Map(unreadCounts.map(u => [u.senderId, u._count]));
 
-        const unreadCount = await prisma.message.count({
-          where: {
-            senderId: user.id,
-            recipientId: currentUserId,
-            isRead: false,
-            deletedAt: null,
-          },
-        });
+    const withMessages = users.map((user) => {
+      const lastMessage = lastMessageMap.get(user.id) ?? null;
+      const unreadCount = unreadMap.get(user.id) ?? 0;
+      const convo = convoMap.get(user.id);
 
-        const convo = convoMap.get(user.id);
+      // Fire-and-forget: regenerate AI summary if threshold met
+      if (convo) {
+        maybeRegenerateDMSummary(convo.id, currentUserId, user.id, convo.summaryMessageCount, convo.summaryGeneratedAt).catch(() => {});
+      }
 
-        // Fire-and-forget: regenerate AI summary if threshold met
-        if (convo) {
-          maybeRegenerateDMSummary(convo.id, currentUserId, user.id).catch(() => {});
-        }
-
-        return {
-          ...user,
-          lastMessage: lastMessage ?? null,
-          unreadCount,
-          lastMessageAt: lastMessage?.createdAt ?? null,
-          conversationId: convo?.id ?? null,
-          conversationStatus: (convo?.status as 'pending' | 'accepted') ?? null,
-          isInitiator: convo ? convo.initiatorId === currentUserId : false,
-          isFriend: friendIds.has(user.id),
-          friendshipId: friendshipIdMap.get(user.id) ?? null,
-          isBlocked: blockedByMeIds.has(user.id) || blockedMeIds.has(user.id),
-          blockedByMe: blockedByMeIds.has(user.id),
-          summary: convo?.summary ?? null,
-        };
-      })
-    );
+      return {
+        ...user,
+        lastMessage: lastMessage ? {
+          id: lastMessage.id,
+          content: lastMessage.content,
+          type: lastMessage.type,
+          createdAt: lastMessage.createdAt,
+          senderId: lastMessage.senderId,
+          isRead: lastMessage.isRead,
+          fileType: lastMessage.fileType,
+        } : null,
+        unreadCount,
+        lastMessageAt: lastMessage?.createdAt ?? null,
+        conversationId: convo?.id ?? null,
+        conversationStatus: (convo?.status as 'pending' | 'accepted') ?? null,
+        isInitiator: convo ? convo.initiatorId === currentUserId : false,
+        isFriend: friendIds.has(user.id),
+        friendshipId: friendshipIdMap.get(user.id) ?? null,
+        isBlocked: blockedByMeIds.has(user.id) || blockedMeIds.has(user.id),
+        blockedByMe: blockedByMeIds.has(user.id),
+        summary: convo?.summary ?? null,
+      };
+    });
 
     // ── Always inject the AI bot at the top of the list ──────────────────
     const AI_BOT_ID = process.env.AI_BOT_USER_ID;

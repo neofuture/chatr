@@ -35,6 +35,10 @@ export function useAuth() {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('chatr:conversations');
+    localStorage.removeItem('chatr:groups');
+    localStorage.removeItem('chatr:group-invites');
+    localStorage.removeItem('chatr:friends-data');
     setUser(null);
     router.push('/');
   };

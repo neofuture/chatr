@@ -11,6 +11,7 @@ import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import Lightbox from '@/components/Lightbox/Lightbox';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
 import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
+import { dequeue, loadQueueForGroup } from '@/lib/outboundQueue';
 import styles from './GroupView.module.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -150,7 +151,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
-      .then(data => {
+      .then(async (data) => {
         const msgs: Message[] = (data.messages ?? []).map((m: any) => ({
           id: m.id,
           content: m.content,
@@ -170,7 +171,14 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
           waveformData: m.audioWaveform as number[] | undefined,
           duration: m.audioDuration,
         }));
-        setMessages(msgs);
+        const queued = await loadQueueForGroup(currentUserId, group.id);
+        if (queued.length) {
+          const serverIds = new Set(msgs.map(m => m.id));
+          const pending = queued.filter(q => !serverIds.has(q.id));
+          setMessages([...msgs, ...pending]);
+        } else {
+          setMessages(msgs);
+        }
       })
       .catch(console.error);
   }, [group.id, currentUserId]);
@@ -203,7 +211,11 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       setMessages(prev => {
         if (data.tempId) {
           const idx = prev.findIndex(m => m.id === data.tempId);
-          if (idx !== -1) { const u = [...prev]; u[idx] = msg; return u; }
+          if (idx !== -1) {
+            dequeue(data.tempId).catch(console.error);
+            const u = [...prev]; u[idx] = msg; return u;
+          }
+          dequeue(data.tempId).catch(console.error);
         }
         if (prev.find(m => m.id === data.id)) return prev;
         return [...prev, msg];

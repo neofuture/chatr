@@ -17,6 +17,7 @@ interface GroupMember {
   id: string;
   userId: string;
   role: string;
+  status?: string;
   user: { id: string; username: string; displayName: string | null; profileImage: string | null };
 }
 
@@ -50,6 +51,18 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
 
   const [coverMenuOpen, setCoverMenuOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
+
+  useEffect(() => {
+    if (avatarMenuOpen) {
+      requestAnimationFrame(() => requestAnimationFrame(() => setAvatarMenuVisible(true)));
+    }
+  }, [avatarMenuOpen]);
+
+  const closeAvatarMenu = () => {
+    setAvatarMenuVisible(false);
+    setTimeout(() => setAvatarMenuOpen(false), 250);
+  };
 
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState('');
@@ -60,6 +73,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   const avatarFileRef = useRef<HTMLInputElement>(null);
   const coverMenuRef = useRef<HTMLDivElement>(null);
   const avatarMenuRef = useRef<HTMLDivElement>(null);
+  const avatarBtnRef = useRef<HTMLButtonElement>(null);
 
   const { showToast } = useToast();
   const { showConfirmation } = useConfirmation();
@@ -103,8 +117,9 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
       if (coverMenuRef.current && !coverMenuRef.current.contains(e.target as Node)) {
         setCoverMenuOpen(false);
       }
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target as Node)) {
-        setAvatarMenuOpen(false);
+      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target as Node) &&
+          avatarBtnRef.current && !avatarBtnRef.current.contains(e.target as Node)) {
+        closeAvatarMenu();
       }
     };
     document.addEventListener('mousedown', handler);
@@ -150,7 +165,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
 
   const sortedMembers = [...group.members].sort((a, b) => {
     const rank = (m: GroupMember) =>
-      m.userId === group.ownerId ? 0 : m.role === 'admin' ? 1 : 2;
+      m.status === 'pending' ? 10 : m.userId === group.ownerId ? 0 : m.role === 'admin' ? 1 : 2;
     return rank(a) - rank(b);
   });
 
@@ -271,7 +286,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   };
 
   const handleDeleteAvatar = async () => {
-    setAvatarMenuOpen(false);
+    closeAvatarMenu();
     setAvatarUploading(true);
     try {
       const token = localStorage.getItem('token') || '';
@@ -512,8 +527,9 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
 
           {isAdmin && !avatarUploading && (
             <button
+              ref={avatarBtnRef}
               className={styles.avatarCameraBtn}
-              onClick={() => setAvatarMenuOpen(prev => !prev)}
+              onClick={() => avatarMenuOpen ? closeAvatarMenu() : setAvatarMenuOpen(true)}
               aria-label="Change group avatar"
             >
               <i className="fas fa-camera" />
@@ -525,10 +541,12 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
               ref={avatarMenuRef}
               style={{
                 position: 'absolute',
-                bottom: '100%',
+                bottom: '60px',
                 left: '50%',
-                transform: 'translateX(-50%)',
-                marginBottom: '2px',
+                transform: `translateX(-50%) scale(${avatarMenuVisible ? 1 : 0.95})`,
+                opacity: avatarMenuVisible ? 1 : 0,
+                transition: 'opacity 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                transformOrigin: 'bottom center',
                 backgroundColor: isDark ? '#1e293b' : 'white',
                 borderRadius: '12px',
                 boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4)',
@@ -561,7 +579,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
                 </button>
               )}
               <button
-                onClick={() => { setAvatarMenuOpen(false); setTimeout(() => avatarFileRef.current?.click(), 100); }}
+                onClick={() => { closeAvatarMenu(); setTimeout(() => avatarFileRef.current?.click(), 250); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
                   padding: '12px 16px', border: 'none', background: 'transparent',
@@ -613,7 +631,10 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
             </div>
           )}
           <p className={styles.memberCount}>
-            {group.members.length} member{group.members.length !== 1 ? 's' : ''}
+            {group.members.filter(m => m.status !== 'pending').length} member{group.members.filter(m => m.status !== 'pending').length !== 1 ? 's' : ''}
+            {group.members.some(m => m.status === 'pending') && (
+              <span style={{ opacity: 0.6 }}> · {group.members.filter(m => m.status === 'pending').length} pending</span>
+            )}
           </p>
         </div>
 
@@ -635,8 +656,10 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
                 }
               };
 
+              const isPending = member.status === 'pending';
+
               return (
-                <div key={member.userId} className={styles.memberRow}>
+                <div key={member.userId} className={styles.memberRow} style={isPending ? { opacity: 0.5 } : undefined}>
                   <PresenceAvatar
                     displayName={name}
                     profileImage={member.user.profileImage}
@@ -653,12 +676,20 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
                       {name}{isSelf ? ' (you)' : ''}
                     </span>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      {memberIsOwner && <span className={styles.ownerBadge}><i className="fas fa-crown" style={{ fontSize: '8px' }} /> Owner</span>}
-                      {memberIsAdmin && !memberIsOwner && <span className={styles.adminBadge}><i className="fas fa-shield" style={{ fontSize: '8px' }} /> Admin</span>}
-                      {!memberIsAdmin && <span className={styles.memberBadge}>Member</span>}
+                      {isPending ? (
+                        <span className={styles.memberBadge} style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+                          <i className="fas fa-clock" style={{ fontSize: '8px' }} /> Pending
+                        </span>
+                      ) : (
+                        <>
+                          {memberIsOwner && <span className={styles.ownerBadge}><i className="fas fa-crown" style={{ fontSize: '8px' }} /> Owner</span>}
+                          {memberIsAdmin && !memberIsOwner && <span className={styles.adminBadge}><i className="fas fa-shield" style={{ fontSize: '8px' }} /> Admin</span>}
+                          {!memberIsAdmin && <span className={styles.memberBadge}>Member</span>}
+                        </>
+                      )}
                     </div>
                   </div>
-                  {isAdmin && !isSelf && !memberIsOwner && (
+                  {isAdmin && !isSelf && !memberIsOwner && !isPending && (
                     <div className={styles.memberActions}>
                       {!memberIsAdmin && (
                         <button className={styles.actionBtn} onClick={() => handlePromote(member)} title={`Make ${name} admin`}>

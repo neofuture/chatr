@@ -63,8 +63,10 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token || token === 'undefined') return;
 
+    const ac = new AbortController();
     fetch(`${API}/api/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
+      signal: ac.signal,
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -76,7 +78,8 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
           ...(typeof data.showEmail        === 'boolean' ? { showEmail:        data.showEmail        } : {}),
         }));
       })
-      .catch(() => { /* fall back to localStorage */ });
+      .catch((err) => { if (err.name !== 'AbortError') { /* fall back to localStorage */ } });
+    return () => ac.abort();
   }, []);
 
   // Persist to localStorage on every change
