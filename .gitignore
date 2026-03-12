@@ -13,6 +13,12 @@ backend/uploads/**/*
 /node_modules/
 **/node_modules/
 
+# Coverage reports
+**/coverage/
+
+# TypeScript build info
+**/tsconfig.tsbuildinfo
+
 # IDE
 /.idea/
 **/.idea/
