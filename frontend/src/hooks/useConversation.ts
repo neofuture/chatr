@@ -62,15 +62,13 @@ export function useConversation() {
   useEffect(() => { effectivelyOnlineRef.current = effectivelyOnline; }, [effectivelyOnline]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
 
-  // Sync privacy settings to backend whenever they change or socket connects
+  // Sync online-status privacy to backend via socket whenever it changes
   useEffect(() => {
     if (!socket || !connected) return;
     socket.emit('settings:update', {
-      showOnlineStatus: settings.showOnlineStatus,
-      showPhoneNumber: settings.showPhoneNumber,
-      showEmail: settings.showEmail,
+      privacyOnlineStatus: settings.privacyOnlineStatus,
     });
-  }, [socket, connected, settings.showOnlineStatus, settings.showPhoneNumber, settings.showEmail]);
+  }, [socket, connected, settings.privacyOnlineStatus]);
 
   // Persist selected recipient
   useEffect(() => {
@@ -188,28 +186,46 @@ export function useConversation() {
         setAvailableUsers(others);
         addLog('info', 'users:loaded', { count: others.length });
 
-        // Pre-populate conversation summaries so the list sorts correctly on load
-        try {
-          const convRes = await fetch(`${API}/api/users/conversations`, {
-            headers: { Authorization: `Bearer ${token}` },
-            signal: ac.signal,
+        // Pre-populate conversation summaries (socket-first, REST fallback)
+        const applyConvData = (conversations: any[]) => {
+          const summaries: Record<string, any> = {};
+          conversations.forEach((c: any) => {
+            if (c.lastMessage) {
+              summaries[c.id] = {
+                userId: c.id,
+                lastMessage: c.lastMessage.content || (c.lastMessage.type === 'audio' ? '🎤 Voice message' : c.lastMessage.type === 'image' ? '📷 Image' : '📎 File'),
+                lastMessageAt: new Date(c.lastMessageAt),
+                unreadCount: c.unreadCount ?? 0,
+                lastSenderId: c.lastMessage.senderId,
+              };
+            }
           });
-          if (convRes.ok) {
-            const convData = await convRes.json();
-            const summaries: Record<string, any> = {};
-            (convData.conversations || []).forEach((c: any) => {
-              if (c.lastMessage) {
-                summaries[c.id] = {
-                  userId: c.id,
-                  lastMessage: c.lastMessage.content || (c.lastMessage.type === 'audio' ? '🎤 Voice message' : c.lastMessage.type === 'image' ? '📷 Image' : '📎 File'),
-                  lastMessageAt: new Date(c.lastMessageAt),
-                  unreadCount: c.unreadCount ?? 0,
-                  lastSenderId: c.lastMessage.senderId,
-                };
-              }
+          setConversations(summaries);
+          addLog('info', 'conversations:preloaded', { count: Object.keys(summaries).length });
+        };
+
+        try {
+          let loaded = false;
+          if (socket?.connected) {
+            loaded = await new Promise<boolean>((resolve) => {
+              const timeout = setTimeout(() => resolve(false), 3000);
+              socket.emit('conversations:request', {}, (res: any) => {
+                clearTimeout(timeout);
+                if (res?.error || !res?.conversations) { resolve(false); return; }
+                applyConvData(res.conversations);
+                resolve(true);
+              });
             });
-            setConversations(summaries);
-            addLog('info', 'conversations:preloaded', { count: Object.keys(summaries).length });
+          }
+          if (!loaded) {
+            const convRes = await fetch(`${API}/api/users/conversations`, {
+              headers: { Authorization: `Bearer ${token}` },
+              signal: ac.signal,
+            });
+            if (convRes.ok) {
+              const convData = await convRes.json();
+              applyConvData(convData.conversations || []);
+            }
           }
         } catch (e: any) {
           if (e.name === 'AbortError') return;

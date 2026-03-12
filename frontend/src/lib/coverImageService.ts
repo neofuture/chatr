@@ -184,6 +184,42 @@ export async function syncCoverImages(token: string): Promise<void> {
 }
 
 /**
+ * Sync cover image FROM server → local IndexedDB.
+ * Pass the relative server URL (e.g. /uploads/covers/xxx.jpg) directly.
+ */
+export async function syncCoverImageFromServer(userId: string, serverUrl?: string | null): Promise<void> {
+  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  if (!serverUrl) return;
+
+  try {
+    const local = await db.coverImages.get(userId);
+    if (local?.synced && local.url === serverUrl) return;
+
+    const fullUrl = serverUrl.startsWith('http') ? serverUrl : `${API}${serverUrl}`;
+    console.log('🔄 Syncing cover image from:', fullUrl);
+    const imgRes = await fetch(fullUrl);
+    if (!imgRes.ok) { console.warn('Cover image fetch failed:', imgRes.status); return; }
+    const blob = await imgRes.blob();
+    const file = new File([blob], 'cover.jpg', { type: blob.type || 'image/jpeg' });
+    const thumbnail = await createThumbnail(file, 300, 150);
+
+    await db.coverImages.put({
+      userId,
+      imageData: file,
+      mimeType: file.type,
+      uploadedAt: new Date(),
+      synced: true,
+      url: serverUrl,
+      thumbnail,
+    });
+    console.log('✅ Cover image synced from server');
+    window.dispatchEvent(new CustomEvent('coverImageSynced', { detail: { userId } }));
+  } catch (err) {
+    console.warn('Cover image sync failed:', err);
+  }
+}
+
+/**
  * Create thumbnail from image file
  */
 async function createThumbnail(

@@ -18,9 +18,9 @@ describe('UserSettingsContext', () => {
   it('should provide default settings', () => {
     const { result } = renderHook(() => useUserSettings(), { wrapper });
     expect(result.current.settings.ghostTypingEnabled).toBe(false);
-    expect(result.current.settings.showOnlineStatus).toBe(true);
-    expect(result.current.settings.showPhoneNumber).toBe(false);
-    expect(result.current.settings.showEmail).toBe(false);
+    expect(result.current.settings.privacyOnlineStatus).toBe('everyone');
+    expect(result.current.settings.privacyPhone).toBe('nobody');
+    expect(result.current.settings.privacyEmail).toBe('nobody');
   });
 
   it('should update a setting', () => {
@@ -31,15 +31,15 @@ describe('UserSettingsContext', () => {
 
   it('should persist settings to localStorage', () => {
     const { result } = renderHook(() => useUserSettings(), { wrapper });
-    act(() => { result.current.setSetting('showEmail', true); });
+    act(() => { result.current.setSetting('privacyEmail', 'friends'); });
     const stored = JSON.parse(localStorage.getItem('chatr_user_settings')!);
-    expect(stored.showEmail).toBe(true);
+    expect(stored.privacyEmail).toBe('friends');
   });
 
   it('should sync server-side keys via fetch', () => {
     localStorage.setItem('token', 'test-tok');
     const { result } = renderHook(() => useUserSettings(), { wrapper });
-    act(() => { result.current.setSetting('showOnlineStatus', false); });
+    act(() => { result.current.setSetting('privacyOnlineStatus', 'nobody'); });
     expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/users/me/settings'), expect.objectContaining({ method: 'PUT' }));
   });
 

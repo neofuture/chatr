@@ -10,6 +10,8 @@ jest.mock('socket.io-client', () => {
     connect: jest.fn(),
     disconnect: jest.fn(),
     close: jest.fn(),
+    onAny: jest.fn(),
+    onAnyOutgoing: jest.fn(),
     io: { on: jest.fn(), off: jest.fn() },
   };
   return { __esModule: true, default: jest.fn(() => mockSocket) };

@@ -48,11 +48,22 @@ const LogContext = createContext<LogContextValue>({
 export function LogProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<LogEntry[]>(() => loadLogsFromStorage());
   const idRef = useRef(0);
+  const bufferRef = useRef<LogEntry[]>([]);
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Persist to localStorage whenever logs change
   useEffect(() => {
     saveLogsToStorage(logs);
   }, [logs]);
+
+  // Flush buffered logs into state (batched to avoid render loops)
+  const flush = useCallback(() => {
+    flushTimerRef.current = null;
+    const pending = bufferRef.current;
+    if (pending.length === 0) return;
+    bufferRef.current = [];
+    setLogs(prev => [...pending.reverse(), ...prev].slice(0, MAX_LOGS));
+  }, []);
 
   const addLog = useCallback((type: LogEntry['type'], event: string, data: any = {}) => {
     const entry: LogEntry = {
@@ -62,8 +73,11 @@ export function LogProvider({ children }: { children: ReactNode }) {
       data,
       timestamp: new Date(),
     };
-    setLogs(prev => [entry, ...prev].slice(0, MAX_LOGS));
-  }, []);
+    bufferRef.current.push(entry);
+    if (!flushTimerRef.current) {
+      flushTimerRef.current = setTimeout(flush, 250);
+    }
+  }, [flush]);
 
   const clearLogs = useCallback(() => {
     setLogs([]);

@@ -307,7 +307,19 @@ export function useGroupsList() {
       updateMemberRole(data.groupId, data.userId, 'admin');
     };
 
+    const handleGroupMessageUnsent = (data: { messageId: string; groupId: string }) => {
+      setGroups(prev => prev.map(g => {
+        if (g.id !== data.groupId) return g;
+        if (g.lastMessage?.id !== data.messageId) return g;
+        return {
+          ...g,
+          lastMessage: { ...g.lastMessage, content: 'Message unsent' },
+        };
+      }));
+    };
+
     socket.on('group:message', handleGroupMessage);
+    socket.on('group:message:unsent', handleGroupMessageUnsent);
     socket.on('group:invite', handleGroupInvite);
     socket.on('group:inviteAccepted', handleInviteAccepted);
     socket.on('group:inviteDeclined', handleInviteDeclined);
@@ -324,6 +336,7 @@ export function useGroupsList() {
     socket.on('group:ownerSteppedDown', handleOwnerSteppedDown);
     return () => {
       socket.off('group:message', handleGroupMessage);
+      socket.off('group:message:unsent', handleGroupMessageUnsent);
       socket.off('group:invite', handleGroupInvite);
       socket.off('group:inviteAccepted', handleInviteAccepted);
       socket.off('group:inviteDeclined', handleInviteDeclined);

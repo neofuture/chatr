@@ -162,7 +162,7 @@ router.post('/guest-session', async (req: Request, res: Response) => {
           password: hashedPassword,
           emailVerified: true,
           isGuest: true,
-          showOnlineStatus: false,
+          privacyOnlineStatus: 'nobody',
         },
         select: { id: true, username: true, displayName: true },
       });

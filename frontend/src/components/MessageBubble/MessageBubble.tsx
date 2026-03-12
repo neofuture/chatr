@@ -6,6 +6,7 @@ import MessageAudioPlayer from '@/components/MessageAudioPlayer/MessageAudioPlay
 import { isAIBot } from '@/lib/aiBot';
 import { imageUrl } from '@/lib/imageUrl';
 import CodeBlock, { parseCodeBlocks } from './CodeBlock';
+import LinkPreviewCard from '@/components/LinkPreviewCard/LinkPreviewCard';
 import styles from './MessageBubble.module.css';
 
 /** Mounts children, animates in on show, animates height+opacity out before unmounting */
@@ -106,6 +107,14 @@ export interface Message {
   unsent?: boolean;
   edited?: boolean;
   editedAt?: Date;
+  linkPreview?: {
+    url: string;
+    title: string | null;
+    description: string | null;
+    image: string | null;
+    siteName: string | null;
+    favicon: string | null;
+  } | null;
   replyTo?: {
     id: string;
     content: string;
@@ -876,6 +885,7 @@ export default function MessageBubble({
                       <MessageAudioPlayer
                         audioUrl={msg.fileUrl} duration={msg.duration || 0} waveformData={msg.waveformData || []}
                         timestamp={msg.timestamp} isSent={isSent} messageId={msg.id} senderId={msg.senderId}
+                        messageType={msg.type}
                         onPlayStatusChange={onAudioPlayStatusChange} status={msg.status}
                         isListening={listeningMessageIds.has(msg.id)}
                         isActivePlayer={activeAudioMessageId !== undefined ? activeAudioMessageId === msg.id : undefined}
@@ -964,6 +974,12 @@ export default function MessageBubble({
                           )}
                         </div>
                       </CollapsibleText>
+                    )}
+                    {/* Link preview */}
+                    {msg.linkPreview && (msg.linkPreview.title || msg.linkPreview.description || msg.linkPreview.image) && (
+                      <div style={{ padding: '4px 4px 2px', maxWidth: '320px' }}>
+                        <LinkPreviewCard preview={msg.linkPreview} />
+                      </div>
                     )}
                     {/* Timestamp */}
                     {!isGroupedWithNext && msg.type !== 'audio' && !(msg.type === 'file' && msg.fileType?.startsWith('audio/')) && (

@@ -16,7 +16,8 @@ export default function RoutePreloader() {
       '/app',
       '/app/groups',
       '/app/updates',
-      '/app/settings'
+      '/app/settings',
+      '/app/profile'
     ];
 
     // Prefetch each route to load their JavaScript chunks

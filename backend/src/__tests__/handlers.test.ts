@@ -184,7 +184,7 @@ describe('Socket Handlers', () => {
       setupSocketHandlers(mockIO as any);
       const connectionHandler = mockIO._connectionHandlers[0];
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ showOnlineStatus: true });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ privacyOnlineStatus: 'everyone' });
       (convoModule.getConnectedUserIds as jest.Mock).mockResolvedValue({
         all: new Set(), pendingInitiatedByMe: new Set(),
       });

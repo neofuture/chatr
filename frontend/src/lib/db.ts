@@ -92,6 +92,15 @@ export interface OutboundMessage {
   groupId?: string | null;  // Set for group messages, null/undefined for DMs
 }
 
+export interface CachedAudio {
+  messageId: string;        // Primary key — the message ID
+  audioData: Blob;          // The actual audio file
+  mimeType: string;         // e.g. 'audio/webm', 'audio/mp4'
+  duration: number;         // seconds
+  cachedAt: number;         // epoch ms
+  size: number;             // bytes — for storage chart
+}
+
 // Dexie database class
 export class ChatrDB extends Dexie {
   messages!: Table<OfflineMessage>;
@@ -101,6 +110,7 @@ export class ChatrDB extends Dexie {
   coverImages!: Table<CoverImage>;
   cachedMessages!: Table<CachedMessage>;
   outboundQueue!: Table<OutboundMessage>;
+  audioCache!: Table<CachedAudio>;
 
   constructor() {
     super('chatr');
@@ -157,6 +167,18 @@ export class ChatrDB extends Dexie {
       coverImages: 'userId, synced, uploadedAt',
       cachedMessages: 'id, conversationKey, timestamp',
       outboundQueue: 'tempId, recipientId, senderId, queuedAt',
+    });
+
+    // Version 7 — add audioCache for voice note blobs
+    this.version(7).stores({
+      messages: 'id, senderId, recipientId, groupId, createdAt, synced',
+      users: 'id, username',
+      groups: 'id, name',
+      profileImages: 'userId, synced, uploadedAt',
+      coverImages: 'userId, synced, uploadedAt',
+      cachedMessages: 'id, conversationKey, timestamp',
+      outboundQueue: 'tempId, recipientId, senderId, queuedAt',
+      audioCache: 'messageId, cachedAt',
     });
   }
 }

@@ -169,7 +169,7 @@ router.get('/', authenticateToken as any, async (req: any, res: Response) => {
         group: {
           include: {
             members: { include: { user: { select: { id: true, username: true, displayName: true, profileImage: true } } } },
-            messages: { orderBy: { createdAt: 'desc' }, take: 1, include: { sender: { select: { displayName: true, username: true } } } },
+            messages: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 1, include: { sender: { select: { displayName: true, username: true } } } },
           },
         },
       },
@@ -370,12 +370,20 @@ router.get('/:id/messages', authenticateToken as any, async (req: any, res: Resp
     if (!member) return res.status(403).json({ error: 'Not a member' });
     if (member.status !== 'accepted') return res.status(403).json({ error: 'Accept the group invite to view messages' });
 
-    const messages = await prisma.groupMessage.findMany({
+    const raw = await prisma.groupMessage.findMany({
       where: { groupId: id, ...(before ? { createdAt: { lt: new Date(before) } } : {}) },
       orderBy: { createdAt: 'asc' },
       take: limit,
       include: { sender: { select: { id: true, username: true, displayName: true, profileImage: true } } },
     });
+
+    const messages = raw.map((m: any) => m.deletedAt ? {
+      ...m,
+      content: '',
+      fileUrl: null, fileName: null, fileSize: null, fileType: null,
+      audioWaveform: null, audioDuration: null, linkPreview: null,
+      unsent: true,
+    } : m);
 
     res.json({ messages });
   } catch (e) {

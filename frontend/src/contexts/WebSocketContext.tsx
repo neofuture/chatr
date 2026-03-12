@@ -78,10 +78,16 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
       // Connection events
       newSocket.on('connect', () => {
-        setConnected(true);
         setConnecting(false);
         console.log('✅ WebSocket connected:', newSocket.id);
         addLog('info', 'socket:connected', { id: newSocket.id });
+      });
+
+      // Server confirms all handlers are registered — safe to emit
+      newSocket.on('socket:ready', () => {
+        setConnected(true);
+        console.log('✅ Socket ready — server handlers registered');
+        addLog('info', 'socket:ready', { id: newSocket.id });
       });
 
       newSocket.on('disconnect', (reason) => {
@@ -116,10 +122,9 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         addLog('error', 'socket:error', { message: errorMessage });
       });
 
-      // Reconnection events
+      // Reconnection events — connected set via socket:ready after server re-registers handlers
       newSocket.io.on('reconnect', (attemptNumber) => {
         console.log('🔄 WebSocket reconnected after', attemptNumber, 'attempts');
-        setConnected(true);
         setConnecting(false);
         addLog('info', 'socket:reconnected', { attempts: attemptNumber });
       });
@@ -134,6 +139,15 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         console.error('❌ WebSocket reconnection failed');
         setConnecting(false);
         addLog('error', 'socket:reconnect_failed', {});
+      });
+
+      // Log ALL incoming and outgoing socket events
+      newSocket.onAny((event: string, ...args: any[]) => {
+        addLog('received', event, args.length === 1 ? args[0] : args.length ? args : undefined);
+      });
+      newSocket.onAnyOutgoing((event: string, ...args: any[]) => {
+        const data = args.find(a => typeof a === 'object' && a !== null && typeof a !== 'function');
+        addLog('sent', event, data ?? undefined);
       });
 
       return newSocket;

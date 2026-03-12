@@ -1,11 +1,15 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import VoiceRecorder from '@/components/VoiceRecorder';
 import EmojiPicker from '@/components/EmojiPicker/EmojiPicker';
+import LinkPreviewCard, { type LinkPreviewData } from '@/components/LinkPreviewCard/LinkPreviewCard';
 import { useMessageInput } from '@/hooks/useMessageInput';
 import { useGroupMessageInput } from '@/hooks/useGroupMessageInput';
 import type { Message } from '@/components/MessageBubble';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const URL_RE = /https?:\/\/[^\s<>"']+/gi;
 
 export interface MessageInputProps {
   isDark: boolean;
@@ -78,6 +82,7 @@ export default function MessageInput({
     onMessageSent,
   });
 
+  const activeInput = groupId ? groupInput : dmInput;
   const {
     message,
     selectedFiles,
@@ -85,7 +90,7 @@ export default function MessageInput({
     uploadingFile,
     effectivelyOnline,
     handleMessageChange,
-    handleSend,
+    handleSend: rawHandleSend,
     handleEmojiInsert,
     handleFileSelect,
     cancelFileSelection,
@@ -93,7 +98,64 @@ export default function MessageInput({
     handleVoiceRecording,
     handleVoiceRecordingStart,
     handleVoiceRecordingStop,
-  } = groupId ? groupInput : dmInput;
+    setLinkPreview,
+  } = activeInput;
+
+  // ── Link preview detection ──────────────────────────────────────────────
+  const [linkPreview, setLinkPreviewState] = useState<LinkPreviewData | null>(null);
+  const [linkPreviewLoading, setLinkPreviewLoading] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchedForRef = useRef<string | null>(null);
+
+  const fetchLinkPreview = useCallback(async (url: string) => {
+    setLinkPreviewLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API}/api/link-preview?url=${encodeURIComponent(url)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) return;
+      const data: LinkPreviewData = await res.json();
+      if (data.title || data.description || data.image) {
+        fetchedForRef.current = url;
+        setLinkPreviewState(data);
+        setLinkPreview(data);
+      }
+    } catch { /* network error */ } finally {
+      setLinkPreviewLoading(false);
+    }
+  }, [setLinkPreview]);
+
+  // Detect URLs and fetch preview (debounced)
+  useEffect(() => {
+    if (dismissed) return;
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+
+    const urls = message.match(URL_RE);
+    if (!urls?.length) return;
+
+    const url = urls[urls.length - 1];
+    if (url === fetchedForRef.current) return;
+
+    previewTimerRef.current = setTimeout(() => fetchLinkPreview(url), 500);
+
+    return () => { if (previewTimerRef.current) clearTimeout(previewTimerRef.current); };
+  }, [message, dismissed, fetchLinkPreview]);
+
+  const dismissPreview = useCallback(() => {
+    setDismissed(true);
+    setLinkPreviewState(null);
+    setLinkPreview(null);
+    fetchedForRef.current = null;
+  }, [setLinkPreview]);
+
+  const handleSend = useCallback(() => {
+    rawHandleSend();
+    setLinkPreviewState(null);
+    setDismissed(false);
+    fetchedForRef.current = null;
+  }, [rawHandleSend]);
 
   // Focus the textarea when entering edit mode
   useEffect(() => {
@@ -290,6 +352,27 @@ export default function MessageInput({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Link preview */}
+      {(linkPreview || linkPreviewLoading) && (
+        <div style={{
+          padding: '8px 16px',
+          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+        }}>
+          {linkPreviewLoading && !linkPreview ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              fontSize: '12px', color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)',
+            }}>
+              <i className="fas fa-spinner fa-spin" style={{ fontSize: '11px' }} />
+              Loading preview...
+            </div>
+          ) : linkPreview ? (
+            <LinkPreviewCard preview={linkPreview} onDismiss={dismissPreview} compact />
+          ) : null}
         </div>
       )}
 

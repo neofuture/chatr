@@ -76,11 +76,11 @@ describe('BottomNav', () => {
     expect(hrefs).toContain('/app/groups');
   });
 
-  it('renders link to /app/settings', () => {
+  it('renders link to /app/profile', () => {
     render(<BottomNav />);
     const links = screen.getAllByRole('link');
     const hrefs = links.map((l) => l.getAttribute('href'));
-    expect(hrefs).toContain('/app/settings');
+    expect(hrefs).toContain('/app/profile');
   });
 
   it('shows user first name on profile tab', async () => {

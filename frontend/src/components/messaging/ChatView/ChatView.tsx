@@ -43,6 +43,8 @@ export interface ChatViewProps {
   isBot?: boolean;
   /** True when the conversation partner is a widget guest — green bubble + ring */
   isGuest?: boolean;
+  /** True while messages are still loading from the server */
+  loading?: boolean;
 }
 
 export default function ChatView({
@@ -68,6 +70,7 @@ export default function ChatView({
   conversationStatus,
   isBot = false,
   isGuest = false,
+  loading = false,
 }: ChatViewProps) {
   const scrollRef      = useRef<HTMLDivElement>(null);
   const overlayRef     = useRef<HTMLDivElement>(null);
@@ -256,14 +259,23 @@ export default function ChatView({
         className={styles.messageList}
       >
         {messages.length === 0 ? (
-          <div className={styles.emptyState} role="status" aria-label="No messages yet">
-            <div className={styles.emptyStateInner}>
-              <div className={styles.emptyStateIcon} aria-hidden="true">
-                <i className="fas fa-comments" />
+          loading ? (
+            <div className={styles.emptyState} role="status" aria-label="Loading messages">
+              <div className={styles.emptyStateInner}>
+                <div className={styles.loadingSpinner} aria-hidden="true" />
+                <div className={styles.emptyStateText}>Loading messages…</div>
               </div>
-              <div className={styles.emptyStateText}>No messages yet</div>
             </div>
-          </div>
+          ) : (
+            <div className={styles.emptyState} role="status" aria-label="No messages yet">
+              <div className={styles.emptyStateInner}>
+                <div className={styles.emptyStateIcon} aria-hidden="true">
+                  <i className="fas fa-comments" />
+                </div>
+                <div className={styles.emptyStateText}>No messages yet</div>
+              </div>
+            </div>
+          )
         ) : (
           <MessageBubble
             messages={messages}

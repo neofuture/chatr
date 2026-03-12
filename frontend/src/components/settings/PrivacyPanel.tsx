@@ -1,14 +1,39 @@
 'use client';
 
-import { useUserSettings } from '@/contexts/UserSettingsContext';
+import { useUserSettings, type PrivacyLevel } from '@/contexts/UserSettingsContext';
 import { usePanels } from '@/contexts/PanelContext';
 import { useFriends } from '@/hooks/useFriends';
 import BlockedUsersPanel from './BlockedUsersPanel';
 import styles from './SettingsPanel.module.css';
 
-function SettingsRow({
-  icon, label, description, control,
-}: { icon: string; label: string; description?: string; control: React.ReactNode }) {
+const LEVELS: { value: PrivacyLevel; icon: string; label: string }[] = [
+  { value: 'everyone', icon: 'fas fa-globe',       label: 'Everyone' },
+  { value: 'friends',  icon: 'fas fa-user-group',  label: 'Friends' },
+  { value: 'nobody',   icon: 'fas fa-lock',        label: 'Only me' },
+];
+
+function PrivacySelector({ value, onChange }: { value: PrivacyLevel; onChange: (v: PrivacyLevel) => void }) {
+  return (
+    <div className={styles.privacySelector}>
+      {LEVELS.map(lvl => (
+        <button
+          key={lvl.value}
+          className={`${styles.privacyBtn} ${value === lvl.value ? styles.privacyBtnActive : ''}`}
+          onClick={() => onChange(lvl.value)}
+          title={lvl.label}
+        >
+          <i className={lvl.icon} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PrivacyRow({ icon, label, description, privacyKey }: {
+  icon: string; label: string; description: string;
+  privacyKey: 'privacyOnlineStatus' | 'privacyPhone' | 'privacyEmail' | 'privacyFullName' | 'privacyGender' | 'privacyJoinedDate';
+}) {
+  const { settings, setSetting } = useUserSettings();
   return (
     <div className={styles.row}>
       <div className={styles.rowIcon}><i className={icon} /></div>
@@ -16,26 +41,17 @@ function SettingsRow({
         <span className={styles.rowLabel}>{label}</span>
         {description && <span className={styles.rowDesc}>{description}</span>}
       </div>
-      <div className={styles.rowControl}>{control}</div>
+      <div className={styles.rowControl}>
+        <PrivacySelector
+          value={settings[privacyKey] as PrivacyLevel}
+          onChange={v => setSetting(privacyKey, v)}
+        />
+      </div>
     </div>
   );
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`${styles.toggle} ${checked ? styles.toggleOn : ''}`}
-    >
-      <span className={styles.toggleThumb} style={{ left: checked ? '24px' : '2px' }} />
-    </button>
-  );
-}
-
 export default function PrivacyPanel() {
-  const { settings, setSetting } = useUserSettings();
   const { openPanel } = usePanels();
   const { blocked } = useFriends();
 
@@ -47,42 +63,24 @@ export default function PrivacyPanel() {
     <div className={styles.page}>
       <div className={styles.content} style={{ paddingTop: '16px' }}>
 
+        {/* Legend */}
+        <div className={styles.privacyLegend}>
+          {LEVELS.map(lvl => (
+            <span key={lvl.value} className={styles.privacyLegendItem}>
+              <i className={lvl.icon} /> {lvl.label}
+            </span>
+          ))}
+        </div>
+
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Visibility</h3>
           <div className={styles.sectionBody}>
-            <SettingsRow
-              icon="fad fa-eye"
-              label="Show online status"
-              description="Let others see when you are online"
-              control={
-                <Toggle
-                  checked={settings.showOnlineStatus}
-                  onChange={v => setSetting('showOnlineStatus', v)}
-                />
-              }
-            />
-            <SettingsRow
-              icon="fad fa-phone"
-              label="Show phone number"
-              description="Let others see your phone number on your profile"
-              control={
-                <Toggle
-                  checked={settings.showPhoneNumber}
-                  onChange={v => setSetting('showPhoneNumber', v)}
-                />
-              }
-            />
-            <SettingsRow
-              icon="fad fa-envelope"
-              label="Show email address"
-              description="Let others see your email address on your profile"
-              control={
-                <Toggle
-                  checked={settings.showEmail}
-                  onChange={v => setSetting('showEmail', v)}
-                />
-              }
-            />
+            <PrivacyRow icon="fad fa-eye"       label="Online status"  description="Who can see when you are online"      privacyKey="privacyOnlineStatus" />
+            <PrivacyRow icon="fad fa-id-card"   label="Full name"      description="Who can see your first and last name" privacyKey="privacyFullName" />
+            <PrivacyRow icon="fad fa-phone"     label="Phone number"   description="Who can see your phone number"        privacyKey="privacyPhone" />
+            <PrivacyRow icon="fad fa-envelope"  label="Email address"  description="Who can see your email address"       privacyKey="privacyEmail" />
+            <PrivacyRow icon="fad fa-venus-mars" label="Gender"        description="Who can see your gender"              privacyKey="privacyGender" />
+            <PrivacyRow icon="fad fa-calendar"  label="Joined date"    description="Who can see when you joined"          privacyKey="privacyJoinedDate" />
           </div>
         </section>
 
@@ -109,4 +107,3 @@ export default function PrivacyPanel() {
     </div>
   );
 }
-

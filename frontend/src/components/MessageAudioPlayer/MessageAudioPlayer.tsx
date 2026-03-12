@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { getOrCacheAudio } from '@/lib/audioCacheService';
 import styles from './MessageAudioPlayer.module.css';
 
 export interface MessageAudioPlayerProps {
@@ -11,6 +12,8 @@ export interface MessageAudioPlayerProps {
   isSent: boolean;
   messageId?: string;
   senderId?: string;
+  /** 'audio' = voice note (cached), 'file' = regular attachment (not cached) */
+  messageType?: string;
   onPlayStatusChange?: (messageId: string, senderId: string, isPlaying: boolean, isEnded?: boolean) => void;
   status?: 'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   isListening?: boolean;
@@ -25,6 +28,7 @@ export default function MessageAudioPlayer({
   isSent,
   messageId,
   senderId,
+  messageType,
   onPlayStatusChange,
   status: _status,
   isListening: _isListening = false,
@@ -34,12 +38,27 @@ export default function MessageAudioPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [audioLoaded, setAudioLoaded] = useState(false);
+  const [resolvedUrl, setResolvedUrl] = useState(audioUrl);
   const [actualDuration, setActualDuration] = useState(
     propDuration && !isNaN(propDuration) && isFinite(propDuration) && propDuration > 0 ? propDuration : 0
   );
 
   const audioRef  = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // For voice notes (type=audio), resolve from cache or download+cache
+  useEffect(() => {
+    if (messageType !== 'audio' || !messageId || !audioUrl) {
+      setResolvedUrl(audioUrl);
+      return;
+    }
+    let revoke: string | null = null;
+    getOrCacheAudio(messageId, audioUrl, propDuration).then(({ url }) => {
+      revoke = url.startsWith('blob:') ? url : null;
+      setResolvedUrl(url);
+    });
+    return () => { if (revoke) URL.revokeObjectURL(revoke); };
+  }, [audioUrl, messageId, messageType, propDuration]);
 
   const propDurationValid = propDuration && !isNaN(propDuration) && isFinite(propDuration) && propDuration > 0;
   const propDurationValidRef = useRef(propDurationValid);
@@ -157,7 +176,7 @@ export default function MessageAudioPlayer({
     };
     const handleError = (e: Event) => {
       const el = e.target as HTMLAudioElement;
-      console.error('🎵 Audio error:', { code: el.error?.code, message: el.error?.message, audioUrl });
+      console.error('🎵 Audio error:', { code: el.error?.code, message: el.error?.message, resolvedUrl });
       setAudioLoaded(false);
     };
 
@@ -179,7 +198,7 @@ export default function MessageAudioPlayer({
       audio.removeEventListener('ended',           handleEnded);
       audio.removeEventListener('error',           handleError);
     };
-  }, [audioUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resolvedUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Smooth RAF progress while playing
   useEffect(() => {
@@ -264,16 +283,15 @@ export default function MessageAudioPlayer({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Safe cross-origin check (no window access at module level)
   const isCrossOrigin = typeof window !== 'undefined'
-    && audioUrl.startsWith('http')
-    && !audioUrl.includes(window.location.hostname);
+    && resolvedUrl.startsWith('http')
+    && !resolvedUrl.includes(window.location.hostname);
 
   return (
     <div className={styles.container}>
       <audio
         ref={audioRef}
-        src={audioUrl}
+        src={resolvedUrl}
         preload="auto"
         playsInline
         {...(isCrossOrigin ? { crossOrigin: 'anonymous' } : {})}

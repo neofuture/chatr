@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePresence } from '@/contexts/PresenceContext';
 import { useFriends } from '@/hooks/useFriends';
 import { useConfirmation } from '@/contexts/ConfirmationContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import { imageUrl } from '@/lib/imageUrl';
 import styles from './UserProfilePanel.module.css';
@@ -14,11 +15,15 @@ interface UserProfile {
   id: string;
   username: string;
   displayName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   profileImage: string | null;
   coverImage: string | null;
   lastSeen: string | null;
   phoneNumber?: string | null;
   email?: string | null;
+  gender?: string | null;
+  createdAt?: string | null;
 }
 
 interface Props {
@@ -33,32 +38,60 @@ export default function UserProfilePanel({ userId }: Props) {
 
   const { userPresence, requestPresence } = usePresence();
   const { showConfirmation } = useConfirmation();
+  const { socket } = useWebSocket();
   const {
     friends, incoming, outgoing, blocked,
     sendRequest, acceptRequest, declineRequest,
     removeFriend, blockUser, unblockUser, refresh,
   } = useFriends();
 
-  // Fetch profile on mount
+  // Fetch profile via socket (fast) with REST fallback
   useEffect(() => {
     if (!userId) return;
-    const token = localStorage.getItem('token');
     setLoading(true);
     setError(false);
-    fetch(`${API}/api/users/by-id/${userId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(data => {
-        if (data.blockedByThem) {
-          setBlockedByThem(true);
+
+    const handleResponse = (data: any) => {
+      if (data.blockedByThem) {
+        setBlockedByThem(true);
+      } else if (data.user) {
+        setProfile(data.user);
+      } else {
+        setError(true);
+      }
+      setLoading(false);
+    };
+
+    if (socket?.connected) {
+      const timeout = setTimeout(() => {
+        // Socket didn't respond in time — fall back to REST
+        fetchViaRest();
+      }, 3000);
+
+      socket.emit('user:profile:request', { targetUserId: userId }, (res: any) => {
+        clearTimeout(timeout);
+        if (res?.error) {
+          fetchViaRest();
         } else {
-          setProfile(data.user);
+          handleResponse(res);
         }
+      });
+
+      return () => clearTimeout(timeout);
+    } else {
+      fetchViaRest();
+    }
+
+    function fetchViaRest() {
+      const token = localStorage.getItem('token');
+      fetch(`${API}/api/users/by-id/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [userId]);
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(handleResponse)
+        .catch(() => { setError(true); setLoading(false); });
+    }
+  }, [userId, socket]);
 
   // Request presence for this user
   useEffect(() => {
@@ -97,7 +130,7 @@ export default function UserProfilePanel({ userId }: Props) {
     );
   }
 
-  const displayName = profile.displayName || profile.username.replace(/^@/, '');
+  const displayName = profile.displayName || [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.username.replace(/^@/, '');
   const info = userPresence[userId] ?? { status: 'offline' as const, lastSeen: null };
 
   // ── Friendship state ──────────────────────────────────────────────────────
@@ -248,16 +281,22 @@ export default function UserProfilePanel({ userId }: Props) {
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Profile</h3>
           <div className={styles.sectionBody}>
-            {profile.displayName && (
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Name</span>
-                <span className={styles.infoValue}>{profile.displayName}</span>
-              </div>
-            )}
             <div className={styles.infoRow}>
               <span className={styles.infoLabel}>Username</span>
               <span className={styles.infoValue}>@{profile.username.replace(/^@/, '')}</span>
             </div>
+            {profile.displayName && (
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Display name</span>
+                <span className={styles.infoValue}>{profile.displayName}</span>
+              </div>
+            )}
+            {(profile.firstName || profile.lastName) && (
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Full name</span>
+                <span className={styles.infoValue}>{[profile.firstName, profile.lastName].filter(Boolean).join(' ')}</span>
+              </div>
+            )}
             {profile.phoneNumber && (
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Phone</span>
@@ -268,6 +307,18 @@ export default function UserProfilePanel({ userId }: Props) {
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Email</span>
                 <span className={styles.infoValue}>{profile.email}</span>
+              </div>
+            )}
+            {profile.gender && (
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Gender</span>
+                <span className={styles.infoValue} style={{ textTransform: 'capitalize' }}>{profile.gender.replace(/-/g, ' ')}</span>
+              </div>
+            )}
+            {profile.createdAt && (
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Joined</span>
+                <span className={styles.infoValue}>{new Date(profile.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })}</span>
               </div>
             )}
           </div>

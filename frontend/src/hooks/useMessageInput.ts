@@ -46,6 +46,7 @@ export function useMessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const typingKeepaliveRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
+  const linkPreviewRef = useRef<Record<string, any> | null>(null);
 
   const effectivelyOnline = connected;
 
@@ -149,6 +150,8 @@ export function useMessageInput({
 
     const isOnline = socket && effectivelyOnline;
     const tempId = `temp-${Date.now()}`;
+    const currentLinkPreview = linkPreviewRef.current;
+
     const msg: Message = {
       id: tempId,
       content: trimmed,
@@ -158,6 +161,7 @@ export function useMessageInput({
       status: isOnline ? 'sending' : 'queued',
       timestamp: new Date(),
       type: 'text',
+      linkPreview: currentLinkPreview as Message['linkPreview'],
       replyTo: replyingTo ? {
         id: replyingTo.id,
         content: replyingTo.content,
@@ -174,12 +178,14 @@ export function useMessageInput({
     onMessageSent?.(msg);
     onCancelReply?.();
     setMessage('');
+    linkPreviewRef.current = null;
 
     if (isOnline) {
       socket.emit('message:send', {
         recipientId,
         content: trimmed,
         type: 'text',
+        linkPreview: currentLinkPreview,
         replyTo: replyingTo ? {
           id: replyingTo.id,
           content: replyingTo.content,
@@ -432,6 +438,10 @@ export function useMessageInput({
     }
   }, [socket, recipientId]);
 
+  const setLinkPreview = useCallback((preview: Record<string, any> | null) => {
+    linkPreviewRef.current = preview;
+  }, []);
+
   return {
     message,
     selectedFiles,
@@ -447,6 +457,7 @@ export function useMessageInput({
     handleVoiceRecording,
     handleVoiceRecordingStart,
     handleVoiceRecordingStop,
+    setLinkPreview,
   };
 }
 

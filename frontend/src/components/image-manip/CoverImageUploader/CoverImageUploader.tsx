@@ -35,26 +35,53 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
 
   const loadCoverImage = async () => {
     if (!userId || userId === 'N/A' || userId === 'Invalid data') return;
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    console.log('[CoverImg] Loading for', userId, 'API=', API);
 
     try {
+      // 1. Try IndexedDB (fastest — already downloaded)
       const url = await getCoverImageURL(userId);
+      console.log('[CoverImg] IndexedDB result:', url ? 'found' : 'empty');
       if (url) {
         setImageLoaded(false);
         setImageUrl(url);
         return;
       }
 
-      // No IndexedDB record — try the server URL from localStorage
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
+      // 2. Try localStorage user object
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log('[CoverImg] localStorage coverImage:', user.coverImage || 'NOT SET');
         if (user.coverImage) {
+          const src = user.coverImage.startsWith('/') ? `${API}${user.coverImage}` : user.coverImage;
+          console.log('[CoverImg] Using localStorage URL:', src);
           setImageLoaded(false);
-          setImageUrl(user.coverImage);
+          setImageUrl(src);
+          return;
+        }
+      } catch {}
+
+      // 3. Fetch from server directly as last resort
+      console.log('[CoverImg] Fetching /api/users/me...');
+      const token = localStorage.getItem('token');
+      if (token) {
+        const res = await fetch(`${API}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('[CoverImg] API response:', res.status);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[CoverImg] Server coverImage:', data.coverImage || 'NULL');
+          if (data.coverImage) {
+            const src = data.coverImage.startsWith('/') ? `${API}${data.coverImage}` : data.coverImage;
+            console.log('[CoverImg] Setting URL:', src);
+            setImageLoaded(false);
+            setImageUrl(src);
+          }
         }
       }
     } catch (error) {
-      console.error('Failed to load cover image:', error);
+      console.error('[CoverImg] Failed:', error);
     }
   };
 

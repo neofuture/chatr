@@ -1,0 +1,233 @@
+.page {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  width: 100%;
+  padding-bottom: 84px;
+  margin-bottom: 8px;
+}
+
+.cover {
+  width: 100%;
+}
+
+.avatarWrap {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Content ── */
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 16px 40px;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.nameBlock {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.displayName {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.username {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ── Section ── */
+.section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  margin: 0 0 6px 4px;
+  padding: 0;
+}
+
+.sectionBody {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+[data-theme='light'] .sectionBody {
+  background-color: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* ── Field row — fixed height, no layout shift ── */
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-color);
+  height: 48px;
+}
+
+.fieldRow:last-child {
+  border-bottom: none;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+.fieldValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldPlaceholder {
+  font-size: 14px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+/* Both button (view) and edit wrapper fill the same space identically */
+.fieldValueBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 32px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 10px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.fieldValueBtn:hover {
+  opacity: 0.7;
+}
+
+/* ── Inline edit — same box as the view button ── */
+.fieldEdit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.fieldInput {
+  flex: 1;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #22c55e;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  min-width: 0;
+  transition: border-color 0.15s;
+}
+
+.fieldInput:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.fieldInput::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+/* ── Custom select (gender dropdown) ── */
+.selectWrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.fieldSelect {
+  width: 100%;
+  height: 32px;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0 28px 0 10px;
+  border-radius: 8px;
+  border: 1px solid #22c55e;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.fieldSelect:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.selectChevron {
+  position: absolute;
+  right: 10px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+/* ── Loading ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  font-size: 24px;
+  opacity: 0.4;
+}

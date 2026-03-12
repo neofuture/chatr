@@ -59,9 +59,26 @@ export default function BottomNav() {
     return () => window.removeEventListener('profileImageUpdated', handler);
   }, []);
 
-  // Fetch unread chat count on mount + poll, and respond instantly to local updates
+  // Fetch unread chat count on mount + poll (socket-first, REST fallback)
   useEffect(() => {
     const fetchUnread = async () => {
+      // Socket-first
+      if (socket?.connected) {
+        const gotSocket = await new Promise<boolean>((resolve) => {
+          const timeout = setTimeout(() => resolve(false), 3000);
+          socket.emit('conversations:request', {}, (res: any) => {
+            clearTimeout(timeout);
+            if (res?.error || !res?.conversations) { resolve(false); return; }
+            const total = (res.conversations as any[]).reduce(
+              (sum: number, c: any) => sum + (c.unreadCount ?? 0), 0
+            );
+            setUnreadChats(total);
+            resolve(true);
+          });
+        });
+        if (gotSocket) return;
+      }
+      // REST fallback
       try {
         const token = localStorage.getItem('token');
         if (!token) return;
@@ -157,7 +174,7 @@ export default function BottomNav() {
     { name: 'CHATS',   href: '/app',          icon: 'fa-comments',   type: 'icon', badge: totalUnread },
     { name: 'FRIENDS', href: '/app/friends',  icon: 'fa-user-group', type: 'icon', badge: pendingRequests },
     { name: 'GROUPS',  href: '/app/groups',   icon: 'fa-users',      type: 'icon', badge: unreadGroups },
-    { name: firstName,  href: '/app/settings', icon: profileImageUrl, type: 'image' },
+    { name: firstName,  href: '/app/profile', icon: profileImageUrl, type: 'image' },
   ];
 
   return (

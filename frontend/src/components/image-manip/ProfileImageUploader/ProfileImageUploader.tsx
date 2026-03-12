@@ -37,26 +37,53 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
 
   const loadProfileImage = async () => {
     if (!userId || userId === 'N/A' || userId === 'Invalid data') return;
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    console.log('[ProfileImg] Loading for', userId, 'API=', API);
 
     try {
+      // 1. Try IndexedDB (fastest — already downloaded)
       const url = await getProfileImageURL(userId);
+      console.log('[ProfileImg] IndexedDB result:', url ? 'found' : 'empty');
       if (url) {
         setImageLoaded(false);
         setImageUrl(url);
         return;
       }
 
-      // No IndexedDB record — try the server URL from localStorage
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
+      // 2. Try localStorage user object
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log('[ProfileImg] localStorage profileImage:', user.profileImage || 'NOT SET');
         if (user.profileImage) {
+          const src = user.profileImage.startsWith('/') ? `${API}${user.profileImage}` : user.profileImage;
+          console.log('[ProfileImg] Using localStorage URL:', src);
           setImageLoaded(false);
-          setImageUrl(user.profileImage);
+          setImageUrl(src);
+          return;
+        }
+      } catch {}
+
+      // 3. Fetch from server directly as last resort
+      console.log('[ProfileImg] Fetching /api/users/me...');
+      const token = localStorage.getItem('token');
+      if (token) {
+        const res = await fetch(`${API}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('[ProfileImg] API response:', res.status);
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[ProfileImg] Server profileImage:', data.profileImage || 'NULL');
+          if (data.profileImage) {
+            const src = data.profileImage.startsWith('/') ? `${API}${data.profileImage}` : data.profileImage;
+            console.log('[ProfileImg] Setting URL:', src);
+            setImageLoaded(false);
+            setImageUrl(src);
+          }
         }
       }
     } catch (error) {
-      console.error('Failed to load profile image:', error);
+      console.error('[ProfileImg] Failed:', error);
     }
   };
 

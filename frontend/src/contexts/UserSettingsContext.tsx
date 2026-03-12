@@ -1,30 +1,48 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { syncProfileImageFromServer } from '@/lib/profileImageService';
+import { syncCoverImageFromServer } from '@/lib/coverImageService';
+
+export type PrivacyLevel = 'everyone' | 'friends' | 'nobody';
 
 export interface UserSettings {
   ghostTypingEnabled: boolean;
-  showOnlineStatus: boolean;
-  showPhoneNumber: boolean;
-  showEmail: boolean;
+  privacyOnlineStatus: PrivacyLevel;
+  privacyPhone: PrivacyLevel;
+  privacyEmail: PrivacyLevel;
+  privacyFullName: PrivacyLevel;
+  privacyGender: PrivacyLevel;
+  privacyJoinedDate: PrivacyLevel;
 }
 
 const DEFAULTS: UserSettings = {
   ghostTypingEnabled: false,
-  showOnlineStatus: true,
-  showPhoneNumber: false,
-  showEmail: false,
+  privacyOnlineStatus: 'everyone',
+  privacyPhone: 'nobody',
+  privacyEmail: 'nobody',
+  privacyFullName: 'everyone',
+  privacyGender: 'nobody',
+  privacyJoinedDate: 'everyone',
 };
 
 const STORAGE_KEY = 'chatr_user_settings';
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// These keys are persisted to the server via REST on every change
-const SERVER_KEYS: (keyof UserSettings)[] = ['showOnlineStatus', 'showPhoneNumber', 'showEmail'];
+const PRIVACY_KEYS: (keyof UserSettings)[] = [
+  'privacyOnlineStatus', 'privacyPhone', 'privacyEmail',
+  'privacyFullName', 'privacyGender', 'privacyJoinedDate',
+];
+
+function isPrivacyLevel(v: unknown): v is PrivacyLevel {
+  return v === 'everyone' || v === 'friends' || v === 'nobody';
+}
 
 interface UserSettingsContextValue {
   settings: UserSettings;
   setSetting: <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => void;
+  profileImageUrl: string | null;
+  coverImageUrl: string | null;
 }
 
 const UserSettingsContext = createContext<UserSettingsContextValue | null>(null);
@@ -41,12 +59,12 @@ async function saveToServer(patch: Partial<UserSettings>) {
       },
       body: JSON.stringify(patch),
     });
-  } catch {
-    // silently ignore network errors — localStorage is the fallback
-  }
+  } catch {}
 }
 
 export function UserSettingsProvider({ children }: { children: ReactNode }) {
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [settings, setSettings] = useState<UserSettings>(() => {
     if (typeof window === 'undefined') return DEFAULTS;
     try {
@@ -57,8 +75,6 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  // On mount, fetch the authoritative values from the server and merge them in.
-  // DB is the source of truth for server-persisted settings.
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token || token === 'undefined') return;
@@ -73,12 +89,14 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
         if (!data) return;
         setSettings(prev => ({
           ...prev,
-          ...(typeof data.showOnlineStatus === 'boolean' ? { showOnlineStatus: data.showOnlineStatus } : {}),
-          ...(typeof data.showPhoneNumber  === 'boolean' ? { showPhoneNumber:  data.showPhoneNumber  } : {}),
-          ...(typeof data.showEmail        === 'boolean' ? { showEmail:        data.showEmail        } : {}),
+          ...(isPrivacyLevel(data.privacyOnlineStatus) ? { privacyOnlineStatus: data.privacyOnlineStatus } : {}),
+          ...(isPrivacyLevel(data.privacyPhone)         ? { privacyPhone:        data.privacyPhone }        : {}),
+          ...(isPrivacyLevel(data.privacyEmail)         ? { privacyEmail:        data.privacyEmail }        : {}),
+          ...(isPrivacyLevel(data.privacyFullName)      ? { privacyFullName:     data.privacyFullName }     : {}),
+          ...(isPrivacyLevel(data.privacyGender)        ? { privacyGender:       data.privacyGender }       : {}),
+          ...(isPrivacyLevel(data.privacyJoinedDate)    ? { privacyJoinedDate:   data.privacyJoinedDate }   : {}),
         }));
 
-        // Keep localStorage user object in sync with latest server image URLs
         try {
           const userStr = localStorage.getItem('user');
           if (userStr) {
@@ -95,12 +113,33 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
             if (changed) localStorage.setItem('user', JSON.stringify(user));
           }
         } catch {}
+
+        if (data.profileImage) setProfileImageUrl(data.profileImage);
+        if (data.coverImage) setCoverImageUrl(data.coverImage);
+
+        const uid = data.id;
+        if (uid) {
+          syncProfileImageFromServer(uid, data.profileImage).catch(() => {});
+          syncCoverImageFromServer(uid, data.coverImage).catch(() => {});
+        }
       })
       .catch((err) => { if (err.name !== 'AbortError') { /* fall back to localStorage */ } });
     return () => ac.abort();
   }, []);
 
-  // Persist to localStorage on every change
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    const getUser = () => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } };
+    const uid = getUser()?.id;
+    if (!uid) return;
+    syncIntervalRef.current = setInterval(() => {
+      const u = getUser();
+      syncProfileImageFromServer(uid, u.profileImage).catch(() => {});
+      syncCoverImageFromServer(uid, u.coverImage).catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => { if (syncIntervalRef.current) clearInterval(syncIntervalRef.current); };
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -109,14 +148,13 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
 
   const setSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
-    // Immediately persist server-side keys via REST
-    if (SERVER_KEYS.includes(key)) {
+    if (PRIVACY_KEYS.includes(key)) {
       saveToServer({ [key]: value } as Partial<UserSettings>);
     }
   };
 
   return (
-    <UserSettingsContext.Provider value={{ settings, setSetting }}>
+    <UserSettingsContext.Provider value={{ settings, setSetting, profileImageUrl, coverImageUrl }}>
       {children}
     </UserSettingsContext.Provider>
   );

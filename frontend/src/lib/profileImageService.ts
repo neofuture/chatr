@@ -155,6 +155,42 @@ export async function deleteProfileImage(
 }
 
 /**
+ * Sync profile image FROM server → local IndexedDB.
+ * Pass the relative server URL (e.g. /uploads/profiles/xxx.jpg) directly.
+ */
+export async function syncProfileImageFromServer(userId: string, serverUrl?: string | null): Promise<void> {
+  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  if (!serverUrl) return;
+
+  try {
+    const local = await db.profileImages.get(userId);
+    if (local?.synced && local.url === serverUrl) return;
+
+    const fullUrl = serverUrl.startsWith('http') ? serverUrl : `${API}${serverUrl}`;
+    console.log('🔄 Syncing profile image from:', fullUrl);
+    const imgRes = await fetch(fullUrl);
+    if (!imgRes.ok) { console.warn('Profile image fetch failed:', imgRes.status); return; }
+    const blob = await imgRes.blob();
+    const file = new File([blob], 'profile.jpg', { type: blob.type || 'image/jpeg' });
+    const thumbnail = await createThumbnail(file, 150, 150);
+
+    await db.profileImages.put({
+      userId,
+      imageData: file,
+      mimeType: file.type,
+      uploadedAt: new Date(),
+      synced: true,
+      url: serverUrl,
+      thumbnail,
+    });
+    console.log('✅ Profile image synced from server');
+    window.dispatchEvent(new CustomEvent('profileImageSynced', { detail: { userId } }));
+  } catch (err) {
+    console.warn('Profile image sync failed:', err);
+  }
+}
+
+/**
  * Validate profile image file
  */
 export function validateProfileImage(file: File): {

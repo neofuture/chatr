@@ -15,7 +15,7 @@ const userSelect = {
   lastName: true,
   profileImage: true,
   email: true,
-  showOnlineStatus: true,
+  privacyOnlineStatus: true,
 };
 
 

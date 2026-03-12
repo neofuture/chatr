@@ -105,7 +105,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { name: 'Groups', href: '/app/groups', icon: 'fa-users', type: 'icon' },
     { name: 'Updates', href: '/app/updates', icon: 'fa-newspaper', type: 'icon' },
     { name: 'Test', href: '/app/test', icon: 'fa-flask', type: 'icon' },
-    { name: 'User', href: '/app/settings', icon: profileImageUrl, type: 'image' },
+    { name: 'User', href: '/app/profile', icon: profileImageUrl, type: 'image' },
   ];
 
   const activeTitle = (() => {
@@ -113,7 +113,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (pathname === '/app/groups') return 'Groups';
     if (pathname === '/app/updates') return 'Updates';
     if (pathname === '/app/test') return 'Test Lab';
-    if (pathname === '/app/settings') return 'User';
+    if (pathname === '/app/profile') return 'Profile';
+    if (pathname === '/app/settings') return 'Settings';
     return 'App';
   })();
 

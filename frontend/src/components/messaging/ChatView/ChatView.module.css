@@ -97,6 +97,21 @@
   font-size: 14px;
 }
 
+/* ── Loading spinner ── */
+.loadingSpinner {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 10px;
+  border: 3px solid rgba(128, 128, 128, 0.25);
+  border-top-color: var(--accent, #6c63ff);
+  border-radius: 50%;
+  animation: chatSpin 0.7s linear infinite;
+}
+
+@keyframes chatSpin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Screen-reader only ── */
 .srOnly {
   position: absolute;

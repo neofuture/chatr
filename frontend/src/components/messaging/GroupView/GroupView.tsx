@@ -43,7 +43,7 @@ interface Props {
 }
 
 export default function GroupView({ group: initialGroup, isDark, currentUserId, onGroupDeleted, initialMemberStatus }: Props) {
-  const { socket } = useWebSocket();
+  const { socket, connected } = useWebSocket();
   const { showToast } = useToast();
   const { showConfirmation } = useConfirmation();
   const openUserProfile = useOpenUserProfile();
@@ -54,6 +54,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
   );
   const [acceptingInvite, setAcceptingInvite] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [isTyping, setIsTyping] = useState<{ userId: string; displayName: string }[]>([]);
   const [activeAudioMessageId, setActiveAudioMessageId] = useState<string | null>(null);
   const [listeningMessageIds] = useState<Set<string>>(new Set());
@@ -142,46 +143,70 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     return () => window.removeEventListener('chatr:group-members-toggle', handler);
   }, [group.id]);
 
-  // Load message history — only once accepted
+  // Load message history via socket — only once accepted
   useEffect(() => {
-    if (!group.id || memberStatus !== 'accepted') return;
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    fetch(`${API}/api/groups/${group.id}/messages`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.json())
-      .then(async (data) => {
-        const msgs: Message[] = (data.messages ?? []).map((m: any) => ({
-          id: m.id,
-          content: m.content,
-          senderId: m.senderId,
-          recipientId: group.id,
-          direction: m.senderId === currentUserId ? 'sent' : 'received',
-          status: 'delivered' as Message['status'],
-          timestamp: new Date(m.createdAt),
-          type: (m.type || 'text') as Message['type'],
-          senderDisplayName: m.sender?.displayName || m.sender?.username?.replace(/^@/, '') || 'Unknown',
-          senderUsername: m.sender?.username,
-          senderProfileImage: m.sender?.profileImage ?? null,
-          fileUrl: m.fileUrl,
-          fileName: m.fileName,
-          fileSize: m.fileSize,
-          fileType: m.fileType,
-          waveformData: m.audioWaveform as number[] | undefined,
-          duration: m.audioDuration,
-        }));
-        const queued = await loadQueueForGroup(currentUserId, group.id);
-        if (queued.length) {
-          const serverIds = new Set(msgs.map(m => m.id));
-          const pending = queued.filter(q => !serverIds.has(q.id));
-          setMessages([...msgs, ...pending]);
-        } else {
-          setMessages(msgs);
+    if (!socket || !connected || !group.id || memberStatus !== 'accepted') return;
+    let cancelled = false;
+    setMessagesLoading(true);
+
+    const mapMessages = (raw: any[]): Message[] =>
+      raw.map((m: any) => ({
+        id: m.id,
+        content: m.content,
+        senderId: m.senderId,
+        recipientId: group.id,
+        direction: m.senderId === currentUserId ? 'sent' : 'received',
+        status: 'delivered' as Message['status'],
+        timestamp: new Date(m.createdAt),
+        type: (m.type || 'text') as Message['type'],
+        senderDisplayName: m.sender?.displayName || m.sender?.username?.replace(/^@/, '') || 'Unknown',
+        senderUsername: m.sender?.username,
+        senderProfileImage: m.sender?.profileImage ?? null,
+        fileUrl: m.fileUrl,
+        fileName: m.fileName,
+        fileSize: m.fileSize,
+        fileType: m.fileType,
+        waveformData: m.audioWaveform as number[] | undefined,
+        duration: m.audioDuration,
+        linkPreview: m.linkPreview ?? undefined,
+        unsent: m.unsent ?? !!m.deletedAt,
+      }));
+
+    const t0 = performance.now();
+    console.log(`📨 Requesting group history for ${group.id}…`);
+
+    socket.emit(
+      'group:messages:history',
+      { groupId: group.id },
+      async (res: { messages?: any[]; error?: string }) => {
+        if (cancelled) return;
+        if (!res || res.error) {
+          console.error('❌ group:messages:history error:', res?.error);
+          setMessagesLoading(false);
+          return;
         }
-      })
-      .catch(console.error);
-  }, [group.id, currentUserId]);
+        const raw = res.messages ?? [];
+        console.log(`📨 Group history received: ${raw.length} messages in ${Math.round(performance.now() - t0)}ms`);
+        const msgs = mapMessages(raw);
+        try {
+          const queued = await loadQueueForGroup(currentUserId, group.id);
+          if (cancelled) return;
+          if (queued.length) {
+            const serverIds = new Set(msgs.map(m => m.id));
+            const pending = queued.filter(q => !serverIds.has(q.id));
+            setMessages([...msgs, ...pending]);
+          } else {
+            setMessages(msgs);
+          }
+        } catch {
+          if (!cancelled) setMessages(msgs);
+        }
+        setMessagesLoading(false);
+      },
+    );
+
+    return () => { cancelled = true; };
+  }, [socket, connected, group.id, currentUserId, memberStatus]);
 
   // Socket listeners
   useEffect(() => {
@@ -207,6 +232,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
         fileType: data.fileType,
         waveformData: data.waveform,
         duration: data.duration,
+        linkPreview: data.linkPreview ?? undefined,
       };
       setMessages(prev => {
         if (data.tempId) {
@@ -319,6 +345,13 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       setGroup(prev => ({ ...prev, ...data.group }));
     };
 
+    const onMessageUnsent = (data: { messageId: string; groupId: string }) => {
+      if (data.groupId !== group.id) return;
+      setMessages(prev => prev.map(m =>
+        m.id === data.messageId ? { ...m, unsent: true, content: '' } : m
+      ));
+    };
+
     socket.on('group:message', onMessage);
     socket.on('group:typing', onTyping);
     socket.on('group:memberJoined', onMemberJoined);
@@ -331,6 +364,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     socket.on('group:memberPromoted', onMemberPromoted);
     socket.on('group:memberDemoted', onMemberDemoted);
     socket.on('group:updated', onGroupUpdated);
+    socket.on('group:message:unsent', onMessageUnsent);
     return () => {
       socket.off('group:message', onMessage);
       socket.off('group:typing', onTyping);
@@ -344,8 +378,18 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       socket.off('group:memberPromoted', onMemberPromoted);
       socket.off('group:memberDemoted', onMemberDemoted);
       socket.off('group:updated', onGroupUpdated);
+      socket.off('group:message:unsent', onMessageUnsent);
     };
   }, [socket, group.id, currentUserId, onGroupDeleted, showToast]);
+
+  // ── Unsend group message ──────────────────────────────────────────────────
+  const handleUnsend = useCallback((messageId: string) => {
+    if (!socket || !connected) return;
+    socket.emit('group:message:unsend', messageId);
+    setMessages(prev => prev.map(m =>
+      m.id === messageId ? { ...m, unsent: true, content: '' } : m
+    ));
+  }, [socket, connected]);
 
   // When MessageInput sends a temp message, add it to local state immediately
   const handleMessageSent = useCallback((msg: Message) => {
@@ -574,6 +618,8 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
           currentUserId={currentUserId}
           conversationStatus="accepted"
           onAvatarClick={(senderId, displayName, profileImage) => openUserProfile(senderId, displayName, profileImage)}
+          onUnsend={handleUnsend}
+          loading={messagesLoading}
         />
       </div>
 

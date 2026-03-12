@@ -6,7 +6,7 @@ import { loadCachedMessages, cacheMessage, updateCachedMessage, replaceCachedMes
 import { loadQueueForRecipient, dequeue } from '@/lib/outboundQueue';
 import type { Message, MessageReaction } from '@/components/MessageBubble';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 
 export interface UseConversationViewOptions {
   recipientId: string;
@@ -365,23 +365,23 @@ export function useConversationView({ recipientId, currentUserId, onConversation
     };
   }, [socket, recipientId, currentUserId]);
 
-  // ── Fetch message history from API ────────────────────
+  // ── Load message history via socket ────────────────────
   useEffect(() => {
-    if (!recipientId || !currentUserId || !connected) return;
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
+    if (!socket || !recipientId || !currentUserId || !connected) return;
     let cancelled = false;
-    const controller = new AbortController();
+    const t0 = performance.now();
+    console.log(`📨 Requesting DM history for ${recipientId}…`);
 
-    fetch(`${API}/api/messages/${recipientId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then((res: any) => {
-        if (cancelled || !res) return;
-        const raw: any[] = Array.isArray(res) ? res : (res.messages ?? []);
+    socket.emit(
+      'messages:history',
+      { recipientId },
+      (res: { messages?: any[]; hasMore?: boolean; error?: string }) => {
+        if (cancelled || !res || res.error) {
+          if (res?.error) console.error('❌ messages:history error:', res.error);
+          return;
+        }
+        const raw: any[] = res.messages ?? [];
+        console.log(`📨 DM history received: ${raw.length} messages in ${Math.round(performance.now() - t0)}ms`);
         const mapped = raw.map((m: any) => ({
           ...m,
           direction: m.senderId === currentUserId ? 'sent' : 'received',
@@ -409,11 +409,11 @@ export function useConversationView({ recipientId, currentUserId, onConversation
           setMessages(mapped);
           cacheMessages(mapped, currentUserId).catch(console.error);
         });
-      })
-      .catch(err => { if (err.name !== 'AbortError') console.error(err); });
+      },
+    );
 
-    return () => { cancelled = true; controller.abort(); };
-  }, [recipientId, currentUserId, connected]);
+    return () => { cancelled = true; };
+  }, [socket, recipientId, currentUserId, connected]);
 
   return {
     messages,

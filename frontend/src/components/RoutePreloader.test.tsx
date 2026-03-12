@@ -34,11 +34,12 @@ describe('RoutePreloader', () => {
   it('should prefetch all critical app routes on mount', () => {
     render(<RoutePreloader />);
 
-    expect(mockPrefetch).toHaveBeenCalledTimes(4);
+    expect(mockPrefetch).toHaveBeenCalledTimes(5);
     expect(mockPrefetch).toHaveBeenCalledWith('/app');
     expect(mockPrefetch).toHaveBeenCalledWith('/app/groups');
     expect(mockPrefetch).toHaveBeenCalledWith('/app/updates');
     expect(mockPrefetch).toHaveBeenCalledWith('/app/settings');
+    expect(mockPrefetch).toHaveBeenCalledWith('/app/profile');
   });
 
   it('should log preload completion', () => {
@@ -56,12 +57,12 @@ describe('RoutePreloader', () => {
   it('should only prefetch routes once', () => {
     const { rerender } = render(<RoutePreloader />);
 
-    expect(mockPrefetch).toHaveBeenCalledTimes(4);
+    expect(mockPrefetch).toHaveBeenCalledTimes(5);
 
     // Rerender should not trigger prefetch again
     rerender(<RoutePreloader />);
 
-    expect(mockPrefetch).toHaveBeenCalledTimes(4);
+    expect(mockPrefetch).toHaveBeenCalledTimes(5);
   });
 });
 

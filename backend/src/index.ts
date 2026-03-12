@@ -23,6 +23,7 @@ import friendRoutes from './routes/friends';
 import conversationRoutes from './routes/conversations';
 import widgetRoutes from './routes/widget';
 import dashboardRoutes from './routes/dashboard';
+import linkPreviewRoutes from './routes/link-preview';
 import { setWidgetSocketIO, cleanupStaleGuests } from './routes/widget';
 
 // Import Socket.io handlers
@@ -127,6 +128,7 @@ app.use('/api/friends', friendRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/widget', widgetRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/link-preview', linkPreviewRoutes);
 app.use('/api', emailTemplatesRoutes);
 
 // Serve the embeddable widget JS with open CORS so any site can load it

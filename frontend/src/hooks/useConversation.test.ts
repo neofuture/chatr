@@ -13,7 +13,7 @@ jest.mock('@/contexts/ToastContext', () => ({
 }));
 
 jest.mock('@/contexts/UserSettingsContext', () => ({
-  useUserSettings: () => ({ settings: { ghostTypingEnabled: false, showOnlineStatus: true, showPhoneNumber: false, showEmail: false }, setSetting: jest.fn() }),
+  useUserSettings: () => ({ settings: { ghostTypingEnabled: false, privacyOnlineStatus: 'everyone', privacyPhone: 'nobody', privacyEmail: 'nobody', privacyFullName: 'everyone', privacyGender: 'nobody', privacyJoinedDate: 'everyone' }, setSetting: jest.fn() }),
 }));
 
 jest.mock('@/contexts/LogContext', () => ({

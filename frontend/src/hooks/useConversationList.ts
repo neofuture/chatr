@@ -79,38 +79,62 @@ export function useConversationList() {
     saveCachedConversations(conversations);
   }, [conversations]);
 
-  // ── Fetch conversations ──────────────────────────────────────────────────
+  // ── Fetch conversations (socket-first, REST fallback) ─────────────────
   const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const abortRef = useRef<AbortController | null>(null);
+  const fetchRef = useRef<(bg?: boolean, r?: number) => Promise<void>>(undefined!);
+
   const fetchConversations = useCallback(async (background = false, retries = 2) => {
+    if (!background) setLoading(true);
+    if (background) setSyncing(true);
+
     try {
-      abortRef.current?.abort();
-      const ac = new AbortController();
-      abortRef.current = ac;
-      if (!background) setLoading(true);
-      if (background) setSyncing(true);
-      const res = await fetch(`${getApiBase()}/api/users/conversations`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-        signal: ac.signal,
-      });
-      if (!res.ok) throw new Error('Failed to fetch conversations');
-      const data = await res.json();
-      setConversations(data.conversations ?? []);
-      setError(null);
-      addLog('info', 'conversations:loaded', { count: (data.conversations ?? []).length });
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      if (retries > 0) {
-        retryTimer.current = setTimeout(() => fetchConversations(true, retries - 1), 1500);
-        return;
+      // Try socket first if connected
+      if (socket?.connected) {
+        const gotSocket = await new Promise<boolean>((resolve) => {
+          const timeout = setTimeout(() => resolve(false), 3000);
+          socket.emit('conversations:request', {}, (res: any) => {
+            clearTimeout(timeout);
+            if (res?.error || !res?.conversations) { resolve(false); return; }
+            setConversations(res.conversations);
+            setError(null);
+            addLog('info', 'conversations:loaded', { via: 'socket', count: res.conversations.length });
+            resolve(true);
+          });
+        });
+        if (gotSocket) return;
       }
-      setError(e.message);
-      addLog('error', 'conversations:load-failed', { error: e.message });
+
+      // REST fallback
+      try {
+        abortRef.current?.abort();
+        const ac = new AbortController();
+        abortRef.current = ac;
+        const res = await fetch(`${getApiBase()}/api/users/conversations`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+          signal: ac.signal,
+        });
+        if (!res.ok) throw new Error('Failed to fetch conversations');
+        const data = await res.json();
+        setConversations(data.conversations ?? []);
+        setError(null);
+        addLog('info', 'conversations:loaded', { via: 'rest', count: (data.conversations ?? []).length });
+      } catch (e: any) {
+        if (e.name === 'AbortError') return;
+        if (retries > 0) {
+          retryTimer.current = setTimeout(() => fetchRef.current?.(true, retries - 1), 1500);
+          return;
+        }
+        setError(e.message);
+        addLog('error', 'conversations:load-failed', { error: e.message });
+      }
     } finally {
       setLoading(false);
       setSyncing(false);
     }
-  }, [addLog]);
+  }, [socket, addLog]);
+
+  fetchRef.current = fetchConversations;
 
   useEffect(() => {
     fetchConversations(cached.current.length > 0);
@@ -267,22 +291,39 @@ export function useConversationList() {
       );
     };
 
-    // Profile image updated by another user
-    const onProfileUpdate = (data: { userId: string; profileImage: string }) => {
+    // Profile fields updated by another user (displayName, profileImage, etc.)
+    const onProfileUpdate = (data: { userId: string; displayName?: string | null; firstName?: string | null; lastName?: string | null; profileImage?: string | null }) => {
       setConversations(prev =>
-        prev.map(c =>
-          c.id === data.userId ? { ...c, profileImage: data.profileImage } : c
-        )
+        prev.map(c => {
+          if (c.id !== data.userId) return c;
+          return {
+            ...c,
+            ...(data.displayName !== undefined ? { displayName: data.displayName } : {}),
+            ...(data.firstName !== undefined ? { firstName: data.firstName } : {}),
+            ...(data.lastName !== undefined ? { lastName: data.lastName } : {}),
+            ...(data.profileImage !== undefined ? { profileImage: data.profileImage } : {}),
+          };
+        })
       );
+    };
+
+    const onMessageUnsent = (data: { messageId: string; senderDisplayName?: string }) => {
+      setConversations(prev => prev.map(c => {
+        if (c.lastMessage?.id !== data.messageId) return c;
+        return {
+          ...c,
+          lastMessage: { ...c.lastMessage, content: 'Message unsent', type: 'text' },
+        };
+      }));
     };
 
     socket.on('presence:update', onPresence);
     socket.on('user:status',     onUserStatus);
     socket.on('user:profileUpdate', onProfileUpdate);
     socket.on('message:received', onMessage);
+    socket.on('message:unsent', onMessageUnsent);
     socket.on('conversation:accepted', onConvoAccepted);
     socket.on('conversation:declined', onConvoDeclined);
-    // Re-fetch when any friend/block relationship changes so isBlocked updates immediately
     socket.on('friend:update', fetchConversations);
 
     return () => {
@@ -290,6 +331,7 @@ export function useConversationList() {
       socket.off('user:status',     onUserStatus);
       socket.off('user:profileUpdate', onProfileUpdate);
       socket.off('message:received', onMessage);
+      socket.off('message:unsent', onMessageUnsent);
       socket.off('conversation:accepted', onConvoAccepted);
       socket.off('conversation:declined', onConvoDeclined);
       socket.off('friend:update', fetchConversations);

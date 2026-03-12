@@ -32,6 +32,7 @@ export function useGroupMessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const typingKeepaliveRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
+  const linkPreviewRef = useRef<Record<string, any> | null>(null);
 
   const effectivelyOnline = connected;
 
@@ -100,6 +101,8 @@ export function useGroupMessageInput({
 
     const isOnline = socket && effectivelyOnline;
     const tempId = `temp-${Date.now()}`;
+    const currentLinkPreview = linkPreviewRef.current;
+
     const msg: Message = {
       id: tempId,
       content,
@@ -109,15 +112,17 @@ export function useGroupMessageInput({
       status: isOnline ? 'sending' : 'queued',
       timestamp: new Date(),
       type: 'text',
+      linkPreview: currentLinkPreview as Message['linkPreview'],
     };
 
     enqueue(msg, groupId).catch(console.error);
 
     onMessageSent?.(msg);
     setMessage('');
+    linkPreviewRef.current = null;
 
     if (isOnline) {
-      socket.emit('group:message', { groupId, content, type: 'text', tempId });
+      socket.emit('group:message', { groupId, content, type: 'text', tempId, linkPreview: currentLinkPreview });
     } else {
       showToast('Message queued — will send when online', 'info');
     }
@@ -368,6 +373,10 @@ export function useGroupMessageInput({
     }
   }, [socket, groupId]);
 
+  const setLinkPreview = useCallback((preview: Record<string, any> | null) => {
+    linkPreviewRef.current = preview;
+  }, []);
+
   return {
     message,
     selectedFiles,
@@ -383,6 +392,7 @@ export function useGroupMessageInput({
     handleVoiceRecording,
     handleVoiceRecordingStart,
     handleVoiceRecordingStop,
+    setLinkPreview,
   };
 }
 

@@ -12,7 +12,7 @@ jest.mock('@/contexts/ThemeContext', () => ({
 
 jest.mock('@/contexts/UserSettingsContext', () => ({
   useUserSettings: () => ({
-    settings: { ghostTypingEnabled: false, showOnlineStatus: true },
+    settings: { ghostTypingEnabled: false, privacyOnlineStatus: 'everyone', privacyPhone: 'nobody', privacyEmail: 'nobody', privacyFullName: 'everyone', privacyGender: 'nobody', privacyJoinedDate: 'everyone' },
     setSetting: jest.fn(),
   }),
 }));
@@ -45,6 +45,11 @@ jest.mock('./PrivacyPanel', () => ({
   default: () => <div data-testid="privacy-panel" />,
 }));
 
+jest.mock('./StorageChart', () => ({
+  __esModule: true,
+  default: () => <div data-testid="storage-chart" />,
+}));
+
 describe('SettingsPanel', () => {
   beforeEach(() => {
     localStorage.setItem('user', JSON.stringify({ id: '1', username: 'testuser', displayName: 'Test User' }));
@@ -65,10 +70,9 @@ describe('SettingsPanel', () => {
     expect(screen.getByText('Manage your preferences')).toBeInTheDocument();
   });
 
-  it('renders Profile section with gender select', () => {
+  it('renders Storage section', () => {
     render(<SettingsPanel />);
-    expect(screen.getByText('Profile')).toBeInTheDocument();
-    expect(screen.getByText('Gender')).toBeInTheDocument();
+    expect(screen.getByText('Storage')).toBeInTheDocument();
   });
 
   it('renders Appearance section with dark mode toggle', () => {

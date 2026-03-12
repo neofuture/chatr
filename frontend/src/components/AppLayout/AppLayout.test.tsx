@@ -144,7 +144,7 @@ describe('AppLayout Component', () => {
       expect(chatsLink).toHaveAttribute('href', '/app');
       expect(groupsLink).toHaveAttribute('href', '/app/groups');
       expect(updatesLink).toHaveAttribute('href', '/app/updates');
-      expect(userLink).toHaveAttribute('href', '/app/settings');
+      expect(userLink).toHaveAttribute('href', '/app/profile');
     }, { timeout: 3000 });
   });
 

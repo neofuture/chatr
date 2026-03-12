@@ -1,6 +1,12 @@
 import { renderHook, act } from '@testing-library/react';
 import React from 'react';
 
+const mockPush = jest.fn();
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush, back: jest.fn(), forward: jest.fn(), refresh: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+  usePathname: () => '/app',
+}));
+
 const mockOpenPanel = jest.fn();
 jest.mock('@/contexts/PanelContext', () => ({
   usePanels: () => ({ openPanel: mockOpenPanel, panels: [], closePanel: jest.fn(), closeTopPanel: jest.fn(), closeAllPanels: jest.fn(), maxLevel: -1, effectiveMaxLevel: -1, updatePanelActionIcons: jest.fn() }),
@@ -9,7 +15,7 @@ jest.mock('@/contexts/PanelContext', () => ({
 import { useOpenUserProfile } from './useOpenUserProfile';
 
 describe('useOpenUserProfile', () => {
-  beforeEach(() => { mockOpenPanel.mockClear(); });
+  beforeEach(() => { mockOpenPanel.mockClear(); mockPush.mockClear(); localStorage.clear(); });
 
   it('should return a function', () => {
     const { result } = renderHook(() => useOpenUserProfile());
@@ -56,5 +62,13 @@ describe('useOpenUserProfile', () => {
       'img.png',
       true,
     );
+  });
+
+  it('should navigate to /app/profile when userId is current user', () => {
+    localStorage.setItem('user', JSON.stringify({ id: 'me-123' }));
+    const { result } = renderHook(() => useOpenUserProfile());
+    act(() => { result.current('me-123'); });
+    expect(mockPush).toHaveBeenCalledWith('/app/profile');
+    expect(mockOpenPanel).not.toHaveBeenCalled();
   });
 });

@@ -21,6 +21,7 @@ import {
   getConnectedUserIds,
   getBlockBetween,
 } from '../lib/conversation';
+import { getConversations as getConversationsFn } from '../lib/getConversations';
 
 const prisma = new PrismaClient();
 
@@ -86,11 +87,11 @@ export function setupSocketHandlers(io: Server) {
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { showOnlineStatus: true },
+        select: { privacyOnlineStatus: true },
       });
-      hideOnlineStatus = user ? !user.showOnlineStatus : false;
+      hideOnlineStatus = user ? user.privacyOnlineStatus === 'nobody' : false;
     } catch (e) {
-      console.error('❌ Error loading showOnlineStatus:', e);
+      console.error('❌ Error loading privacyOnlineStatus:', e);
     }
 
     // Store user connection in Redis
@@ -139,6 +140,121 @@ export function setupSocketHandlers(io: Server) {
     // complete and all event handlers are registered — safe to send first message.
     socket.emit('socket:ready', { userId });
 
+    // ==================== MESSAGE HISTORY (via socket) ====================
+
+    socket.on('messages:history', async (
+      data: { recipientId: string; limit?: number; before?: string },
+      ack?: (res: { messages: any[]; hasMore: boolean } | { error: string }) => void,
+    ) => {
+      try {
+        const { recipientId, limit: rawLimit, before } = data;
+        if (!recipientId) { ack?.({ error: 'recipientId is required' }); return; }
+        const limitNum = Math.min(Math.max(rawLimit || 50, 1), 100);
+
+        const whereClause: any = {
+          OR: [
+            { senderId: userId, recipientId },
+            { senderId: recipientId, recipientId: userId },
+          ],
+        };
+
+        if (before) {
+          const cursor = await prisma.message.findUnique({ where: { id: before }, select: { createdAt: true } });
+          if (cursor) whereClause.createdAt = { lt: cursor.createdAt };
+        }
+
+        const messages = await prisma.message.findMany({
+          where: whereClause,
+          orderBy: { createdAt: 'desc' },
+          take: limitNum,
+          include: {
+            sender: { select: { id: true, username: true, displayName: true, profileImage: true } },
+            reactions: { include: { user: { select: { id: true, username: true } } } },
+          },
+        });
+
+        const unreadIds = messages.filter((m: any) => m.recipientId === userId && !m.isRead).map((m: any) => m.id);
+        if (unreadIds.length) {
+          await prisma.message.updateMany({ where: { id: { in: unreadIds } }, data: { isRead: true, readAt: new Date() } });
+        }
+
+        const formatted = messages.map((m: any) => ({
+          id: m.id,
+          senderId: m.senderId,
+          senderUsername: m.sender.username,
+          senderDisplayName: m.sender.displayName ?? null,
+          senderProfileImage: m.sender.profileImage,
+          recipientId: m.recipientId,
+          content: m.deletedAt ? '' : m.content,
+          unsent: !!m.deletedAt,
+          edited: !m.deletedAt && !!m.edited,
+          editedAt: !m.deletedAt && m.editedAt ? m.editedAt : null,
+          type: m.deletedAt ? 'text' : m.type,
+          status: m.status,
+          isRead: m.isRead,
+          readAt: m.readAt,
+          createdAt: m.createdAt,
+          fileUrl: m.deletedAt ? null : m.fileUrl,
+          fileName: m.deletedAt ? null : m.fileName,
+          fileSize: m.deletedAt ? null : m.fileSize,
+          fileType: m.deletedAt ? null : m.fileType,
+          waveform: m.deletedAt ? null : (m.audioWaveform as number[] | null),
+          duration: m.deletedAt ? null : m.audioDuration,
+          reactions: (m.reactions || []).map((r: any) => ({ userId: r.userId, username: r.user.username, emoji: r.emoji })),
+          replyTo: m.replyToId ? {
+            id: m.replyToId,
+            content: m.replyToContent || '',
+            senderDisplayName: m.replyToSenderName || null,
+            senderUsername: m.replyToSenderName || '',
+            type: m.replyToType || 'text',
+            duration: m.replyToDuration || null,
+          } : undefined,
+          linkPreview: m.deletedAt ? null : (m.linkPreview ?? null),
+        }));
+
+        ack?.({ messages: formatted.reverse(), hasMore: messages.length === limitNum });
+      } catch (err) {
+        console.error('messages:history error:', err);
+        ack?.({ error: 'Failed to load messages' });
+      }
+    });
+
+    socket.on('group:messages:history', async (
+      data: { groupId: string; limit?: number; before?: string },
+      ack?: (res: { messages: any[] } | { error: string }) => void,
+    ) => {
+      try {
+        const { groupId, limit: rawLimit, before } = data;
+        if (!groupId) { ack?.({ error: 'groupId is required' }); return; }
+
+        const member = await prisma.groupMember.findUnique({ where: { userId_groupId: { userId, groupId } } });
+        if (!member) { ack?.({ error: 'Not a member' }); return; }
+        if (member.status !== 'accepted') { ack?.({ error: 'Accept the group invite first' }); return; }
+
+        const limitNum = Math.min(Math.max(rawLimit || 50, 1), 100);
+
+        const raw = await prisma.groupMessage.findMany({
+          where: { groupId, ...(before ? { createdAt: { lt: new Date(before) } } : {}) },
+          orderBy: { createdAt: 'asc' },
+          take: limitNum,
+          include: { sender: { select: { id: true, username: true, displayName: true, profileImage: true } } },
+        });
+
+        const messages = raw.map((m: any) => m.deletedAt ? {
+          ...m,
+          content: '',
+          fileUrl: null, fileName: null, fileSize: null, fileType: null,
+          audioWaveform: null, audioDuration: null, linkPreview: null,
+          unsent: true,
+        } : m);
+
+        ack?.({ messages });
+      } catch (err) {
+        console.error('group:messages:history error:', err);
+        ack?.({ error: 'Failed to load group messages' });
+      }
+    });
+
     // ==================== DIRECT MESSAGES ====================
 
     socket.on('message:send', async (data: {
@@ -153,6 +269,7 @@ export function setupSocketHandlers(io: Server) {
       duration?: number;
       messageId?: string;
       tempId?: string;
+      linkPreview?: Record<string, any> | null;
       replyTo?: {
         id: string;
         content: string;
@@ -259,6 +376,7 @@ export function setupSocketHandlers(io: Server) {
               replyToSenderName: data.replyTo?.senderDisplayName || data.replyTo?.senderUsername?.replace(/^@/, '') || null,
               replyToType: (data.replyTo as any)?.type ?? null,
               replyToDuration: (data.replyTo as any)?.duration ?? null,
+              linkPreview: data.linkPreview ?? undefined,
             },
             include: { sender: { select: { id: true, username: true, email: true } } }
           });
@@ -320,6 +438,7 @@ export function setupSocketHandlers(io: Server) {
           waveform,
           duration,
           replyTo: replyToPayload,
+          linkPreview: message.linkPreview ?? undefined,
           conversationId: convo.id,
           conversationStatus: convo.status,
         });
@@ -342,6 +461,7 @@ export function setupSocketHandlers(io: Server) {
           timestamp: message.createdAt,
           status: (recipientOnline && !isPending) ? 'delivered' : 'sent',
           replyTo: replyToPayload,
+          linkPreview: message.linkPreview ?? undefined,
           fileUrl: message.fileUrl,
           fileName: message.fileName,
           fileSize: message.fileSize,
@@ -519,7 +639,7 @@ export function setupSocketHandlers(io: Server) {
       });
     });
 
-    socket.on('group:message:send', async (data: { groupId: string; content: string; type?: string }) => {
+    socket.on('group:message:send', async (data: { groupId: string; content: string; type?: string; linkPreview?: Record<string, any> | null }) => {
       try {
         console.log(`💬 Group message from ${username} to group ${data.groupId}`);
 
@@ -547,7 +667,8 @@ export function setupSocketHandlers(io: Server) {
             groupId: data.groupId,
             senderId: userId,
             content: data.content,
-            type: data.type || 'text'
+            type: data.type || 'text',
+            linkPreview: data.linkPreview ?? undefined,
           },
           include: {
             sender: { select: { id: true, username: true, email: true } }
@@ -561,7 +682,8 @@ export function setupSocketHandlers(io: Server) {
           senderUsername: username,
           content: message.content,
           type: message.type,
-          timestamp: message.createdAt
+          timestamp: message.createdAt,
+          linkPreview: message.linkPreview ?? undefined,
         });
 
         console.log(`✅ Group message sent to group ${data.groupId}`);
@@ -960,6 +1082,72 @@ export function setupSocketHandlers(io: Server) {
       socket.emit('presence:response', presenceData);
     });
 
+    // Fetch another user's profile with tiered privacy filtering
+    socket.on('user:profile:request', async (data: { targetUserId: string }, ack?: (res: any) => void) => {
+      try {
+        const targetId = data.targetUserId;
+        if (!targetId) { ack?.({ error: 'Missing targetUserId' }); return; }
+
+        const user = await prisma.user.findUnique({
+          where: { id: targetId },
+          select: {
+            id: true, username: true, displayName: true,
+            firstName: true, lastName: true,
+            profileImage: true, coverImage: true,
+            lastSeen: true, emailVerified: true,
+            privacyPhone: true, privacyEmail: true, privacyFullName: true,
+            privacyGender: true, privacyJoinedDate: true,
+            phoneNumber: true, email: true, gender: true, createdAt: true,
+          },
+        });
+        if (!user) { ack?.({ error: 'User not found' }); return; }
+
+        const block = await prisma.friendship.findFirst({
+          where: { requesterId: targetId, addresseeId: userId, status: 'blocked' },
+        });
+        if (block) { ack?.({ blockedByThem: true }); return; }
+
+        const friendship = await prisma.friendship.findFirst({
+          where: {
+            OR: [
+              { requesterId: targetId, addresseeId: userId, status: 'accepted' },
+              { requesterId: userId, addresseeId: targetId, status: 'accepted' },
+            ],
+          },
+        });
+        const isFriend = !!friendship;
+        const canSee = (level: string) => level === 'everyone' || (level === 'friends' && isFriend);
+
+        const { privacyPhone, privacyEmail, privacyFullName, privacyGender, privacyJoinedDate,
+                phoneNumber, email, gender, firstName, lastName, createdAt, ...publicFields } = user;
+
+        const profile = {
+          ...publicFields,
+          ...(canSee(privacyFullName)   ? { firstName, lastName } : {}),
+          ...(canSee(privacyPhone)      ? { phoneNumber }         : {}),
+          ...(canSee(privacyEmail)      ? { email }               : {}),
+          ...(canSee(privacyGender)     ? { gender }              : {}),
+          ...(canSee(privacyJoinedDate) ? { createdAt }           : {}),
+        };
+
+        ack?.({ user: profile });
+      } catch (e) {
+        console.error('❌ user:profile:request error:', e);
+        ack?.({ error: 'Internal error' });
+      }
+    });
+
+    // Fetch conversation list via socket (fast, avoids HTTP overhead)
+    socket.on('conversations:request', async (_data: any, ack?: (res: any) => void) => {
+      try {
+        const result = await getConversationsFn(userId);
+        ack?.(result);
+      } catch (e) {
+        console.error('conversations:request error:', e);
+        ack?.({ error: 'Internal error' });
+      }
+    });
+
     // Keep socket-level profileImage in sync when user uploads a new one
     socket.on('profile:imageUpdated', (data: { profileImage: string }) => {
       profileImage = data.profileImage;
@@ -1012,10 +1200,9 @@ export function setupSocketHandlers(io: Server) {
     });
 
     // Update user settings that affect socket behaviour
-    socket.on('settings:update', async (data: { showOnlineStatus?: boolean; showPhoneNumber?: boolean; showEmail?: boolean }) => {
-      // ── Online status ──────────────────────────────────────────────────────
-      if (typeof data.showOnlineStatus === 'boolean') {
-        const hide = !data.showOnlineStatus;
+    socket.on('settings:update', async (data: { privacyOnlineStatus?: string }) => {
+      if (typeof data.privacyOnlineStatus === 'string' && ['everyone', 'friends', 'nobody'].includes(data.privacyOnlineStatus)) {
+        const hide = data.privacyOnlineStatus === 'nobody';
         const presence = await getPresence(userId);
         if (presence) {
           await setPresence({ ...presence, hideOnlineStatus: hide });
@@ -1024,10 +1211,10 @@ export function setupSocketHandlers(io: Server) {
         try {
           await prisma.user.update({
             where: { id: userId },
-            data: { showOnlineStatus: data.showOnlineStatus },
+            data: { privacyOnlineStatus: data.privacyOnlineStatus },
           });
         } catch (e) {
-          console.error('❌ Error updating showOnlineStatus:', e);
+          console.error('❌ Error updating privacyOnlineStatus:', e);
         }
 
         const effectiveStatus = hide ? 'offline' : (presence?.status || 'online');
@@ -1042,18 +1229,6 @@ export function setupSocketHandlers(io: Server) {
             lastSeen: hide ? new Date() : null,
             timestamp: new Date(),
           });
-        }
-      }
-
-      // ── Phone / Email visibility ───────────────────────────────────────────
-      const privacyUpdate: Record<string, boolean> = {};
-      if (typeof data.showPhoneNumber === 'boolean') privacyUpdate.showPhoneNumber = data.showPhoneNumber;
-      if (typeof data.showEmail === 'boolean') privacyUpdate.showEmail = data.showEmail;
-      if (Object.keys(privacyUpdate).length > 0) {
-        try {
-          await prisma.user.update({ where: { id: userId }, data: privacyUpdate });
-        } catch (e) {
-          console.error('❌ Error updating privacy settings:', e);
         }
       }
     });
@@ -1107,9 +1282,10 @@ export function setupSocketHandlers(io: Server) {
       groupId: string; content: string; type?: string; tempId?: string;
       fileUrl?: string; fileName?: string; fileSize?: number; fileType?: string;
       waveform?: number[]; duration?: number; messageId?: string;
+      linkPreview?: Record<string, any> | null;
     }) => {
       try {
-        const { groupId, content, type = 'text', tempId, fileUrl, fileName, fileSize, fileType, waveform, duration, messageId: existingId } = data;
+        const { groupId, content, type = 'text', tempId, fileUrl, fileName, fileSize, fileType, waveform, duration, messageId: existingId, linkPreview } = data;
         if (!groupId || !content?.trim()) return;
 
         // Verify sender is a member
@@ -1150,6 +1326,7 @@ export function setupSocketHandlers(io: Server) {
               fileUrl, fileName, fileSize, fileType,
               audioWaveform: waveform,
               audioDuration: duration,
+              linkPreview: linkPreview ?? undefined,
             },
             include: { sender: { select: { id: true, username: true, displayName: true, profileImage: true } } },
           });
@@ -1169,6 +1346,34 @@ export function setupSocketHandlers(io: Server) {
       } catch (err) {
         console.error('❌ group:message error', err);
         socket.emit('error', 'Failed to send group message');
+      }
+    });
+
+    // ── Group message unsend ──────────────────────────────────────────────
+    socket.on('group:message:unsend', async (messageId: string) => {
+      try {
+        const message = await prisma.groupMessage.findUnique({
+          where: { id: messageId },
+          select: { senderId: true, groupId: true, deletedAt: true },
+        });
+        if (!message) return;
+        if (message.senderId !== userId) return;
+        if (message.deletedAt) return;
+
+        await prisma.groupMessage.update({
+          where: { id: messageId },
+          data: { deletedAt: new Date() },
+        });
+
+        const members = await prisma.groupMember.findMany({ where: { groupId: message.groupId } });
+        const payload = { messageId, groupId: message.groupId, senderDisplayName: displayName || username };
+        for (const m of members) {
+          io.to(`user:${m.userId}`).emit('group:message:unsent', payload);
+        }
+
+        console.log(`🗑️  Group message ${messageId} unsent by ${username}`);
+      } catch (error) {
+        console.error('❌ Error unsending group message:', error);
       }
     });
 

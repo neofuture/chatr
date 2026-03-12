@@ -5,7 +5,7 @@ const mockOff = jest.fn();
 const mockEmit = jest.fn();
 
 jest.mock('@/contexts/WebSocketContext', () => ({
-  useWebSocket: () => ({ socket: { on: mockOn, off: mockOff, emit: mockEmit }, connected: true, connecting: false, disconnect: jest.fn(), reconnect: jest.fn() }),
+  useWebSocket: () => ({ socket: { on: mockOn, off: mockOff, emit: mockEmit, connected: true }, connected: true, connecting: false, disconnect: jest.fn(), reconnect: jest.fn() }),
 }));
 
 jest.mock('@/contexts/LogContext', () => ({
@@ -32,9 +32,9 @@ describe('useConversationList', () => {
     expect(Array.isArray(result.current.conversations)).toBe(true);
   });
 
-  it('should fetch conversations on mount', () => {
+  it('should request conversations via socket on mount', () => {
     renderHook(() => useConversationList());
-    expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/users/conversations'), expect.anything());
+    expect(mockEmit).toHaveBeenCalledWith('conversations:request', {}, expect.any(Function));
   });
 
   it('should register socket listeners for real-time updates', () => {

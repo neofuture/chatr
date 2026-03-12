@@ -9,6 +9,7 @@ import { getCachedConversations, setCachedConversations, invalidateConversationC
 import { getConnectedUserIds } from '../lib/conversation';
 import { processImageVariants, deleteImageVariants, PROFILE_VARIANTS, COVER_VARIANTS } from '../lib/imageResize';
 import { maybeRegenerateDMSummary, setSummaryPrisma } from '../services/summaryEngine';
+import { getConversations } from '../lib/getConversations';
 import { Server } from 'socket.io';
 
 const router = Router();
@@ -196,222 +197,7 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
   try {
     const currentUserId = req.user?.userId;
     if (!currentUserId) return res.status(401).json({ error: 'Unauthorized' });
-
-    // Try Redis cache first
-    try {
-      const cached = await getCachedConversations(currentUserId);
-      if (cached) {
-        return res.json(JSON.parse(cached));
-      }
-    } catch (_) { /* cache miss or Redis down — fall through to DB */ }
-
-    // Find distinct user IDs we've exchanged messages with (single query)
-    const partners: { partner_id: string }[] = await prisma.$queryRaw`
-      SELECT DISTINCT
-        CASE WHEN "senderId" = ${currentUserId} THEN "recipientId" ELSE "senderId" END AS partner_id
-      FROM "Message"
-      WHERE ("senderId" = ${currentUserId} OR "recipientId" = ${currentUserId})
-        AND "deletedAt" IS NULL
-    `;
-    const conversationPartnerIds = partners.map(p => p.partner_id);
-
-    if (conversationPartnerIds.length === 0) {
-      const result = { conversations: [] };
-      setCachedConversations(currentUserId, JSON.stringify(result)).catch(() => {});
-      return res.json(result);
-    }
-
-    // Run all independent queries in parallel
-    const [users, convos, friendships, blocks, lastMessages, unreadCounts] = await Promise.all([
-      // Fetch only users we've actually messaged
-      prisma.user.findMany({
-        where: { id: { in: conversationPartnerIds } },
-        select: {
-          id: true,
-          username: true,
-          displayName: true,
-          firstName: true,
-          lastName: true,
-          profileImage: true,
-          lastSeen: true,
-          isBot: true,
-          isGuest: true,
-        },
-      }),
-      // Batch-fetch all Conversation rows for this user
-      prisma.conversation.findMany({
-        where: {
-          OR: [
-            { participantA: currentUserId },
-            { participantB: currentUserId },
-          ],
-        },
-      }),
-      // Batch-fetch friendships to mark isFriend
-      prisma.friendship.findMany({
-        where: {
-          status: 'accepted',
-          OR: [
-            { requesterId: currentUserId, addresseeId: { in: conversationPartnerIds } },
-            { addresseeId: currentUserId, requesterId: { in: conversationPartnerIds } },
-          ],
-        },
-      }),
-      // Batch-fetch blocks (either direction) to mark isBlocked / blockedByMe
-      prisma.friendship.findMany({
-        where: {
-          status: 'blocked',
-          OR: [
-            { requesterId: currentUserId, addresseeId: { in: conversationPartnerIds } },
-            { addresseeId: currentUserId, requesterId: { in: conversationPartnerIds } },
-          ],
-        },
-        select: { requesterId: true, addresseeId: true },
-      }),
-      // Last message per conversation partner (single query using DISTINCT ON)
-      prisma.$queryRaw<any[]>`
-        SELECT DISTINCT ON (partner_id) *
-        FROM (
-          SELECT
-            m.id, m.content, m.type, m."createdAt", m."senderId", m."isRead", m."fileType",
-            CASE WHEN m."senderId" = ${currentUserId} THEN m."recipientId" ELSE m."senderId" END AS partner_id
-          FROM "Message" m
-          WHERE m."deletedAt" IS NULL
-            AND (m."senderId" = ${currentUserId} OR m."recipientId" = ${currentUserId})
-            AND (
-              (m."senderId" = ${currentUserId} AND m."recipientId" = ANY(${conversationPartnerIds}))
-              OR (m."recipientId" = ${currentUserId} AND m."senderId" = ANY(${conversationPartnerIds}))
-            )
-        ) sub
-        ORDER BY partner_id, "createdAt" DESC
-      `,
-      // Unread counts per sender (single query with GROUP BY)
-      prisma.message.groupBy({
-        by: ['senderId'],
-        where: {
-          recipientId: currentUserId,
-          isRead: false,
-          deletedAt: null,
-          senderId: { in: conversationPartnerIds },
-        },
-        _count: true,
-      }),
-    ]);
-
-    const convoMap = new Map(convos.map(c => {
-      const otherId = c.participantA === currentUserId ? c.participantB : c.participantA;
-      return [otherId, c];
-    }));
-
-    const friendIds = new Set(friendships.map(f =>
-      f.requesterId === currentUserId ? f.addresseeId : f.requesterId
-    ));
-    const friendshipIdMap = new Map<string, string>();
-    for (const f of friendships) {
-      const otherId = f.requesterId === currentUserId ? f.addresseeId : f.requesterId;
-      friendshipIdMap.set(otherId, f.id);
-    }
-
-    const blockedByMeIds = new Set<string>();
-    const blockedMeIds = new Set<string>();
-    for (const b of blocks) {
-      if (b.requesterId === currentUserId) blockedByMeIds.add(b.addresseeId);
-      else blockedMeIds.add(b.requesterId);
-    }
-
-    const lastMessageMap = new Map(lastMessages.map(m => [m.partner_id, m]));
-    const unreadMap = new Map(unreadCounts.map(u => [u.senderId, u._count]));
-
-    const withMessages = users.map((user) => {
-      const lastMessage = lastMessageMap.get(user.id) ?? null;
-      const unreadCount = unreadMap.get(user.id) ?? 0;
-      const convo = convoMap.get(user.id);
-
-      // Fire-and-forget: regenerate AI summary if threshold met
-      if (convo) {
-        maybeRegenerateDMSummary(convo.id, currentUserId, user.id, convo.summaryMessageCount, convo.summaryGeneratedAt);
-      }
-
-      return {
-        ...user,
-        lastMessage: lastMessage ? {
-          id: lastMessage.id,
-          content: lastMessage.content,
-          type: lastMessage.type,
-          createdAt: lastMessage.createdAt,
-          senderId: lastMessage.senderId,
-          isRead: lastMessage.isRead,
-          fileType: lastMessage.fileType,
-        } : null,
-        unreadCount,
-        lastMessageAt: lastMessage?.createdAt ?? null,
-        conversationId: convo?.id ?? null,
-        conversationStatus: (convo?.status as 'pending' | 'accepted') ?? null,
-        isInitiator: convo ? convo.initiatorId === currentUserId : false,
-        isFriend: friendIds.has(user.id),
-        friendshipId: friendshipIdMap.get(user.id) ?? null,
-        isBlocked: blockedByMeIds.has(user.id) || blockedMeIds.has(user.id),
-        blockedByMe: blockedByMeIds.has(user.id),
-        summary: convo?.summary ?? null,
-      };
-    });
-
-    // ── Always inject the AI bot at the top of the list ──────────────────
-    const AI_BOT_ID = process.env.AI_BOT_USER_ID;
-    let conversations = withMessages;
-    if (AI_BOT_ID) {
-      // Determine which AI avatar to show — opposite of the current user's gender
-      const currentUser = await prisma.user.findUnique({
-        where: { id: currentUserId },
-        select: { gender: true },
-      });
-      const gender = currentUser?.gender ?? null;
-      const botImagePath =
-        gender === 'male'   ? '/images/ai/female-sm.jpg' :
-        gender === 'female' ? '/images/ai/male-sm.jpg'   :
-                              '/images/ai/them-sm.jpg';   // non-binary, prefer-not-to-say, or unset
-
-      // Only inject if bot user is not already in the list (i.e. they haven't messaged yet)
-      const botAlreadyPresent = withMessages.some(c => c.id === AI_BOT_ID);
-      if (!botAlreadyPresent) {
-        const botUser = await prisma.user.findUnique({
-          where: { id: AI_BOT_ID },
-          select: {
-            id: true, username: true, displayName: true,
-            firstName: true, lastName: true,
-            profileImage: true, lastSeen: true, isBot: true, isGuest: true,
-          },
-        });
-        if (botUser) {
-          const botEntry = {
-            ...botUser,
-            profileImage: botImagePath,
-            lastMessage: null,
-            unreadCount: 0,
-            lastMessageAt: null,
-            conversationId: null,
-            conversationStatus: 'accepted' as 'accepted' | 'pending',
-            isInitiator: false,
-            isFriend: false,
-            friendshipId: null,
-            isBlocked: false,
-            blockedByMe: false,
-            summary: null,
-          };
-          conversations = [botEntry as unknown as typeof withMessages[0], ...withMessages];
-        }
-      } else {
-        // Bot is already in the list — move it to the top and apply the avatar
-        const botEntry = { ...withMessages.find(c => c.id === AI_BOT_ID)!, profileImage: botImagePath };
-        conversations = [botEntry, ...withMessages.filter(c => c.id !== AI_BOT_ID)];
-      }
-    }
-
-    const result = { conversations };
-
-    // Cache in Redis (fire-and-forget)
-    setCachedConversations(currentUserId, JSON.stringify(result)).catch(() => {});
-
+    const result = await getConversations(currentUserId);
     res.json(result);
   } catch (error) {
     console.error('Error fetching conversations:', error);
@@ -616,10 +402,12 @@ router.get('/by-id/:userId', authenticateToken as any, async (req: any, res: any
       where: { id: userId },
       select: {
         id: true, username: true, displayName: true,
+        firstName: true, lastName: true,
         profileImage: true, coverImage: true,
         lastSeen: true, emailVerified: true,
-        showPhoneNumber: true, showEmail: true,
-        phoneNumber: true, email: true,
+        privacyPhone: true, privacyEmail: true, privacyFullName: true,
+        privacyGender: true, privacyJoinedDate: true,
+        phoneNumber: true, email: true, gender: true, createdAt: true,
       },
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -630,42 +418,31 @@ router.get('/by-id/:userId', authenticateToken as any, async (req: any, res: any
     });
     if (block) return res.json({ blockedByThem: true });
 
-    // Strip sensitive fields based on privacy settings
-    const { showPhoneNumber, showEmail, phoneNumber, email, ...publicFields } = user;
+    // Check friendship for tiered privacy
+    const friendship = await prisma.friendship.findFirst({
+      where: {
+        OR: [
+          { requesterId: userId, addresseeId: viewerId, status: 'accepted' },
+          { requesterId: viewerId, addresseeId: userId, status: 'accepted' },
+        ],
+      },
+    });
+    const isFriend = !!friendship;
+    const canSee = (level: string) => level === 'everyone' || (level === 'friends' && isFriend);
+
+    const { privacyPhone, privacyEmail, privacyFullName, privacyGender, privacyJoinedDate, phoneNumber, email, gender, firstName, lastName, createdAt, ...publicFields } = user;
     const profile = {
       ...publicFields,
-      ...(showPhoneNumber ? { phoneNumber } : {}),
-      ...(showEmail      ? { email }       : {}),
+      ...(canSee(privacyFullName)   ? { firstName, lastName } : {}),
+      ...(canSee(privacyPhone)      ? { phoneNumber }         : {}),
+      ...(canSee(privacyEmail)      ? { email }               : {}),
+      ...(canSee(privacyGender)     ? { gender }              : {}),
+      ...(canSee(privacyJoinedDate) ? { createdAt }           : {}),
     };
 
     res.json({ user: profile });
   } catch (error) {
     console.error('Get user by id error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// GET /api/users/:username - Get user profile by username
-router.get('/:username', authenticateToken as any, async (req: any, res: any) => {
-  try {
-    const { username } = req.params;
-    // Guard against catching named routes
-    if (['search', 'conversations', 'me', 'check-username', 'suggest-username'].includes(username)) {
-      return res.status(404).json({ error: 'Not found' });
-    }
-    const user = await prisma.user.findUnique({
-      where: { username },
-      select: {
-        id: true, username: true, displayName: true,
-        firstName: true, lastName: true,
-        profileImage: true, coverImage: true,
-        lastSeen: true, emailVerified: true,
-      },
-    });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ user });
-  } catch (error) {
-    console.error('Get user profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -724,14 +501,19 @@ router.get('/me', authenticateToken, async (req, res) => {
         phoneNumber: true,
         username: true,
         displayName: true,
+        firstName: true,
+        lastName: true,
         profileImage: true,
         coverImage: true,
         emailVerified: true,
         phoneVerified: true,
         createdAt: true,
-        showOnlineStatus: true,
-        showPhoneNumber: true,
-        showEmail: true,
+        privacyOnlineStatus: true,
+        privacyPhone: true,
+        privacyEmail: true,
+        privacyFullName: true,
+        privacyGender: true,
+        privacyJoinedDate: true,
         gender: true,
       },
     });
@@ -753,7 +535,7 @@ router.put('/me', authenticateToken as any, async (req: any, res: any) => {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
-    const { displayName, gender } = req.body;
+    const { displayName, firstName, lastName, gender } = req.body;
 
     const validGenders = ['male', 'female', 'non-binary', 'prefer-not-to-say'];
     if (gender !== undefined && gender !== null && gender !== '' && !validGenders.includes(gender)) {
@@ -764,10 +546,39 @@ router.put('/me', authenticateToken as any, async (req: any, res: any) => {
       where: { id: userId },
       data: {
         ...(displayName !== undefined ? { displayName: displayName || null } : {}),
+        ...(firstName !== undefined ? { firstName: firstName || null } : {}),
+        ...(lastName !== undefined ? { lastName: lastName || null } : {}),
         ...(gender !== undefined ? { gender: gender || null } : {}),
       },
-      select: { id: true, username: true, displayName: true, profileImage: true, gender: true },
+      select: {
+        id: true, username: true, displayName: true, firstName: true,
+        lastName: true, profileImage: true, coverImage: true, gender: true,
+        email: true, phoneNumber: true,
+      },
     });
+
+    // Broadcast profile changes to connected users so their UIs update in real time
+    if (_io) {
+      try {
+        const { all: connectedIds } = await getConnectedUserIds(userId);
+        const cachePromises = Array.from(connectedIds).map(id => invalidateConversationCache(id));
+        cachePromises.push(invalidateConversationCache(userId));
+        await Promise.all(cachePromises);
+
+        const payload = {
+          userId,
+          displayName: updated.displayName,
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          profileImage: updated.profileImage,
+        };
+        for (const cid of connectedIds) {
+          _io.to(`user:${cid}`).emit('user:profileUpdate', payload);
+        }
+      } catch (e) {
+        console.error('⚠️  Failed to broadcast profile update:', e);
+      }
+    }
 
     res.json(updated);
   } catch (error) {
@@ -782,12 +593,13 @@ router.put('/me/settings', authenticateToken as any, async (req: any, res: any) 
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
-    const allowed = ['showOnlineStatus', 'showPhoneNumber', 'showEmail'] as const;
+    const VALID_LEVELS = ['everyone', 'friends', 'nobody'];
+    const allowed = ['privacyOnlineStatus', 'privacyPhone', 'privacyEmail', 'privacyFullName', 'privacyGender', 'privacyJoinedDate'] as const;
     type AllowedKey = typeof allowed[number];
-    const data: Partial<Record<AllowedKey, boolean>> = {};
+    const data: Partial<Record<AllowedKey, string>> = {};
 
     for (const key of allowed) {
-      if (typeof req.body[key] === 'boolean') {
+      if (typeof req.body[key] === 'string' && VALID_LEVELS.includes(req.body[key])) {
         data[key] = req.body[key];
       }
     }
@@ -800,6 +612,28 @@ router.put('/me/settings', authenticateToken as any, async (req: any, res: any) 
     res.json({ ok: true });
   } catch (error) {
     console.error('Update settings error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/users/:username - Get user profile by username
+// MUST be after all named /me, /search, /conversations etc. routes
+router.get('/:username', authenticateToken as any, async (req: any, res: any) => {
+  try {
+    const { username } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: {
+        id: true, username: true, displayName: true,
+        firstName: true, lastName: true,
+        profileImage: true, coverImage: true,
+        lastSeen: true, emailVerified: true,
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user });
+  } catch (error) {
+    console.error('Get user profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

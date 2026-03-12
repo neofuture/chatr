@@ -31,9 +31,12 @@ model User {
   loginVerificationExpiry DateTime?
   loginVerificationMethod String?
   lastSeen                DateTime?
-  showOnlineStatus        Boolean   @default(true)
-  showPhoneNumber         Boolean   @default(false)
-  showEmail               Boolean   @default(false)
+  privacyOnlineStatus     String    @default("everyone")
+  privacyPhone            String    @default("nobody")
+  privacyEmail            String    @default("nobody")
+  privacyFullName         String    @default("everyone")
+  privacyGender           String    @default("nobody")
+  privacyJoinedDate       String    @default("everyone")
   gender                  String?
   isBot                   Boolean   @default(false)
   isSupport               Boolean   @default(false)
@@ -83,6 +86,9 @@ model Message {
   // Edit tracking
   edited   Boolean   @default(false)
   editedAt DateTime?
+
+  // Link preview metadata (Open Graph)
+  linkPreview Json?
 
   // Reply-to snapshot (stores orignal message snapshot so it survives unsend/delete)
   replyToId         String?
@@ -143,6 +149,8 @@ model GroupMessage {
   fileType      String?
   audioWaveform Json?
   audioDuration Float?
+  linkPreview   Json?
+  deletedAt     DateTime?
   createdAt     DateTime @default(now())
 
   @@index([groupId, createdAt])

@@ -256,6 +256,8 @@ router.get('/:recipientId', authenticateToken as any, async (req: AuthenticatedR
         type: m.replyToType || 'text',
         duration: m.replyToDuration || null,
       } : undefined,
+      // Link preview
+      linkPreview: m.deletedAt ? null : (m.linkPreview ?? null),
     }));
 
     res.json({

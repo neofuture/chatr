@@ -29,6 +29,8 @@ export default function AppLayout({
     title = "Updates";
   } else if (pathname === "/app/test") {
     title = "Test Lab";
+  } else if (pathname === "/app/profile") {
+    title = "Profile";
   } else if (pathname === "/app/settings") {
     title = "Settings";
   } else {
