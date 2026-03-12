@@ -10,6 +10,7 @@ import {
   deleteCoverImage
 } from '@/lib/coverImageService';
 import CoverImageCropper from '@/components/image-manip/CoverImageCropper/CoverImageCropper';
+import BottomSheet from '@/components/dialogs/BottomSheet/BottomSheet';
 import styles from './CoverImageUploader.module.css';
 
 interface CoverImageUploaderProps {
@@ -23,41 +24,13 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
   const [hovering, setHovering] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
   const { showToast } = useToast();
 
-  const closeMenu = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setShowMenu(false);
-      setIsClosing(false);
-    }, 250); // Match animation duration
-  };
-
-  // Load existing cover image on mount
   useEffect(() => {
     loadCoverImage();
-
-    // Close menu when clicking outside
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
-      ) {
-        closeMenu();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
   }, [userId]);
 
   const loadCoverImage = async () => {
@@ -66,7 +39,19 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
     try {
       const url = await getCoverImageURL(userId);
       if (url) {
+        setImageLoaded(false);
         setImageUrl(url);
+        return;
+      }
+
+      // No IndexedDB record — try the server URL from localStorage
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.coverImage) {
+          setImageLoaded(false);
+          setImageUrl(user.coverImage);
+        }
       }
     } catch (error) {
       console.error('Failed to load cover image:', error);
@@ -148,45 +133,27 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
     setSelectedFile(null);
   };
 
-  const handleCameraClick = () => {
-    if (showMenu) {
-      closeMenu();
-    } else {
-      setShowMenu(true);
-    }
-  };
-
   const handleUploadClick = () => {
-    closeMenu();
-    setTimeout(() => {
-      fileInputRef.current?.click();
-    }, 250);
+    setShowMenu(false);
+    setTimeout(() => fileInputRef.current?.click(), 350);
   };
 
   const handleDeleteClick = async () => {
-    closeMenu();
-
-    // Wait for animation
-    setTimeout(async () => {
-      setUploading(true);
-      try {
-        const token = localStorage.getItem('token');
-        if (token && token !== 'undefined') {
-          await deleteCoverImage(userId, token);
-        }
-
-        // Reset to default
-        const defaultUrl = '/cover/default-cover.jpg';
-        setImageUrl(defaultUrl);
-        showToast('Cover image removed', 'success');
-
-      } catch (error) {
-        console.error('Failed to delete cover image:', error);
-        showToast('Failed to delete cover image', 'error');
-      } finally {
-        setUploading(false);
+    setShowMenu(false);
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (token && token !== 'undefined') {
+        await deleteCoverImage(userId, token);
       }
-    }, 250);
+      setImageUrl('/cover/default-cover.jpg');
+      showToast('Cover image removed', 'success');
+    } catch (error) {
+      console.error('Failed to delete cover image:', error);
+      showToast('Failed to delete cover image', 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -231,6 +198,7 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
             borderBottom: isDark ? '2px solid rgba(59, 130, 246, 0.3)' : '2px solid rgba(15, 23, 42, 0.2)',
           }}
         >
+          {!imageLoaded && <div className={styles.coverSkeleton} />}
           <img
             src={imageUrl}
             alt="Cover"
@@ -238,93 +206,18 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              opacity: uploading ? 0.6 : 1,
-              transition: 'opacity 0.2s',
+              opacity: uploading ? 0.6 : imageLoaded ? 1 : 0,
+              transition: 'opacity 0.3s ease',
+            }}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              setImageUrl('/cover/default-cover.jpg');
+              setImageLoaded(true);
             }}
           />
 
-          {/* Camera Icon Overlay */}
-          {showMenu && (
-            <div
-              ref={menuRef}
-              className={isClosing ? styles.menuExit : styles.menuEnter}
-              style={{
-                position: 'absolute',
-                bottom: '70px',
-                right: '16px',
-                backgroundColor: isDark ? '#1e293b' : 'white',
-                borderRadius: '12px',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4)',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
-                padding: '6px',
-                zIndex: 100,
-                width: '240px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '2px'
-              }}
-            >
-              <button
-                onClick={handleDeleteClick}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: 'transparent',
-                  color: '#ef4444', // Red for delete
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  width: '100%',
-                  borderRadius: '8px',
-                  transition: 'all 0.2s',
-                  fontFamily: 'inherit'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                  <i className="fas fa-trash-alt"></i>
-                </div>
-                Delete Cover Picture
-              </button>
-
-              <button
-                onClick={handleUploadClick}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: 'transparent',
-                  color: isDark ? '#e2e8f0' : '#1e293b',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  width: '100%',
-                  borderRadius: '8px',
-                  transition: 'all 0.2s',
-                  fontFamily: 'inherit'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-              <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                  <i className="fas fa-camera"></i>
-                </div>
-                Upload New Picture
-              </button>
-            </div>
-          )}
-
           <button
-            ref={buttonRef}
-            onClick={handleCameraClick}
+            onClick={() => !uploading && setShowMenu(true)}
             disabled={uploading}
             style={{
               position: 'absolute',
@@ -345,19 +238,11 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
               transform: hovering && !uploading ? 'scale(1.15)' : 'scale(1)',
             }}
           >
-            {uploading ? (
-              <i className="fas fa-spinner fa-spin" style={{
-                color: 'white',
-                fontSize: '24px',
-                filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8))',
-              }}></i>
-            ) : (
-              <i className="fas fa-camera" style={{
-                color: 'white',
-                fontSize: '24px',
-                filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8))',
-              }}></i>
-            )}
+            <i className={uploading ? 'fas fa-spinner fa-spin' : 'fas fa-camera'} style={{
+              color: 'white',
+              fontSize: '24px',
+              filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.8))',
+            }} />
           </button>
 
           {/* Upload Status */}
@@ -377,6 +262,19 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
           )}
         </div>
       </div>
+
+      <BottomSheet isOpen={showMenu} onClose={() => setShowMenu(false)} heightMode="auto" title="Cover Image">
+        <div className={styles.sheetActions}>
+          <button className={styles.sheetActionBtn} onClick={handleUploadClick}>
+            <i className="fas fa-camera" />
+            <span>Upload New Picture</span>
+          </button>
+          <button className={`${styles.sheetActionBtn} ${styles.sheetActionDanger}`} onClick={handleDeleteClick}>
+            <i className="fas fa-trash-alt" />
+            <span>Remove Cover Picture</span>
+          </button>
+        </div>
+      </BottomSheet>
     </>
   );
 }

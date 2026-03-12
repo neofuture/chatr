@@ -7,6 +7,7 @@ import { authenticateToken } from '../middleware/auth';
 import { Server } from 'socket.io';
 import { generatePlaceholderWaveform, generateWaveformFromFile } from '../services/waveform';
 import { maybeRegenerateGroupSummary } from '../services/summaryEngine';
+import { processImageVariants, deleteImageVariants, PROFILE_VARIANTS, COVER_VARIANTS } from '../lib/imageResize';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const router = Router();
@@ -87,11 +88,13 @@ const imageUpload = multer({
 });
 
 async function isGroupAdmin(userId: string, groupId: string): Promise<boolean> {
-  const group = await prisma.group.findUnique({ where: { id: groupId }, select: { ownerId: true } });
-  if (!group) return false;
-  if (group.ownerId === userId) return true;
   const member = await prisma.groupMember.findUnique({ where: { userId_groupId: { userId, groupId } } });
-  return member?.role === 'admin';
+  return member?.role === 'owner' || member?.role === 'admin';
+}
+
+async function isGroupOwner(userId: string, groupId: string): Promise<boolean> {
+  const member = await prisma.groupMember.findUnique({ where: { userId_groupId: { userId, groupId } } });
+  return member?.role === 'owner';
 }
 
 function deleteLocalFile(filePath: string): void {
@@ -117,7 +120,7 @@ router.post('/', authenticateToken as any, async (req: any, res: Response) => {
         ownerId: userId,
         members: {
           create: [
-            { userId, role: 'admin', status: 'accepted' },
+            { userId, role: 'owner', status: 'accepted' },
             ...((memberIds as string[]).filter((id: string) => id !== userId).map((id: string) => ({
               userId: id, role: 'member', status: 'pending', invitedBy: userId,
             }))),
@@ -333,9 +336,6 @@ router.get('/:id', authenticateToken as any, async (req: any, res: Response) => 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const { id } = req.params;
 
-    const member = await prisma.groupMember.findUnique({ where: { userId_groupId: { userId, groupId: id } } });
-    if (!member) return res.status(403).json({ error: 'Not a member of this group' });
-
     const group = await prisma.group.findUnique({
       where: { id },
       include: {
@@ -347,7 +347,10 @@ router.get('/:id', authenticateToken as any, async (req: any, res: Response) => 
     });
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    res.json({ group, memberStatus: member.status });
+    const callerMember = group.members.find(m => m.userId === userId);
+    if (!callerMember) return res.status(403).json({ error: 'Not a member of this group' });
+
+    res.json({ group, memberStatus: callerMember.status });
   } catch (e) {
     console.error('Get group error:', e);
     res.status(500).json({ error: 'Internal server error' });
@@ -392,12 +395,10 @@ router.post('/:id/members', authenticateToken as any, async (req: any, res: Resp
     const group = await prisma.group.findUnique({ where: { id } });
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
-    // Allow owner OR any admin member to add new members
-    const requester = await prisma.groupMember.findUnique({
-      where: { userId_groupId: { userId, groupId: id } },
-    });
-    const isAdmin = group.ownerId === userId || requester?.role === 'admin';
-    if (!isAdmin) return res.status(403).json({ error: 'Only admins can add members' });
+    const callerMember = await prisma.groupMember.findUnique({ where: { userId_groupId: { userId, groupId: id } } });
+    if (!callerMember || (callerMember.role !== 'owner' && callerMember.role !== 'admin')) {
+      return res.status(403).json({ error: 'Only admins can add members' });
+    }
 
     await prisma.groupMember.create({ data: { userId: memberId, groupId: id, status: 'pending', invitedBy: userId } });
 
@@ -431,8 +432,10 @@ router.post('/:id/members', authenticateToken as any, async (req: any, res: Resp
 // ── Helper: create + broadcast a system message ───────────────────────────────
 async function sendSystemMessage(groupId: string, content: string) {
   try {
+    const owner = await prisma.groupMember.findFirst({ where: { groupId, role: 'owner' } });
+    const senderId = owner?.userId ?? (await prisma.group.findUnique({ where: { id: groupId }, select: { ownerId: true } }))!.ownerId;
     const msg = await prisma.groupMessage.create({
-      data: { groupId, senderId: (await prisma.group.findUnique({ where: { id: groupId }, select: { ownerId: true } }))!.ownerId, content, type: 'system' },
+      data: { groupId, senderId, content, type: 'system' },
     });
     if (_io) {
       const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
@@ -459,7 +462,26 @@ router.delete('/:id/members/:memberId', authenticateToken as any, async (req: an
     if (!group) return res.status(404).json({ error: 'Group not found' });
 
     const isSelf = memberId === userId;
-    if (!isSelf && group.ownerId !== userId) return res.status(403).json({ error: 'Only the owner can remove members' });
+    const callerMember = group.members.find(m => m.userId === userId);
+    const targetMember = group.members.find(m => m.userId === memberId);
+    const callerRole = callerMember?.role;
+    const targetRole = targetMember?.role;
+
+    if (!targetMember) {
+      return res.status(404).json({ error: 'Member not found in group' });
+    }
+
+    if (!isSelf) {
+      if (callerRole !== 'owner' && callerRole !== 'admin') {
+        return res.status(403).json({ error: 'Only admins and owners can remove members' });
+      }
+      if (targetRole === 'owner') {
+        return res.status(403).json({ error: 'Cannot remove an owner' });
+      }
+      if (targetRole === 'admin' && callerRole !== 'owner') {
+        return res.status(403).json({ error: 'Only owners can remove admins' });
+      }
+    }
 
     // Get the name before removing
     const removedMember = group.members.find(m => m.userId === memberId);
@@ -475,8 +497,10 @@ router.delete('/:id/members/:memberId', authenticateToken as any, async (req: an
       }
     }
 
-    // System message — only "left" for self-leave, "was removed" for kicked
-    await sendSystemMessage(id, isSelf ? `${removedName} left the group` : `${removedName} was removed from the group`);
+    const wasPending = removedMember?.status === 'pending';
+    if (!wasPending) {
+      await sendSystemMessage(id, isSelf ? `${removedName} left the group` : `${removedName} was removed from the group`);
+    }
 
     res.json({ success: true });
   } catch (e) {
@@ -518,16 +542,21 @@ router.patch('/:id', authenticateToken as any, async (req: any, res: Response) =
 
 // ── Helper: promote next member to owner when current owner leaves/deletes ────
 async function promoteNextOwner(groupId: string, excludeUserId: string): Promise<string | null> {
-  // Prefer an existing admin, then fall back to oldest member by joinedAt
+  // Check if there are remaining owners
+  const remainingOwner = await prisma.groupMember.findFirst({
+    where: { groupId, userId: { not: excludeUserId }, role: 'owner' },
+  });
+  if (remainingOwner) return remainingOwner.userId;
+
+  // No remaining owners — prefer an existing admin, then fall back to oldest member
   const next = await prisma.groupMember.findFirst({
     where: { groupId, userId: { not: excludeUserId } },
-    orderBy: [{ role: 'desc' }, { joinedAt: 'asc' }], // 'member' < 'admin' alphabetically desc = admin first
+    orderBy: [{ role: 'desc' }, { joinedAt: 'asc' }],
   });
   if (!next) return null;
-  // Make them owner in Group and give them admin role in GroupMember
   await prisma.$transaction([
     prisma.group.update({ where: { id: groupId }, data: { ownerId: next.userId } }),
-    prisma.groupMember.update({ where: { id: next.id }, data: { role: 'admin' } }),
+    prisma.groupMember.update({ where: { id: next.id }, data: { role: 'owner' } }),
   ]);
   return next.userId;
 }
@@ -541,7 +570,7 @@ router.delete('/:id', authenticateToken as any, async (req: any, res: Response) 
 
     const group = await prisma.group.findUnique({ where: { id }, include: { members: true } });
     if (!group) return res.status(404).json({ error: 'Group not found' });
-    if (group.ownerId !== userId) return res.status(403).json({ error: 'Only the owner can delete the group' });
+    if (group.members.find(m => m.userId === userId)?.role !== 'owner') return res.status(403).json({ error: 'Only owners can delete the group' });
 
     // Notify all members before deleting
     if (_io) {
@@ -647,12 +676,15 @@ router.post('/:id/leave', authenticateToken as any, async (req: any, res: Respon
       return res.json({ success: true, deleted: true });
     }
 
-    if (group.ownerId === userId) {
-      // Owner is leaving — promote someone else first
-      const newOwnerId = await promoteNextOwner(id, userId);
-      if (_io && newOwnerId) {
-        for (const m of group.members) {
-          _io.to(`user:${m.userId}`).emit('group:ownerChanged', { groupId: id, newOwnerId });
+    if (leavingMember?.role === 'owner') {
+      // Owner is leaving — check if there are other owners, otherwise promote someone
+      const otherOwners = group.members.filter(m => m.role === 'owner' && m.userId !== userId);
+      if (otherOwners.length === 0) {
+        const newOwnerId = await promoteNextOwner(id, userId);
+        if (_io && newOwnerId) {
+          for (const m of group.members) {
+            _io.to(`user:${m.userId}`).emit('group:ownerChanged', { groupId: id, newOwnerId });
+          }
         }
       }
     }
@@ -689,7 +721,7 @@ router.patch('/:id/members/:memberId/promote', authenticateToken as any, async (
     const callerMember = await prisma.groupMember.findUnique({
       where: { userId_groupId: { userId, groupId } },
     });
-    if (!callerMember || callerMember.role !== 'admin') {
+    if (!callerMember || (callerMember.role !== 'owner' && callerMember.role !== 'admin')) {
       return res.status(403).json({ error: 'Only admins can promote members' });
     }
 
@@ -724,22 +756,17 @@ router.patch('/:id/members/:memberId/demote', authenticateToken as any, async (r
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const { id: groupId, memberId } = req.params;
 
-    const group = await prisma.group.findUnique({ where: { id: groupId } });
-    if (!group) return res.status(404).json({ error: 'Group not found' });
-
-    // Only the owner can demote admins
-    if (group.ownerId !== userId) {
-      return res.status(403).json({ error: 'Only the group owner can remove admin' });
-    }
-    // Cannot demote the owner themselves
-    if (memberId === group.ownerId) {
-      return res.status(400).json({ error: 'Cannot demote the group owner' });
+    const callerIsOwner = await isGroupOwner(userId, groupId);
+    // Owners can demote admins; admins can demote themselves
+    if (!callerIsOwner && memberId !== userId) {
+      return res.status(403).json({ error: 'Only owners can remove admin' });
     }
 
     const target = await prisma.groupMember.findUnique({
       where: { userId_groupId: { userId: memberId, groupId } },
     });
     if (!target) return res.status(404).json({ error: 'Member not found' });
+    if (target.role === 'owner') return res.status(400).json({ error: 'Cannot demote an owner. Use step-down instead.' });
 
     await prisma.groupMember.update({ where: { id: target.id }, data: { role: 'member' } });
 
@@ -753,6 +780,75 @@ router.patch('/:id/members/:memberId/demote', authenticateToken as any, async (r
     res.json({ success: true });
   } catch (e) {
     console.error('Demote member error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Transfer ownership to an admin ────────────────────────────────────────────
+router.post('/:id/transfer-ownership', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId } = req.params;
+    const { newOwnerId } = req.body;
+    if (!newOwnerId) return res.status(400).json({ error: 'newOwnerId is required' });
+
+    if (!(await isGroupOwner(userId, groupId))) return res.status(403).json({ error: 'Only owners can promote to owner' });
+
+    const target = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId: newOwnerId, groupId } },
+    });
+    if (!target) return res.status(404).json({ error: 'Member not found' });
+    if (target.role === 'owner') return res.status(400).json({ error: 'User is already an owner' });
+    if (target.role !== 'admin') return res.status(400).json({ error: 'Only admins can be promoted to owner' });
+
+    await prisma.groupMember.update({ where: { id: target.id }, data: { role: 'owner' } });
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:ownershipTransferred', { groupId, newOwnerId });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Transfer ownership error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Owner step-down (becomes admin) ──────────────────────────────────────────
+router.post('/:id/step-down', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { id: groupId } = req.params;
+
+    const caller = await prisma.groupMember.findUnique({
+      where: { userId_groupId: { userId, groupId } },
+    });
+    if (!caller || caller.role !== 'owner') return res.status(403).json({ error: 'Only owners can step down' });
+
+    const otherOwners = await prisma.groupMember.findMany({
+      where: { groupId, role: 'owner', userId: { not: userId } },
+    });
+    if (otherOwners.length === 0) {
+      return res.status(400).json({ error: 'You are the only owner. Promote another member to owner first.' });
+    }
+
+    await prisma.groupMember.update({ where: { id: caller.id }, data: { role: 'admin' } });
+
+    if (_io) {
+      const members = await prisma.groupMember.findMany({ where: { groupId } });
+      for (const m of members) {
+        _io.to(`user:${m.userId}`).emit('group:ownerSteppedDown', { groupId, userId });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Step down error:', e);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -895,29 +991,14 @@ router.post('/:id/profile-image', authenticateToken as any, imageUpload.single('
       return res.status(403).json({ error: 'Only admins can change the group avatar' });
     }
 
-    const ext = path.extname(req.file.originalname);
-    const filename = `${groupId}-${Date.now()}${ext}`;
-    let fileUrl: string;
-
-    if (IS_PRODUCTION) {
-      const s3Key = `uploads/group-profiles/${filename}`;
-      fileUrl = await uploadToS3(req.file.buffer, s3Key, req.file.mimetype);
-    } else {
-      const filepath = path.join(groupProfilesDir, filename);
-      fs.writeFileSync(filepath, req.file.buffer);
-      fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/group-profiles/${filename}`;
-    }
+    const baseFilename = `${groupId}-${Date.now()}.jpg`;
+    const fileUrl = await processImageVariants(req.file.buffer, baseFilename, 'group-profiles', PROFILE_VARIANTS);
 
     const existing = await prisma.group.findUnique({ where: { id: groupId }, select: { profileImage: true } });
     await prisma.group.update({ where: { id: groupId }, data: { profileImage: fileUrl } });
 
     if (existing?.profileImage) {
-      if (IS_PRODUCTION) {
-        try { const url = new URL(existing.profileImage); await deleteFromS3(url.pathname.replace(/^\//, '')); } catch {}
-      } else {
-        const rel = existing.profileImage.replace(/^.*\/uploads\//, '');
-        deleteLocalFile(path.join(__dirname, '../../uploads', rel));
-      }
+      await deleteImageVariants(existing.profileImage, PROFILE_VARIANTS);
     }
 
     if (_io) {
@@ -946,29 +1027,14 @@ router.post('/:id/cover-image', authenticateToken as any, imageUpload.single('co
       return res.status(403).json({ error: 'Only admins can change the group cover image' });
     }
 
-    const ext = path.extname(req.file.originalname);
-    const filename = `${groupId}-${Date.now()}${ext}`;
-    let fileUrl: string;
-
-    if (IS_PRODUCTION) {
-      const s3Key = `uploads/group-covers/${filename}`;
-      fileUrl = await uploadToS3(req.file.buffer, s3Key, req.file.mimetype);
-    } else {
-      const filepath = path.join(groupCoversDir, filename);
-      fs.writeFileSync(filepath, req.file.buffer);
-      fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/group-covers/${filename}`;
-    }
+    const baseFilename = `${groupId}-${Date.now()}.jpg`;
+    const fileUrl = await processImageVariants(req.file.buffer, baseFilename, 'group-covers', COVER_VARIANTS);
 
     const existing = await prisma.group.findUnique({ where: { id: groupId }, select: { coverImage: true } });
     await prisma.group.update({ where: { id: groupId }, data: { coverImage: fileUrl } });
 
     if (existing?.coverImage) {
-      if (IS_PRODUCTION) {
-        try { const url = new URL(existing.coverImage); await deleteFromS3(url.pathname.replace(/^\//, '')); } catch {}
-      } else {
-        const rel = existing.coverImage.replace(/^.*\/uploads\//, '');
-        deleteLocalFile(path.join(__dirname, '../../uploads', rel));
-      }
+      await deleteImageVariants(existing.coverImage, COVER_VARIANTS);
     }
 
     if (_io) {
@@ -1001,12 +1067,7 @@ router.delete('/:id/profile-image', authenticateToken as any, async (req: any, r
 
     await prisma.group.update({ where: { id: groupId }, data: { profileImage: null } });
 
-    if (IS_PRODUCTION) {
-      try { const url = new URL(existing.profileImage); await deleteFromS3(url.pathname.replace(/^\//, '')); } catch {}
-    } else {
-      const rel = existing.profileImage.replace(/^.*\/uploads\//, '');
-      deleteLocalFile(path.join(__dirname, '../../uploads', rel));
-    }
+    await deleteImageVariants(existing.profileImage, PROFILE_VARIANTS);
 
     if (_io) {
       const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });
@@ -1037,13 +1098,7 @@ router.delete('/:id/cover-image', authenticateToken as any, async (req: any, res
     if (!existing?.coverImage) return res.json({ success: true });
 
     await prisma.group.update({ where: { id: groupId }, data: { coverImage: null } });
-
-    if (IS_PRODUCTION) {
-      try { const url = new URL(existing.coverImage); await deleteFromS3(url.pathname.replace(/^\//, '')); } catch {}
-    } else {
-      const rel = existing.coverImage.replace(/^.*\/uploads\//, '');
-      deleteLocalFile(path.join(__dirname, '../../uploads', rel));
-    }
+    await deleteImageVariants(existing.coverImage, COVER_VARIANTS);
 
     if (_io) {
       const members = await prisma.groupMember.findMany({ where: { groupId, status: 'accepted' } });

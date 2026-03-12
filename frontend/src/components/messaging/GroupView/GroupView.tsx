@@ -29,7 +29,7 @@ export interface GroupData {
   description?: string | null;
   profileImage?: string | null;
   coverImage?: string | null;
-  ownerId: string;
+  ownerId?: string;
   members: GroupMember[];
 }
 
@@ -66,7 +66,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
 
   // Current user's membership in this group
   const myMember = group.members.find(m => m.userId === currentUserId);
-  const isOwner = group.ownerId === currentUserId;
+  const isOwner = myMember?.role === 'owner';
   const isAdminMember = isOwner || myMember?.role === 'admin';
 
   const [membersOpen, setMembersOpen] = useState(false);
@@ -261,9 +261,8 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       if (data.groupId !== group.id) return;
       setGroup(prev => ({
         ...prev,
-        ownerId: data.newOwnerId,
         members: prev.members.map(m =>
-          m.userId === data.newOwnerId ? { ...m, role: 'admin' } : m
+          m.userId === data.newOwnerId ? { ...m, role: 'owner' } : m
         ),
       }));
     };
@@ -295,6 +294,26 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       onGroupDeleted?.();
     };
 
+    const onOwnershipTransferred = (data: any) => {
+      if (data.groupId !== group.id) return;
+      setGroup(prev => ({
+        ...prev,
+        members: prev.members.map(m =>
+          m.userId === data.newOwnerId ? { ...m, role: 'owner' } : m
+        ),
+      }));
+    };
+
+    const onOwnerSteppedDown = (data: any) => {
+      if (data.groupId !== group.id) return;
+      setGroup(prev => ({
+        ...prev,
+        members: prev.members.map(m =>
+          m.userId === data.userId ? { ...m, role: 'admin' } : m
+        ),
+      }));
+    };
+
     const onGroupUpdated = (data: any) => {
       if (data.group?.id !== group.id) return;
       setGroup(prev => ({ ...prev, ...data.group }));
@@ -307,6 +326,8 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     socket.on('group:deleted', onGroupDeletedEvent);
     socket.on('group:removed', onRemovedFromGroup);
     socket.on('group:ownerChanged', onOwnerChanged);
+    socket.on('group:ownershipTransferred', onOwnershipTransferred);
+    socket.on('group:ownerSteppedDown', onOwnerSteppedDown);
     socket.on('group:memberPromoted', onMemberPromoted);
     socket.on('group:memberDemoted', onMemberDemoted);
     socket.on('group:updated', onGroupUpdated);
@@ -318,6 +339,8 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       socket.off('group:deleted', onGroupDeletedEvent);
       socket.off('group:removed', onRemovedFromGroup);
       socket.off('group:ownerChanged', onOwnerChanged);
+      socket.off('group:ownershipTransferred', onOwnershipTransferred);
+      socket.off('group:ownerSteppedDown', onOwnerSteppedDown);
       socket.off('group:memberPromoted', onMemberPromoted);
       socket.off('group:memberDemoted', onMemberDemoted);
       socket.off('group:updated', onGroupUpdated);
@@ -466,7 +489,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     const confirmed = await showConfirmation({
       title: 'Leave Group',
       message: isOwner
-        ? `You are the owner of "${group.name}". Leaving will promote another member to owner. Continue?`
+        ? `You are an owner of "${group.name}". Are you sure you want to leave?`
         : `Leave "${group.name}"?`,
       urgency: 'warning',
       actions: [
@@ -640,7 +663,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
               <div className={styles.membersList}>
                 {group.members.map(member => {
                   const name = member.user.displayName || member.user.username.replace(/^@/, '');
-                  const memberIsOwner = member.userId === group.ownerId;
+                  const memberIsOwner = member.role === 'owner';
                   const memberIsAdmin = member.role === 'admin';
                   const isSelf = member.userId === currentUserId;
                   return (

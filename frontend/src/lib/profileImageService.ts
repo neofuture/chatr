@@ -5,6 +5,11 @@ import { db, ProfileImage } from './db';
  * Handles local storage and server sync of profile images
  */
 
+function reconcileUploadUrl(url: string): string {
+  if (!url.includes('/uploads/')) return url;
+  return url.replace(/\.(jpeg|png|webp)(\?.*)?$/i, '.jpg$2');
+}
+
 /**
  * Save profile image to local storage (IndexedDB via Dexie)
  */
@@ -58,9 +63,12 @@ export async function getProfileImageURL(
     return null;
   }
 
-  // Return server URL if already synced
   if (profileImage.synced && profileImage.url) {
-    return profileImage.url;
+    const fixed = reconcileUploadUrl(profileImage.url);
+    if (fixed !== profileImage.url) {
+      await db.profileImages.update(userId, { url: fixed });
+    }
+    return fixed;
   }
 
   // Return local blob URL

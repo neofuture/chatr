@@ -8,7 +8,22 @@ import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
 import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import styles from './ConversationsList.module.css';
+
+function TypingBubble() {
+  return (
+    <span className={styles.typingBubble}>
+      <span /><span /><span />
+    </span>
+  );
+}
+
+function formatGroupTyping(typers: Array<{ name: string }>): string {
+  if (typers.length === 1) return `${typers[0].name} is typing`;
+  if (typers.length === 2) return `${typers[0].name} and ${typers[1].name} are typing`;
+  return `${typers[0].name} and ${typers.length - 1} others are typing`;
+}
 
 function formatTime(date: Date): string {
   const now = new Date();
@@ -73,6 +88,13 @@ export default function ConversationsList({
   const [flipPhase, setFlipPhase] = useState<0 | 1 | 2>(0); // 0=message, 1=AI summary, 2=presence
   const prevFlipRef = useRef(0);
   const openUserProfile = useOpenUserProfile();
+  const { socket } = useWebSocket();
+
+  // Typing state: DM userId → displayName, Group groupId → list of typing users
+  const [dmTyping, setDmTyping] = useState<Record<string, string>>({});
+  const [groupTyping, setGroupTyping] = useState<Record<string, Array<{ userId: string; name: string }>>>({});
+  const dmTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const groupTimeoutsRef = useRef<Record<string, Record<string, ReturnType<typeof setTimeout>>>>({});
 
   useEffect(() => {
     const t = setTimeout(() => { prevFlipRef.current = flipPhase; }, 550);
@@ -91,6 +113,73 @@ export default function ConversationsList({
     timer = setTimeout(tick, durations[0]);
     return () => clearTimeout(timer);
   }, []);
+
+  // Listen for typing events from socket
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleDmTyping = (data: { userId: string; username: string; isTyping: boolean; type: string }) => {
+      if (data.userId === currentUserId || data.type !== 'direct') return;
+      const name = (data.username?.replace(/^@/, '') || 'Someone').split(' ')[0];
+
+      if (dmTimeoutsRef.current[data.userId]) {
+        clearTimeout(dmTimeoutsRef.current[data.userId]);
+        delete dmTimeoutsRef.current[data.userId];
+      }
+
+      if (data.isTyping) {
+        setDmTyping(prev => ({ ...prev, [data.userId]: name }));
+        dmTimeoutsRef.current[data.userId] = setTimeout(() => {
+          setDmTyping(prev => { const n = { ...prev }; delete n[data.userId]; return n; });
+          delete dmTimeoutsRef.current[data.userId];
+        }, 6000);
+      } else {
+        setDmTyping(prev => { const n = { ...prev }; delete n[data.userId]; return n; });
+      }
+    };
+
+    const handleGroupTyping = (data: { groupId: string; userId: string; displayName: string; isTyping: boolean }) => {
+      if (data.userId === currentUserId) return;
+      const name = (data.displayName || 'Someone').split(' ')[0];
+
+      if (!groupTimeoutsRef.current[data.groupId]) groupTimeoutsRef.current[data.groupId] = {};
+      if (groupTimeoutsRef.current[data.groupId][data.userId]) {
+        clearTimeout(groupTimeoutsRef.current[data.groupId][data.userId]);
+        delete groupTimeoutsRef.current[data.groupId][data.userId];
+      }
+
+      const removeTyper = () => {
+        setGroupTyping(prev => {
+          const arr = (prev[data.groupId] ?? []).filter(u => u.userId !== data.userId);
+          if (arr.length === 0) { const n = { ...prev }; delete n[data.groupId]; return n; }
+          return { ...prev, [data.groupId]: arr };
+        });
+      };
+
+      if (data.isTyping) {
+        setGroupTyping(prev => {
+          const existing = (prev[data.groupId] ?? []).filter(u => u.userId !== data.userId);
+          return { ...prev, [data.groupId]: [...existing, { userId: data.userId, name }] };
+        });
+        groupTimeoutsRef.current[data.groupId][data.userId] = setTimeout(() => {
+          removeTyper();
+          delete groupTimeoutsRef.current[data.groupId]?.[data.userId];
+        }, 6000);
+      } else {
+        removeTyper();
+      }
+    };
+
+    socket.on('typing:status', handleDmTyping);
+    socket.on('group:typing', handleGroupTyping);
+
+    return () => {
+      socket.off('typing:status', handleDmTyping);
+      socket.off('group:typing', handleGroupTyping);
+      Object.values(dmTimeoutsRef.current).forEach(clearTimeout);
+      Object.values(groupTimeoutsRef.current).forEach(g => Object.values(g).forEach(clearTimeout));
+    };
+  }, [socket, currentUserId]);
 
   // Syncing banner: show while syncing, keep visible for exit animation
   const [showSyncBanner, setShowSyncBanner] = useState(false);
@@ -362,6 +451,18 @@ export default function ConversationsList({
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                         {(() => {
+                          const groupTypers = groupTyping[group.id];
+                          if (groupTypers && groupTypers.length > 0) {
+                            return (
+                              <div style={{ flex: 1, minWidth: 0, height: '16px', overflow: 'hidden' }}>
+                                <div className={styles.typingIndicator}>
+                                  <TypingBubble />
+                                  <span className={styles.typingLabel}>{formatGroupTyping(groupTypers)}</span>
+                                </div>
+                              </div>
+                            );
+                          }
+
                           const gHas = !!group.summary;
                           const gE = gHas ? (flipPhase === 1 ? 1 : 0) : 0;
                           const gP = gHas ? (prevFlipRef.current === 1 ? 1 : 0) : 0;
@@ -473,6 +574,18 @@ export default function ConversationsList({
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                       {(() => {
+                        const isDmTyping = !!dmTyping[user.id];
+                        if (isDmTyping) {
+                          return (
+                            <div style={{ flex: 1, minWidth: 0, height: '16px', overflow: 'hidden' }}>
+                              <div className={styles.typingIndicator}>
+                                <TypingBubble />
+                                <span className={styles.typingLabel}>typing</span>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         const msgColor = user.isBot ? (isDark ? '#22d3ee' : '#0891b2') : isGuest ? 'var(--guest-color-from, #16a34a)' : (isDark ? '#94a3b8' : '#64748b');
                         const msgText = lastMsg
                           ? `${lastMsg.senderId === currentUserId ? 'You: ' : ''}${previewContent(lastMsg.content)}`

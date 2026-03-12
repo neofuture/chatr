@@ -100,11 +100,12 @@ app.get('/api/docs', swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'Chatr API Documentation',
 }));
 
-// Static file serving for uploads with CORS headers
+// Static file serving for uploads with CORS + cache headers
 app.use('/uploads', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   next();
 }, express.static(path.join(__dirname, '../uploads')));
 
@@ -170,6 +171,24 @@ async function start() {
   // Stale guest cleanup: run immediately on startup then every 30 minutes
   cleanupStaleGuests();
   setInterval(cleanupStaleGuests, 30 * 60 * 1000);
+
+  // One-time migration: set group creators' role to 'owner' (idempotent)
+  (async () => {
+    try {
+      const { PrismaClient } = await import('@prisma/client');
+      const p = new PrismaClient();
+      const groups = await p.group.findMany({ select: { id: true, ownerId: true } });
+      if (groups.length) {
+        await p.$executeRawUnsafe(
+          `UPDATE "GroupMember" SET role = 'owner' WHERE role != 'owner' AND (${
+            groups.map(g => `("userId" = '${g.ownerId}' AND "groupId" = '${g.id}')`).join(' OR ')
+          })`,
+        );
+        console.log(`✅ Migrated ${groups.length} group owner roles`);
+      }
+      await p.$disconnect();
+    } catch (e) { console.warn('Owner role migration skipped:', e); }
+  })();
 
   httpServer.listen(PORT, () => {
     console.log(`🚀 Server: http://localhost:${PORT}`);

@@ -24,7 +24,7 @@ export interface Message {
 export interface Group {
   id: string;
   name: string;
-  ownerId: string;
+  ownerId?: string;
   createdAt: string;
 }
 

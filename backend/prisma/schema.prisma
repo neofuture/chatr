@@ -145,7 +145,7 @@ model GroupMessage {
   audioDuration Float?
   createdAt     DateTime @default(now())
 
-  @@index([groupId])
+  @@index([groupId, createdAt])
   @@index([senderId])
 }
 
@@ -176,7 +176,7 @@ model GroupMember {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   groupId   String
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  role      String   @default("member") // "member" | "admin"
+  role      String   @default("member") // "owner" | "admin" | "member"
   status    String   @default("pending") // "pending" | "accepted"
   invitedBy String? // userId of whoever invited this member
   joinedAt  DateTime @default(now())

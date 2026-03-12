@@ -41,7 +41,11 @@ export default function BottomNav() {
         if (userStr) {
           const user = JSON.parse(userStr);
           const url = await getProfileImageURL(user.id);
-          if (url) setProfileImageUrl(url);
+          if (url) {
+            setProfileImageUrl(url);
+          } else if (user.profileImage) {
+            setProfileImageUrl(user.profileImage);
+          }
           const name = user.firstName || user.displayName?.split(' ')[0] || user.username?.replace(/^@/, '') || 'ME';
           setFirstName(name.toUpperCase());
         }
@@ -175,6 +179,9 @@ export default function BottomNav() {
                 className={styles.navProfileImg}
                 style={{
                   border: isActive ? `2px solid ${theme.activeText}` : `2px solid ${theme.menuText}`,
+                }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/profile/default-profile.jpg';
                 }}
               />
             ) : (

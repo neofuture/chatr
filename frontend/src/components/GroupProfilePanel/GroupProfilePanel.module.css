@@ -27,6 +27,31 @@
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: opacity 0.3s ease;
+}
+
+/* ── Skeleton shimmer ── */
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.coverSkeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  z-index: 0;
+}
+
+.avatarSkeleton {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
 }
 
 .coverCameraBtn {
@@ -349,33 +374,75 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Admin actions on members ── */
-.memberActions {
+/* ── Triple-dot menu button ── */
+.moreBtn {
   display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.actionBtn {
-  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
-  font-family: inherit;
+  flex-shrink: 0;
   transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
 }
 
-.actionBtn:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+.moreBtn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
   color: var(--text-primary);
+}
+
+/* ── Bottom sheet action items ── */
+.sheetActions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+}
+
+.sheetActionBtn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background 0.15s;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.sheetActionBtn i {
+  width: 22px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.sheetActionBtn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.sheetActionDanger {
+  color: #ef4444;
+}
+
+.sheetActionDanger i {
+  color: #ef4444;
+}
+
+.sheetActionDanger:hover {
+  background: rgba(239, 68, 68, 0.08);
 }
 
 /* ── Add members button ── */
@@ -457,66 +524,3 @@
   color: var(--text-secondary);
 }
 
-/* ── Avatar / Cover menu animations ── */
-@keyframes popIn {
-  from { opacity: 0; transform: translateX(-50%) scale(0.95); }
-  to { opacity: 1; transform: translateX(-50%) scale(1); }
-}
-
-@keyframes popOut {
-  from { opacity: 1; transform: translateX(-50%) scale(1); }
-  to { opacity: 0; transform: translateX(-50%) scale(0.95); }
-}
-
-.menuEnter {
-  transform-origin: bottom center;
-  animation: popIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-.menuExit {
-  transform-origin: bottom center;
-  animation: popOut 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-/* ── Context menu ── */
-.contextMenu {
-  position: absolute;
-  z-index: 200;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-  padding: 6px;
-  width: 220px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.contextMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  text-align: left;
-  width: 100%;
-  border-radius: 8px;
-  transition: background 0.15s;
-  font-family: inherit;
-}
-
-.contextMenuItem:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
-}
-
-.contextMenuItemDanger {
-  composes: contextMenuItem;
-  color: #ef4444;
-}
-
-.contextMenuItemDanger:hover {
-  background: rgba(239, 68, 68, 0.12);
-}

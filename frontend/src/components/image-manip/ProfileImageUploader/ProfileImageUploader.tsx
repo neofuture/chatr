@@ -11,6 +11,7 @@ import {
   deleteProfileImage
 } from '@/lib/profileImageService';
 import ProfileImageCropper from '@/components/image-manip/ProfileImageCropper/ProfileImageCropper';
+import BottomSheet from '@/components/dialogs/BottomSheet/BottomSheet';
 import styles from './ProfileImageUploader.module.css';
 
 interface ProfileImageUploaderProps {
@@ -24,42 +25,14 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
   const [hovering, setHovering] = useState(false);
   const [showCropper, setShowCropper] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
   const { showToast } = useToast();
   const { socket } = useWebSocket();
 
-  const closeMenu = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setShowMenu(false);
-      setIsClosing(false);
-    }, 250); // Match animation duration
-  };
-
-  // Load existing profile image on mount
   useEffect(() => {
     loadProfileImage();
-
-    // Close menu when clicking outside
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
-      ) {
-        closeMenu();
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
   }, [userId]);
 
   const loadProfileImage = async () => {
@@ -68,7 +41,19 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
     try {
       const url = await getProfileImageURL(userId);
       if (url) {
+        setImageLoaded(false);
         setImageUrl(url);
+        return;
+      }
+
+      // No IndexedDB record — try the server URL from localStorage
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.profileImage) {
+          setImageLoaded(false);
+          setImageUrl(user.profileImage);
+        }
       }
     } catch (error) {
       console.error('Failed to load profile image:', error);
@@ -164,49 +149,31 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
     setSelectedFile(null);
   };
 
-  const handleCameraClick = () => {
-    if (showMenu) {
-      closeMenu();
-    } else {
-      setShowMenu(true);
-    }
-  };
-
   const handleUploadClick = () => {
-    closeMenu();
-    setTimeout(() => {
-      fileInputRef.current?.click();
-    }, 250);
+    setShowMenu(false);
+    setTimeout(() => fileInputRef.current?.click(), 350);
   };
 
   const handleDeleteClick = async () => {
-    closeMenu();
-
-    // Wait for animation to finish before showing loading
-    setTimeout(async () => {
-      setUploading(true);
-      try {
-        const token = localStorage.getItem('token');
-        if (token && token !== 'undefined') {
-          await deleteProfileImage(userId, token);
-        }
-
-        // Reset to default
-        const defaultUrl = '/profile/default-profile.jpg';
-        setImageUrl(defaultUrl);
-        showToast('Profile image removed', 'success');
-
-        // Notify other components
-        window.dispatchEvent(new CustomEvent('profileImageUpdated', {
-          detail: { userId, url: defaultUrl }
-        }));
-      } catch (error) {
-        console.error('Failed to delete profile image:', error);
-        showToast('Failed to delete profile image', 'error');
-      } finally {
-        setUploading(false);
+    setShowMenu(false);
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (token && token !== 'undefined') {
+        await deleteProfileImage(userId, token);
       }
-    }, 250);
+      const defaultUrl = '/profile/default-profile.jpg';
+      setImageUrl(defaultUrl);
+      showToast('Profile image removed', 'success');
+      window.dispatchEvent(new CustomEvent('profileImageUpdated', {
+        detail: { userId, url: defaultUrl }
+      }));
+    } catch (error) {
+      console.error('Failed to delete profile image:', error);
+      showToast('Failed to delete profile image', 'error');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -253,6 +220,7 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
         boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
       }}>
         <div style={{
+          position: 'relative',
           width: '160px',
           height: '160px',
           borderRadius: '50%',
@@ -261,6 +229,7 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
           border: '4px solid var(--bg-primary)',
           flexShrink: 0,
         }}>
+          {!imageLoaded && <div className={styles.avatarSkeleton} />}
           <img
             src={imageUrl}
             alt="Profile"
@@ -270,97 +239,21 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
               borderRadius: '50%',
               objectFit: 'cover',
               cursor: uploading ? 'wait' : 'default',
-              opacity: uploading ? 0.6 : 1,
-              transition: 'opacity 0.2s',
+              opacity: uploading ? 0.6 : imageLoaded ? 1 : 0,
+              transition: 'opacity 0.3s ease',
               display: 'block',
+            }}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              setImageUrl('/profile/default-profile.jpg');
+              setImageLoaded(true);
             }}
           />
         </div>
       </div>
 
-      {/* Camera Icon Overlay */}
-      {showMenu && (
-        <div
-          ref={menuRef}
-          className={isClosing ? styles.menuExit : styles.menuEnter}
-          style={{
-            position: 'absolute',
-            bottom: '60px', /* Positioned relative to the main container */
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: isDark ? '#1e293b' : 'white',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4)',
-            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
-            padding: '6px',
-            zIndex: 100,
-            width: '240px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px'
-          }}
-        >
-            <button
-            onClick={handleDeleteClick}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              border: 'none',
-              background: 'transparent',
-              color: '#ef4444', // Red for delete
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-              borderRadius: '8px',
-              transition: 'all 0.2s',
-              fontFamily: 'inherit'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-            <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-              <i className="fas fa-trash-alt"></i>
-            </div>
-            Delete Profile Picture
-          </button>
-
-          <button
-            onClick={handleUploadClick}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '12px 16px',
-              border: 'none',
-              background: 'transparent',
-              color: isDark ? '#e2e8f0' : '#1e293b',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-              borderRadius: '8px',
-              transition: 'all 0.2s',
-              fontFamily: 'inherit'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
-           <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-              <i className="fas fa-camera"></i>
-            </div>
-            Upload New Picture
-          </button>
-        </div>
-      )}
-
       <button
-        ref={buttonRef}
-        onClick={handleCameraClick}
+        onClick={() => !uploading && setShowMenu(true)}
         disabled={uploading}
         style={{
           position: 'absolute',
@@ -378,19 +271,11 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
           transform: hovering && !uploading ? 'translateX(-50%) scale(1.15)' : 'translateX(-50%) scale(1)',
         }}
       >
-        {uploading ? (
-          <i className="fas fa-spinner fa-spin" style={{
-            color: 'white',
-            fontSize: '24px',
-            filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))',
-          }}></i>
-        ) : (
-          <i className="fas fa-camera" style={{
-            color: 'white',
-            fontSize: '24px',
-            filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))',
-          }}></i>
-        )}
+        <i className={uploading ? 'fas fa-spinner fa-spin' : 'fas fa-camera'} style={{
+          color: 'white',
+          fontSize: '24px',
+          filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))',
+        }} />
       </button>
 
       {/* Upload Status */}
@@ -409,6 +294,19 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
         </div>
       )}
     </div>
+
+      <BottomSheet isOpen={showMenu} onClose={() => setShowMenu(false)} heightMode="auto" title="Profile Image">
+        <div className={styles.sheetActions}>
+          <button className={styles.sheetActionBtn} onClick={handleUploadClick}>
+            <i className="fas fa-camera" />
+            <span>Upload New Picture</span>
+          </button>
+          <button className={`${styles.sheetActionBtn} ${styles.sheetActionDanger}`} onClick={handleDeleteClick}>
+            <i className="fas fa-trash-alt" />
+            <span>Remove Profile Picture</span>
+          </button>
+        </div>
+      </BottomSheet>
     </>
   );
 }

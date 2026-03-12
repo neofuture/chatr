@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import GroupProfilePanel from './GroupProfilePanel';
 
 jest.mock('@/contexts/ToastContext', () => ({
@@ -19,6 +19,21 @@ jest.mock('@/contexts/PanelContext', () => ({
 
 jest.mock('@/hooks/useOpenUserProfile', () => ({
   useOpenUserProfile: () => jest.fn(),
+}));
+
+jest.mock('@/contexts/PresenceContext', () => ({
+  usePresence: () => ({
+    getPresence: () => ({ status: 'offline', lastSeen: null }),
+    requestPresence: jest.fn(),
+  }),
+}));
+
+jest.mock('@/contexts/WebSocketContext', () => ({
+  useWebSocket: () => ({ socket: null, connected: false }),
+}));
+
+jest.mock('@/lib/imageUrl', () => ({
+  imageUrl: (url: string | null) => url,
 }));
 
 jest.mock('@/components/PresenceAvatar/PresenceAvatar', () => ({
@@ -46,14 +61,13 @@ jest.mock('@/components/settings/SettingsPanel', () => ({
 const mockGroup = {
   id: 'g1',
   name: 'Test Group',
-  ownerId: 'owner-1',
   profileImage: null,
   coverImage: null,
   members: [
     {
       id: 'm1',
       userId: 'owner-1',
-      role: 'admin',
+      role: 'owner',
       user: { id: 'owner-1', username: 'alice', displayName: 'Alice', profileImage: null },
     },
     {
@@ -92,12 +106,20 @@ describe('GroupProfilePanel', () => {
   });
 
   it('shows error state on fetch failure', async () => {
+    jest.useFakeTimers();
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
     render(<GroupProfilePanel groupId="g1" currentUserId="owner-1" />);
+
+    // Advance past the 2 retry delays (1s each)
+    for (let i = 0; i < 3; i++) {
+      await Promise.resolve(); // flush microtasks
+      jest.advanceTimersByTime(1100);
+    }
 
     await waitFor(() => {
       expect(screen.getByText('Could not load group')).toBeInTheDocument();
     });
+    jest.useRealTimers();
   });
 
   it('renders all members with correct role sections', async () => {
@@ -133,6 +155,14 @@ describe('GroupProfilePanel', () => {
       json: async () => ({ group: mockGroup }),
     });
     render(<GroupProfilePanel groupId="g1" currentUserId="owner-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Group')).toBeInTheDocument();
+    });
+
+    // Click the "Actions" button for the non-admin member to open the bottom sheet
+    const actionBtns = screen.getAllByTitle('Actions');
+    fireEvent.click(actionBtns[actionBtns.length - 1]);
 
     await waitFor(() => {
       expect(screen.getByText('Make Admin')).toBeInTheDocument();

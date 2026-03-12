@@ -4,11 +4,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirmation } from '@/contexts/ConfirmationContext';
 import { usePanels } from '@/contexts/PanelContext';
+import { usePresence } from '@/contexts/PresenceContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import CoverImageCropper from '@/components/image-manip/CoverImageCropper/CoverImageCropper';
 import ProfileImageCropper from '@/components/image-manip/ProfileImageCropper/ProfileImageCropper';
 import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
+import BottomSheet from '@/components/dialogs/BottomSheet/BottomSheet';
 import SettingsPanel from '@/components/settings/SettingsPanel';
+import { imageUrl } from '@/lib/imageUrl';
 import AddGroupMembersPanel from './AddGroupMembersPanel';
 import styles from './GroupProfilePanel.module.css';
 
@@ -28,7 +32,7 @@ interface GroupInfo {
   description?: string | null;
   profileImage?: string | null;
   coverImage?: string | null;
-  ownerId: string;
+  ownerId?: string;
   members: GroupMember[];
 }
 
@@ -36,11 +40,12 @@ interface Props {
   groupId: string;
   currentUserId: string;
   onGroupLeft?: () => void;
+  initialGroup?: GroupInfo;
 }
 
-export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft }: Props) {
-  const [group, setGroup] = useState<GroupInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft, initialGroup }: Props) {
+  const [group, setGroup] = useState<GroupInfo | null>(initialGroup ?? null);
+  const [loading, setLoading] = useState(!initialGroup);
   const [error, setError] = useState(false);
 
   const [coverUploading, setCoverUploading] = useState(false);
@@ -50,20 +55,12 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   const [selectedCoverFile, setSelectedCoverFile] = useState<File | null>(null);
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
 
-  const [coverMenuOpen, setCoverMenuOpen] = useState(false);
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
+  const [coverSheetOpen, setCoverSheetOpen] = useState(false);
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false);
+  const [coverLoaded, setCoverLoaded] = useState(false);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
 
-  useEffect(() => {
-    if (avatarMenuOpen) {
-      requestAnimationFrame(() => requestAnimationFrame(() => setAvatarMenuVisible(true)));
-    }
-  }, [avatarMenuOpen]);
-
-  const closeAvatarMenu = () => {
-    setAvatarMenuVisible(false);
-    setTimeout(() => setAvatarMenuOpen(false), 250);
-  };
+  const [sheetMember, setSheetMember] = useState<GroupMember | null>(null);
 
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState('');
@@ -72,14 +69,18 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
 
   const coverFileRef = useRef<HTMLInputElement>(null);
   const avatarFileRef = useRef<HTMLInputElement>(null);
-  const coverMenuRef = useRef<HTMLDivElement>(null);
-  const avatarMenuRef = useRef<HTMLDivElement>(null);
-  const avatarBtnRef = useRef<HTMLButtonElement>(null);
 
   const { showToast } = useToast();
   const { showConfirmation } = useConfirmation();
   const { openPanel, closePanel, updatePanelMeta } = usePanels();
   const openUserProfile = useOpenUserProfile();
+  const { getPresence, requestPresence } = usePresence();
+  const { socket } = useWebSocket();
+
+  const memberPresence = (userId: string) =>
+    userId === currentUserId
+      ? { status: 'online' as const, lastSeen: null }
+      : getPresence(userId);
 
   const isDark = typeof document !== 'undefined'
     ? document.documentElement.getAttribute('data-theme') !== 'light'
@@ -87,7 +88,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
 
   const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const fetchGroup = useCallback(async (retries = 2) => {
+  const fetchGroup = useCallback(async (retries = 2, silent = false) => {
     try {
       const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API}/api/groups/${groupId}`, {
@@ -96,48 +97,97 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setGroup(data.group);
+      setLoading(false);
     } catch (e: any) {
       if (retries > 0) {
-        retryTimer.current = setTimeout(() => fetchGroup(retries - 1), 1500);
+        retryTimer.current = setTimeout(() => fetchGroup(retries - 1, silent), 1000);
         return;
       }
-      setError(true);
-    } finally {
+      if (!silent) {
+        setError(true);
+      }
       setLoading(false);
     }
   }, [groupId]);
 
   useEffect(() => {
-    fetchGroup();
+    fetchGroup(2, !!initialGroup);
     return () => clearTimeout(retryTimer.current);
-  }, [fetchGroup]);
+  }, [fetchGroup, initialGroup]);
 
-  // Close menus on click outside
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (coverMenuRef.current && !coverMenuRef.current.contains(e.target as Node)) {
-        setCoverMenuOpen(false);
-      }
-      if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target as Node) &&
-          avatarBtnRef.current && !avatarBtnRef.current.contains(e.target as Node)) {
-        closeAvatarMenu();
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+    if (group) {
+      requestPresence(group.members.map(m => m.userId));
+    }
+  }, [group, requestPresence]);
 
-  // Listen for real-time group updates
+  // Real-time socket sync — adaptive per event type
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.group?.id === groupId) {
-        setGroup(prev => prev ? { ...prev, ...detail.group } : prev);
-      }
+    if (!socket) return;
+
+    const onUpdated = (data: { group: Partial<GroupInfo> & { id: string } }) => {
+      if (data.group.id !== groupId) return;
+      setGroup(prev => prev ? { ...prev, ...data.group } : prev);
     };
-    window.addEventListener('chatr:group-profile-updated', handler);
-    return () => window.removeEventListener('chatr:group-profile-updated', handler);
-  }, [groupId]);
+
+    const onMemberJoined = (data: { groupId: string; member?: GroupMember }) => {
+      if (data.groupId !== groupId || !data.member) return;
+      setGroup(prev => {
+        if (!prev) return prev;
+        if (prev.members.some(m => m.userId === data.member!.userId)) return prev;
+        return { ...prev, members: [...prev.members, { ...data.member!, status: 'accepted' }] };
+      });
+    };
+
+    const onMemberLeft = (data: { groupId: string; memberId: string }) => {
+      if (data.groupId !== groupId) return;
+      setGroup(prev => prev ? { ...prev, members: prev.members.filter(m => m.userId !== data.memberId) } : prev);
+    };
+
+    const onMemberPromoted = (data: { groupId: string; memberId: string }) => {
+      if (data.groupId !== groupId) return;
+      setGroup(prev => prev ? { ...prev, members: prev.members.map(m => m.userId === data.memberId ? { ...m, role: 'admin' } : m) } : prev);
+    };
+
+    const onMemberDemoted = (data: { groupId: string; memberId: string }) => {
+      if (data.groupId !== groupId) return;
+      setGroup(prev => prev ? { ...prev, members: prev.members.map(m => m.userId === data.memberId ? { ...m, role: 'member' } : m) } : prev);
+    };
+
+    const onOwnerChanged = (data: { groupId: string; newOwnerId: string }) => {
+      if (data.groupId !== groupId) return;
+      setGroup(prev => prev ? { ...prev, members: prev.members.map(m => m.userId === data.newOwnerId ? { ...m, role: 'owner' } : m) } : prev);
+    };
+
+    const onOwnershipTransferred = (data: { groupId: string; newOwnerId: string }) => {
+      if (data.groupId !== groupId) return;
+      setGroup(prev => prev ? { ...prev, members: prev.members.map(m => m.userId === data.newOwnerId ? { ...m, role: 'owner' } : m) } : prev);
+    };
+
+    const onOwnerSteppedDown = (data: { groupId: string; userId: string }) => {
+      if (data.groupId !== groupId) return;
+      setGroup(prev => prev ? { ...prev, members: prev.members.map(m => m.userId === data.userId ? { ...m, role: 'admin' } : m) } : prev);
+    };
+
+    socket.on('group:updated', onUpdated);
+    socket.on('group:memberJoined', onMemberJoined);
+    socket.on('group:memberLeft', onMemberLeft);
+    socket.on('group:memberPromoted', onMemberPromoted);
+    socket.on('group:memberDemoted', onMemberDemoted);
+    socket.on('group:ownerChanged', onOwnerChanged);
+    socket.on('group:ownershipTransferred', onOwnershipTransferred);
+    socket.on('group:ownerSteppedDown', onOwnerSteppedDown);
+    return () => {
+      socket.off('group:updated', onUpdated);
+      socket.off('group:memberJoined', onMemberJoined);
+      socket.off('group:memberLeft', onMemberLeft);
+      socket.off('group:memberPromoted', onMemberPromoted);
+      socket.off('group:memberDemoted', onMemberDemoted);
+      socket.off('group:ownerChanged', onOwnerChanged);
+      socket.off('group:ownershipTransferred', onOwnershipTransferred);
+      socket.off('group:ownerSteppedDown', onOwnerSteppedDown);
+    };
+  }, [socket, groupId]);
 
   if (loading) {
     return (
@@ -161,7 +211,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   }
 
   const myMember = group.members.find(m => m.userId === currentUserId);
-  const isOwner = group.ownerId === currentUserId;
+  const isOwner = myMember?.role === 'owner';
   const isAdmin = isOwner || myMember?.role === 'admin';
 
   const nameOf = (m: GroupMember) =>
@@ -169,9 +219,9 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   const alphSort = (a: GroupMember, b: GroupMember) => nameOf(a).localeCompare(nameOf(b));
 
   const activeMembers = group.members.filter(m => m.status !== 'pending');
-  const owners = activeMembers.filter(m => m.userId === group.ownerId).sort(alphSort);
-  const admins = activeMembers.filter(m => m.role === 'admin' && m.userId !== group.ownerId).sort(alphSort);
-  const regulars = activeMembers.filter(m => m.role !== 'admin' && m.userId !== group.ownerId).sort(alphSort);
+  const owners = activeMembers.filter(m => m.role === 'owner').sort(alphSort);
+  const admins = activeMembers.filter(m => m.role === 'admin').sort(alphSort);
+  const regulars = activeMembers.filter(m => m.role === 'member').sort(alphSort);
   const pending = group.members.filter(m => m.status === 'pending').sort(alphSort);
 
   const getInitial = (name: string) => name.charAt(0).toUpperCase();
@@ -214,6 +264,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
         throw new Error(err.error || 'Upload failed');
       }
       const data = await res.json();
+      setCoverLoaded(false);
       setGroup(prev => prev ? { ...prev, coverImage: data.url } : prev);
       showToast('Cover image updated', 'success');
     } catch (err: any) {
@@ -224,7 +275,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   };
 
   const handleDeleteCover = async () => {
-    setCoverMenuOpen(false);
+    setCoverSheetOpen(false);
     setCoverUploading(true);
     try {
       const token = localStorage.getItem('token') || '';
@@ -232,6 +283,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
+      setCoverLoaded(false);
       setGroup(prev => prev ? { ...prev, coverImage: null } : prev);
       showToast('Cover image removed', 'success');
     } catch {
@@ -279,6 +331,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
         throw new Error(err.error || 'Upload failed');
       }
       const data = await res.json();
+      setAvatarLoaded(false);
       setGroup(prev => prev ? { ...prev, profileImage: data.url } : prev);
       updatePanelMeta(`group-profile-${groupId}`, { profileImage: data.url });
       updatePanelMeta(`group-${groupId}`, { profileImage: data.url });
@@ -291,7 +344,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
   };
 
   const handleDeleteAvatar = async () => {
-    closeAvatarMenu();
+    setAvatarSheetOpen(false);
     setAvatarUploading(true);
     try {
       const token = localStorage.getItem('token') || '';
@@ -299,6 +352,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
+      setAvatarLoaded(false);
       setGroup(prev => prev ? { ...prev, profileImage: null } : prev);
       updatePanelMeta(`group-profile-${groupId}`, { profileImage: null });
       updatePanelMeta(`group-${groupId}`, { profileImage: null });
@@ -348,13 +402,16 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
 
   const handleDemote = async (member: GroupMember) => {
     const name = member.user.displayName || member.user.username.replace(/^@/, '');
+    const isSelfDemote = member.userId === currentUserId;
     const confirmed = await showConfirmation({
-      title: 'Remove Admin',
-      message: `Remove admin privileges from ${name}? They will become a regular member.`,
+      title: isSelfDemote ? 'Step Down as Admin' : 'Remove Admin',
+      message: isSelfDemote
+        ? 'Step down as admin? You will become a regular member.'
+        : `Remove admin privileges from ${name}? They will become a regular member.`,
       urgency: 'warning',
       actions: [
         { label: 'Cancel', variant: 'secondary', value: false },
-        { label: 'Remove Admin', variant: 'destructive', value: true },
+        { label: isSelfDemote ? 'Step Down' : 'Remove Admin', variant: 'destructive', value: true },
       ],
     });
     if (confirmed !== true) return;
@@ -381,6 +438,126 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
     }
   };
 
+  const handleMakeOwner = async (member: GroupMember) => {
+    const name = member.user.displayName || member.user.username.replace(/^@/, '');
+    const confirmed = await showConfirmation({
+      title: 'Make Owner',
+      message: `Make ${name} an owner of this group? They will have full control including the ability to delete the group.`,
+      urgency: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Make Owner', variant: 'destructive', value: true },
+      ],
+    });
+    if (confirmed !== true) return;
+    try {
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(`${API}/api/groups/${groupId}/transfer-ownership`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newOwnerId: member.userId }),
+      });
+      if (res.ok) {
+        showToast(`${name} is now an owner`, 'success');
+        fetchGroup();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Failed to make owner', 'error');
+      }
+    } catch {
+      showToast('Failed to make owner', 'error');
+    }
+  };
+
+  const handleOwnerStepDown = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Step Down as Owner',
+      message: 'Step down as owner? You will become an admin.',
+      urgency: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Step Down', variant: 'destructive', value: true },
+      ],
+    });
+    if (confirmed !== true) return;
+    try {
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(`${API}/api/groups/${groupId}/step-down`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        showToast('You stepped down as owner', 'success');
+        fetchGroup();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Failed to step down', 'error');
+      }
+    } catch {
+      showToast('Failed to step down', 'error');
+    }
+  };
+
+  const handleRemoveMember = async (member: GroupMember) => {
+    const name = member.user.displayName || member.user.username.replace(/^@/, '');
+    const confirmed = await showConfirmation({
+      title: 'Remove Member',
+      message: `Remove ${name} from the group? They will need to be re-invited to rejoin.`,
+      urgency: 'danger',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Remove', variant: 'destructive', value: true },
+      ],
+    });
+    if (confirmed !== true) return;
+    try {
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(`${API}/api/groups/${groupId}/members/${member.userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        showToast(`${name} has been removed from the group`, 'success');
+        fetchGroup();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Failed to remove member', 'error');
+      }
+    } catch {
+      showToast('Failed to remove member', 'error');
+    }
+  };
+
+  const handleRevokeInvite = async (member: GroupMember) => {
+    const name = member.user.displayName || member.user.username.replace(/^@/, '');
+    const confirmed = await showConfirmation({
+      title: 'Revoke Invite',
+      message: `Revoke the pending invite for ${name}?`,
+      urgency: 'warning',
+      actions: [
+        { label: 'Cancel', variant: 'secondary', value: false },
+        { label: 'Revoke', variant: 'destructive', value: true },
+      ],
+    });
+    if (confirmed !== true) return;
+    try {
+      const token = localStorage.getItem('token') || '';
+      const res = await fetch(`${API}/api/groups/${groupId}/members/${member.userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        showToast(`Invite for ${name} has been revoked`, 'success');
+        fetchGroup();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Failed to revoke invite', 'error');
+      }
+    } catch {
+      showToast('Failed to revoke invite', 'error');
+    }
+  };
+
   const openAddMembersPanel = () => {
     const panelId = `add-members-${groupId}`;
     openPanel(
@@ -398,6 +575,52 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
       undefined,
       true,
     );
+  };
+
+  interface MemberAction {
+    label: string;
+    icon: string;
+    danger?: boolean;
+    handler: () => void;
+  }
+
+  const getActionsForMember = (member: GroupMember): MemberAction[] => {
+    const isSelf = member.userId === currentUserId;
+    const actions: MemberAction[] = [];
+
+    if (member.status === 'pending') {
+      if (isAdmin && !isSelf) {
+        actions.push({ label: 'Revoke Invite', icon: 'fas fa-xmark', danger: true, handler: () => handleRevokeInvite(member) });
+      }
+      return actions;
+    }
+
+    if (member.role === 'owner') {
+      if (isSelf && owners.length > 1) {
+        actions.push({ label: 'Step Down as Owner', icon: 'fas fa-arrow-down', handler: handleOwnerStepDown });
+      }
+    } else if (member.role === 'admin') {
+      if (isOwner && !isSelf) {
+        actions.push({ label: 'Make Owner', icon: 'fas fa-crown', handler: () => handleMakeOwner(member) });
+        actions.push({ label: 'Revoke Admin', icon: 'fas fa-shield-xmark', handler: () => handleDemote(member) });
+        actions.push({ label: 'Remove from Group', icon: 'fas fa-user-minus', danger: true, handler: () => handleRemoveMember(member) });
+      }
+      if (isSelf && !isOwner) {
+        actions.push({ label: 'Step Down as Admin', icon: 'fas fa-shield-xmark', handler: () => handleDemote(member) });
+      }
+    } else {
+      if (isAdmin && !isSelf) {
+        actions.push({ label: 'Make Admin', icon: 'fas fa-shield', handler: () => handlePromote(member) });
+        actions.push({ label: 'Remove from Group', icon: 'fas fa-user-minus', danger: true, handler: () => handleRemoveMember(member) });
+      }
+    }
+
+    return actions;
+  };
+
+  const handleSheetAction = (action: MemberAction) => {
+    setSheetMember(null);
+    setTimeout(() => action.handler(), 150);
   };
 
   const startEditingName = () => {
@@ -445,7 +668,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
     const confirmed = await showConfirmation({
       title: 'Leave Group',
       message: isOwner
-        ? `You are the owner of "${group.name}". Leaving will promote another member to owner. Continue?`
+        ? `You are an owner of "${group.name}". Are you sure you want to leave?`
         : `Leave "${group.name}"?`,
       urgency: 'warning',
       actions: [
@@ -502,11 +725,13 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
       {/* Hero: cover + avatar */}
       <div className={styles.hero}>
         <div className={styles.cover}>
+          {!coverLoaded && <div className={styles.coverSkeleton} />}
           <img
             src={group.coverImage || '/cover/default-cover.jpg'}
             alt="Cover"
             className={styles.coverImg}
-            style={{ opacity: coverUploading ? 0.5 : 1 }}
+            style={{ opacity: coverUploading ? 0.5 : coverLoaded ? 1 : 0 }}
+            onLoad={() => setCoverLoaded(true)}
           />
 
           {coverUploading && (
@@ -516,46 +741,23 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
           )}
 
           {isAdmin && !coverUploading && (
-            <>
-              <button
-                className={styles.coverCameraBtn}
-                onClick={() => setCoverMenuOpen(prev => !prev)}
-                aria-label="Change cover image"
-              >
-                <i className="fas fa-camera" />
-              </button>
-              {coverMenuOpen && (
-                <div
-                  ref={coverMenuRef}
-                  className={styles.contextMenu}
-                  style={{
-                    bottom: '64px', right: '16px',
-                    background: isDark ? '#1e293b' : '#fff',
-                    border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
-                  }}
-                >
-                  {group.coverImage && (
-                    <button className={styles.contextMenuItemDanger} onClick={handleDeleteCover}>
-                      <i className="fas fa-trash-alt" style={{ width: '20px' }} /> Remove Cover
-                    </button>
-                  )}
-                  <button
-                    className={styles.contextMenuItem}
-                    style={{ color: isDark ? '#e2e8f0' : '#1e293b' }}
-                    onClick={() => { setCoverMenuOpen(false); setTimeout(() => coverFileRef.current?.click(), 100); }}
-                  >
-                    <i className="fas fa-camera" style={{ width: '20px' }} /> Upload New Cover
-                  </button>
-                </div>
-              )}
-            </>
+            <button
+              className={styles.coverCameraBtn}
+              onClick={() => setCoverSheetOpen(true)}
+              aria-label="Change cover image"
+            >
+              <i className="fas fa-camera" />
+            </button>
           )}
         </div>
 
         <div className={styles.avatarRing}>
           <div className={styles.avatarInner}>
             {group.profileImage ? (
-              <img src={group.profileImage} alt={group.name} className={styles.avatarImg} style={{ opacity: avatarUploading ? 0.5 : 1 }} />
+              <>
+                {!avatarLoaded && <div className={styles.avatarSkeleton} />}
+                <img src={imageUrl(group.profileImage, 'md')!} alt={group.name} className={styles.avatarImg} style={{ opacity: avatarUploading ? 0.5 : avatarLoaded ? 1 : 0 }} onLoad={() => setAvatarLoaded(true)} />
+              </>
             ) : (
               <div className={styles.avatarFallback} style={{ opacity: avatarUploading ? 0.5 : 1 }}>
                 {getInitial(group.name)}
@@ -571,75 +773,12 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
 
           {isAdmin && !avatarUploading && (
             <button
-              ref={avatarBtnRef}
               className={styles.avatarCameraBtn}
-              onClick={() => avatarMenuOpen ? closeAvatarMenu() : setAvatarMenuOpen(true)}
+              onClick={() => setAvatarSheetOpen(true)}
               aria-label="Change group avatar"
             >
               <i className="fas fa-camera" />
             </button>
-          )}
-
-          {avatarMenuOpen && (
-            <div
-              ref={avatarMenuRef}
-              style={{
-                position: 'absolute',
-                bottom: '60px',
-                left: '50%',
-                transform: `translateX(-50%) scale(${avatarMenuVisible ? 1 : 0.95})`,
-                opacity: avatarMenuVisible ? 1 : 0,
-                transition: 'opacity 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
-                transformOrigin: 'bottom center',
-                backgroundColor: isDark ? '#1e293b' : 'white',
-                borderRadius: '12px',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4)',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
-                padding: '6px',
-                zIndex: 200,
-                width: '240px',
-                display: 'flex',
-                flexDirection: 'column' as const,
-                gap: '2px',
-              }}
-            >
-              {group.profileImage && (
-                <button
-                  onClick={handleDeleteAvatar}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                    padding: '12px 16px', border: 'none', background: 'transparent',
-                    color: '#ef4444', fontSize: '14px', fontWeight: '600',
-                    cursor: 'pointer', textAlign: 'left', width: '100%',
-                    borderRadius: '8px', transition: 'all 0.2s', fontFamily: 'inherit',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                    <i className="fas fa-trash-alt" />
-                  </div>
-                  Delete Group Picture
-                </button>
-              )}
-              <button
-                onClick={() => { closeAvatarMenu(); setTimeout(() => avatarFileRef.current?.click(), 250); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 16px', border: 'none', background: 'transparent',
-                  color: isDark ? '#e2e8f0' : '#1e293b', fontSize: '14px', fontWeight: '500',
-                  cursor: 'pointer', textAlign: 'left', width: '100%',
-                  borderRadius: '8px', transition: 'all 0.2s', fontFamily: 'inherit',
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <div style={{ width: '24px', display: 'flex', justifyContent: 'center' }}>
-                  <i className="fas fa-camera" />
-                </div>
-                Upload New Picture
-              </button>
-            </div>
           )}
         </div>
       </div>
@@ -693,16 +832,22 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
               {owners.map(member => {
                 const name = member.user.displayName || member.user.username.replace(/^@/, '');
                 const isSelf = member.userId === currentUserId;
+                const actions = getActionsForMember(member);
                 const handleClick = () => {
                   if (isSelf) openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
                   else openUserProfile(member.userId, name, member.user.profileImage);
                 };
                 return (
                   <div key={member.userId} className={styles.memberRow}>
-                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={{ status: 'offline', lastSeen: null }} size={40} onClick={handleClick} />
+                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={memberPresence(member.userId)} size={40} onClick={handleClick} />
                     <div className={styles.memberInfo}>
                       <span className={styles.memberName} style={{ cursor: 'pointer' }} onClick={handleClick}>{name}{isSelf ? ' (you)' : ''}</span>
                     </div>
+                    {actions.length > 0 && (
+                      <button className={styles.moreBtn} onClick={() => setSheetMember(member)} title="Actions">
+                        <i className="fas fa-ellipsis-vertical" />
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -720,22 +865,21 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
               {admins.map(member => {
                 const name = member.user.displayName || member.user.username.replace(/^@/, '');
                 const isSelf = member.userId === currentUserId;
+                const actions = getActionsForMember(member);
                 const handleClick = () => {
                   if (isSelf) openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
                   else openUserProfile(member.userId, name, member.user.profileImage);
                 };
                 return (
                   <div key={member.userId} className={styles.memberRow}>
-                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={{ status: 'offline', lastSeen: null }} size={40} onClick={handleClick} />
+                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={memberPresence(member.userId)} size={40} onClick={handleClick} />
                     <div className={styles.memberInfo}>
                       <span className={styles.memberName} style={{ cursor: 'pointer' }} onClick={handleClick}>{name}{isSelf ? ' (you)' : ''}</span>
                     </div>
-                    {isOwner && !isSelf && (
-                      <div className={styles.memberActions}>
-                        <button className={styles.actionBtn} onClick={() => handleDemote(member)} title={`Remove admin from ${name}`}>
-                          <i className="fas fa-shield-xmark" /> Remove
-                        </button>
-                      </div>
+                    {actions.length > 0 && (
+                      <button className={styles.moreBtn} onClick={() => setSheetMember(member)} title="Actions">
+                        <i className="fas fa-ellipsis-vertical" />
+                      </button>
                     )}
                   </div>
                 );
@@ -754,22 +898,21 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
               {regulars.map(member => {
                 const name = member.user.displayName || member.user.username.replace(/^@/, '');
                 const isSelf = member.userId === currentUserId;
+                const actions = getActionsForMember(member);
                 const handleClick = () => {
                   if (isSelf) openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
                   else openUserProfile(member.userId, name, member.user.profileImage);
                 };
                 return (
                   <div key={member.userId} className={styles.memberRow}>
-                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={{ status: 'offline', lastSeen: null }} size={40} onClick={handleClick} />
+                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={memberPresence(member.userId)} size={40} onClick={handleClick} />
                     <div className={styles.memberInfo}>
                       <span className={styles.memberName} style={{ cursor: 'pointer' }} onClick={handleClick}>{name}{isSelf ? ' (you)' : ''}</span>
                     </div>
-                    {isAdmin && !isSelf && (
-                      <div className={styles.memberActions}>
-                        <button className={styles.actionBtn} onClick={() => handlePromote(member)} title={`Make ${name} admin`}>
-                          <i className="fas fa-shield" /> Make Admin
-                        </button>
-                      </div>
+                    {actions.length > 0 && (
+                      <button className={styles.moreBtn} onClick={() => setSheetMember(member)} title="Actions">
+                        <i className="fas fa-ellipsis-vertical" />
+                      </button>
                     )}
                   </div>
                 );
@@ -777,19 +920,25 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
               {pending.map(member => {
                 const name = member.user.displayName || member.user.username.replace(/^@/, '');
                 const isSelf = member.userId === currentUserId;
+                const actions = getActionsForMember(member);
                 const handleClick = () => {
                   if (isSelf) openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
                   else openUserProfile(member.userId, name, member.user.profileImage);
                 };
                 return (
                   <div key={member.userId} className={styles.memberRow} style={{ opacity: 0.5 }}>
-                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={{ status: 'offline', lastSeen: null }} size={40} onClick={handleClick} />
+                    <PresenceAvatar displayName={name} profileImage={member.user.profileImage} info={memberPresence(member.userId)} size={40} onClick={handleClick} />
                     <div className={styles.memberInfo}>
                       <span className={styles.memberName} style={{ cursor: 'pointer' }} onClick={handleClick}>{name}{isSelf ? ' (you)' : ''}</span>
                       <span className={styles.memberBadge} style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
                         <i className="fas fa-clock" style={{ fontSize: '8px' }} /> Pending
                       </span>
                     </div>
+                    {actions.length > 0 && (
+                      <button className={styles.moreBtn} onClick={() => setSheetMember(member)} title="Actions">
+                        <i className="fas fa-ellipsis-vertical" />
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -811,6 +960,61 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
           </button>
         </div>
       </div>
+
+      {/* Cover image bottom sheet */}
+      <BottomSheet isOpen={coverSheetOpen} onClose={() => setCoverSheetOpen(false)} heightMode="auto" title="Cover Image">
+        <div className={styles.sheetActions}>
+          <button className={styles.sheetActionBtn} onClick={() => { setCoverSheetOpen(false); setTimeout(() => coverFileRef.current?.click(), 350); }}>
+            <i className="fas fa-camera" />
+            <span>Upload New Cover</span>
+          </button>
+          {group?.coverImage && (
+            <button className={`${styles.sheetActionBtn} ${styles.sheetActionDanger}`} onClick={handleDeleteCover}>
+              <i className="fas fa-trash-alt" />
+              <span>Remove Cover</span>
+            </button>
+          )}
+        </div>
+      </BottomSheet>
+
+      {/* Avatar bottom sheet */}
+      <BottomSheet isOpen={avatarSheetOpen} onClose={() => setAvatarSheetOpen(false)} heightMode="auto" title="Group Picture">
+        <div className={styles.sheetActions}>
+          <button className={styles.sheetActionBtn} onClick={() => { setAvatarSheetOpen(false); setTimeout(() => avatarFileRef.current?.click(), 350); }}>
+            <i className="fas fa-camera" />
+            <span>Upload New Picture</span>
+          </button>
+          {group?.profileImage && (
+            <button className={`${styles.sheetActionBtn} ${styles.sheetActionDanger}`} onClick={handleDeleteAvatar}>
+              <i className="fas fa-trash-alt" />
+              <span>Remove Group Picture</span>
+            </button>
+          )}
+        </div>
+      </BottomSheet>
+
+      {/* Member actions bottom sheet */}
+      <BottomSheet
+        isOpen={!!sheetMember}
+        onClose={() => setSheetMember(null)}
+        heightMode="auto"
+        title={sheetMember ? (sheetMember.user.displayName || sheetMember.user.username.replace(/^@/, '')) : ''}
+      >
+        {sheetMember && (
+          <div className={styles.sheetActions}>
+            {getActionsForMember(sheetMember).map((action, i) => (
+              <button
+                key={i}
+                className={`${styles.sheetActionBtn} ${action.danger ? styles.sheetActionDanger : ''}`}
+                onClick={() => handleSheetAction(action)}
+              >
+                <i className={action.icon} />
+                <span>{action.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </BottomSheet>
     </div>
   );
 }

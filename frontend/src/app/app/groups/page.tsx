@@ -169,6 +169,7 @@ export default function GroupsPage() {
       <GroupProfilePanel
         groupId={groupId}
         currentUserId={currentUserId}
+        initialGroup={group ? { id: group.id, name: group.name, description: group.description, profileImage: group.profileImage, coverImage: group.coverImage, ownerId: group.ownerId, members: group.members as any } : undefined}
         onGroupLeft={() => {
           closePanel(`group-profile-${groupId}`);
           closePanel(`group-${groupId}`);

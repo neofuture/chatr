@@ -77,6 +77,24 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
           ...(typeof data.showPhoneNumber  === 'boolean' ? { showPhoneNumber:  data.showPhoneNumber  } : {}),
           ...(typeof data.showEmail        === 'boolean' ? { showEmail:        data.showEmail        } : {}),
         }));
+
+        // Keep localStorage user object in sync with latest server image URLs
+        try {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            const user = JSON.parse(userStr);
+            let changed = false;
+            if (data.profileImage !== undefined && data.profileImage !== user.profileImage) {
+              user.profileImage = data.profileImage;
+              changed = true;
+            }
+            if (data.coverImage !== undefined && data.coverImage !== user.coverImage) {
+              user.coverImage = data.coverImage;
+              changed = true;
+            }
+            if (changed) localStorage.setItem('user', JSON.stringify(user));
+          }
+        } catch {}
       })
       .catch((err) => { if (err.name !== 'AbortError') { /* fall back to localStorage */ } });
     return () => ac.abort();

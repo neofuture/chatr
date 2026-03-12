@@ -210,19 +210,20 @@ export default function CoverImageCropper({ imageFile, onCropComplete, onCancel,
       outputHeight
     );
 
-    // Convert to blob
+    // Always output JPEG for much smaller file sizes
+    const outputName = imageFile.name.replace(/\.[^.]+$/, '.jpg');
     canvas.toBlob(
       (blob) => {
         if (blob) {
-          const croppedFile = new File([blob], imageFile.name, {
-            type: imageFile.type,
+          const croppedFile = new File([blob], outputName, {
+            type: 'image/jpeg',
             lastModified: Date.now(),
           });
           onCropComplete(croppedFile);
         }
       },
-      imageFile.type,
-      0.95
+      'image/jpeg',
+      0.70
     );
   };
 

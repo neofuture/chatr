@@ -7,6 +7,7 @@ import { authenticateToken } from '../middleware/auth';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getCachedConversations, setCachedConversations, invalidateConversationCache } from '../lib/redis';
 import { getConnectedUserIds } from '../lib/conversation';
+import { processImageVariants, deleteImageVariants, PROFILE_VARIANTS, COVER_VARIANTS } from '../lib/imageResize';
 import { maybeRegenerateDMSummary, setSummaryPrisma } from '../services/summaryEngine';
 import { Server } from 'socket.io';
 
@@ -724,6 +725,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         username: true,
         displayName: true,
         profileImage: true,
+        coverImage: true,
         emailVerified: true,
         phoneVerified: true,
         createdAt: true,
@@ -860,25 +862,10 @@ router.post('/profile-image', authenticateToken as any, upload.single('profileIm
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Generate filename
-    const ext = path.extname(file.originalname);
-    const filename = `${userId}-${Date.now()}${ext}`;
+    const baseFilename = `${userId}-${Date.now()}.jpg`;
+    const fileUrl = await processImageVariants(file.buffer, baseFilename, 'profiles', PROFILE_VARIANTS);
+    console.log('✅ Profile image variants generated:', baseFilename);
 
-    let fileUrl: string;
-
-    if (IS_PRODUCTION) {
-      const s3Key = `uploads/profiles/${filename}`;
-      console.log(`☁️  Uploading profile image to S3: ${s3Key}`);
-      fileUrl = await uploadImageToS3(file.buffer, s3Key, file.mimetype);
-      console.log(`✅ S3 profile upload complete: ${fileUrl}`);
-    } else {
-      const filepath = path.join(uploadsDir, filename);
-      fs.writeFileSync(filepath, file.buffer);
-      console.log('💾 File saved:', filename);
-      fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/profiles/${filename}`;
-    }
-
-    // Update user's profile image in database
     try {
       const existingUser = await prisma.user.findUnique({
         where: { id: userId },
@@ -889,17 +876,9 @@ router.post('/profile-image', authenticateToken as any, upload.single('profileIm
         where: { id: userId },
         data: { profileImage: fileUrl },
       });
-      console.log('✅ Profile image saved to database for user:', userId);
 
-      // Delete old image
       if (existingUser?.profileImage) {
-        if (IS_PRODUCTION) {
-          await deleteImageFromS3(existingUser.profileImage);
-        } else {
-          let oldPath = existingUser.profileImage;
-          if (oldPath.startsWith('http')) oldPath = new URL(oldPath).pathname;
-          deleteLocalFile(path.join(__dirname, '../..', oldPath));
-        }
+        await deleteImageVariants(existingUser.profileImage, PROFILE_VARIANTS);
       }
     } catch (dbError) {
       console.error('❌ Database update failed:', dbError);
@@ -990,25 +969,10 @@ router.post('/cover-image', authenticateToken as any, coverUpload.single('coverI
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Generate filename
-    const ext = path.extname(file.originalname);
-    const filename = `${userId}-${Date.now()}${ext}`;
+    const baseFilename = `${userId}-${Date.now()}.jpg`;
+    const fileUrl = await processImageVariants(file.buffer, baseFilename, 'covers', COVER_VARIANTS);
+    console.log('✅ Cover image variants generated:', baseFilename);
 
-    let fileUrl: string;
-
-    if (IS_PRODUCTION) {
-      const s3Key = `uploads/covers/${filename}`;
-      console.log(`☁️  Uploading cover image to S3: ${s3Key}`);
-      fileUrl = await uploadImageToS3(file.buffer, s3Key, file.mimetype);
-      console.log(`✅ S3 cover upload complete: ${fileUrl}`);
-    } else {
-      const filepath = path.join(coversDir, filename);
-      fs.writeFileSync(filepath, file.buffer);
-      console.log('💾 File saved:', filename);
-      fileUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/uploads/covers/${filename}`;
-    }
-
-    // Update user's cover image in database
     try {
       const existingUser = await prisma.user.findUnique({
         where: { id: userId },
@@ -1019,17 +983,9 @@ router.post('/cover-image', authenticateToken as any, coverUpload.single('coverI
         where: { id: userId },
         data: { coverImage: fileUrl },
       });
-      console.log('✅ Cover image saved to database for user:', userId);
 
-      // Delete old image
       if (existingUser?.coverImage) {
-        if (IS_PRODUCTION) {
-          await deleteImageFromS3(existingUser.coverImage);
-        } else {
-          let oldPath = existingUser.coverImage;
-          if (oldPath.startsWith('http')) oldPath = new URL(oldPath).pathname;
-          deleteLocalFile(path.join(__dirname, '../..', oldPath));
-        }
+        await deleteImageVariants(existingUser.coverImage, COVER_VARIANTS);
       }
     } catch (dbError) {
       console.error('❌ Database update failed:', dbError);
@@ -1084,22 +1040,14 @@ router.delete('/profile-image', authenticateToken, async (req, res) => {
       return res.json({ message: 'No profile image to delete' });
     }
 
-    // Delete image from storage
-    if (IS_PRODUCTION) {
-      await deleteImageFromS3(user.profileImage);
-    } else {
-      let filePath = user.profileImage;
-      if (filePath.startsWith('http')) filePath = new URL(filePath).pathname;
-      deleteLocalFile(path.join(__dirname, '../..', filePath));
-    }
+    await deleteImageVariants(user.profileImage, PROFILE_VARIANTS);
 
-    // Update database
     await prisma.user.update({
       where: { id: userId },
       data: { profileImage: null },
     });
 
-    console.log('✅ Profile image removed from database for user:', userId);
+    console.log('✅ Profile image removed for user:', userId);
     res.json({ message: 'Profile image deleted successfully' });
 
   } catch (error) {
@@ -1148,22 +1096,14 @@ router.delete('/cover-image', authenticateToken, async (req, res) => {
       return res.json({ message: 'No cover image to delete' });
     }
 
-    // Delete image from storage
-    if (IS_PRODUCTION) {
-      await deleteImageFromS3(user.coverImage);
-    } else {
-      let filePath = user.coverImage;
-      if (filePath.startsWith('http')) filePath = new URL(filePath).pathname;
-      deleteLocalFile(path.join(__dirname, '../..', filePath));
-    }
+    await deleteImageVariants(user.coverImage, COVER_VARIANTS);
 
-    // Update database
     await prisma.user.update({
       where: { id: userId },
       data: { coverImage: null },
     });
 
-    console.log('✅ Cover image removed from database for user:', userId);
+    console.log('✅ Cover image removed for user:', userId);
     res.json({ message: 'Cover image deleted successfully' });
 
   } catch (error) {

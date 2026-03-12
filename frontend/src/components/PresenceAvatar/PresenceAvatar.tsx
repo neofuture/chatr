@@ -1,6 +1,7 @@
 'use client';
 
 import type { PresenceInfo } from '@/types/types.ts';
+import { imageUrl, type ImageSize } from '@/lib/imageUrl';
 import styles from './PresenceAvatar.module.css';
 
 interface PresenceAvatarProps {
@@ -46,6 +47,9 @@ export default function PresenceAvatar({
     : info.status === 'away'                 ? 'var(--presence-away)'
     :                                          'var(--presence-offline)';
 
+  const imgSize: ImageSize = size <= 50 ? 'sm' : size <= 160 ? 'md' : 'full';
+  const resolvedImage = imageUrl(profileImage, imgSize);
+
   const ring   = size <= 40 ? 1 : 2;
   const inner  = size - ring * 2;
   const dotSz  = Math.max(13, Math.round(size * 0.36)); // bigger, min 13px
@@ -75,9 +79,9 @@ export default function PresenceAvatar({
         className={isBot ? styles.ringBot : isGuest ? styles.ringGuest : styles.ring}
         style={{ borderRadius: '50%', padding: ring }}
       >
-        {profileImage ? (
+        {resolvedImage ? (
           <img
-            src={profileImage}
+            src={resolvedImage}
             alt={displayName}
             className={styles.image}
             style={{ width: inner, height: inner }}

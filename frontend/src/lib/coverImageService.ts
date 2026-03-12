@@ -5,6 +5,11 @@ import { db, CoverImage } from './db';
  * Handles local storage and server sync of cover images
  */
 
+function reconcileUploadUrl(url: string): string {
+  if (!url.includes('/uploads/')) return url;
+  return url.replace(/\.(jpeg|png|webp)(\?.*)?$/i, '.jpg$2');
+}
+
 /**
  * Save cover image to local storage (IndexedDB via Dexie)
  */
@@ -50,9 +55,12 @@ export async function getCoverImageURL(
     return null;
   }
 
-  // Return server URL if already synced
   if (coverImage.synced && coverImage.url) {
-    return coverImage.url;
+    const fixed = reconcileUploadUrl(coverImage.url);
+    if (fixed !== coverImage.url) {
+      await db.coverImages.update(userId, { url: fixed });
+    }
+    return fixed;
   }
 
   // Return local blob URL

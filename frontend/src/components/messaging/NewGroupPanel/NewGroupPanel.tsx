@@ -29,10 +29,12 @@ export default function NewGroupPanel({ onGroupCreated }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const [selected, setSelected] = useState<UserSearchResult[]>([]);
   const [groupName, setGroupName] = useState('');
   const [creating, setCreating] = useState(false);
   const timeout = useRef<NodeJS.Timeout | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const searchRef = useRef<PaneSearchBoxHandle>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const { userPresence } = usePresence();
@@ -49,25 +51,46 @@ export default function NewGroupPanel({ onGroupCreated }: Props) {
     }
   }, [step]);
 
-  useEffect(() => {
-    if (timeout.current) clearTimeout(timeout.current);
-    if (!query.trim()) { setResults([]); setSearching(false); return; }
+  const runSearch = (q: string) => {
+    if (abortRef.current) abortRef.current.abort();
+    if (!q.trim()) { setResults([]); setSearching(false); setSearchError(false); return; }
     setSearching(true);
-    timeout.current = setTimeout(async () => {
+    setSearchError(false);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const timer = setTimeout(() => controller.abort(), 8000);
+
+    (async () => {
       try {
         const token = localStorage.getItem('token') || '';
-        const res = await fetch(`${API}/api/users/search?q=${encodeURIComponent(query.trim())}`, {
+        const res = await fetch(`${API}/api/users/search?q=${encodeURIComponent(q.trim())}`, {
           headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
         setResults(data.users ?? []);
-      } catch {
+        setSearchError(false);
+      } catch (e: any) {
+        if (e?.name === 'AbortError') {
+          setSearchError(true);
+        } else {
+          setSearchError(true);
+        }
         setResults([]);
       } finally {
+        clearTimeout(timer);
         setSearching(false);
       }
-    }, 250);
+    })();
+  };
+
+  useEffect(() => {
+    if (timeout.current) clearTimeout(timeout.current);
+    if (!query.trim()) { setResults([]); setSearching(false); setSearchError(false); return; }
+    setSearching(true);
+    timeout.current = setTimeout(() => runSearch(query), 250);
+    return () => { if (timeout.current) clearTimeout(timeout.current); };
   }, [query]);
 
   const toggleUser = (user: UserSearchResult) => {
@@ -178,6 +201,14 @@ export default function NewGroupPanel({ onGroupCreated }: Props) {
           </div>
         ) : searching ? (
           <div className={styles.empty}><div>Searching…</div></div>
+        ) : searchError ? (
+          <div className={styles.empty}>
+            <i className="fas fa-exclamation-triangle" />
+            <div>Search failed — check your connection</div>
+            <button className={styles.retryBtn} onClick={() => runSearch(query)}>
+              <i className="fas fa-redo" /> Retry
+            </button>
+          </div>
         ) : results.length === 0 ? (
           <div className={styles.empty}><i className="fas fa-search" /><div>No users found</div></div>
         ) : (

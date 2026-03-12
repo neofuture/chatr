@@ -4,6 +4,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import MessageAudioPlayer from '@/components/MessageAudioPlayer/MessageAudioPlayer';
 import { isAIBot } from '@/lib/aiBot';
+import { imageUrl } from '@/lib/imageUrl';
 import CodeBlock, { parseCodeBlocks } from './CodeBlock';
 import styles from './MessageBubble.module.css';
 
@@ -688,7 +689,7 @@ export default function MessageBubble({
                         : isGuest
                           ? styles.avatarImageRingGuest
                           : styles.avatarImageRing;
-                      const profileImg = msg.senderProfileImage;
+                      const profileImg = imageUrl(msg.senderProfileImage, 'sm');
                       if (profileImg) {
                         return (
                           <div className={ringClass}>

@@ -5,6 +5,7 @@ import { usePresence } from '@/contexts/PresenceContext';
 import { useFriends } from '@/hooks/useFriends';
 import { useConfirmation } from '@/contexts/ConfirmationContext';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
+import { imageUrl } from '@/lib/imageUrl';
 import styles from './UserProfilePanel.module.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -169,7 +170,7 @@ export default function UserProfilePanel({ userId }: Props) {
         <div className={styles.avatarRing}>
           <div className={styles.avatarInner}>
             <img
-              src={profile.profileImage || '/profile/default-profile.jpg'}
+              src={imageUrl(profile.profileImage, 'md') || '/profile/default-profile.jpg'}
               alt={displayName}
               className={styles.avatarImg}
             />

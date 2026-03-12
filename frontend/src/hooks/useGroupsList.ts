@@ -11,7 +11,7 @@ export interface GroupSummary {
   description?: string | null;
   profileImage?: string | null;
   coverImage?: string | null;
-  ownerId: string;
+  ownerId?: string;
   members: Array<{
     id: string;
     userId: string;
@@ -230,9 +230,11 @@ export function useGroupsList() {
       });
     };
 
-    // Someone else accepted (we're an existing member — refresh the group's member count)
-    const handleInviteAccepted = () => {
-      fetchGroups();
+    // Someone else accepted (we're an existing member — add them to that group's members)
+    const handleInviteAccepted = (data: { groupId: string; acceptedBy?: string }) => {
+      if (!data.groupId) return;
+      // We'll get the full member via group:memberJoined, so just remove from invites
+      setInvites(prev => prev.filter(i => i.groupId !== data.groupId));
     };
 
     // Creator was notified their invite was declined — no UI change needed beyond toast handled elsewhere
@@ -249,7 +251,6 @@ export function useGroupsList() {
     // group:removed fires when WE are kicked from a group
     const handleGroupRemoved = (data: { groupId: string }) => {
       setGroups(prev => prev.filter(g => g.id !== data.groupId));
-      // Also remove any pending invite for that group
       setInvites(prev => prev.filter(i => i.groupId !== data.groupId));
     };
 
@@ -259,13 +260,21 @@ export function useGroupsList() {
       setInvites(prev => prev.filter(i => i.groupId !== data.groupId));
     };
 
-    const handleMemberJoined = () => {
-      fetchGroups();
+    const handleMemberJoined = (data: { groupId: string; member?: { id: string; userId: string; role?: string; user: { id: string; username: string; displayName: string | null; profileImage: string | null } } }) => {
+      if (!data.groupId || !data.member) return;
+      setGroups(prev => prev.map(g => {
+        if (g.id !== data.groupId) return g;
+        if (g.members.some(m => m.userId === data.member!.userId)) return g;
+        return { ...g, members: [...g.members, data.member!] };
+      }));
     };
 
-    // group:memberLeft — refresh member count
-    const handleMemberLeft = () => {
-      fetchGroups();
+    const handleMemberLeft = (data: { groupId: string; memberId: string }) => {
+      if (!data.groupId) return;
+      setGroups(prev => prev.map(g => {
+        if (g.id !== data.groupId) return g;
+        return { ...g, members: g.members.filter(m => m.userId !== data.memberId) };
+      }));
     };
 
     // group:updated — partial update (name, profileImage, coverImage, etc.)
@@ -273,6 +282,29 @@ export function useGroupsList() {
       setGroups(prev => prev.map(g =>
         g.id === data.group.id ? { ...g, ...data.group } : g
       ));
+    };
+
+    const updateMemberRole = (groupId: string, memberId: string, role: string) => {
+      setGroups(prev => prev.map(g => {
+        if (g.id !== groupId) return g;
+        return { ...g, members: g.members.map(m => m.userId === memberId ? { ...m, role } : m) };
+      }));
+    };
+
+    const handleMemberPromoted = (data: { groupId: string; memberId: string }) => {
+      updateMemberRole(data.groupId, data.memberId, 'admin');
+    };
+    const handleMemberDemoted = (data: { groupId: string; memberId: string }) => {
+      updateMemberRole(data.groupId, data.memberId, 'member');
+    };
+    const handleOwnerChanged = (data: { groupId: string; newOwnerId: string }) => {
+      updateMemberRole(data.groupId, data.newOwnerId, 'owner');
+    };
+    const handleOwnershipTransferred = (data: { groupId: string; newOwnerId: string }) => {
+      updateMemberRole(data.groupId, data.newOwnerId, 'owner');
+    };
+    const handleOwnerSteppedDown = (data: { groupId: string; userId: string }) => {
+      updateMemberRole(data.groupId, data.userId, 'admin');
     };
 
     socket.on('group:message', handleGroupMessage);
@@ -285,6 +317,11 @@ export function useGroupsList() {
     socket.on('group:memberJoined', handleMemberJoined);
     socket.on('group:memberLeft', handleMemberLeft);
     socket.on('group:updated', handleGroupUpdated);
+    socket.on('group:memberPromoted', handleMemberPromoted);
+    socket.on('group:memberDemoted', handleMemberDemoted);
+    socket.on('group:ownerChanged', handleOwnerChanged);
+    socket.on('group:ownershipTransferred', handleOwnershipTransferred);
+    socket.on('group:ownerSteppedDown', handleOwnerSteppedDown);
     return () => {
       socket.off('group:message', handleGroupMessage);
       socket.off('group:invite', handleGroupInvite);
@@ -296,8 +333,13 @@ export function useGroupsList() {
       socket.off('group:memberJoined', handleMemberJoined);
       socket.off('group:memberLeft', handleMemberLeft);
       socket.off('group:updated', handleGroupUpdated);
+      socket.off('group:memberPromoted', handleMemberPromoted);
+      socket.off('group:memberDemoted', handleMemberDemoted);
+      socket.off('group:ownerChanged', handleOwnerChanged);
+      socket.off('group:ownershipTransferred', handleOwnershipTransferred);
+      socket.off('group:ownerSteppedDown', handleOwnerSteppedDown);
     };
-  }, [socket, fetchGroups]);
+  }, [socket]);
 
   // Notify BottomNav of total group unread + pending invites
   useEffect(() => {

@@ -49,12 +49,11 @@ jest.mock('@/hooks/useOpenUserProfile', () => ({
 const mockGroup = {
   id: 'g1',
   name: 'Test Group',
-  ownerId: 'owner-1',
   members: [
     {
       id: 'm1',
       userId: 'user-1',
-      role: 'admin',
+      role: 'owner',
       user: { id: 'user-1', username: 'testuser', displayName: 'Test User', profileImage: null },
     },
   ],

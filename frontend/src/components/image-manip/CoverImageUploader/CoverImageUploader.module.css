@@ -1,32 +1,60 @@
-@keyframes popIn {
-  from {
-    opacity: 0;
-    transform: translateX(0) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
 }
 
-@keyframes popOut {
-  from {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(0) scale(0.95);
-  }
+.coverSkeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  z-index: 0;
 }
 
-.menuEnter {
-  transform-origin: bottom right;
-  animation: popIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+.sheetActions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.menuExit {
-  transform-origin: bottom right;
-  animation: popOut 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+.sheetActionBtn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background 0.15s;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
 }
 
+.sheetActionBtn i {
+  width: 22px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.sheetActionBtn:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.sheetActionDanger {
+  color: #ef4444;
+}
+
+.sheetActionDanger i {
+  color: #ef4444;
+}
+
+.sheetActionDanger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
