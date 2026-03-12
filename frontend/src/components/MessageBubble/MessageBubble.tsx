@@ -378,7 +378,7 @@ function MessageContextMenu({
 
 const MAX_TEXT_HEIGHT = 300;
 
-function CollapsibleText({ isSent, children }: { isSent: boolean; children: React.ReactNode }) {
+function CollapsibleText({ isSent, isBot, isGuest, children }: { isSent: boolean; isBot?: boolean; isGuest?: boolean; children: React.ReactNode }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const clipRef = useRef<HTMLDivElement>(null);
   const [needsCollapse, setNeedsCollapse] = useState(false);
@@ -468,12 +468,12 @@ function CollapsibleText({ isSent, children }: { isSent: boolean; children: Reac
       >
         {children}
         {needsCollapse && !expanded && (
-          <div className={`${styles.messageTextFade} ${isSent ? styles.messageTextFadeSent : styles.messageTextFadeReceived}`} />
+          <div className={`${styles.messageTextFade} ${isSent ? styles.messageTextFadeSent : isBot ? styles.messageTextFadeBot : isGuest ? styles.messageTextFadeGuest : styles.messageTextFadeReceived}`} />
         )}
       </div>
       {needsCollapse && (
         <button
-          className={`${styles.readMoreBtn} ${isSent ? styles.readMoreBtnSent : styles.readMoreBtnReceived}`}
+          className={`${styles.readMoreBtn} ${isSent ? styles.readMoreBtnSent : isBot ? styles.readMoreBtnBot : isGuest ? styles.readMoreBtnGuest : styles.readMoreBtnReceived}`}
           onClick={toggle}
         >
           {expanded ? 'Show less ▲' : 'Read more ▼'}
@@ -947,7 +947,7 @@ export default function MessageBubble({
                     })()}
                     {/* Text — supports fenced code blocks */}
                     {(!msg.type || msg.type === 'text') && (
-                      <CollapsibleText isSent={isSent}>
+                      <CollapsibleText isSent={isSent} isBot={isBot} isGuest={isGuest}>
                         <div className={styles.messageTextWrapper}>
                           <div className={`${styles.messageText} ${isSent ? styles.messageTextSent : styles.messageTextReceived} ${messageTextSpacingClass}`}>
                             {parseCodeBlocks(msg.content).map((seg, si) =>

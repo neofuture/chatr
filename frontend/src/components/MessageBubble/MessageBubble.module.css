@@ -1097,6 +1097,18 @@
   background: linear-gradient(to bottom, transparent, var(--bubble-received));
 }
 
+.messageTextFadeBot {
+  background: linear-gradient(135deg, var(--bubble-bot-from), var(--bubble-bot-to));
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black);
+  mask-image: linear-gradient(to bottom, transparent, black);
+}
+
+.messageTextFadeGuest {
+  background: linear-gradient(135deg, var(--bubble-guest-from), var(--bubble-guest-to));
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black);
+  mask-image: linear-gradient(to bottom, transparent, black);
+}
+
 .readMoreBtn {
   display: block;
   margin: 6px auto 0;
@@ -1131,6 +1143,26 @@
 
 .readMoreBtnReceived:hover {
   background: rgba(59, 130, 246, 0.15);
+}
+
+.readMoreBtnBot {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--bubble-bot-from), var(--bubble-bot-to));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.readMoreBtnBot:hover {
+  filter: brightness(1.15);
+}
+
+.readMoreBtnGuest {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--bubble-guest-from), var(--bubble-guest-to));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.readMoreBtnGuest:hover {
+  filter: brightness(1.15);
 }
 
 .editedMarker {
