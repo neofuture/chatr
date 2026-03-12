@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { PresenceInfo } from '@/types/types';
 import type { ConversationUser } from '@/hooks/useConversationList';
 import type { GroupSummary, GroupInvite } from '@/hooks/useGroupsList';
@@ -8,6 +8,7 @@ import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
 import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
+import styles from './ConversationsList.module.css';
 
 function formatTime(date: Date): string {
   const now = new Date();
@@ -20,6 +21,12 @@ function formatTime(date: Date): string {
   if (diffDays < 7) return date.toLocaleDateString([], { weekday: 'short' });
   return date.toLocaleDateString([], { day: '2-digit', month: 'short' });
 }
+
+function previewContent(raw: string): string {
+  const stripped = raw.replace(/```/g, '').trim();
+  return stripped || 'Code block';
+}
+
 
 type Tab = 'chats' | 'requests' | 'search';
 
@@ -61,12 +68,26 @@ export default function ConversationsList({
   onDeclineGroupInvite,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('chats');
-  const [showPresence, setShowPresence] = useState(false);
+  const [flipPhase, setFlipPhase] = useState<0 | 1 | 2>(0); // 0=message, 1=AI summary, 2=presence
+  const prevFlipRef = useRef(0);
   const openUserProfile = useOpenUserProfile();
 
   useEffect(() => {
-    const id = setInterval(() => setShowPresence(prev => !prev), 5000);
-    return () => clearInterval(id);
+    const t = setTimeout(() => { prevFlipRef.current = flipPhase; }, 550);
+    return () => clearTimeout(t);
+  }, [flipPhase]);
+
+  useEffect(() => {
+    const durations = [4000, 6000, 4000];
+    let phase = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      phase = (phase + 1) % 3;
+      setFlipPhase(phase as 0 | 1 | 2);
+      timer = setTimeout(tick, durations[phase]);
+    };
+    timer = setTimeout(tick, durations[0]);
+    return () => clearTimeout(timer);
   }, []);
 
   const isSearching = search.trim().length > 0;
@@ -210,6 +231,7 @@ export default function ConversationsList({
                       flex: 1, padding: '6px 0', border: 'none', borderRadius: '7px', cursor: 'pointer',
                       background: '#22c55e', color: '#fff', fontSize: '12px', fontWeight: '600',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                      fontFamily: 'inherit',
                     }}>
                       <i className="fas fa-check" style={{ fontSize: '11px' }} /> Accept
                     </button>
@@ -220,6 +242,7 @@ export default function ConversationsList({
                       borderRadius: '7px',
                       color: isDark ? '#94a3b8' : '#64748b', fontSize: '12px', fontWeight: '600',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                      fontFamily: 'inherit',
                     }}>
                       <i className="fas fa-xmark" style={{ fontSize: '11px' }} /> Decline
                     </button>
@@ -229,93 +252,133 @@ export default function ConversationsList({
             </div>
           )}
 
-          {/* Groups */}
-          {!isSearching && !groupsLoading && groups.map(group => {
-            const isSelected = group.id === selectedGroupId;
-            const unread = group.unreadCount ?? 0;
-            const lastMsg = group.lastMessage;
-            const lastMsgTime = lastMsg ? new Date(lastMsg.createdAt) : null;
-            const memberCount = group.members.length;
-            return (
-              <button key={group.id} onClick={() => onSelectGroup(group)} style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '12px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
-                backgroundColor: unread > 0
-                  ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)')
-                  : 'transparent',
-                borderLeft: unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
-                transition: 'background-color 0.15s',
-              }}>
-                <PresenceAvatar
-                  displayName={group.name}
-                  profileImage={group.profileImage ?? null}
-                  info={{ status: 'offline', lastSeen: null }}
-                  size={50}
-                  showDot={false}
-                  isGroup
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.dispatchEvent(new CustomEvent('chatr:group-profile-open', { detail: { groupId: group.id } }));
-                  }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px' }}>
-                    <div style={{
-                      fontWeight: unread > 0 ? '700' : '600', fontSize: '14px',
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                    }}>
-                      {group.name}
-                      <span style={{
-                        fontSize: '9px', fontWeight: '700', color: 'var(--color-orange-500)',
-                        border: '1px solid var(--color-orange-500)',
-                        borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0,
-                      }}>Group</span>
-                    </div>
-                    {lastMsgTime && (
-                      <div style={{ fontSize: '11px', color: isDark ? '#f1f5f9' : '#0f172a', flexShrink: 0 }}>
-                        {formatTime(lastMsgTime)}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                    <div style={{
-                      flex: 1, minWidth: 0, fontSize: '12px',
-                      color: isDark ? '#94a3b8' : '#64748b',
-                      fontWeight: unread > 0 ? '500' : 'normal',
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>
-                      {lastMsg
-                        ? `${lastMsg.sender.displayName || lastMsg.sender.username.replace(/^@/, '')}: ${lastMsg.content}`
-                        : `${memberCount} member${memberCount !== 1 ? 's' : ''}`}
-                    </div>
-                    {unread > 0 && (
-                      <div style={{
-                        flexShrink: 0, minWidth: '20px', height: '20px', borderRadius: '10px',
-                        backgroundColor: '#ef4444', color: '#fff',
-                        fontSize: '11px', fontWeight: '700',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
-                      }}>{unread > 99 ? '99+' : unread}</div>
-                    )}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          {/* Merged & sorted conversations + groups */}
+          {(() => {
+            const mergedItems: Array<{ type: 'dm'; data: ConversationUser; sortTime: number } | { type: 'group'; data: GroupSummary; sortTime: number }> = [];
 
-          {/* DM conversations */}
-          {(loading || groupsLoading) && displayList.length === 0 && groups.length === 0 ? (
-            <div style={{ padding: '40px 16px', textAlign: 'center', opacity: 0.4 }}>
-              <div style={{ fontSize: '13px' }}>Loading...</div>
-            </div>
-          ) : displayList.length === 0 && groups.length === 0 ? (
-            <div style={{ padding: '40px 16px', textAlign: 'center', opacity: 0.4 }}>
-              <div style={{ fontSize: '28px', marginBottom: '8px' }}>{isSearching ? '🔍' : '💬'}</div>
-              <div style={{ fontSize: '13px' }}>{isSearching ? 'No matching conversations' : 'No conversations yet'}</div>
-            </div>
-          ) : (
-            displayList.map(user => {
+            if (!isSearching && !groupsLoading) {
+              for (const g of groups) {
+                const t = g.lastMessage ? new Date(g.lastMessage.createdAt).getTime() : 0;
+                mergedItems.push({ type: 'group', data: g, sortTime: t });
+              }
+            }
+            for (const u of displayList) {
+              const t = u.lastMessageAt ? new Date(u.lastMessageAt).getTime() : 0;
+              mergedItems.push({ type: 'dm', data: u, sortTime: t });
+            }
+
+            mergedItems.sort((a, b) => b.sortTime - a.sortTime);
+
+            if ((loading || groupsLoading) && mergedItems.length === 0) {
+              return (
+                <div style={{ padding: '40px 16px', textAlign: 'center', opacity: 0.4 }}>
+                  <div style={{ fontSize: '13px' }}>Loading...</div>
+                </div>
+              );
+            }
+            if (mergedItems.length === 0) {
+              return (
+                <div style={{ padding: '40px 16px', textAlign: 'center', opacity: 0.4 }}>
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>{isSearching ? '🔍' : '💬'}</div>
+                  <div style={{ fontSize: '13px' }}>{isSearching ? 'No matching conversations' : 'No conversations yet'}</div>
+                </div>
+              );
+            }
+
+            return mergedItems.map(item => {
+              if (item.type === 'group') {
+                const group = item.data;
+                const unread = group.unreadCount ?? 0;
+                const lastMsg = group.lastMessage;
+                const lastMsgTime = lastMsg ? new Date(lastMsg.createdAt) : null;
+                const memberCount = group.members.length;
+                return (
+                  <button key={`g-${group.id}`} onClick={() => onSelectGroup(group)} style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '12px 16px', border: 'none', cursor: 'pointer', textAlign: 'left',
+                    backgroundColor: unread > 0
+                      ? (isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.04)')
+                      : 'transparent',
+                    borderLeft: unread > 0 ? '3px solid #ef4444' : '3px solid transparent',
+                    transition: 'background-color 0.15s',
+                    fontFamily: 'inherit',
+                  }}>
+                    <PresenceAvatar
+                      displayName={group.name}
+                      profileImage={group.profileImage ?? null}
+                      info={{ status: 'offline', lastSeen: null }}
+                      size={50}
+                      showDot={false}
+                      isGroup
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent('chatr:group-profile-open', { detail: { groupId: group.id } }));
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px' }}>
+                        <div style={{
+                          fontWeight: unread > 0 ? '700' : '600', fontSize: '14px',
+                          color: isDark ? '#f1f5f9' : '#0f172a',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {group.name}
+                        </div>
+                        {lastMsgTime && (
+                          <div style={{ fontSize: '11px', color: isDark ? '#f1f5f9' : '#0f172a', flexShrink: 0 }}>
+                            {formatTime(lastMsgTime)}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                        {(() => {
+                          const gHas = !!group.summary;
+                          const gE = gHas ? (flipPhase === 1 ? 1 : 0) : 0;
+                          const gP = gHas ? (prevFlipRef.current === 1 ? 1 : 0) : 0;
+                          const gChanged = gE !== gP;
+                          const gb: React.CSSProperties = { position: 'absolute', left: 0, right: 0, pointerEvents: 'none' };
+                          const gMsgText = lastMsg
+                            ? `${lastMsg.sender.displayName || lastMsg.sender.username.replace(/^@/, '')}: ${previewContent(lastMsg.content)}`
+                            : `${memberCount} member${memberCount !== 1 ? 's' : ''}`;
+                          const gc = (s: number) => s === gE && gChanged ? styles.flipIn : s === gP && gChanged ? styles.flipOut : '';
+                          const gv = (s: number): React.CSSProperties => s === gE && !gChanged ? { transform: 'translateY(0)', opacity: 1 } : { transform: 'translateY(100%)', opacity: 0 };
+
+                          return (
+                            <div style={{ flex: 1, minWidth: 0, position: 'relative', height: '16px', overflow: 'hidden' }}>
+                              <div className={gc(0)} style={{ ...gb, ...gv(0), fontSize: '12px', color: isDark ? '#94a3b8' : '#64748b', fontWeight: unread > 0 ? '500' : 'normal', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '16px' }}>
+                                {gMsgText}
+                              </div>
+                              {gHas && (
+                                <div className={gc(1)} style={{ ...gb, ...gv(1), fontSize: '11px', color: isDark ? '#a78bfa' : '#7c3aed', display: 'flex', alignItems: 'flex-start', gap: '4px', lineHeight: '1.3' }}>
+                                  <i className={`fas fa-sparkles ${styles.sparkleIcon}`} />
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{group.summary}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '9px', fontWeight: '700', color: 'var(--color-orange-500)',
+                            border: '1px solid var(--color-orange-500)',
+                            borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2',
+                          }}>Group</span>
+                          {unread > 0 && (
+                            <div style={{
+                              minWidth: '20px', height: '20px', borderRadius: '10px',
+                              backgroundColor: '#ef4444', color: '#fff',
+                              fontSize: '11px', fontWeight: '700',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
+                            }}>{unread > 99 ? '99+' : unread}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              }
+
+              const user = item.data;
               const isSelected = user.id === selectedUserId;
               const unread = user.unreadCount ?? 0;
               const displayName = user.displayName || user.username.replace(/^@/, '');
@@ -328,8 +391,18 @@ export default function ConversationsList({
                 ? { status: 'offline', lastSeen: null, hidden: true }
                 : (userPresence[user.id] ?? { status: 'offline', lastSeen: null });
               const isHidden = !!info.hidden;
+              const hasSummary = !!user.summary;
               const canFlip = !!lastMsg && !isHidden && !user.isBot;
               const isGuest = user.isGuest ?? false;
+
+              // Effective phase: items without summary skip phase 1 → jump to presence
+              let ePhase = flipPhase;
+              if (!canFlip) ePhase = 0;
+              else if (!hasSummary && ePhase === 1) ePhase = 2;
+              let ePrev = prevFlipRef.current;
+              if (!canFlip) ePrev = 0;
+              else if (!hasSummary && ePrev === 1) ePrev = 2;
+              const phaseChanged = ePhase !== ePrev;
 
               return (
                 <button key={user.id} onClick={() => onSelectUser(user.id)} style={{
@@ -360,17 +433,7 @@ export default function ConversationsList({
                         display: 'flex', alignItems: 'center', gap: '5px',
                       }}>
                         {displayName}
-                        {user.isBot ? (
-                          <span style={{ fontSize: '9px', fontWeight: '700', color: '#0891b2', border: '1px solid #0891b2', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>AI</span>
-                        ) : isGuest ? (
-                          <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--guest-color-from, #16a34a)', border: '1px solid var(--guest-color-from, #16a34a)', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>Guest</span>
-                        ) : user.blockedByMe ? (
-                          <span style={{ fontSize: '9px', fontWeight: '600', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>Blocked</span>
-                        ) : user.isFriend ? (
-                          <span style={{ fontSize: '9px', fontWeight: '600', color: '#22c55e', border: '1px solid #22c55e', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>Friend</span>
-                        ) : null}
                         {isIncomingRequest && <i className="fas fa-inbox" title="Message request" style={{ fontSize: '10px', color: '#f59e0b', flexShrink: 0 }} />}
-                        {isOutgoingPending && <span style={{ fontSize: '9px', fontWeight: '600', color: isDark ? '#94a3b8' : '#64748b', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2', flexShrink: 0 }}>Pending</span>}
                       </div>
                       {lastMsgTime && (
                         <div style={{ fontSize: '11px', color: isDark ? '#f1f5f9' : '#0f172a', flexShrink: 0 }}>
@@ -379,45 +442,59 @@ export default function ConversationsList({
                       )}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                      <div style={{ flex: 1, minWidth: 0, position: 'relative', height: '16px', overflow: 'hidden' }}>
-                        <div style={{
-                          position: 'absolute', inset: 0, fontSize: '12px',
-                          color: user.isBot ? (isDark ? '#22d3ee' : '#0891b2') : isGuest ? 'var(--guest-color-from, #16a34a)' : (isDark ? '#94a3b8' : '#64748b'),
-                          fontWeight: unread > 0 ? '500' : 'normal',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                          opacity: (canFlip && showPresence) ? 0 : 1,
-                          transition: 'opacity 0.4s ease', pointerEvents: 'none',
-                        }}>
-                          {lastMsg
-                            ? `${lastMsg.senderId === currentUserId ? 'You: ' : ''}${lastMsg.content}`
-                            : user.isBot ? 'Your AI assistant Luna — say hello! 👋' : ''}
-                        </div>
-                        {!isHidden && !user.isBot && (
-                          <div style={{
-                            position: 'absolute', inset: 0, fontSize: '12px',
-                            color: isDark ? '#94a3b8' : '#64748b',
-                            opacity: (!lastMsg || showPresence) ? 1 : 0,
-                            transition: 'opacity 0.4s ease', pointerEvents: 'none',
-                            display: 'flex', alignItems: 'center',
-                          }}>
-                            <PresenceLabel info={info} showDot={false} />
+                      {(() => {
+                        const msgColor = user.isBot ? (isDark ? '#22d3ee' : '#0891b2') : isGuest ? 'var(--guest-color-from, #16a34a)' : (isDark ? '#94a3b8' : '#64748b');
+                        const msgText = lastMsg
+                          ? `${lastMsg.senderId === currentUserId ? 'You: ' : ''}${previewContent(lastMsg.content)}`
+                          : user.isBot ? 'Your AI assistant Luna — say hello! 👋' : '';
+                        const b: React.CSSProperties = { position: 'absolute', left: 0, right: 0, pointerEvents: 'none' };
+                        const ac = (s: number) => s === ePhase && phaseChanged ? styles.flipIn : s === ePrev && phaseChanged ? styles.flipOut : '';
+                        const av = (s: number): React.CSSProperties => s === ePhase && !phaseChanged ? { transform: 'translateY(0)', opacity: 1 } : { transform: 'translateY(100%)', opacity: 0 };
+
+                        return (
+                          <div style={{ flex: 1, minWidth: 0, position: 'relative', height: '16px', overflow: 'hidden' }}>
+                            <div className={ac(0)} style={{ ...b, ...av(0), fontSize: '12px', color: msgColor, fontWeight: unread > 0 ? '500' : 'normal', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '16px' }}>
+                              {msgText}
+                            </div>
+                            {hasSummary && (
+                              <div className={ac(1)} style={{ ...b, ...av(1), fontSize: '11px', color: isDark ? '#a78bfa' : '#7c3aed', display: 'flex', alignItems: 'flex-start', gap: '4px', lineHeight: '1.3' }}>
+                                <i className={`fas fa-sparkles ${styles.sparkleIcon}`} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{user.summary}</span>
+                              </div>
+                            )}
+                            <div className={ac(2)} style={{ ...b, ...av(2), fontSize: '12px', color: isDark ? '#94a3b8' : '#64748b', display: 'flex', alignItems: 'center' }}>
+                              <PresenceLabel info={info} showDot={false} />
+                            </div>
                           </div>
+                        );
+                      })()}
+                      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {user.isBot ? (
+                          <span style={{ fontSize: '9px', fontWeight: '700', color: '#0891b2', border: '1px solid #0891b2', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2' }}>AI</span>
+                        ) : isGuest ? (
+                          <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--guest-color-from, #16a34a)', border: '1px solid var(--guest-color-from, #16a34a)', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2' }}>Guest</span>
+                        ) : user.blockedByMe ? (
+                          <span style={{ fontSize: '9px', fontWeight: '600', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2' }}>Blocked</span>
+                        ) : user.isFriend ? (
+                          <span style={{ fontSize: '9px', fontWeight: '600', color: '#22c55e', border: '1px solid #22c55e', borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2' }}>Friend</span>
+                        ) : isOutgoingPending ? (
+                          <span style={{ fontSize: '9px', fontWeight: '600', color: isDark ? '#94a3b8' : '#64748b', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: '4px', padding: '1px 4px', lineHeight: '1.2' }}>Pending</span>
+                        ) : null}
+                        {unread > 0 && (
+                          <div style={{
+                            minWidth: '20px', height: '20px', borderRadius: '10px',
+                            backgroundColor: '#ef4444', color: '#fff',
+                            fontSize: '11px', fontWeight: '700',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
+                          }}>{unread > 99 ? '99+' : unread}</div>
                         )}
                       </div>
-                      {unread > 0 && (
-                        <div style={{
-                          flexShrink: 0, minWidth: '20px', height: '20px', borderRadius: '10px',
-                          backgroundColor: '#ef4444', color: '#fff',
-                          fontSize: '11px', fontWeight: '700',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px',
-                        }}>{unread > 99 ? '99+' : unread}</div>
-                      )}
                     </div>
                   </div>
                 </button>
               );
-            })
-          )}
+            });
+          })()}
         </div>
       )}
 
@@ -464,7 +541,7 @@ export default function ConversationsList({
                       {lastMsgTime && <div style={{ fontSize: '11px', color: isDark ? '#f1f5f9' : '#0f172a', flexShrink: 0 }}>{formatTime(lastMsgTime)}</div>}
                     </div>
                     <div style={{ fontSize: '12px', color: isDark ? '#94a3b8' : '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '2px' }}>
-                      {lastMsg ? lastMsg.content : ''}
+                      {lastMsg ? previewContent(lastMsg.content) : ''}
                     </div>
                   </div>
                   {unread > 0 && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useLog } from '@/contexts/LogContext';
 import { clearCachedConversation } from '@/lib/messageCache';
@@ -33,6 +33,7 @@ export interface ConversationUser {
   blockedByMe?: boolean;
   isBot?: boolean;
   isGuest?: boolean;
+  summary?: string | null;
   // set by socket events
   isOnline?: boolean;
   // set by search results
@@ -57,7 +58,8 @@ export function useConversationList() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   // ── Fetch conversations ──────────────────────────────────────────────────
-  const fetchConversations = useCallback(async (background = false) => {
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const fetchConversations = useCallback(async (background = false, retries = 2) => {
     try {
       if (!background) setLoading(true);
       const res = await fetch(`${getApiBase()}/api/users/conversations`, {
@@ -69,6 +71,10 @@ export function useConversationList() {
       setError(null);
       addLog('info', 'conversations:loaded', { count: (data.conversations ?? []).length });
     } catch (e: any) {
+      if (retries > 0) {
+        retryTimer.current = setTimeout(() => fetchConversations(true, retries - 1), 1500);
+        return;
+      }
       setError(e.message);
       addLog('error', 'conversations:load-failed', { error: e.message });
     } finally {
@@ -76,7 +82,10 @@ export function useConversationList() {
     }
   }, [addLog]);
 
-  useEffect(() => { fetchConversations(); }, [fetchConversations]);
+  useEffect(() => {
+    fetchConversations();
+    return () => clearTimeout(retryTimer.current);
+  }, [fetchConversations]);
 
   // Re-fetch when local block/unblock happens (fired by FriendsContext).
   // Apply optimistic update immediately, then confirm with server after a short

@@ -1,0 +1,38 @@
+/* AI summary sparkle icon animation */
+.sparkleIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 9px;
+  margin-top: 2px;
+  opacity: 0.8;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+/* Ticker wheel animations */
+.flipIn {
+  animation: flipIn 0.5s ease forwards;
+}
+
+.flipOut {
+  animation: flipOut 0.5s ease forwards;
+}
+
+@keyframes flipIn {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes flipOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-100%); }
+}
+
+@keyframes sparkle {
+  0%   { opacity: 0.6; transform: scale(1); color: #8b5cf6; }
+  25%  { opacity: 1;   transform: scale(1.1); color: #ef4444; }
+  50%  { opacity: 0.8; transform: scale(1); color: #22c55e; }
+  75%  { opacity: 1;   transform: scale(1.1); color: #3b82f6; }
+  100% { opacity: 0.6; transform: scale(1); color: #8b5cf6; }
+}

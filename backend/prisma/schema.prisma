@@ -159,6 +159,11 @@ model Group {
   members       GroupMember[]
   messages      GroupMessage[]
 
+  // AI-generated conversation summary
+  summary             String?
+  summaryMessageCount Int?
+  summaryGeneratedAt  DateTime?
+
   @@index([ownerId])
 }
 
@@ -186,6 +191,11 @@ model Conversation {
   status       String   @default("pending") // "pending" | "accepted"
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // AI-generated conversation summary
+  summary             String?
+  summaryMessageCount Int?
+  summaryGeneratedAt  DateTime?
 
   userA User @relation("ConversationUserA", fields: [participantA], references: [id], onDelete: Cascade)
   userB User @relation("ConversationUserB", fields: [participantB], references: [id], onDelete: Cascade)

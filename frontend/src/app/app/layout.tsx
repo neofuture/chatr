@@ -18,6 +18,13 @@ export default function AppLayout({
     title = "Friends";
   } else if (pathname === "/app/groups") {
     title = "Groups";
+    headerAction = {
+      icon: "fad fa-users",
+      badge: "+",
+      title: "Create new group",
+      color: "#ffffff",
+      onClick: () => window.dispatchEvent(new CustomEvent('chatr:new-group')),
+    };
   } else if (pathname === "/app/updates") {
     title = "Updates";
   } else if (pathname === "/app/test") {

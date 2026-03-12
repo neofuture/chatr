@@ -70,7 +70,9 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
     ? document.documentElement.getAttribute('data-theme') !== 'light'
     : true;
 
-  const fetchGroup = useCallback(async () => {
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const fetchGroup = useCallback(async (retries = 2) => {
     try {
       const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API}/api/groups/${groupId}`, {
@@ -79,14 +81,21 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setGroup(data.group);
-    } catch {
+    } catch (e: any) {
+      if (retries > 0) {
+        retryTimer.current = setTimeout(() => fetchGroup(retries - 1), 1500);
+        return;
+      }
       setError(true);
     } finally {
       setLoading(false);
     }
   }, [groupId]);
 
-  useEffect(() => { fetchGroup(); }, [fetchGroup]);
+  useEffect(() => {
+    fetchGroup();
+    return () => clearTimeout(retryTimer.current);
+  }, [fetchGroup]);
 
   // Close menus on click outside
   useEffect(() => {
@@ -251,6 +260,8 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
       }
       const data = await res.json();
       setGroup(prev => prev ? { ...prev, profileImage: data.url } : prev);
+      updatePanelMeta(`group-profile-${groupId}`, { profileImage: data.url });
+      updatePanelMeta(`group-${groupId}`, { profileImage: data.url });
       showToast('Group avatar updated', 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to upload group avatar', 'error');
@@ -269,6 +280,8 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft 
         headers: { Authorization: `Bearer ${token}` },
       });
       setGroup(prev => prev ? { ...prev, profileImage: null } : prev);
+      updatePanelMeta(`group-profile-${groupId}`, { profileImage: null });
+      updatePanelMeta(`group-${groupId}`, { profileImage: null });
       showToast('Group avatar removed', 'success');
     } catch {
       showToast('Failed to remove group avatar', 'error');

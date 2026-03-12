@@ -6,6 +6,7 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
 import { Server } from 'socket.io';
 import { generatePlaceholderWaveform, generateWaveformFromFile } from '../services/waveform';
+import { maybeRegenerateGroupSummary } from '../services/summaryEngine';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const router = Router();
@@ -172,10 +173,15 @@ router.get('/', authenticateToken as any, async (req: any, res: Response) => {
       orderBy: { joinedAt: 'desc' },
     });
 
-    const groups = memberships.map(m => ({
-      ...m.group,
-      lastMessage: m.group.messages[0] ?? null,
-    }));
+    const groups = memberships.map(m => {
+      // Fire-and-forget: regenerate AI summary if threshold met
+      maybeRegenerateGroupSummary(m.group.id).catch(() => {});
+      return {
+        ...m.group,
+        lastMessage: m.group.messages[0] ?? null,
+        summary: m.group.summary ?? null,
+      };
+    });
 
     res.json({ groups });
   } catch (e) {

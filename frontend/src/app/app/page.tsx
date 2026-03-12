@@ -321,7 +321,7 @@ export default function AppPage() {
     );
   }, [conversations, clearUnread, openPanel, isDark, refresh, buildActionIcons]);
 
-  /** Build action icons for a group panel — members button always opens the sheet */
+  /** Build action icons for a group panel */
   const buildGroupActionIcons = useCallback((groupId: string, memberCount: number): ActionIcon[] => {
     return [{
       icon: 'fas fa-users',
@@ -422,21 +422,21 @@ export default function AppPage() {
     );
   }, [openPanel, closePanel, groups, currentUserId, refreshGroups]);
 
-  // Listen for compose events (header + button in ConversationsList)
+  // Listen for compose events
   useEffect(() => {
     const handler = () => openNewChatPanel();
     window.addEventListener('chatr:compose', handler);
     return () => window.removeEventListener('chatr:compose', handler);
   }, [openNewChatPanel]);
 
-  // Listen for new-group events (button in groups tab of ConversationsList)
+  // Listen for new-group events
   useEffect(() => {
     const handler = () => openNewGroupPanel();
     window.addEventListener('chatr:new-group', handler);
     return () => window.removeEventListener('chatr:new-group', handler);
   }, [openNewGroupPanel]);
 
-  // Listen for group profile open events (from clicking group header title)
+  // Listen for group profile open events
   useEffect(() => {
     const handler = (e: Event) => {
       const { groupId } = (e as CustomEvent).detail;
@@ -446,7 +446,7 @@ export default function AppPage() {
     return () => window.removeEventListener('chatr:group-profile-open', handler);
   }, [openGroupProfilePanel]);
 
-  // Listen for user profile open events (from clicking chat header title)
+  // Listen for user profile open events
   const openUserProfile = useOpenUserProfile();
   useEffect(() => {
     const handler = (e: Event) => {

@@ -22,6 +22,39 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface SummaryMessage {
+  sender: string;
+  content: string;
+}
+
+const SUMMARY_PROMPT = `You are a conversation summariser. Given the recent messages from a chat, produce a concise 1-2 sentence summary (max 120 characters) that captures the key topic or mood. Do NOT use names. Use present tense. Do NOT include quotation marks. Examples: "Planning a weekend trip to the coast", "Debugging a React state issue together", "Catching up after the holidays".`;
+
+export async function generateConversationSummary(
+  messages: SummaryMessage[],
+): Promise<string> {
+  try {
+    const client = getClient();
+    const transcript = messages
+      .map(m => `${m.sender}: ${m.content}`)
+      .join('\n');
+
+    const completion = await client.chat.completions.create({
+      model: OPENAI_MODEL,
+      messages: [
+        { role: 'system', content: SUMMARY_PROMPT },
+        { role: 'user', content: transcript },
+      ],
+      max_tokens: 100,
+      temperature: 0.3,
+    });
+
+    return completion.choices[0]?.message?.content?.trim() ?? '';
+  } catch (error) {
+    console.error('❌ OpenAI summary error:', error);
+    return '';
+  }
+}
+
 export async function generateAIReply(
   history: ChatMessage[],
   userMessage: string,

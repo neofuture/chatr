@@ -26,6 +26,7 @@ export interface GroupSummary {
     sender: { displayName: string | null; username: string };
   } | null;
   unreadCount?: number;
+  summary?: string | null;
 }
 
 export interface GroupInvite {
@@ -44,7 +45,9 @@ export function useGroupsList() {
   const { socket } = useWebSocket();
   const unreadRef = useRef<Record<string, number>>({});
 
-  const fetchGroups = useCallback(async () => {
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const fetchGroups = useCallback(async (retries = 2) => {
     try {
       const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API}/api/groups`, {
@@ -56,14 +59,18 @@ export function useGroupsList() {
         ...g,
         unreadCount: unreadRef.current[g.id] ?? 0,
       })));
-    } catch (e) {
+    } catch (e: any) {
+      if (retries > 0) {
+        retryTimer.current = setTimeout(() => fetchGroups(retries - 1), 1500);
+        return;
+      }
       console.error('useGroupsList fetch error:', e);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const fetchInvites = useCallback(async () => {
+  const fetchInvites = useCallback(async (retries = 2) => {
     try {
       const token = localStorage.getItem('token') || '';
       const res = await fetch(`${API}/api/groups/invites`, {
@@ -72,7 +79,11 @@ export function useGroupsList() {
       if (!res.ok) return;
       const data = await res.json();
       setInvites(data.invites ?? []);
-    } catch (e) {
+    } catch (e: any) {
+      if (retries > 0) {
+        setTimeout(() => fetchInvites(retries - 1), 1500);
+        return;
+      }
       console.error('useGroupsList fetchInvites error:', e);
     }
   }, []);
@@ -80,6 +91,7 @@ export function useGroupsList() {
   useEffect(() => {
     fetchGroups();
     fetchInvites();
+    return () => clearTimeout(retryTimer.current);
   }, [fetchGroups, fetchInvites]);
 
   // Accept a group invite

@@ -7,6 +7,7 @@ import { authenticateToken } from '../middleware/auth';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getCachedConversations, setCachedConversations, invalidateConversationCache } from '../lib/redis';
 import { getConnectedUserIds } from '../lib/conversation';
+import { maybeRegenerateDMSummary } from '../services/summaryEngine';
 import { Server } from 'socket.io';
 
 const router = Router();
@@ -327,6 +328,11 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
 
         const convo = convoMap.get(user.id);
 
+        // Fire-and-forget: regenerate AI summary if threshold met
+        if (convo) {
+          maybeRegenerateDMSummary(convo.id, currentUserId, user.id).catch(() => {});
+        }
+
         return {
           ...user,
           lastMessage: lastMessage ?? null,
@@ -339,6 +345,7 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
           friendshipId: friendshipIdMap.get(user.id) ?? null,
           isBlocked: blockedByMeIds.has(user.id) || blockedMeIds.has(user.id),
           blockedByMe: blockedByMeIds.has(user.id),
+          summary: convo?.summary ?? null,
         };
       })
     );
@@ -383,6 +390,7 @@ router.get('/conversations', authenticateToken as any, async (req: any, res: any
             friendshipId: null,
             isBlocked: false,
             blockedByMe: false,
+            summary: null,
           };
           conversations = [botEntry as unknown as typeof withMessages[0], ...withMessages];
         }
