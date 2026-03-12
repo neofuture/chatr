@@ -1,5 +1,3 @@
-import * as fs from 'fs';
-
 const WAVEFORM_BARS = 100;
 
 /**
@@ -20,7 +18,8 @@ export function generatePlaceholderWaveform(seed: string = ''): number[] {
  */
 export async function getAudioDuration(filePath: string): Promise<number> {
   try {
-    const mm = await import('music-metadata');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mm = require('music-metadata') as { parseFile: (path: string) => Promise<{ format: { duration?: number } }> };
     const metadata = await mm.parseFile(filePath);
     return metadata.format.duration || 0;
   } catch (e) {
