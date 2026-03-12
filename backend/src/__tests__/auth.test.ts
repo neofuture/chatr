@@ -259,7 +259,7 @@ describe('Auth Routes', () => {
     };
 
     it('should initiate login verification with valid credentials', async () => {
-      const hashedPassword = await bcrypt.hash(loginCredentials.password, 10);
+      const hashedPassword = await bcrypt.hash(loginCredentials.password, 1);
 
       // Mock user exists
       (prisma.user.findUnique as jest.Mock).mockResolvedValue({
@@ -323,7 +323,7 @@ describe('Auth Routes', () => {
     });
 
     it('should reject login with incorrect password', async () => {
-      const hashedPassword = await bcrypt.hash('DifferentPassword123!', 10);
+      const hashedPassword = await bcrypt.hash('DifferentPassword123!', 1);
 
       (prisma.user.findUnique as jest.Mock).mockResolvedValue({
         id: '1',
@@ -341,7 +341,7 @@ describe('Auth Routes', () => {
     });
 
     it('should complete login with valid verification code', async () => {
-      const hashedPassword = await bcrypt.hash(loginCredentials.password, 10);
+      const hashedPassword = await bcrypt.hash(loginCredentials.password, 1);
       const verificationCode = '123456';
       const futureDate = new Date(Date.now() + 15 * 60 * 1000);
 
@@ -376,7 +376,7 @@ describe('Auth Routes', () => {
     });
 
     it('should reject login with expired verification code', async () => {
-      const hashedPassword = await bcrypt.hash(loginCredentials.password, 10);
+      const hashedPassword = await bcrypt.hash(loginCredentials.password, 1);
       const verificationCode = '123456';
       const pastDate = new Date(Date.now() - 1000); // Expired
 
@@ -403,7 +403,7 @@ describe('Auth Routes', () => {
     });
 
     it('should reject login with invalid verification code', async () => {
-      const hashedPassword = await bcrypt.hash(loginCredentials.password, 10);
+      const hashedPassword = await bcrypt.hash(loginCredentials.password, 1);
       const correctCode = '123456';
       const wrongCode = '654321';
       const futureDate = new Date(Date.now() + 15 * 60 * 1000);
