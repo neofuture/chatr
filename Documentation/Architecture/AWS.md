@@ -84,11 +84,20 @@ proxy_read_timeout 86400;
 
 ### PM2 Processes
 
-| Name | Script | Port | Logs |
-|------|--------|------|------|
-| `chatr-frontend` | `next start` | `3000` | `/var/log/chatr/frontend-out.log` |
-| `chatr-backend` | `node dist/index.js` | `3001` | `/var/log/chatr/backend-out.log` |
-| `chatr-prisma` | `prisma studio` | `5555` | `/var/log/chatr/prisma-out.log` |
+Managed via `ecosystem.config.cjs` in the project root. The backend runs in **cluster mode** to use all available CPU cores:
+
+```bash
+pm2 start ecosystem.config.cjs    # start all
+pm2 restart ecosystem.config.cjs  # restart all
+pm2 reload chatr-backend           # zero-downtime reload
+```
+
+| Name | Script | Mode | Instances | Port | Logs |
+|------|--------|------|-----------|------|------|
+| `chatr-backend` | `node dist/index.js` | cluster | `max` (= vCPUs) | `3001` | `/var/log/chatr/backend-out.log` |
+| `chatr-frontend` | `next start` | fork | 1 | `3000` | `/var/log/chatr/frontend-out.log` |
+
+> **Why cluster mode for the backend?** Socket.io + the Redis adapter already handles sticky sessions across processes. Each cluster worker gets its own Prisma connection pool, multiplying throughput. On a t3.small (2 vCPU) you get 2 workers × 20 connections = 40 DB connections and double the request handling capacity.
 
 ### Security Group Ports
 
@@ -113,6 +122,27 @@ proxy_read_timeout 86400;
 | Database | `chatr` |
 | User | `chatr_user` |
 | Access | VPC private only — EC2 security group |
+
+### Connection Pool Sizing
+
+The backend uses a Prisma singleton (`src/lib/prisma.ts`) that appends `connection_limit` and `pool_timeout` to the `DATABASE_URL` at startup. These are controlled by env vars:
+
+| Env Var | Default | Purpose |
+|---------|---------|---------|
+| `DATABASE_POOL_SIZE` | `20` | Connections per Node.js process |
+| `DATABASE_POOL_TIMEOUT` | `10` | Seconds to wait for a free connection |
+
+With PM2 cluster mode, total connections = `instances × pool size`. RDS default `max_connections` varies by instance class:
+
+| RDS Instance | RAM | Default max_connections | Recommended pool per process |
+|-------------|-----|------------------------|------------------------------|
+| db.t3.micro | 1 GB | ~87 | 20 (2 processes = 40) |
+| db.t3.small | 2 GB | ~174 | 20 (2 processes = 40) |
+| db.t3.medium | 4 GB | ~341 | 25 (2 processes = 50) |
+
+> **To change `max_connections` on RDS:** Create a custom Parameter Group in the AWS console (RDS → Parameter groups → Create), set `max_connections` to your desired value, then modify your RDS instance to use the new parameter group. Requires a reboot.
+
+> **Rule of thumb:** Keep total Prisma connections at ~50% of `max_connections` to leave headroom for Prisma Studio, migrations, and monitoring.
 
 ---
 

@@ -29,14 +29,9 @@ export default function FriendsPage() {
         label: 'Add friend',
         onClick: async () => {
           try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`${API}/api/friends/request`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ addresseeId: userId }),
-            });
-            if (res.ok) {
-              const data = await res.json();
+            const { socketFirst } = await import('@/lib/socketRPC');
+            const data = await socketFirst(socket, 'friends:request', { addresseeId: userId }, 'POST', '/api/friends/request', { addresseeId: userId }) as any;
+            if (data?.friendship) {
               socket?.emit('friend:notify', {
                 type: 'request',
                 addresseeId: userId,
@@ -44,8 +39,7 @@ export default function FriendsPage() {
               });
               showToast('Friend request sent', 'success');
             } else {
-              const err = await res.json();
-              showToast(err.message || 'Could not send request', 'error');
+              showToast(data?.error || 'Could not send request', 'error');
             }
           } catch {
             showToast('Failed to send friend request', 'error');

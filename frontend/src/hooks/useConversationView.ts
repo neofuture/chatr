@@ -124,8 +124,14 @@ export function useConversationView({ recipientId, currentUserId, onConversation
 
   // ── Unsend ────────────────────────────────────────────
   const handleUnsend = useCallback((messageId: string) => {
+    // Pending messages (temp-* IDs) never reached the server — just remove locally
+    if (messageId.startsWith('temp-')) {
+      dequeue(messageId).catch(console.error);
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      return;
+    }
+
     if (!socket || !connected) return;
-    // Backend expects messageId as a plain string, not an object
     socket.emit('message:unsend', messageId);
     // Optimistically mark as unsent (renders placeholder bubble, matches history API)
     setMessages(prev => prev.map(m =>

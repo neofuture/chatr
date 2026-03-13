@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/contexts/ToastContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import {
   saveCoverImageLocally,
   uploadCoverImageToServer,
@@ -28,6 +29,7 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
   const [imageLoaded, setImageLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+  const { socket } = useWebSocket();
 
   useEffect(() => {
     loadCoverImage();
@@ -61,24 +63,14 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
         }
       } catch {}
 
-      // 3. Fetch from server directly as last resort
-      console.log('[CoverImg] Fetching /api/users/me...');
-      const token = localStorage.getItem('token');
-      if (token) {
-        const res = await fetch(`${API}/api/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('[CoverImg] API response:', res.status);
-        if (res.ok) {
-          const data = await res.json();
-          console.log('[CoverImg] Server coverImage:', data.coverImage || 'NULL');
-          if (data.coverImage) {
-            const src = data.coverImage.startsWith('/') ? `${API}${data.coverImage}` : data.coverImage;
-            console.log('[CoverImg] Setting URL:', src);
-            setImageLoaded(false);
-            setImageUrl(src);
-          }
-        }
+      // 3. Fetch from server via socket (REST fallback)
+      console.log('[CoverImg] Fetching via socket/REST...');
+      const { socketFirst } = await import('@/lib/socketRPC');
+      const data = await socketFirst(socket, 'users:me', {}, 'GET', '/api/users/me') as any;
+      if (data?.coverImage) {
+        const src = data.coverImage.startsWith('/') ? `${API}${data.coverImage}` : data.coverImage;
+        setImageLoaded(false);
+        setImageUrl(src);
       }
     } catch (error) {
       console.error('[CoverImg] Failed:', error);

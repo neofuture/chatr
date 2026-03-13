@@ -141,14 +141,10 @@ export default function ConversationView({
     let cancelled = false;
     (async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${API}/api/friends/${recipientId}/block-status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok || cancelled) return;
-        const data = await res.json();
-        // Only update UI state if WE are the blocker — never reveal to user that they are blocked
-        if (data.blocked && data.blockedByMe && !cancelled) {
+        const { socketFirst } = await import('@/lib/socketRPC');
+        const data = await socketFirst(socket, 'friends:block-status', { targetUserId: recipientId }, 'GET', `/api/friends/${recipientId}/block-status`) as any;
+        if (cancelled || !data) return;
+        if (data.blocked && data.blockedByMe) {
           setBlocked(true);
           setIBlockedThem(true);
           setBlockedReason('You have blocked this user');
@@ -156,7 +152,7 @@ export default function ConversationView({
       } catch { /* network error — fail silently */ }
     })();
     return () => { cancelled = true; };
-  }, [recipientId]);
+  }, [recipientId, socket]);
 
   // Listen for block rejection when trying to send
   useEffect(() => {
@@ -177,19 +173,15 @@ export default function ConversationView({
     if (!localConvoId) return;
     setAccepting(true);
     try {
-      const token = localStorage.getItem('token');
-      // If we blocked them, unblock first so the conversation can proceed
       if (iBlockedThem) {
         await unblockUser(recipientId);
         setBlocked(false);
         setIBlockedThem(false);
         setBlockedReason('');
       }
-      const res = await fetch(`${API}/api/conversations/${localConvoId}/accept`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
+      const { socketFirst } = await import('@/lib/socketRPC');
+      const data = await socketFirst(socket, 'conversation:accept', { conversationId: localConvoId }, 'POST', `/api/conversations/${localConvoId}/accept`) as any;
+      if (data?.conversation) {
         setLocalStatus('accepted');
         onConversationAccepted?.();
       }
@@ -198,7 +190,7 @@ export default function ConversationView({
     } finally {
       setAccepting(false);
     }
-  }, [localConvoId, iBlockedThem, recipientId, unblockUser, onConversationAccepted]);
+  }, [localConvoId, iBlockedThem, recipientId, unblockUser, onConversationAccepted, socket]);
 
   const handleUnblockFromRequest = useCallback(async () => {
     setBlocking(true);
@@ -219,18 +211,15 @@ export default function ConversationView({
     if (!localConvoId) return;
     setDeclining(true);
     try {
-      const token = localStorage.getItem('token');
-      await fetch(`${API}/api/conversations/${localConvoId}/decline`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { socketFirst } = await import('@/lib/socketRPC');
+      await socketFirst(socket, 'conversation:decline', { conversationId: localConvoId }, 'POST', `/api/conversations/${localConvoId}/decline`);
       onConversationAccepted?.();
     } catch (e) {
       console.error('Failed to decline conversation:', e);
     } finally {
       setDeclining(false);
     }
-  }, [localConvoId, onConversationAccepted]);
+  }, [localConvoId, onConversationAccepted, socket]);
 
   const handleBlockFromRequest = useCallback(async () => {
     const confirmed = await showConfirmation({
@@ -272,14 +261,12 @@ export default function ConversationView({
     if (!confirmed) return;
     setNuking(true);
     try {
-      const token = localStorage.getItem('token');
-      const url = localConvoId
-        ? `${API}/api/conversations/${localConvoId}/nuke`
-        : `${API}/api/conversations/nuke-by-user/${recipientId}`;
-      await fetch(url, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { socketFirst } = await import('@/lib/socketRPC');
+      if (localConvoId) {
+        await socketFirst(socket, 'conversation:nuke', { conversationId: localConvoId }, 'POST', `/api/conversations/${localConvoId}/nuke`);
+      } else {
+        await socketFirst(socket, 'conversation:nuke-by-user', { recipientId }, 'POST', `/api/conversations/nuke-by-user/${recipientId}`);
+      }
       if (currentUserId) {
         await clearCachedConversation(currentUserId, recipientId);
       }

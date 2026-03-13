@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { Server } from 'socket.io';
 import { generatePlaceholderWaveform, generateWaveformFromFile } from '../services/waveform';
@@ -11,7 +11,6 @@ import { processImageVariants, deleteImageVariants, PROFILE_VARIANTS, COVER_VARI
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // ── S3 / storage config (mirrors file-upload.ts) ─────────────────────────────
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';

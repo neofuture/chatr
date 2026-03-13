@@ -12,9 +12,8 @@ import Lightbox from '@/components/Lightbox/Lightbox';
 import PaneSearchBox from '@/components/common/PaneSearchBox/PaneSearchBox';
 import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
 import { dequeue, loadQueueForGroup } from '@/lib/outboundQueue';
+import { socketFirst } from '@/lib/socketRPC';
 import styles from './GroupView.module.css';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface GroupMember {
   id: string;
@@ -82,41 +81,28 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
   const handleAcceptInvite = useCallback(async () => {
     setAcceptingInvite(true);
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${group.id}/accept`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMemberStatus('accepted');
-        if (data.group?.members) {
-          setGroup(prev => ({ ...prev, members: data.group.members }));
-        }
-        showToast(`You joined "${group.name}"`, 'success');
-      } else {
-        showToast('Failed to accept invite', 'error');
+      const data = await socketFirst(socket, 'groups:accept', { groupId: group.id }, 'POST', `/api/groups/${group.id}/accept`);
+      setMemberStatus('accepted');
+      if (data.group?.members) {
+        setGroup(prev => ({ ...prev, members: data.group.members }));
       }
+      showToast(`You joined "${group.name}"`, 'success');
     } catch {
       showToast('Failed to accept invite', 'error');
     } finally {
       setAcceptingInvite(false);
     }
-  }, [group.id, group.name, showToast]);
+  }, [group.id, group.name, showToast, socket]);
 
   const handleDeclineInvite = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token') || '';
-      await fetch(`${API}/api/groups/${group.id}/decline`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await socketFirst(socket, 'groups:decline', { groupId: group.id }, 'POST', `/api/groups/${group.id}/decline`);
       showToast(`Declined invite to "${group.name}"`, 'info');
       onGroupDeleted?.();
     } catch {
       showToast('Failed to decline invite', 'error');
     }
-  }, [group.id, group.name, showToast, onGroupDeleted]);
+  }, [group.id, group.name, showToast, onGroupDeleted, socket]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -125,11 +111,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
         setMembersOpen(ev.detail.open);
         // Re-fetch fresh member roles whenever the panel opens
         if (ev.detail.open) {
-          const token = localStorage.getItem('token');
-          fetch(`${API}/api/groups/${group.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-            .then(r => r.ok ? r.json() : null)
+          socketFirst(socket, 'groups:detail', { groupId: group.id }, 'GET', `/api/groups/${group.id}`)
             .then(data => {
               if (data?.group?.members) {
                 setGroup(prev => ({ ...prev, members: data.group.members }));
@@ -141,7 +123,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     };
     window.addEventListener('chatr:group-members-toggle', handler);
     return () => window.removeEventListener('chatr:group-members-toggle', handler);
-  }, [group.id]);
+  }, [group.id, socket]);
 
   // Load message history via socket — only once accepted
   useEffect(() => {
@@ -384,6 +366,13 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
 
   // ── Unsend group message ──────────────────────────────────────────────────
   const handleUnsend = useCallback((messageId: string) => {
+    // Pending messages (temp-* IDs) never reached the server — just remove locally
+    if (messageId.startsWith('temp-')) {
+      dequeue(messageId).catch(console.error);
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      return;
+    }
+
     if (!socket || !connected) return;
     socket.emit('group:message:unsend', messageId);
     setMessages(prev => prev.map(m =>
@@ -415,11 +404,7 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     setMemberSearching(true);
     const t = setTimeout(async () => {
       try {
-        const token = localStorage.getItem('token') || '';
-        const res = await fetch(`${API}/api/users/search?q=${encodeURIComponent(q)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
+        const data = await socketFirst(socket, 'users:search', { q }, 'GET', `/api/users/search?q=${encodeURIComponent(q)}`);
         const currentIds = new Set(group.members.map(m => m.userId));
         currentIds.add(currentUserId);
         setMemberSearchResults((data.users ?? data ?? []).filter((u: any) => !currentIds.has(u.id)));
@@ -427,31 +412,21 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
       finally { setMemberSearching(false); }
     }, 280);
     return () => clearTimeout(t);
-  }, [memberSearch, addingMembers, group.members, currentUserId]);
+  }, [memberSearch, addingMembers, group.members, currentUserId, socket]);
 
   const handleInviteMember = useCallback(async (user: { id: string; username: string; displayName: string | null }) => {
     const name = user.displayName || user.username.replace(/^@/, '');
     setInvitingIds(prev => new Set(prev).add(user.id));
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${group.id}/members`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId: user.id }),
-      });
-      if (res.ok) {
-        showToast(`Invited ${name} to the group`, 'success');
-        setInvitedIds(prev => new Set(prev).add(user.id));
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to invite member', 'error');
-      }
-    } catch {
-      showToast('Failed to invite member', 'error');
+      await socketFirst(socket, 'groups:members:add', { groupId: group.id, memberId: user.id }, 'POST', `/api/groups/${group.id}/members`, { memberId: user.id });
+      showToast(`Invited ${name} to the group`, 'success');
+      setInvitedIds(prev => new Set(prev).add(user.id));
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to invite member', 'error');
     } finally {
       setInvitingIds(prev => { const s = new Set(prev); s.delete(user.id); return s; });
     }
-  }, [group.id, showToast]);
+  }, [group.id, showToast, socket]);
 
   const handleRemoveMember = useCallback(async (member: GroupMember) => {
     const name = member.user.displayName || member.user.username.replace(/^@/, '');
@@ -466,68 +441,41 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/groups/${group.id}/members/${member.userId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setGroup(prev => ({ ...prev, members: prev.members.filter(m => m.userId !== member.userId) }));
-        showToast(`${name} removed from group`, 'success');
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to remove member', 'error');
-      }
-    } catch {
-      showToast('Failed to remove member', 'error');
+      await socketFirst(socket, 'groups:members:remove', { groupId: group.id, memberId: member.userId }, 'DELETE', `/api/groups/${group.id}/members/${member.userId}`);
+      setGroup(prev => ({ ...prev, members: prev.members.filter(m => m.userId !== member.userId) }));
+      showToast(`${name} removed from group`, 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to remove member', 'error');
     }
-  }, [group.id, showConfirmation, showToast]);
+  }, [group.id, showConfirmation, showToast, socket]);
 
   const handlePromote = useCallback(async (member: GroupMember) => {
     const name = member.user.displayName || member.user.username.replace(/^@/, '');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/groups/${group.id}/members/${member.userId}/promote`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setGroup(prev => ({
-          ...prev,
-          members: prev.members.map(m => m.userId === member.userId ? { ...m, role: 'admin' } : m),
-        }));
-        showToast(`${name} is now an admin`, 'success');
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to promote member', 'error');
-      }
-    } catch {
-      showToast('Failed to promote member', 'error');
+      await socketFirst(socket, 'groups:members:promote', { groupId: group.id, memberId: member.userId }, 'PATCH', `/api/groups/${group.id}/members/${member.userId}/promote`);
+      setGroup(prev => ({
+        ...prev,
+        members: prev.members.map(m => m.userId === member.userId ? { ...m, role: 'admin' } : m),
+      }));
+      showToast(`${name} is now an admin`, 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to promote member', 'error');
     }
-  }, [group.id, showToast]);
+  }, [group.id, showToast, socket]);
 
   const handleDemote = useCallback(async (member: GroupMember) => {
     const name = member.user.displayName || member.user.username.replace(/^@/, '');
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/groups/${group.id}/members/${member.userId}/demote`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setGroup(prev => ({
-          ...prev,
-          members: prev.members.map(m => m.userId === member.userId ? { ...m, role: 'member' } : m),
-        }));
-        showToast(`${name} is now a regular member`, 'success');
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to demote member', 'error');
-      }
-    } catch {
-      showToast('Failed to demote member', 'error');
+      await socketFirst(socket, 'groups:members:demote', { groupId: group.id, memberId: member.userId }, 'PATCH', `/api/groups/${group.id}/members/${member.userId}/demote`);
+      setGroup(prev => ({
+        ...prev,
+        members: prev.members.map(m => m.userId === member.userId ? { ...m, role: 'member' } : m),
+      }));
+      showToast(`${name} is now a regular member`, 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to demote member', 'error');
     }
-  }, [group.id, showToast]);
+  }, [group.id, showToast, socket]);
 
   const handleLeaveGroup = useCallback(async () => {
     const confirmed = await showConfirmation({
@@ -543,22 +491,13 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/groups/${group.id}/leave`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        showToast(`Left "${group.name}"`, 'success');
-        onGroupDeleted?.();
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to leave group', 'error');
-      }
-    } catch {
-      showToast('Failed to leave group', 'error');
+      await socketFirst(socket, 'groups:leave', { groupId: group.id }, 'POST', `/api/groups/${group.id}/leave`);
+      showToast(`Left "${group.name}"`, 'success');
+      onGroupDeleted?.();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to leave group', 'error');
     }
-  }, [group.id, group.name, isOwner, showConfirmation, showToast, onGroupDeleted]);
+  }, [group.id, group.name, isOwner, showConfirmation, showToast, onGroupDeleted, socket]);
 
   const handleDeleteGroup = useCallback(async () => {
     const confirmed = await showConfirmation({
@@ -572,22 +511,13 @@ export default function GroupView({ group: initialGroup, isDark, currentUserId, 
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/groups/${group.id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        showToast(`Group "${group.name}" deleted`, 'success');
-        onGroupDeleted?.();
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to delete group', 'error');
-      }
-    } catch {
-      showToast('Failed to delete group', 'error');
+      await socketFirst(socket, 'groups:delete', { groupId: group.id }, 'DELETE', `/api/groups/${group.id}`);
+      showToast(`Group "${group.name}" deleted`, 'success');
+      onGroupDeleted?.();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to delete group', 'error');
     }
-  }, [group.id, group.name, showConfirmation, showToast, onGroupDeleted]);
+  }, [group.id, group.name, showConfirmation, showToast, onGroupDeleted, socket]);
 
   const typingLabel = (() => {
     if (isTyping.length === 0) return '';

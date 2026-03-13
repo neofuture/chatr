@@ -36,10 +36,11 @@ describe('UserSettingsContext', () => {
     expect(stored.privacyEmail).toBe('friends');
   });
 
-  it('should sync server-side keys via fetch', () => {
+  it('should sync server-side keys via fetch', async () => {
     localStorage.setItem('token', 'test-tok');
     const { result } = renderHook(() => useUserSettings(), { wrapper });
     act(() => { result.current.setSetting('privacyOnlineStatus', 'nobody'); });
+    await new Promise(r => setTimeout(r, 50));
     expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/users/me/settings'), expect.objectContaining({ method: 'PUT' }));
   });
 

@@ -3,12 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import type { PresenceInfo } from '@/types/types';
 import { usePresence } from '@/contexts/PresenceContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import PaneSearchBox, { type PaneSearchBoxHandle } from '@/components/common/PaneSearchBox/PaneSearchBox';
 import UserRow from '@/components/common/UserRow/UserRow';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
+import { socketFirst } from '@/lib/socketRPC';
 import styles from './NewGroupPanel.module.css';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface UserSearchResult {
   id: string;
@@ -38,6 +38,7 @@ export default function NewGroupPanel({ onGroupCreated }: Props) {
   const searchRef = useRef<PaneSearchBoxHandle>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const { userPresence } = usePresence();
+  const { socket } = useWebSocket();
 
   useEffect(() => {
     const timer = setTimeout(() => searchRef.current?.focus(), 350);
@@ -52,34 +53,18 @@ export default function NewGroupPanel({ onGroupCreated }: Props) {
   }, [step]);
 
   const runSearch = (q: string) => {
-    if (abortRef.current) abortRef.current.abort();
     if (!q.trim()) { setResults([]); setSearching(false); setSearchError(false); return; }
     setSearching(true);
     setSearchError(false);
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const timer = setTimeout(() => controller.abort(), 8000);
-
     (async () => {
       try {
-        const token = localStorage.getItem('token') || '';
-        const res = await fetch(`${API}/api/users/search?q=${encodeURIComponent(q.trim())}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error('Search failed');
-        const data = await res.json();
-        setResults(data.users ?? []);
+        const data = await socketFirst(socket, 'users:search', { q: q.trim() }, 'GET', `/api/users/search?q=${encodeURIComponent(q.trim())}`) as any;
+        setResults(data?.users ?? []);
         setSearchError(false);
-      } catch (e: any) {
-        if (e?.name === 'AbortError') {
-          setSearchError(true);
-        } else {
-          setSearchError(true);
-        }
+      } catch {
+        setSearchError(true);
         setResults([]);
       } finally {
-        clearTimeout(timer);
         setSearching(false);
       }
     })();
@@ -105,14 +90,9 @@ export default function NewGroupPanel({ onGroupCreated }: Props) {
     if (!groupName.trim() || selected.length === 0) return;
     setCreating(true);
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: groupName.trim(), memberIds: selected.map(u => u.id) }),
-      });
-      if (!res.ok) throw new Error('Failed to create group');
-      const data = await res.json();
+      const payload = { name: groupName.trim(), memberIds: selected.map(u => u.id) };
+      const data = await socketFirst(socket, 'groups:create', payload, 'POST', '/api/groups', payload) as any;
+      if (!data?.group) throw new Error('Failed to create group');
       onGroupCreated(data.group);
     } catch (e) {
       console.error('Create group error:', e);

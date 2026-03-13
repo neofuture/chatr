@@ -3,14 +3,10 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
+import { socketFirst } from '@/lib/socketRPC';
 import type { FriendEntry, FriendRequest, FriendUser, AvailableUser } from '@/types/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-function authHeaders() {
-  const token = localStorage.getItem('token');
-  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-}
 
 interface FriendsContextValue {
   friends: FriendEntry[];
@@ -69,35 +65,26 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
   }, [friends, incoming, outgoing, blocked]);
 
   // ── Load all friend data ──────────────────────────────────────────────────
-  const friendsAbortRef = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
     try {
-      friendsAbortRef.current?.abort();
-      const ac = new AbortController();
-      friendsAbortRef.current = ac;
-      const opts = { headers: authHeaders(), signal: ac.signal };
       const [fr, inc, out, bl] = await Promise.all([
-        fetch(`${API}/api/friends`, opts).then(r => r.json()),
-        fetch(`${API}/api/friends/requests/incoming`, opts).then(r => r.json()),
-        fetch(`${API}/api/friends/requests/outgoing`, opts).then(r => r.json()),
-        fetch(`${API}/api/friends/blocked`, opts).then(r => r.json()),
-      ]);
-      setFriends(fr.friends ?? []);
-      setIncoming(inc.requests ?? []);
-      setOutgoing(out.requests ?? []);
-      setBlocked(bl.blocked ?? []);
+        socketFirst(socket, 'friends:list', {}, 'GET', '/api/friends'),
+        socketFirst(socket, 'friends:requests:incoming', {}, 'GET', '/api/friends/requests/incoming'),
+        socketFirst(socket, 'friends:requests:outgoing', {}, 'GET', '/api/friends/requests/outgoing'),
+        socketFirst(socket, 'friends:blocked', {}, 'GET', '/api/friends/blocked'),
+      ]) as any[];
+      setFriends(fr?.friends ?? []);
+      setIncoming(inc?.requests ?? []);
+      setOutgoing(out?.requests ?? []);
+      setBlocked(bl?.blocked ?? []);
     } catch (err: any) {
-      if (err.name === 'AbortError') return;
       console.error('FriendsContext refresh error', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [socket]);
 
-  useEffect(() => {
-    refresh();
-    return () => { friendsAbortRef.current?.abort(); };
-  }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh]);
 
   // ── Real-time socket events ───────────────────────────────────────────────
   useEffect(() => {
@@ -134,150 +121,111 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
   }, [socket, refresh, showToast]);
 
   // ── Search ────────────────────────────────────────────────────────────────
-  const searchAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setSearchResults([]);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        searchAbortRef.current?.abort();
-        const ac = new AbortController();
-        searchAbortRef.current = ac;
-        const res = await fetch(`${API}/api/friends/search?q=${encodeURIComponent(searchQuery)}`, {
-          headers: authHeaders(),
-          signal: ac.signal,
-        });
-        const data = await res.json();
-        setSearchResults(data.users ?? []);
+        const data = await socketFirst(socket, 'friends:search', { q: searchQuery }, 'GET', `/api/friends/search?q=${encodeURIComponent(searchQuery)}`) as any;
+        if (!cancelled) setSearchResults(data?.users ?? []);
       } catch (err: any) {
-        if (err.name === 'AbortError') return;
         console.error('friend search error', err);
       } finally {
-        setSearching(false);
+        if (!cancelled) setSearching(false);
       }
     }, 300);
-    return () => {
-      clearTimeout(timer);
-      searchAbortRef.current?.abort();
-    };
-  }, [searchQuery]);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [searchQuery, socket]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
+  const refreshSearch = useCallback(async () => {
+    if (searchQuery.trim().length >= 2) {
+      const sr = await socketFirst(socket, 'friends:search', { q: searchQuery }, 'GET', `/api/friends/search?q=${encodeURIComponent(searchQuery)}`) as any;
+      setSearchResults(sr?.users ?? []);
+    }
+  }, [socket, searchQuery]);
+
   const sendRequest = useCallback(async (addresseeId: string) => {
-    const res = await fetch(`${API}/api/friends/request`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ addresseeId }),
-    });
-    const data = await res.json();
-    if (res.ok) {
+    const data = await socketFirst(socket, 'friends:request', { addresseeId }, 'POST', '/api/friends/request', { addresseeId }) as any;
+    if (data?.friendship) {
       socket?.emit('friend:notify', { type: 'request', addresseeId, friendshipId: data.friendship.id });
       await refresh();
-      if (searchQuery.trim().length >= 2) {
-        const sr = await fetch(`${API}/api/friends/search?q=${encodeURIComponent(searchQuery)}`, { headers: authHeaders() });
-        setSearchResults((await sr.json()).users ?? []);
-      }
+      await refreshSearch();
     }
     return data;
-  }, [socket, refresh, searchQuery]);
+  }, [socket, refresh, refreshSearch]);
 
   const acceptRequest = useCallback(async (friendshipId: string, requesterId: string) => {
-    const res = await fetch(`${API}/api/friends/${friendshipId}/accept`, {
-      method: 'POST',
-      headers: authHeaders(),
-    });
-    if (res.ok) {
+    const data = await socketFirst(socket, 'friends:accept', { friendshipId }, 'POST', `/api/friends/${friendshipId}/accept`) as any;
+    const ok = !!data?.friendship;
+    if (ok) {
       socket?.emit('friend:notify', { type: 'accepted', addresseeId: requesterId, friendshipId });
       await refresh();
     }
-    return res.ok;
+    return ok;
   }, [socket, refresh]);
 
   const declineRequest = useCallback(async (friendshipId: string, requesterId: string) => {
-    // Look up the requester's name for the local toast
     const requester = incoming.find(r => r.friendshipId === friendshipId);
-    const requesterName = requester
-      ? (requester.user.displayName || requester.user.username.replace(/^@/, ''))
-      : 'them';
-
-    const res = await fetch(`${API}/api/friends/${friendshipId}/decline`, {
-      method: 'POST',
-      headers: authHeaders(),
-    });
-    if (res.ok) {
-      // Tell the original sender their request was declined
+    const requesterName = requester ? (requester.user.displayName || requester.user.username.replace(/^@/, '')) : 'them';
+    const data = await socketFirst(socket, 'friends:decline', { friendshipId }, 'POST', `/api/friends/${friendshipId}/decline`) as any;
+    const ok = !!data?.success;
+    if (ok) {
       socket?.emit('friend:notify', { type: 'declined', addresseeId: requesterId, friendshipId });
-      // Show the decliner their own confirmation toast
       showToast(`You declined the friend request from ${requesterName}`, 'info', 4000, undefined, undefined, 'Request Declined');
       await refresh();
     }
-    return res.ok;
+    return ok;
   }, [socket, refresh, showToast, incoming]);
 
-  // Cancel an outgoing request that the current user sent
   const cancelRequest = useCallback(async (friendshipId: string, addresseeId: string) => {
     const outgoingReq = outgoing.find(r => r.friendshipId === friendshipId);
-    const addresseeName = outgoingReq
-      ? (outgoingReq.user.displayName || outgoingReq.user.username.replace(/^@/, ''))
-      : 'them';
-
-    const res = await fetch(`${API}/api/friends/${friendshipId}/decline`, {
-      method: 'POST',
-      headers: authHeaders(),
-    });
-    if (res.ok) {
-      // Silently notify the addressee so their UI removes the incoming request
+    const addresseeName = outgoingReq ? (outgoingReq.user.displayName || outgoingReq.user.username.replace(/^@/, '')) : 'them';
+    const data = await socketFirst(socket, 'friends:decline', { friendshipId }, 'POST', `/api/friends/${friendshipId}/decline`) as any;
+    const ok = !!data?.success;
+    if (ok) {
       socket?.emit('friend:notify', { type: 'cancelled', addresseeId, friendshipId });
       showToast(`Friend request to ${addresseeName} cancelled`, 'info', 3000, undefined, undefined, 'Request Cancelled');
       await refresh();
-      // Refresh search results so the "Pending" button resets
-      if (searchQuery.trim().length >= 2) {
-        const sr = await fetch(`${API}/api/friends/search?q=${encodeURIComponent(searchQuery)}`, { headers: authHeaders() });
-        setSearchResults((await sr.json()).users ?? []);
-      }
+      await refreshSearch();
     }
-    return res.ok;
-  }, [socket, refresh, showToast, outgoing, searchQuery]);
+    return ok;
+  }, [socket, refresh, showToast, outgoing, refreshSearch]);
 
   const removeFriend = useCallback(async (friendshipId: string, otherUserId: string) => {
-    const res = await fetch(`${API}/api/friends/${friendshipId}`, {
-      method: 'DELETE',
-      headers: authHeaders(),
-    });
-    if (res.ok) {
+    const data = await socketFirst(socket, 'friends:remove', { friendshipId }, 'DELETE', `/api/friends/${friendshipId}`) as any;
+    const ok = !!data?.success;
+    if (ok) {
       socket?.emit('friend:notify', { type: 'removed', addresseeId: otherUserId, friendshipId });
       await refresh();
     }
-    return res.ok;
+    return ok;
   }, [socket, refresh]);
 
   const blockUser = useCallback(async (targetUserId: string) => {
-    const res = await fetch(`${API}/api/friends/${targetUserId}/block`, {
-      method: 'POST',
-      headers: authHeaders(),
-    });
-    if (res.ok) {
+    const data = await socketFirst(socket, 'friends:block', { targetUserId }, 'POST', `/api/friends/${targetUserId}/block`) as any;
+    const ok = !!data?.friendship;
+    if (ok) {
       socket?.emit('friend:notify', { type: 'blocked', addresseeId: targetUserId });
       refresh();
       window.dispatchEvent(new CustomEvent('chatr:friends-changed', { detail: { action: 'block', targetUserId } }));
     }
-    return res.ok;
+    return ok;
   }, [socket, refresh]);
 
   const unblockUser = useCallback(async (targetUserId: string) => {
-    const res = await fetch(`${API}/api/friends/${targetUserId}/unblock`, {
-      method: 'POST',
-      headers: authHeaders(),
-    });
-    if (res.ok) {
+    const data = await socketFirst(socket, 'friends:unblock', { targetUserId }, 'POST', `/api/friends/${targetUserId}/unblock`) as any;
+    const ok = !!data?.success;
+    if (ok) {
       socket?.emit('friend:notify', { type: 'unblocked', addresseeId: targetUserId });
       refresh();
       window.dispatchEvent(new CustomEvent('chatr:friends-changed', { detail: { action: 'unblock', targetUserId } }));
     }
-    return res.ok;
+    return ok;
   }, [socket, refresh]);
 
   return (

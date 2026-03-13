@@ -106,20 +106,12 @@ describe('GroupProfilePanel', () => {
   });
 
   it('shows error state on fetch failure', async () => {
-    jest.useFakeTimers();
-    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
+    (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
     render(<GroupProfilePanel groupId="g1" currentUserId="owner-1" />);
-
-    // Advance past the 2 retry delays (1s each)
-    for (let i = 0; i < 3; i++) {
-      await Promise.resolve(); // flush microtasks
-      jest.advanceTimersByTime(1100);
-    }
 
     await waitFor(() => {
       expect(screen.getByText('Could not load group')).toBeInTheDocument();
-    });
-    jest.useRealTimers();
+    }, { timeout: 8000 });
   });
 
   it('renders all members with correct role sections', async () => {

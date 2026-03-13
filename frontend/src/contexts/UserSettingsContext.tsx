@@ -1,8 +1,10 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { syncProfileImageFromServer } from '@/lib/profileImageService';
 import { syncCoverImageFromServer } from '@/lib/coverImageService';
+import { socketFirst } from '@/lib/socketRPC';
 
 export type PrivacyLevel = 'everyone' | 'friends' | 'nobody';
 
@@ -47,22 +49,8 @@ interface UserSettingsContextValue {
 
 const UserSettingsContext = createContext<UserSettingsContextValue | null>(null);
 
-async function saveToServer(patch: Partial<UserSettings>) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  if (!token || token === 'undefined') return;
-  try {
-    await fetch(`${API}/api/users/me/settings`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(patch),
-    });
-  } catch {}
-}
-
 export function UserSettingsProvider({ children }: { children: ReactNode }) {
+  const { socket } = useWebSocket();
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [settings, setSettings] = useState<UserSettings>(() => {
@@ -79,14 +67,10 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token || token === 'undefined') return;
 
-    const ac = new AbortController();
-    fetch(`${API}/api/users/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: ac.signal,
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
+    let cancelled = false;
+    socketFirst(socket, 'users:me', {}, 'GET', '/api/users/me')
+      .then((data: any) => {
+        if (cancelled || !data) return;
         setSettings(prev => ({
           ...prev,
           ...(isPrivacyLevel(data.privacyOnlineStatus) ? { privacyOnlineStatus: data.privacyOnlineStatus } : {}),
@@ -123,9 +107,9 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
           syncCoverImageFromServer(uid, data.coverImage).catch(() => {});
         }
       })
-      .catch((err) => { if (err.name !== 'AbortError') { /* fall back to localStorage */ } });
-    return () => ac.abort();
-  }, []);
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [socket]);
 
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
@@ -149,7 +133,7 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
   const setSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
     if (PRIVACY_KEYS.includes(key)) {
-      saveToServer({ [key]: value } as Partial<UserSettings>);
+      socketFirst(socket, 'users:me:settings', { [key]: value }, 'PUT', '/api/users/me/settings', { [key]: value }).catch(() => {});
     }
   };
 

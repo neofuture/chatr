@@ -22,3 +22,10 @@ backend/uploads/**/*
 # IDE
 /.idea/
 **/.idea/
+
+# Playwright
+/e2e/.auth/
+/playwright-report/
+/test-results/
+/blob-report/
+/e2e-results.json

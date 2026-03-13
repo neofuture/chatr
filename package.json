@@ -13,9 +13,13 @@
     "test:export:frontend": "cd frontend && npm run test:export",
     "test:export:backend": "cd backend && npm run test:export",
     "widget:build": "node widget-src/build.js",
-    "widget:watch": "node widget-src/build.js --watch"
+    "widget:watch": "node widget-src/build.js --watch",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "husky": "^9.1.7",
     "is-ci": "^4.1.0",
     "terser": "^5.39.0"

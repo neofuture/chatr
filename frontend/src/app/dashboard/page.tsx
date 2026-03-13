@@ -52,19 +52,19 @@ function StatCard({ label, value, sub, icon, color, scrollTo }: { label: string;
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   return (
-    <div style={{ ...CARD, display: 'flex', alignItems: 'center', gap: '1rem', transition: 'transform 0.15s, box-shadow 0.15s', cursor: scrollTo ? 'pointer' : 'default' }}
+    <div style={{ ...CARD, display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', transition: 'transform 0.15s, box-shadow 0.15s', cursor: scrollTo ? 'pointer' : 'default' }}
       onClick={handleClick}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
-      <div style={{ width: 44, height: 44, borderRadius: 10, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0, color: '#fff' }}>
+      <div style={{ width: 38, height: 38, borderRadius: 8, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0, color: '#fff' }}>
         <i className={icon} />
       </div>
-      <div>
-        <div style={{ fontSize: '1.5rem', fontWeight: 700, lineHeight: 1.1, color: 'var(--text)' }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: '1.15rem', fontWeight: 700, lineHeight: 1.1, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {typeof value === 'number' ? value.toLocaleString() : value}
         </div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 2 }}>{label}</div>
-        {sub && <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: 1 }}>{sub}</div>}
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'nowrap' }}>{label}</div>
+        {sub && <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
       </div>
     </div>
   );
@@ -246,15 +246,127 @@ function HealthGauge({ label, value, max, unit, color }: { label: string; value:
   );
 }
 
-function SuiteRow({ suite }: { suite: D }) {
+function LiveSummaryBar({ live, color = '#3b82f6' }: { live: D; color?: string }) {
+  const elapsed = Math.round((live.elapsed || 0) / 1000);
+  const { completed = 0, passed = 0, failed = 0, retrying = 0 } = live.liveSummary || {};
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className="fad fa-spinner-third fa-spin" style={{ color, fontSize: '1rem' }} />
+          <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{completed}</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>tests completed</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+          <span style={{ fontWeight: 600, color: '#10b981' }}>{passed}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>passed</span>
+        </div>
+        {failed > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+            <span style={{ fontWeight: 600, color: '#ef4444' }}>{failed}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>failed</span>
+          </div>
+        )}
+        {retrying > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <i className="fas fa-rotate" style={{ color: '#f59e0b', fontSize: '0.65rem' }} />
+            <span style={{ fontWeight: 600, color: '#f59e0b' }}>{retrying}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>retried</span>
+          </div>
+        )}
+        <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+          <i className="far fa-clock" style={{ marginRight: 4 }} />{elapsed}s elapsed
+        </div>
+      </div>
+      {completed > 0 && (
+        <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem', display: 'flex' }}>
+          {passed > 0 && <div style={{ width: `${(passed / completed) * 100}%`, height: '100%', background: '#10b981', transition: 'width 0.3s' }} />}
+          {failed > 0 && <div style={{ width: `${(failed / completed) * 100}%`, height: '100%', background: '#ef4444', transition: 'width 0.3s' }} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LiveTestFeed({ live, color = '#3b82f6' }: { live: D; color?: string }) {
+  const results: D[] = live.liveResults || [];
+  return (
+    <div>
+      <LiveSummaryBar live={live} color={color} />
+      <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
+        {results.map((r: D, i: number) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0',
+            fontSize: '0.78rem', borderBottom: '1px solid var(--border)',
+            animation: i >= results.length - 3 ? 'liveTestFadeIn 0.4s ease-out' : undefined,
+          }}>
+            <i className={`fas fa-${r.status === 'passed' ? 'check-circle' : r.status === 'skipped' ? 'minus-circle' : 'times-circle'}`}
+              style={{ color: r.status === 'passed' ? '#10b981' : r.status === 'skipped' ? '#94a3b8' : '#ef4444', fontSize: '0.7rem', width: 14, flexShrink: 0 }} />
+            {r.area && <Badge color={r.area === 'frontend' ? '#3b82f6' : '#10b981'}>{r.area === 'frontend' ? 'FE' : 'BE'}</Badge>}
+            {(r.retries || 0) > 0 && <Badge color={r.status === 'passed' ? '#f59e0b' : '#ef4444'}>↻{r.retries}</Badge>}
+            <code style={{ color: '#60a5fa', minWidth: 100, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}
+              title={r.suite}>{r.suite.replace(/.*\//, '').replace(/\.\w+$/, '')}</code>
+            <span style={{ flex: 1, color: r.status === 'passed' ? 'var(--text-secondary)' : '#fca5a5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={r.name}>{r.name}</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0, minWidth: 45, textAlign: 'right' }}>
+              {r.duration >= 1000 ? `${(r.duration / 1000).toFixed(1)}s` : `${r.duration}ms`}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const PROJECT_COLORS: Record<string, string> = { chromium: '#8b5cf6', mobile: '#ec4899' };
+const PROJECT_LABELS: Record<string, string> = { chromium: 'Chrome', mobile: 'Mobile' };
+
+function groupResultsBySuite(results: D[]): D[] {
+  const map = new Map<string, D>();
+  for (const r of results) {
+    const key = r.suite || 'unknown';
+    if (!map.has(key)) {
+      map.set(key, { file: key, status: 'passed', duration: 0, tests: [] });
+    }
+    const suite = map.get(key)!;
+    suite.tests.push(r);
+    suite.duration += r.duration || 0;
+    if (r.status === 'failed') suite.status = 'failed';
+  }
+  return Array.from(map.values());
+}
+
+function LiveE2EFeed({ live, color = '#a855f7' }: { live: D; color?: string }) {
+  const results: D[] = live.liveResults || [];
+  const suites = groupResultsBySuite(results);
+  return (
+    <div>
+      <LiveSummaryBar live={live} color={color} />
+      <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
+        {suites.map((suite: D) => (
+          <SuiteRow key={suite.file} suite={suite} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SuiteRow({ suite, area }: { suite: D; area?: string }) {
   const [open, setOpen] = useState(false);
   const allPassed = suite.tests.every((t: D) => t.status === 'passed');
+  const hasRetries = suite.tests.some((t: D) => (t.retries || 0) > 0);
+  const projects = [...new Set(suite.tests.map((t: D) => t.project).filter(Boolean))];
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
       <div onClick={() => setOpen(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', cursor: 'pointer', fontSize: '0.8rem' }}>
         <i className={`fas fa-${allPassed ? 'check-circle' : 'times-circle'}`} style={{ color: allPassed ? '#10b981' : '#ef4444', fontSize: '0.7rem' }} />
+        {area && <Badge color={area === 'frontend' ? '#3b82f6' : '#10b981'}>{area === 'frontend' ? 'FE' : 'BE'}</Badge>}
+        {projects.map((p: string) => <Badge key={p} color={PROJECT_COLORS[p] || '#6b7280'}>{PROJECT_LABELS[p] || p}</Badge>)}
+        {hasRetries && <Badge color="#f59e0b">↻ flaky</Badge>}
         <code title={suite.file} style={{ color: '#60a5fa', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {suite.file.replace(/^(backend|frontend)\/src\//, '')}
+          {suite.file.replace(/^(backend|frontend)\/src\//, '').replace(/^e2e\//, '').replace(/\.spec\.ts$/, '').replace(/\.test\.tsx?$/, '')}
         </code>
         <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
           {suite.tests.filter((t: D) => t.status === 'passed').length}/{suite.tests.length}
@@ -271,7 +383,14 @@ function SuiteRow({ suite }: { suite: D }) {
               <i className={`fas fa-${t.status === 'passed' ? 'check' : 'xmark'}`}
                 style={{ color: t.status === 'passed' ? '#10b981' : '#ef4444', fontSize: '0.6rem', width: 10 }} />
               <span style={{ flex: 1, color: t.status === 'passed' ? 'var(--text-secondary)' : '#fca5a5' }}>{t.name}</span>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{t.duration}ms</span>
+              {(t.retries || 0) > 0 && (
+                <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3, background: t.status === 'passed' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)', color: t.status === 'passed' ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
+                  ↻{t.retries} {t.status === 'passed' ? 'flaky' : 'retried'}
+                </span>
+              )}
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
+                {(t.duration || 0) >= 1000 ? `${((t.duration || 0) / 1000).toFixed(1)}s` : `${t.duration || 0}ms`}
+              </span>
             </div>
           ))}
         </div>
@@ -305,9 +424,15 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [testReport, setTestReport] = useState<D>(null);
-  const [testArea, setTestArea] = useState<'backend' | 'frontend'>('backend');
-  const [testsRunning, setTestsRunning] = useState(false);
+  const [feReport, setFeReport] = useState<D>(null);
+  const [beReport, setBeReport] = useState<D>(null);
+  const [feRunning, setFeRunning] = useState(false);
+  const [beRunning, setBeRunning] = useState(false);
+  const [feLive, setFeLive] = useState<D>(null);
+  const [beLive, setBeLive] = useState<D>(null);
+  const [e2eReport, setE2eReport] = useState<D>(null);
+  const [e2eRunning, setE2eRunning] = useState(false);
+  const [e2eLive, setE2eLive] = useState<D>(null);
 
   const fetchData = useCallback(() => {
     fetch(`${API}/api/dashboard`)
@@ -316,18 +441,124 @@ export default function DashboardPage() {
       .catch(e => setError(String(e)));
   }, []);
 
-  const runTests = useCallback((area: 'backend' | 'frontend', forceRun = false) => {
-    setTestsRunning(true);
-    setTestArea(area);
-    const endpoint = forceRun ? `${API}/api/dashboard/tests/${area}/run` : `${API}/api/dashboard/tests/${area}`;
-    const opts = forceRun ? { method: 'POST' } : {};
-    fetch(endpoint, opts)
-      .then(r => r.ok ? r.json() : Promise.reject('Failed to run tests'))
-      .then(d => { setTestReport(d); setTestsRunning(false); })
-      .catch(() => { setTestsRunning(false); });
+  const loadTests = useCallback(() => {
+    setFeRunning(true);
+    setBeRunning(true);
+    const tryLoad = (area: 'frontend' | 'backend', setReport: (d: D) => void, setLive: (d: D) => void, setRunning: (b: boolean) => void) => {
+      fetch(`${API}/api/dashboard/tests/${area}`)
+        .then(r => r.ok ? r.json() : Promise.reject(''))
+        .then(d => {
+          if (d.status === 'ready') { setReport(d); setRunning(false); setLive(null); }
+          else if (d.status === 'running') { setLive(d); }
+          else { runFreshTests(area); }
+        })
+        .catch(() => setRunning(false));
+    };
+    tryLoad('frontend', setFeReport, setFeLive, setFeRunning);
+    tryLoad('backend', setBeReport, setBeLive, setBeRunning);
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const runFreshTests = useCallback((area?: 'frontend' | 'backend') => {
+    const areas = area ? [area] : ['frontend', 'backend'] as const;
+    for (const a of areas) {
+      if (a === 'frontend') { setFeReport(null); setFeLive(null); setFeRunning(true); }
+      else { setBeReport(null); setBeLive(null); setBeRunning(true); }
+      fetch(`${API}/api/dashboard/tests/${a}/run`, { method: 'POST' }).catch(() => {
+        if (a === 'frontend') setFeRunning(false); else setBeRunning(false);
+      });
+    }
+  }, []);
+
+  const loadE2E = useCallback(() => {
+    fetch(`${API}/api/dashboard/tests/e2e`)
+      .then(r => r.ok ? r.json() : Promise.reject('Failed'))
+      .then(d => {
+        if (d.status === 'running') {
+          setE2eRunning(true);
+          setE2eLive(d);
+        } else if (d.status === 'ready') {
+          setE2eReport(d);
+          setE2eRunning(false);
+          setE2eLive(null);
+        } else {
+          setE2eReport(null);
+          setE2eRunning(false);
+          setE2eLive(null);
+        }
+      })
+      .catch(() => { setE2eRunning(false); });
+  }, []);
+
+  const startE2E = useCallback(() => {
+    setE2eRunning(true);
+    setE2eReport(null);
+    setE2eLive(null);
+    fetch(`${API}/api/dashboard/tests/e2e/run`, { method: 'POST' })
+      .then(r => r.ok ? r.json() : Promise.reject('Failed'))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!e2eRunning) return;
+    const id = setInterval(() => {
+      fetch(`${API}/api/dashboard/tests/e2e`)
+        .then(r => r.ok ? r.json() : Promise.reject(''))
+        .then(d => {
+          if (d.status === 'ready') {
+            setE2eReport(d);
+            setE2eRunning(false);
+            setE2eLive(null);
+          } else if (d.status === 'running') {
+            setE2eLive(d);
+          }
+        })
+        .catch(() => {});
+    }, 2000);
+    return () => clearInterval(id);
+  }, [e2eRunning]);
+
+  useEffect(() => {
+    if (!feRunning || feReport) return;
+    const id = setInterval(() => {
+      fetch(`${API}/api/dashboard/tests/frontend`)
+        .then(r => r.ok ? r.json() : Promise.reject(''))
+        .then(d => {
+          if (d.status === 'ready') { setFeReport(d); setFeRunning(false); setFeLive(null); }
+          else if (d.status === 'running') { setFeLive(d); }
+        })
+        .catch(() => {});
+    }, 2000);
+    return () => clearInterval(id);
+  }, [feRunning, feReport]);
+
+  useEffect(() => {
+    if (!beRunning || beReport) return;
+    const id = setInterval(() => {
+      fetch(`${API}/api/dashboard/tests/backend`)
+        .then(r => r.ok ? r.json() : Promise.reject(''))
+        .then(d => {
+          if (d.status === 'ready') { setBeReport(d); setBeRunning(false); setBeLive(null); }
+          else if (d.status === 'running') { setBeLive(d); }
+        })
+        .catch(() => {});
+    }, 2000);
+    return () => clearInterval(id);
+  }, [beRunning, beReport]);
+
+  useEffect(() => {
+    fetchData();
+    // Auto-load cached test results on mount
+    const loadCached = (url: string, setReport: (d: D) => void, setRunning: (b: boolean) => void, setLive: (d: D) => void) => {
+      fetch(url).then(r => r.ok ? r.json() : null).then(d => {
+        if (!d) return;
+        if (d.status === 'ready') { setReport(d); }
+        else if (d.status === 'running') { setRunning(true); setLive(d); }
+      }).catch(() => {});
+    };
+    loadCached(`${API}/api/dashboard/tests/frontend`, setFeReport, setFeRunning, setFeLive);
+    loadCached(`${API}/api/dashboard/tests/backend`, setBeReport, setBeRunning, setBeLive);
+    loadCached(`${API}/api/dashboard/tests/e2e`, setE2eReport, setE2eRunning, setE2eLive);
+  }, [fetchData]);
   useEffect(() => {
     if (!autoRefresh) return;
     const id = setInterval(fetchData, REFRESH_INTERVAL);
@@ -343,12 +574,23 @@ export default function DashboardPage() {
     } as React.CSSProperties}>
 
       <style>{`
+        @keyframes liveTestFadeIn {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes livePulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        @media (max-width: 1024px) {
+          .db-overview { grid-template-columns: repeat(3, 1fr) !important; }
+        }
         @media (max-width: 768px) {
           .db-header { flex-direction: column !important; padding: 0.75rem 1rem !important; gap: 0.5rem !important; align-items: flex-start !important; }
           .db-header-right { flex-wrap: wrap !important; font-size: 0.7rem !important; gap: 0.5rem !important; }
           .db-header-branch { display: none !important; }
           .db-content { padding: 1rem 0.75rem 2rem !important; }
-          .db-overview { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important; gap: 0.5rem !important; }
+          .db-overview { grid-template-columns: repeat(2, 1fr) !important; gap: 0.5rem !important; }
           .db-grid2, .db-grid3 { grid-template-columns: 1fr !important; }
           .db-grid2 code, .db-grid3 code { min-width: 0 !important; flex: 1 !important; }
           .db-badges { display: none !important; }
@@ -374,18 +616,19 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="db-content" style={{ maxWidth: 1200, margin: '0 auto', padding: '1.5rem 2rem 3rem' }}>
+      <div className="db-content" style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem 2rem 3rem' }}>
         {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '1rem', color: '#fca5a5', marginBottom: '1rem' }}>{error}</div>}
         {!data && !error && <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}><div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}><i className="fad fa-spinner-third fa-spin" /></div>Loading metrics...</div>}
 
         {data && (<>
 
           {/* ── Overview Cards ──────────────────────────────────────── */}
-          <div className="db-overview" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <div className="db-overview" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
             <StatCard label="Total Commits" value={data.overview.totalCommits} sub={`${data.health.commitsPerDay}/day avg`} icon="fas fa-code-commit" color="#3b82f6" scrollTo="sec-activity" />
             <StatCard label="Lines of Code" value={data.overview.totalLines} sub={`~${Math.round(data.overview.totalLines / 1000)}k`} icon="fas fa-laptop-code" color="#8b5cf6" scrollTo="sec-languages" />
             <StatCard label="Source Files" value={data.overview.totalFiles} sub={`${data.health.avgFileSize} avg loc`} icon="fas fa-folder" color="#06b6d4" scrollTo="sec-largest" />
             <StatCard label="Test Files" value={data.overview.testFiles} sub={`${data.testBreakdown.frontend}fe / ${data.testBreakdown.backend}be / ${data.testBreakdown.widget}w`} icon="fas fa-flask" color="#10b981" scrollTo="sec-test-results" />
+            <StatCard label="E2E Tests" value="Playwright" sub="DM · Groups · Profile" icon="fas fa-browser" color="#a855f7" scrollTo="sec-e2e" />
             <StatCard label="API Endpoints" value={data.endpoints?.length || 0} sub={`${data.architecture.apiRoutes} route files`} icon="fas fa-network-wired" color="#f97316" scrollTo="sec-endpoints" />
             <StatCard label="Components" value={data.architecture.components} sub={`${data.architecture.hooks} hooks / ${data.architecture.contexts} ctx`} icon="fas fa-puzzle-piece" color="#ec4899" scrollTo="sec-architecture" />
             <StatCard label="DB Models" value={data.architecture.dbModels} sub={`${data.architecture.dbMigrations} migrations`} icon="fas fa-database" color="#14b8a6" scrollTo="sec-migrations" />
@@ -1129,124 +1372,259 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Test Results ──────────────────────────────────────── */}
-          <div id="sec-test-results" style={{ ...CARD, marginTop: '1rem' }}>
+          {(() => {
+            const anyRunning = feRunning || beRunning;
+            const hasReport = feReport || beReport;
+            const total = (feReport?.summary?.total || 0) + (beReport?.summary?.total || 0);
+            const passed = (feReport?.summary?.passed || 0) + (beReport?.summary?.passed || 0);
+            const failed = (feReport?.summary?.failed || 0) + (beReport?.summary?.failed || 0);
+            const flaky = (feReport?.summary?.flaky || 0) + (beReport?.summary?.flaky || 0);
+            const suiteCount = (feReport?.summary?.suites || 0) + (beReport?.summary?.suites || 0);
+            const duration = (feReport?.summary?.duration || 0) + (beReport?.summary?.duration || 0);
+            const allSuites = [
+              ...(feReport?.suites || []).map((s: D) => ({ ...s, area: 'frontend' })),
+              ...(beReport?.suites || []).map((s: D) => ({ ...s, area: 'backend' })),
+            ];
+            const combinedLive = (anyRunning && (feLive || beLive)) ? {
+              elapsed: Math.max(feLive?.elapsed || 0, beLive?.elapsed || 0),
+              liveResults: [
+                ...(feLive?.liveResults || []).map((r: D) => ({ ...r, area: 'frontend' })),
+                ...(beLive?.liveResults || []).map((r: D) => ({ ...r, area: 'backend' })),
+              ].sort((a: D, b: D) => a.timestamp - b.timestamp),
+              liveSummary: {
+                completed: (feLive?.liveSummary?.completed || 0) + (beLive?.liveSummary?.completed || 0),
+                passed: (feLive?.liveSummary?.passed || 0) + (beLive?.liveSummary?.passed || 0),
+                failed: (feLive?.liveSummary?.failed || 0) + (beLive?.liveSummary?.failed || 0),
+              },
+            } : null;
+            const feCov = feReport?.coverage;
+            const beCov = beReport?.coverage;
+
+            return (
+              <div id="sec-test-results" style={{ ...CARD, marginTop: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <h2 style={{ ...H2, margin: 0 }}><Ico>fad fa-vial</Ico> Test Results</h2>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={loadTests}
+                      style={{ background: hasReport ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${hasReport ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem', color: hasReport ? '#60a5fa' : 'var(--text-secondary)' }}>
+                      <i className="fas fa-download" style={{ marginRight: 4 }} /> Load Results
+                    </button>
+                    <button onClick={() => runFreshTests()}
+                      disabled={anyRunning}
+                      style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '3px 10px', cursor: anyRunning ? 'wait' : 'pointer', fontSize: '0.75rem', color: '#10b981', opacity: anyRunning ? 0.6 : 1 }}>
+                      {anyRunning ? <><i className="fad fa-spinner-third fa-spin" style={{ marginRight: 4 }} /> Running...</> : <><i className="fas fa-play" style={{ marginRight: 4 }} /> Run All</>}
+                    </button>
+                  </div>
+                </div>
+
+                {!hasReport && !anyRunning && (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    <i className="fad fa-flask" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8, opacity: 0.4 }} />
+                    Click <strong>Load Results</strong> for cached reports or <strong>Run All</strong> to execute frontend & backend tests
+                  </div>
+                )}
+
+                {anyRunning && !hasReport && (
+                  combinedLive && combinedLive.liveResults.length > 0 ? (
+                    <LiveTestFeed live={combinedLive} color="#8b5cf6" />
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                      <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8 }} />
+                      Starting frontend & backend tests...
+                    </div>
+                  )
+                )}
+
+                {hasReport && (
+                  <div>
+                    {anyRunning && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', padding: '6px 12px', borderRadius: 6, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', fontSize: '0.78rem', color: '#a78bfa' }}>
+                        <i className="fad fa-spinner-third fa-spin" />
+                        {feRunning && !beRunning && 'Frontend tests still running...'}
+                        {!feRunning && beRunning && 'Backend tests still running...'}
+                        {feRunning && beRunning && 'Tests still running...'}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: failed === 0 ? '#10b981' : '#ef4444' }}>{passed}/{total}</div>
+                        <div style={SUB}>tests passed</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3b82f6' }}>{suiteCount}</div>
+                        <div style={SUB}>suites</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{(duration / 1000).toFixed(1)}s</div>
+                        <div style={SUB}>duration</div>
+                      </div>
+                      {failed > 0 && (
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{failed}</div>
+                          <div style={SUB}>failed</div>
+                        </div>
+                      )}
+                      {flaky > 0 && (
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>{flaky}</div>
+                          <div style={SUB}>flaky</div>
+                        </div>
+                      )}
+                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: failed === 0 ? '#10b981' : '#ef4444', boxShadow: `0 0 8px ${failed === 0 ? '#10b981' : '#ef4444'}` }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: failed === 0 ? '#10b981' : '#ef4444' }}>
+                          {failed === 0 ? 'ALL PASSING' : 'FAILURES DETECTED'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem' }}>
+                      <div style={{ width: `${total > 0 ? (passed / total) * 100 : 0}%`, height: '100%', borderRadius: 4, transition: 'width 0.5s', background: failed === 0 ? 'linear-gradient(to right, #10b981, #34d399)' : 'linear-gradient(to right, #10b981, #f59e0b, #ef4444)' }} />
+                    </div>
+
+                    {(feCov || beCov) && (
+                      <div style={{ display: 'flex', gap: '2rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                        {feCov && (
+                          <div>
+                            <div style={{ fontSize: '0.7rem', color: '#3b82f6', fontWeight: 600, marginBottom: 4 }}>FRONTEND COVERAGE</div>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                              {(['statements', 'branches', 'functions', 'lines'] as const).map(key => (
+                                <div key={key} style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: feCov[key] >= 80 ? '#10b981' : feCov[key] >= 50 ? '#f59e0b' : '#ef4444' }}>{feCov[key]}%</div>
+                                  <div style={{ ...SUB, textTransform: 'capitalize', fontSize: '0.6rem' }}>{key}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {beCov && (
+                          <div>
+                            <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 600, marginBottom: 4 }}>BACKEND COVERAGE</div>
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                              {(['statements', 'branches', 'functions', 'lines'] as const).map(key => (
+                                <div key={key} style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: beCov[key] >= 80 ? '#10b981' : beCov[key] >= 50 ? '#f59e0b' : '#ef4444' }}>{beCov[key]}%</div>
+                                  <div style={{ ...SUB, textTransform: 'capitalize', fontSize: '0.6rem' }}>{key}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
+                      {allSuites.map((suite: D) => (
+                        <SuiteRow key={`${suite.area}-${suite.file}`} suite={suite} area={suite.area} />
+                      ))}
+                    </div>
+
+                    <div style={{ ...SUB, marginTop: 8, textAlign: 'right' }}>
+                      {feReport?.generatedAt && <>FE: {new Date(feReport.generatedAt).toLocaleTimeString()}</>}
+                      {feReport?.generatedAt && beReport?.generatedAt && ' · '}
+                      {beReport?.generatedAt && <>BE: {new Date(beReport.generatedAt).toLocaleTimeString()}</>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── E2E Test Results ────────────────────────────────────── */}
+          <div id="sec-e2e" style={{ ...CARD, marginTop: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <h2 style={{ ...H2, margin: 0 }}><Ico>fad fa-vial</Ico> Test Results</h2>
+              <h2 style={{ ...H2, margin: 0 }}><Ico>fad fa-browser</Ico> E2E Tests (Playwright)</h2>
               <div style={{ display: 'flex', gap: 6 }}>
-                {(['backend', 'frontend'] as const).map(area => (
-                  <button key={area} onClick={() => runTests(area)}
-                    title={`Load cached ${area} test results (runs tests if no cache)`}
-                    style={{
-                      background: testArea === area && testReport ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)',
-                      border: `1px solid ${testArea === area && testReport ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                      borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem',
-                      color: testArea === area && testReport ? '#60a5fa' : 'var(--text-secondary)',
-                    }}>
-                    <i className={`fas fa-${area === 'backend' ? 'server' : 'browser'}`} style={{ marginRight: 4 }} />
-                    {area === 'backend' ? 'Backend Results' : 'Frontend Results'}
-                  </button>
-                ))}
-                <button onClick={() => runTests(testArea, true)}
-                  disabled={testsRunning}
-                  title={`Run all ${testArea} tests now (ignores cache)`}
-                  style={{
-                    background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
-                    borderRadius: 6, padding: '3px 10px', cursor: testsRunning ? 'wait' : 'pointer',
-                    fontSize: '0.75rem', color: '#10b981', opacity: testsRunning ? 0.6 : 1,
-                  }}>
-                  {testsRunning ? <><i className="fad fa-spinner-third fa-spin" style={{ marginRight: 4 }} /> Running...</> : <><i className="fas fa-play" style={{ marginRight: 4 }} /> Run Fresh</>}
+                <button onClick={loadE2E}
+                  style={{ background: e2eReport ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${e2eReport ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem', color: e2eReport ? '#60a5fa' : 'var(--text-secondary)' }}>
+                  <i className="fas fa-download" style={{ marginRight: 4 }} /> Load Results
+                </button>
+                <button onClick={startE2E} disabled={e2eRunning}
+                  style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 6, padding: '3px 10px', cursor: e2eRunning ? 'wait' : 'pointer', fontSize: '0.75rem', color: '#a855f7', opacity: e2eRunning ? 0.6 : 1 }}>
+                  {e2eRunning ? <><i className="fad fa-spinner-third fa-spin" style={{ marginRight: 4 }} /> Running...</> : <><i className="fas fa-play" style={{ marginRight: 4 }} /> Run E2E</>}
                 </button>
               </div>
             </div>
 
-            {!testReport && !testsRunning && (
+            {!e2eReport && !e2eRunning && (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                <i className="fad fa-flask" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8, opacity: 0.4 }} />
-                Click <strong>Backend Results</strong> or <strong>Frontend Results</strong> to load cached reports, or <strong>Run Fresh</strong> to execute a live test run
+                <i className="fad fa-browser" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8, opacity: 0.4 }} />
+                Click <strong>Load Results</strong> for cached report or <strong>Run E2E</strong> to execute all Playwright tests
               </div>
             )}
 
-            {testsRunning && !testReport && (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8 }} />
-                Running {testArea} tests...
-              </div>
+            {e2eRunning && !e2eReport && (
+              e2eLive?.liveResults?.length > 0 ? (
+                <LiveE2EFeed live={e2eLive} />
+              ) : (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                  <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8 }} />
+                  Starting E2E tests...
+                </div>
+              )
             )}
 
-            {testReport && (
+            {e2eReport && (
               <div>
-                {/* Summary bar */}
                 <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: testReport.summary.failed === 0 ? '#10b981' : '#ef4444' }}>
-                      {testReport.summary.passed}/{testReport.summary.total}
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: e2eReport.summary.failed === 0 ? '#10b981' : '#ef4444' }}>
+                      {e2eReport.summary.passed}/{e2eReport.summary.total}
                     </div>
                     <div style={SUB}>tests passed</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#3b82f6' }}>{testReport.summary.suites}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#a855f7' }}>{e2eReport.summary.suites}</div>
                     <div style={SUB}>suites</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{(testReport.summary.duration / 1000).toFixed(1)}s</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{(e2eReport.summary.duration / 1000).toFixed(1)}s</div>
                     <div style={SUB}>duration</div>
                   </div>
-                  {testReport.summary.failed > 0 && (
+                  {e2eReport.summary.failed > 0 && (
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{testReport.summary.failed}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{e2eReport.summary.failed}</div>
                       <div style={SUB}>failed</div>
+                    </div>
+                  )}
+                  {(e2eReport.summary.flaky || 0) > 0 && (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>{e2eReport.summary.flaky}</div>
+                      <div style={SUB}>flaky</div>
                     </div>
                   )}
                   <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{
                       width: 10, height: 10, borderRadius: '50%',
-                      background: testReport.summary.failed === 0 ? '#10b981' : '#ef4444',
-                      boxShadow: `0 0 8px ${testReport.summary.failed === 0 ? '#10b981' : '#ef4444'}`,
+                      background: e2eReport.summary.failed === 0 ? '#10b981' : '#ef4444',
+                      boxShadow: `0 0 8px ${e2eReport.summary.failed === 0 ? '#10b981' : '#ef4444'}`,
                     }} />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: testReport.summary.failed === 0 ? '#10b981' : '#ef4444' }}>
-                      {testReport.summary.failed === 0 ? 'ALL PASSING' : 'FAILURES DETECTED'}
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: e2eReport.summary.failed === 0 ? '#10b981' : '#ef4444' }}>
+                      {e2eReport.summary.failed === 0 ? 'ALL PASSING' : 'FAILURES DETECTED'}
                     </span>
                   </div>
                 </div>
 
-                {/* Pass rate bar */}
                 <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem' }}>
                   <div style={{
-                    width: `${testReport.summary.total > 0 ? (testReport.summary.passed / testReport.summary.total) * 100 : 0}%`,
+                    width: `${e2eReport.summary.total > 0 ? (e2eReport.summary.passed / e2eReport.summary.total) * 100 : 0}%`,
                     height: '100%', borderRadius: 4, transition: 'width 0.5s',
-                    background: testReport.summary.failed === 0
-                      ? 'linear-gradient(to right, #10b981, #34d399)'
-                      : 'linear-gradient(to right, #10b981, #f59e0b, #ef4444)',
+                    background: e2eReport.summary.failed === 0
+                      ? 'linear-gradient(to right, #a855f7, #c084fc)'
+                      : 'linear-gradient(to right, #a855f7, #f59e0b, #ef4444)',
                   }} />
                 </div>
 
-                {/* Coverage */}
-                {testReport.coverage && (
-                  <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                    {(['statements', 'branches', 'functions', 'lines'] as const).map(key => (
-                      <div key={key} style={{ textAlign: 'center' }}>
-                        <div style={{
-                          fontSize: '1.1rem', fontWeight: 700,
-                          color: testReport.coverage[key] >= 80 ? '#10b981' : testReport.coverage[key] >= 50 ? '#f59e0b' : '#ef4444',
-                        }}>
-                          {testReport.coverage[key]}%
-                        </div>
-                        <div style={{ ...SUB, textTransform: 'capitalize' }}>{key}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Suites */}
                 <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
-                  {testReport.suites.map((suite: D) => (
+                  {e2eReport.suites.map((suite: D) => (
                     <SuiteRow key={suite.file} suite={suite} />
                   ))}
                 </div>
 
-                {testReport.generatedAt && (
+                {e2eReport.generatedAt && (
                   <div style={{ ...SUB, marginTop: 8, textAlign: 'right' }}>
-                    Results from {new Date(testReport.generatedAt).toLocaleString()}
+                    Results from {new Date(e2eReport.generatedAt).toLocaleString()}
                   </div>
                 )}
               </div>

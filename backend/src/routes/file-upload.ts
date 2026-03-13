@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { authenticateToken } from '../middleware/auth';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { Server } from 'socket.io';
 import fs from 'fs';
 import { generatePlaceholderWaveform, generateWaveformFromFile } from '../services/waveform';
@@ -49,7 +49,6 @@ export async function deleteFromS3(key: string): Promise<void> {
 }
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // io instance set by index.ts after server starts
 let _io: Server | null = null;

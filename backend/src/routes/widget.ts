@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
@@ -10,7 +10,6 @@ import { authenticateToken } from '../middleware/auth';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Socket.IO reference — set after server starts
 let _widgetIo: any = null;

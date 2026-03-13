@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import { sendVerificationEmail, sendLoginVerificationEmail, sendPasswordResetEmail } from '../services/email';
@@ -16,13 +16,16 @@ import {
   isTokenBlacklisted,
 } from '../lib/redis';
 import { authenticateToken } from '../middleware/auth';
+import { isTestMode, getTestBypassCode } from '../lib/testMode';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Rate-limit middleware factory
 function rateLimit(prefix: string, maxAttempts: number, windowSeconds: number) {
   return async (req: Request, res: Response, next: Function) => {
+    if (isTestMode()) {
+      return next();
+    }
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const key = `${prefix}:${ip}`;
     try {
@@ -477,19 +480,25 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
 
     // If loginVerificationCode is provided, verify it
     if (loginVerificationCode) {
-      // Check Redis first, fall back to DB
-      let loginCodeValid = false;
-      const redisLoginCode = await getVerificationCode('login', user.id).catch(() => null);
-      if (redisLoginCode) {
-        loginCodeValid = redisLoginCode.code === loginVerificationCode;
-      } else {
-        if (!user.loginVerificationCode || !user.loginVerificationExpiry) {
-          return res.status(400).json({ error: 'No verification code found. Please log in again.' });
+      // Test-mode OTP bypass (never active in production)
+      const bypassCode = getTestBypassCode();
+      const isTestBypass = bypassCode && loginVerificationCode === bypassCode;
+
+      let loginCodeValid = !!isTestBypass;
+      if (!loginCodeValid) {
+        // Check Redis first, fall back to DB
+        const redisLoginCode = await getVerificationCode('login', user.id).catch(() => null);
+        if (redisLoginCode) {
+          loginCodeValid = redisLoginCode.code === loginVerificationCode;
+        } else {
+          if (!user.loginVerificationCode || !user.loginVerificationExpiry) {
+            return res.status(400).json({ error: 'No verification code found. Please log in again.' });
+          }
+          if (new Date() > user.loginVerificationExpiry) {
+            return res.status(401).json({ error: 'Verification code has expired. Please log in again.' });
+          }
+          loginCodeValid = user.loginVerificationCode === loginVerificationCode;
         }
-        if (new Date() > user.loginVerificationExpiry) {
-          return res.status(401).json({ error: 'Verification code has expired. Please log in again.' });
-        }
-        loginCodeValid = user.loginVerificationCode === loginVerificationCode;
       }
 
       if (!loginCodeValid) {
@@ -896,16 +905,20 @@ router.post('/verify-email', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Email already verified' });
     }
 
-    // Check Redis first for verification code, fall back to DB
-    let codeValid = false;
-    const redisCode = await getVerificationCode('email', userId).catch(() => null);
-    if (redisCode) {
-      codeValid = redisCode.code === code;
-    } else {
-      // Fallback to DB columns
-      codeValid = user.emailVerificationCode === code;
-      if (codeValid && user.verificationExpiry && user.verificationExpiry < new Date()) {
-        return res.status(401).json({ error: 'Verification code expired. Please request a new one.' });
+    // Test-mode OTP bypass
+    const bypassCode = getTestBypassCode();
+    let codeValid = !!(bypassCode && code === bypassCode);
+
+    if (!codeValid) {
+      // Check Redis first for verification code, fall back to DB
+      const redisCode = await getVerificationCode('email', userId).catch(() => null);
+      if (redisCode) {
+        codeValid = redisCode.code === code;
+      } else {
+        codeValid = user.emailVerificationCode === code;
+        if (codeValid && user.verificationExpiry && user.verificationExpiry < new Date()) {
+          return res.status(401).json({ error: 'Verification code expired. Please request a new one.' });
+        }
       }
     }
 
@@ -1069,15 +1082,20 @@ router.post('/verify-phone', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Phone already verified' });
     }
 
-    // Check Redis first, fall back to DB
-    let phoneCodeValid = false;
-    const redisPhoneCode = await getVerificationCode('phone', userId).catch(() => null);
-    if (redisPhoneCode) {
-      phoneCodeValid = redisPhoneCode.code === code;
-    } else {
-      phoneCodeValid = user.phoneVerificationCode === code;
-      if (phoneCodeValid && user.verificationExpiry && user.verificationExpiry < new Date()) {
-        return res.status(401).json({ error: 'Verification code expired. Please request a new one.' });
+    // Test-mode OTP bypass
+    const bypassCode = getTestBypassCode();
+    let phoneCodeValid = !!(bypassCode && code === bypassCode);
+
+    if (!phoneCodeValid) {
+      // Check Redis first, fall back to DB
+      const redisPhoneCode = await getVerificationCode('phone', userId).catch(() => null);
+      if (redisPhoneCode) {
+        phoneCodeValid = redisPhoneCode.code === code;
+      } else {
+        phoneCodeValid = user.phoneVerificationCode === code;
+        if (phoneCodeValid && user.verificationExpiry && user.verificationExpiry < new Date()) {
+          return res.status(401).json({ error: 'Verification code expired. Please request a new one.' });
+        }
       }
     }
 

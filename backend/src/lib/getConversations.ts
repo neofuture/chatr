@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './prisma';
 import { getCachedConversations, setCachedConversations } from './redis';
 import { maybeRegenerateDMSummary } from '../services/summaryEngine';
-
-const prisma = new PrismaClient();
 
 export async function getConversations(currentUserId: string) {
   // Try Redis cache first

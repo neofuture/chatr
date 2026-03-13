@@ -24,6 +24,7 @@ import conversationRoutes from './routes/conversations';
 import widgetRoutes from './routes/widget';
 import dashboardRoutes from './routes/dashboard';
 import linkPreviewRoutes from './routes/link-preview';
+import testCleanupRoutes from './routes/test-cleanup';
 import { setWidgetSocketIO, cleanupStaleGuests } from './routes/widget';
 
 // Import Socket.io handlers
@@ -129,6 +130,7 @@ app.use('/api/conversations', conversationRoutes);
 app.use('/api/widget', widgetRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/link-preview', linkPreviewRoutes);
+app.use('/api/test', testCleanupRoutes);
 app.use('/api', emailTemplatesRoutes);
 
 // Serve the embeddable widget JS with open CORS so any site can load it
@@ -177,8 +179,7 @@ async function start() {
   // One-time migration: set group creators' role to 'owner' (idempotent)
   (async () => {
     try {
-      const { PrismaClient } = await import('@prisma/client');
-      const p = new PrismaClient();
+      const { prisma: p } = await import('./lib/prisma');
       const groups = await p.group.findMany({ select: { id: true, ownerId: true } });
       if (groups.length) {
         await p.$executeRawUnsafe(
@@ -188,7 +189,6 @@ async function start() {
         );
         console.log(`✅ Migrated ${groups.length} group owner roles`);
       }
-      await p.$disconnect();
     } catch (e) { console.warn('Owner role migration skipped:', e); }
   })();
 

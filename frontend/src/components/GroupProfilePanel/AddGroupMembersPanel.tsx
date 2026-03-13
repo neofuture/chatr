@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 import type { PresenceInfo } from '@/types/types';
 import { usePresence } from '@/contexts/PresenceContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
 import PaneSearchBox, { type PaneSearchBoxHandle } from '@/components/common/PaneSearchBox/PaneSearchBox';
 import UserRow from '@/components/common/UserRow/UserRow';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
+import { socketFirst } from '@/lib/socketRPC';
 import styles from './AddGroupMembersPanel.module.css';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface UserSearchResult {
   id: string;
@@ -38,6 +38,7 @@ export default function AddGroupMembersPanel({ groupId, existingMemberIds, onMem
   const abortRef = useRef<AbortController | null>(null);
   const searchRef = useRef<PaneSearchBoxHandle>(null);
   const { userPresence } = usePresence();
+  const { socket } = useWebSocket();
   const { showToast } = useToast();
 
   const memberSet = useRef(new Set(existingMemberIds));
@@ -48,38 +49,18 @@ export default function AddGroupMembersPanel({ groupId, existingMemberIds, onMem
   }, []);
 
   const runSearch = (q: string) => {
-    if (abortRef.current) abortRef.current.abort();
     if (!q.trim()) { setResults([]); setSearching(false); setSearchError(false); return; }
     setSearching(true);
     setSearchError(false);
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const timer = setTimeout(() => controller.abort(), 8000);
-
     (async () => {
       try {
-        const token = localStorage.getItem('token') || '';
-        const res = await fetch(`${API}/api/users/search?q=${encodeURIComponent(q.trim())}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error('Search failed');
-        const data = await res.json();
-        setResults(
-          (data.users ?? []).filter(
-            (u: UserSearchResult) => !memberSet.current.has(u.id),
-          ),
-        );
+        const data = await socketFirst(socket, 'users:search', { q: q.trim() }, 'GET', `/api/users/search?q=${encodeURIComponent(q.trim())}`) as any;
+        setResults((data?.users ?? []).filter((u: UserSearchResult) => !memberSet.current.has(u.id)));
         setSearchError(false);
-      } catch (e: any) {
-        if (e?.name === 'AbortError') {
-          setSearchError(true);
-        } else {
-          setSearchError(true);
-        }
+      } catch {
+        setSearchError(true);
         setResults([]);
       } finally {
-        clearTimeout(timer);
         setSearching(false);
       }
     })();
@@ -104,22 +85,16 @@ export default function AddGroupMembersPanel({ groupId, existingMemberIds, onMem
   const handleInviteAll = async () => {
     if (selected.length === 0) return;
     setInviting(true);
-    const token = localStorage.getItem('token') || '';
     let successCount = 0;
     for (const user of selected) {
       try {
-        const res = await fetch(`${API}/api/groups/${groupId}/members`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ memberId: user.id }),
-        });
-        if (res.ok) {
+        const data = await socketFirst(socket, 'groups:members:add', { groupId, memberId: user.id }, 'POST', `/api/groups/${groupId}/members`, { memberId: user.id }) as any;
+        if (data?.group) {
           successCount++;
           memberSet.current.add(user.id);
         } else {
-          const err = await res.json().catch(() => ({}));
           const name = user.displayName || user.username.replace(/^@/, '');
-          showToast(err.error || `Failed to invite ${name}`, 'error');
+          showToast(data?.error || `Failed to invite ${name}`, 'error');
         }
       } catch {
         const name = user.displayName || user.username.replace(/^@/, '');

@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { socketFirst } from '@/lib/socketRPC';
 
 export interface GroupSummary {
   id: string;
@@ -68,112 +67,63 @@ export function useGroupsList() {
   useEffect(() => { saveCache(GROUPS_CACHE_KEY, groups); }, [groups]);
   useEffect(() => { saveCache(INVITES_CACHE_KEY, invites); }, [invites]);
 
-  const retryTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const abortRef = useRef<AbortController | null>(null);
-
-  const fetchGroups = useCallback(async (retries = 2) => {
+  const fetchGroups = useCallback(async () => {
     try {
-      abortRef.current?.abort();
-      const ac = new AbortController();
-      abortRef.current = ac;
       setSyncing(true);
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: ac.signal,
-      });
-      if (!res.ok) throw new Error('Failed to fetch groups');
-      const data = await res.json();
-      setGroups((data.groups ?? []).map((g: GroupSummary) => ({
-        ...g,
-        unreadCount: unreadRef.current[g.id] ?? 0,
-      })));
-    } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      if (retries > 0) {
-        retryTimer.current = setTimeout(() => fetchGroups(retries - 1), 1500);
-        return;
+      const data = await socketFirst(socket, 'groups:list', {}, 'GET', '/api/groups') as any;
+      if (data?.groups) {
+        setGroups(data.groups.map((g: GroupSummary) => ({
+          ...g,
+          unreadCount: unreadRef.current[g.id] ?? 0,
+        })));
       }
+    } catch (e: any) {
       console.error('useGroupsList fetch error:', e);
     } finally {
       setLoading(false);
       setSyncing(false);
     }
-  }, []);
+  }, [socket]);
 
-  const inviteAbortRef = useRef<AbortController | null>(null);
-  const fetchInvites = useCallback(async (retries = 2) => {
+  const fetchInvites = useCallback(async () => {
     try {
-      inviteAbortRef.current?.abort();
-      const ac = new AbortController();
-      inviteAbortRef.current = ac;
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/invites`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: ac.signal,
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      setInvites(data.invites ?? []);
+      const data = await socketFirst(socket, 'groups:invites', {}, 'GET', '/api/groups/invites') as any;
+      if (data?.invites) setInvites(data.invites);
     } catch (e: any) {
-      if (e.name === 'AbortError') return;
-      if (retries > 0) {
-        setTimeout(() => fetchInvites(retries - 1), 1500);
-        return;
-      }
       console.error('useGroupsList fetchInvites error:', e);
     }
-  }, []);
+  }, [socket]);
 
   useEffect(() => {
     fetchGroups();
     fetchInvites();
-    return () => {
-      clearTimeout(retryTimer.current);
-      abortRef.current?.abort();
-      inviteAbortRef.current?.abort();
-    };
   }, [fetchGroups, fetchInvites]);
 
-  // Accept a group invite
   const acceptInvite = useCallback(async (groupId: string) => {
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/accept`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to accept invite');
-      const data = await res.json();
-      // Remove from invites, add to groups
+      const data = await socketFirst(socket, 'groups:accept', { groupId }, 'POST', `/api/groups/${groupId}/accept`) as any;
       setInvites(prev => prev.filter(i => i.groupId !== groupId));
-      if (data.group) {
+      if (data?.group) {
         setGroups(prev => {
           if (prev.find(g => g.id === groupId)) return prev;
           return [{ ...data.group, unreadCount: 0 }, ...prev];
         });
       }
-      return data.group ?? null;
+      return data?.group ?? null;
     } catch (e) {
       console.error('acceptInvite error:', e);
       return null;
     }
-  }, []);
+  }, [socket]);
 
-  // Decline a group invite
   const declineInvite = useCallback(async (groupId: string) => {
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/decline`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to decline invite');
+      await socketFirst(socket, 'groups:decline', { groupId }, 'POST', `/api/groups/${groupId}/decline`);
       setInvites(prev => prev.filter(i => i.groupId !== groupId));
     } catch (e) {
       console.error('declineInvite error:', e);
     }
-  }, []);
+  }, [socket]);
 
   // Listen for new group messages
   useEffect(() => {

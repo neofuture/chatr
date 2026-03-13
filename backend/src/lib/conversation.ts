@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from './prisma';
 
 function sortIds(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];

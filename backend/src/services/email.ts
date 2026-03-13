@@ -276,11 +276,14 @@ export function getPasswordResetEmailHtml(code: string, username: string, email:
   `.trim();
 }
 
+function checkTestMode() { const { isTestMode } = require('../lib/testMode'); return isTestMode(); }
+
 export async function sendVerificationEmail(
   email: string,
   code: string,
   userId: string
 ): Promise<boolean> {
+  if (checkTestMode()) { console.log(`📧 [Email] Test mode — suppressed email to ${email}`); return true; }
   const verificationLink = `${FRONTEND_URL}/verify?code=${code}&userId=${userId}`;
 
   const htmlContent = getVerificationEmailHtml(code, userId);
@@ -349,6 +352,7 @@ export async function sendLoginVerificationEmail(
   code: string,
   username: string
 ): Promise<boolean> {
+  if (checkTestMode()) { console.log(`📧 [Email] Test mode — suppressed login email to ${email}`); return true; }
   const htmlContent = getLoginVerificationEmailHtml(code, username);
 
   const textContent = `
@@ -416,6 +420,7 @@ export async function sendPasswordResetEmail(
   resetCode: string,
   username: string
 ): Promise<boolean> {
+  if (checkTestMode()) { console.log(`📧 [Email] Test mode — suppressed reset email to ${email}`); return true; }
   const htmlContent = getPasswordResetEmailHtml(resetCode, username, email);
 
   const textContent = `

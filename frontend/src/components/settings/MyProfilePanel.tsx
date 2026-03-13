@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useWebSocket } from '@/contexts/WebSocketContext';
 import ProfileImageUploader from '@/components/image-manip/ProfileImageUploader/ProfileImageUploader';
 import CoverImageUploader from '@/components/image-manip/CoverImageUploader/CoverImageUploader';
+import { socketFirst } from '@/lib/socketRPC';
 import styles from './MyProfilePanel.module.css';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 function getLocalUser() {
   try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
@@ -14,24 +14,22 @@ function getLocalUser() {
 
 export default function MyProfilePanel() {
   const { theme } = useTheme();
+  const { socket } = useWebSocket();
   const isDark = theme === 'dark';
 
   const [user, setUser] = useState(getLocalUser);
   const userId = user.id || '';
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    fetch(`${API}/api/users/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+    socketFirst(socket, 'users:me', {}, 'GET', '/api/users/me')
+      .then((data: any) => {
         if (data) {
           setUser(data);
           localStorage.setItem('user', JSON.stringify({ ...getLocalUser(), ...data }));
         }
       })
       .catch(() => {});
-  }, []);
+  }, [socket]);
 
   const GENDER_OPTIONS = [
     { value: '', label: 'Not specified' },
@@ -68,12 +66,12 @@ export default function MyProfilePanel() {
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>Profile</h3>
           <div className={styles.sectionBody}>
-            <InlineField label="Display name" field="displayName" value={user.displayName || ''} placeholder="Add a display name" onSaved={setUser} />
-            <InlineField label="First name" field="firstName" value={user.firstName || ''} placeholder="Add your first name" onSaved={setUser} />
-            <InlineField label="Last name" field="lastName" value={user.lastName || ''} placeholder="Add your last name" onSaved={setUser} />
+            <InlineField label="Display name" field="displayName" value={user.displayName || ''} placeholder="Add a display name" onSaved={setUser} socket={socket} />
+            <InlineField label="First name" field="firstName" value={user.firstName || ''} placeholder="Add your first name" onSaved={setUser} socket={socket} />
+            <InlineField label="Last name" field="lastName" value={user.lastName || ''} placeholder="Add your last name" onSaved={setUser} socket={socket} />
             <div className={styles.fieldRow}>
               <span className={styles.fieldLabel}>Gender</span>
-              <GenderSelect value={user.gender || ''} options={GENDER_OPTIONS} genderLabel={genderLabel} onSaved={setUser} />
+              <GenderSelect value={user.gender || ''} options={GENDER_OPTIONS} genderLabel={genderLabel} onSaved={setUser} socket={socket} />
             </div>
           </div>
         </section>
@@ -112,9 +110,10 @@ export default function MyProfilePanel() {
 }
 
 /* ── Self-contained inline text field ── */
-function InlineField({ label, field, value, placeholder, onSaved }: {
+function InlineField({ label, field, value, placeholder, onSaved, socket }: {
   label: string; field: string; value: string; placeholder: string;
   onSaved: (updater: (prev: any) => any) => void;
+  socket: any;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
@@ -131,14 +130,8 @@ function InlineField({ label, field, value, placeholder, onSaved }: {
     if (text === value) { saved.current = false; return; }
 
     onSaved((prev: any) => ({ ...prev, [field]: text || null }));
-    const token = localStorage.getItem('token');
-    fetch(`${API}/api/users/me`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ [field]: text || null }),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+    socketFirst(socket, 'users:me:update', { [field]: text || null }, 'PUT', '/api/users/me', { [field]: text || null })
+      .then((data: any) => {
         if (data) {
           onSaved((prev: any) => ({ ...prev, ...data }));
           try {
@@ -178,11 +171,12 @@ function InlineField({ label, field, value, placeholder, onSaved }: {
 }
 
 /* ── Self-contained gender select ── */
-function GenderSelect({ value, options, genderLabel, onSaved }: {
+function GenderSelect({ value, options, genderLabel, onSaved, socket }: {
   value: string;
   options: { value: string; label: string }[];
   genderLabel: (v: string | null) => string;
   onSaved: (updater: (prev: any) => any) => void;
+  socket: any;
 }) {
   const [editing, setEditing] = useState(false);
   const selectRef = useRef<HTMLSelectElement>(null);
@@ -194,14 +188,8 @@ function GenderSelect({ value, options, genderLabel, onSaved }: {
     if (newVal === value) return;
 
     onSaved((prev: any) => ({ ...prev, gender: newVal || null }));
-    const token = localStorage.getItem('token');
-    fetch(`${API}/api/users/me`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ gender: newVal || null }),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+    socketFirst(socket, 'users:me:update', { gender: newVal || null }, 'PUT', '/api/users/me', { gender: newVal || null })
+      .then((data: any) => {
         if (data) {
           onSaved((prev: any) => ({ ...prev, ...data }));
           try {

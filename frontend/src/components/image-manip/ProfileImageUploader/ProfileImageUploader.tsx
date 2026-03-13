@@ -63,24 +63,14 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
         }
       } catch {}
 
-      // 3. Fetch from server directly as last resort
-      console.log('[ProfileImg] Fetching /api/users/me...');
-      const token = localStorage.getItem('token');
-      if (token) {
-        const res = await fetch(`${API}/api/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('[ProfileImg] API response:', res.status);
-        if (res.ok) {
-          const data = await res.json();
-          console.log('[ProfileImg] Server profileImage:', data.profileImage || 'NULL');
-          if (data.profileImage) {
-            const src = data.profileImage.startsWith('/') ? `${API}${data.profileImage}` : data.profileImage;
-            console.log('[ProfileImg] Setting URL:', src);
-            setImageLoaded(false);
-            setImageUrl(src);
-          }
-        }
+      // 3. Fetch from server via socket (REST fallback)
+      console.log('[ProfileImg] Fetching via socket/REST...');
+      const { socketFirst } = await import('@/lib/socketRPC');
+      const data = await socketFirst(socket, 'users:me', {}, 'GET', '/api/users/me') as any;
+      if (data?.profileImage) {
+        const src = data.profileImage.startsWith('/') ? `${API}${data.profileImage}` : data.profileImage;
+        setImageLoaded(false);
+        setImageUrl(src);
       }
     } catch (error) {
       console.error('[ProfileImg] Failed:', error);

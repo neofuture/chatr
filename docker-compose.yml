@@ -3,6 +3,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: chatr_postgres
+    command: postgres -c max_connections=200 -c shared_buffers=256MB -c work_mem=8MB
     environment:
       POSTGRES_USER: chatr_user
       POSTGRES_PASSWORD: chatr_password

@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { acceptConversation, declineConversation, nukeConversation, nukeByParticipants } from '../lib/conversation';
 import { invalidateConversationCache, getSocketId } from '../lib/redis';
@@ -7,7 +7,6 @@ import { Server } from 'socket.io';
 import { deleteGuestUser } from './widget';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 let _io: Server | null = null;
 export function setConversationsSocketIO(io: Server) { _io = io; }

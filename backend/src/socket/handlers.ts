@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { generateAIReply } from '../services/openai';
 import {
   setPresence,
@@ -21,9 +21,7 @@ import {
   getConnectedUserIds,
   getBlockBetween,
 } from '../lib/conversation';
-import { getConversations as getConversationsFn } from '../lib/getConversations';
-
-const prisma = new PrismaClient();
+import { registerRPCHandlers } from './rpcHandlers';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -1137,16 +1135,8 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
-    // Fetch conversation list via socket (fast, avoids HTTP overhead)
-    socket.on('conversations:request', async (_data: any, ack?: (res: any) => void) => {
-      try {
-        const result = await getConversationsFn(userId);
-        ack?.(result);
-      } catch (e) {
-        console.error('conversations:request error:', e);
-        ack?.({ error: 'Internal error' });
-      }
-    });
+    // Register all RPC-style socket handlers (users, friends, groups, conversations)
+    registerRPCHandlers(socket, io, userId);
 
     // Keep socket-level profileImage in sync when user uploads a new one
     socket.on('profile:imageUpdated', (data: { profileImage: string }) => {

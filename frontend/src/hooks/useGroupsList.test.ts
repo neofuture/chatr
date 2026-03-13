@@ -32,8 +32,9 @@ describe('useGroupsList', () => {
     expect(Array.isArray(result.current.groups)).toBe(true);
   });
 
-  it('should fetch groups on mount', () => {
+  it('should fetch groups on mount', async () => {
     renderHook(() => useGroupsList());
+    await new Promise(r => setTimeout(r, 50));
     expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/groups'), expect.anything());
   });
 

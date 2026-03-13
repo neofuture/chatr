@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { invalidateConversationCache } from '../lib/redis';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Shared user select fields
 const userSelect = {

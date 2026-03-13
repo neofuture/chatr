@@ -3,19 +3,25 @@ jest.mock('../services/openai', () => ({
 }));
 
 import { generateConversationSummary } from '../services/openai';
-import { PrismaClient } from '@prisma/client';
 
 const mockGenerateSummary = generateConversationSummary as jest.MockedFunction<typeof generateConversationSummary>;
 
-const mockPrisma = new PrismaClient() as any;
+const mockPrisma = {
+  conversation: { findUnique: jest.fn(), update: jest.fn() },
+  message: { findMany: jest.fn(), count: jest.fn() },
+  group: { update: jest.fn() },
+  groupMessage: { count: jest.fn(), findMany: jest.fn() },
+} as any;
+
+jest.mock('../lib/prisma', () => ({ prisma: mockPrisma }));
 
 function loadModule() {
   jest.resetModules();
   jest.doMock('../services/openai', () => ({
     generateConversationSummary: mockGenerateSummary,
   }));
+  jest.doMock('../lib/prisma', () => ({ prisma: mockPrisma }));
   const mod = require('../services/summaryEngine');
-  mod.setSummaryPrisma(mockPrisma);
   return mod;
 }
 
@@ -243,19 +249,4 @@ describe('summaryEngine', () => {
     });
   });
 
-  describe('setSummaryPrisma', () => {
-    it('should allow injecting a custom Prisma client', async () => {
-      const { setSummaryPrisma, maybeRegenerateDMSummary } = loadModule();
-      const customPrisma = {
-        message: { count: jest.fn().mockResolvedValue(3), findMany: jest.fn() },
-        conversation: { update: jest.fn() },
-      };
-
-      setSummaryPrisma(customPrisma as any);
-      maybeRegenerateDMSummary('conv-1', 'a', 'b', null, null);
-      await flush();
-
-      expect(customPrisma.message.count).toHaveBeenCalled();
-    });
-  });
 });

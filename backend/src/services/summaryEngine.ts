@@ -1,13 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { generateConversationSummary, type SummaryMessage } from './openai';
-
-let _prisma: PrismaClient;
-function getPrisma() {
-  if (!_prisma) _prisma = new PrismaClient();
-  return _prisma;
-}
-
-export function setSummaryPrisma(client: PrismaClient) { _prisma = client; }
 
 const MIN_MESSAGES_FOR_SUMMARY = 10;
 const REGEN_THRESHOLD = 10;
@@ -49,8 +41,6 @@ export function maybeRegenerateDMSummary(
 
   enqueue(async () => {
     try {
-      const prisma = getPrisma();
-
       const currentCount = await prisma.message.count({
         where: {
           deletedAt: null,
@@ -114,8 +104,6 @@ export function maybeRegenerateGroupSummary(
 
   enqueue(async () => {
     try {
-      const prisma = getPrisma();
-
       const currentCount = await prisma.groupMessage.count({
         where: { groupId },
       });

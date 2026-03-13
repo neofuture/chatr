@@ -62,36 +62,13 @@ export default function BottomNav() {
   // Fetch unread chat count on mount + poll (socket-first, REST fallback)
   useEffect(() => {
     const fetchUnread = async () => {
-      // Socket-first
-      if (socket?.connected) {
-        const gotSocket = await new Promise<boolean>((resolve) => {
-          const timeout = setTimeout(() => resolve(false), 3000);
-          socket.emit('conversations:request', {}, (res: any) => {
-            clearTimeout(timeout);
-            if (res?.error || !res?.conversations) { resolve(false); return; }
-            const total = (res.conversations as any[]).reduce(
-              (sum: number, c: any) => sum + (c.unreadCount ?? 0), 0
-            );
-            setUnreadChats(total);
-            resolve(true);
-          });
-        });
-        if (gotSocket) return;
-      }
-      // REST fallback
       try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        const res = await fetch(`${API}/api/users/conversations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const total = (data.conversations ?? []).reduce(
-            (sum: number, c: any) => sum + (c.unreadCount ?? 0), 0
-          );
-          setUnreadChats(total);
-        }
+        const { socketFirst } = await import('@/lib/socketRPC');
+        const data = await socketFirst(socket, 'conversations:request', {}, 'GET', '/api/users/conversations') as any;
+        const total = ((data?.conversations ?? []) as any[]).reduce(
+          (sum: number, c: any) => sum + (c.unreadCount ?? 0), 0
+        );
+        setUnreadChats(total);
       } catch {}
     };
     fetchUnread();
@@ -121,50 +98,33 @@ export default function BottomNav() {
     };
   }, []);
 
-  // Fetch incoming friend request count — updates instantly via socket + window events
+  // Fetch incoming friend request count — socket-first with REST fallback
   useEffect(() => {
     const fetchPending = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        const res = await fetch(`${API}/api/friends/requests/incoming`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setPendingRequests(data.requests?.length ?? 0);
-        }
+        const { socketFirst } = await import('@/lib/socketRPC');
+        const data = await socketFirst(socket, 'friends:requests:incoming', {}, 'GET', '/api/friends/requests/incoming') as any;
+        setPendingRequests(data?.requests?.length ?? 0);
       } catch {}
     };
 
     fetchPending();
     const interval = setInterval(fetchPending, 30000);
-
-    // Refresh immediately whenever any friend event arrives via window event
     const onFriendsChanged = () => fetchPending();
     window.addEventListener('chatr:friends-changed', onFriendsChanged);
-
     return () => {
       clearInterval(interval);
       window.removeEventListener('chatr:friends-changed', onFriendsChanged);
     };
-  }, []);
+  }, [socket]);
 
   // Listen to socket friend:update events directly for instant badge updates
   useEffect(() => {
     if (!socket) return;
     const fetchPending = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        const res = await fetch(`${API}/api/friends/requests/incoming`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setPendingRequests(data.requests?.length ?? 0);
-        }
-      } catch {}
+      const { socketFirst } = await import('@/lib/socketRPC');
+      const data = await socketFirst(socket, 'friends:requests:incoming', {}, 'GET', '/api/friends/requests/incoming') as any;
+      setPendingRequests(data?.requests?.length ?? 0);
     };
     socket.on('friend:update', fetchPending);
     return () => { socket.off('friend:update', fetchPending); };

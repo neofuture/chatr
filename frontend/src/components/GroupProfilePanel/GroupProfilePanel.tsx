@@ -13,6 +13,7 @@ import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
 import BottomSheet from '@/components/dialogs/BottomSheet/BottomSheet';
 import SettingsPanel from '@/components/settings/SettingsPanel';
 import { imageUrl } from '@/lib/imageUrl';
+import { socketFirst } from '@/lib/socketRPC';
 import AddGroupMembersPanel from './AddGroupMembersPanel';
 import styles from './GroupProfilePanel.module.css';
 
@@ -90,12 +91,13 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
 
   const fetchGroup = useCallback(async (retries = 2, silent = false) => {
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
+      const data = await socketFirst<{ group: GroupInfo }>(
+        socket,
+        'groups:detail',
+        { groupId },
+        'GET',
+        `/api/groups/${groupId}`,
+      );
       setGroup(data.group);
       setLoading(false);
     } catch (e: any) {
@@ -108,7 +110,7 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
       }
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, socket]);
 
   useEffect(() => {
     fetchGroup(2, !!initialGroup);
@@ -378,25 +380,22 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/members/${member.userId}/promote`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setGroup(prev => prev ? {
-          ...prev,
-          members: prev.members.map(m =>
-            m.userId === member.userId ? { ...m, role: 'admin' } : m
-          ),
-        } : prev);
-        showToast(`${name} is now an admin`, 'success');
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to promote member', 'error');
-      }
-    } catch {
-      showToast('Failed to promote member', 'error');
+      await socketFirst(
+        socket,
+        'groups:members:promote',
+        { groupId, memberId: member.userId },
+        'PATCH',
+        `/api/groups/${groupId}/members/${member.userId}/promote`,
+      );
+      setGroup(prev => prev ? {
+        ...prev,
+        members: prev.members.map(m =>
+          m.userId === member.userId ? { ...m, role: 'admin' } : m
+        ),
+      } : prev);
+      showToast(`${name} is now an admin`, 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to promote member', 'error');
     }
   };
 
@@ -416,25 +415,22 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/members/${member.userId}/demote`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setGroup(prev => prev ? {
-          ...prev,
-          members: prev.members.map(m =>
-            m.userId === member.userId ? { ...m, role: 'member' } : m
-          ),
-        } : prev);
-        showToast(`${name} is now a regular member`, 'success');
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to demote member', 'error');
-      }
-    } catch {
-      showToast('Failed to demote member', 'error');
+      await socketFirst(
+        socket,
+        'groups:members:demote',
+        { groupId, memberId: member.userId },
+        'PATCH',
+        `/api/groups/${groupId}/members/${member.userId}/demote`,
+      );
+      setGroup(prev => prev ? {
+        ...prev,
+        members: prev.members.map(m =>
+          m.userId === member.userId ? { ...m, role: 'member' } : m
+        ),
+      } : prev);
+      showToast(`${name} is now a regular member`, 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to demote member', 'error');
     }
   };
 
@@ -451,21 +447,18 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/transfer-ownership`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newOwnerId: member.userId }),
-      });
-      if (res.ok) {
-        showToast(`${name} is now an owner`, 'success');
-        fetchGroup();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Failed to make owner', 'error');
-      }
-    } catch {
-      showToast('Failed to make owner', 'error');
+      await socketFirst(
+        socket,
+        'groups:transfer-ownership',
+        { groupId, newOwnerId: member.userId },
+        'POST',
+        `/api/groups/${groupId}/transfer-ownership`,
+        { newOwnerId: member.userId },
+      );
+      showToast(`${name} is now an owner`, 'success');
+      fetchGroup();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to make owner', 'error');
     }
   };
 
@@ -481,20 +474,17 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/step-down`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        showToast('You stepped down as owner', 'success');
-        fetchGroup();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Failed to step down', 'error');
-      }
-    } catch {
-      showToast('Failed to step down', 'error');
+      await socketFirst(
+        socket,
+        'groups:step-down',
+        { groupId },
+        'POST',
+        `/api/groups/${groupId}/step-down`,
+      );
+      showToast('You stepped down as owner', 'success');
+      fetchGroup();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to step down', 'error');
     }
   };
 
@@ -511,20 +501,17 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/members/${member.userId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        showToast(`${name} has been removed from the group`, 'success');
-        fetchGroup();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Failed to remove member', 'error');
-      }
-    } catch {
-      showToast('Failed to remove member', 'error');
+      await socketFirst(
+        socket,
+        'groups:members:remove',
+        { groupId, memberId: member.userId },
+        'DELETE',
+        `/api/groups/${groupId}/members/${member.userId}`,
+      );
+      showToast(`${name} has been removed from the group`, 'success');
+      fetchGroup();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to remove member', 'error');
     }
   };
 
@@ -541,20 +528,17 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/members/${member.userId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        showToast(`Invite for ${name} has been revoked`, 'success');
-        fetchGroup();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Failed to revoke invite', 'error');
-      }
-    } catch {
-      showToast('Failed to revoke invite', 'error');
+      await socketFirst(
+        socket,
+        'groups:members:remove',
+        { groupId, memberId: member.userId },
+        'DELETE',
+        `/api/groups/${groupId}/members/${member.userId}`,
+      );
+      showToast(`Invite for ${name} has been revoked`, 'success');
+      fetchGroup();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to revoke invite', 'error');
     }
   };
 
@@ -639,25 +623,21 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
     }
     setSavingName(true);
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const newName = data.group.name;
-        setGroup(prev => prev ? { ...prev, name: newName } : prev);
-        updatePanelMeta(`group-${groupId}`, { title: newName });
-        updatePanelMeta(`group-profile-${groupId}`, { title: newName });
-        showToast('Group name updated', 'success');
-      } else {
-        const err = await res.json().catch(() => ({}));
-        showToast(err.error || 'Failed to update name', 'error');
-      }
-    } catch {
-      showToast('Failed to update name', 'error');
+      const data = await socketFirst<{ group: { name: string } }>(
+        socket,
+        'groups:update',
+        { groupId, name: trimmed },
+        'PATCH',
+        `/api/groups/${groupId}`,
+        { name: trimmed },
+      );
+      const newName = data.group.name;
+      setGroup(prev => prev ? { ...prev, name: newName } : prev);
+      updatePanelMeta(`group-${groupId}`, { title: newName });
+      updatePanelMeta(`group-profile-${groupId}`, { title: newName });
+      showToast('Group name updated', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to update name', 'error');
     } finally {
       setSavingName(false);
       setEditingName(false);
@@ -678,21 +658,18 @@ export default function GroupProfilePanel({ groupId, currentUserId, onGroupLeft,
     });
     if (confirmed !== true) return;
     try {
-      const token = localStorage.getItem('token') || '';
-      const res = await fetch(`${API}/api/groups/${groupId}/leave`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        showToast(`Left "${group.name}"`, 'success');
-        closePanel(`group-profile-${groupId}`);
-        onGroupLeft?.();
-      } else {
-        const err = await res.json();
-        showToast(err.error || 'Failed to leave group', 'error');
-      }
-    } catch {
-      showToast('Failed to leave group', 'error');
+      await socketFirst(
+        socket,
+        'groups:leave',
+        { groupId },
+        'POST',
+        `/api/groups/${groupId}/leave`,
+      );
+      showToast(`Left "${group.name}"`, 'success');
+      closePanel(`group-profile-${groupId}`);
+      onGroupLeft?.();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to leave group', 'error');
     }
   };
 

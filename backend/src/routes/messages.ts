@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { Server } from 'socket.io';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // io injected by index.ts
 let _io: Server | null = null;

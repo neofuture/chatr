@@ -269,7 +269,26 @@ If you have a domain (e.g. from GoDaddy, Namecheap, Cloudflare):
 
 ---
 
-## Part 9 — Updating the app after code changes
+## Part 9 — Increase RDS max_connections (recommended)
+
+RDS defaults are conservative. For a chat app with many concurrent users, bump it:
+
+1. Console → **RDS** → **Parameter groups** → **Create parameter group**
+   - Family: `postgres16`
+   - Name: `chatr-params`
+   - Description: `Chatr custom params`
+2. Click `chatr-params` → **Edit parameters**
+3. Search for `max_connections` → set to `200` (or higher for larger instances)
+4. Save changes
+5. Go back to RDS → select your database → **Modify**
+6. Under **DB parameter group**, change to `chatr-params`
+7. Apply immediately (requires a reboot)
+
+> **Rule of thumb:** Total Prisma connections across all PM2 processes should be ~50% of `max_connections`, leaving headroom for Prisma Studio, migrations, and monitoring.
+
+---
+
+## Part 10 — Updating the app after code changes
 
 ```bash
 # On your Mac — push changes to GitHub:
@@ -289,8 +308,8 @@ cd backend && npm ci --omit=dev && npm run build && npx prisma migrate deploy &&
 # Rebuild frontend
 cd frontend && npm ci --omit=dev && npm run build && cd ..
 
-# Restart processes
-pm2 restart all
+# Restart with ecosystem config (cluster mode)
+pm2 start ecosystem.config.cjs
 ```
 
 ---

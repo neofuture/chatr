@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import { setTestMode } from '../lib/testMode';
 
 const router = Router();
 const ROOT = path.resolve(__dirname, '../../../');
@@ -824,6 +825,8 @@ interface TestResult {
   name: string;
   status: 'passed' | 'failed';
   duration: number;
+  retries?: number;
+  project?: string;
 }
 
 interface TestSuite {
@@ -835,96 +838,102 @@ interface TestSuite {
 
 interface TestReport {
   generatedAt: string;
-  summary: { total: number; passed: number; failed: number; suites: number; duration: number };
+  summary: { total: number; passed: number; failed: number; flaky: number; suites: number; duration: number };
   suites: TestSuite[];
   coverage: { statements: number; branches: number; functions: number; lines: number } | null;
 }
 
 const testCache: Record<string, { data: TestReport; ts: number }> = {};
-const TEST_CACHE_TTL = 300_000; // 5 min — tests don't change that often
+const TEST_CACHE_TTL = 300_000;
 
-function runTests(area: 'backend' | 'frontend'): TestReport {
-  const dir = area === 'backend'
-    ? path.join(ROOT, 'backend')
-    : path.join(ROOT, 'frontend');
+// ---------------------------------------------------------------------------
+// Live test run tracking — enables real-time streaming of results
+// ---------------------------------------------------------------------------
 
-  let raw: string;
-  try {
-    raw = execSync('npx jest --json --coverage --passWithNoTests 2>/dev/null', {
-      cwd: dir,
-      timeout: 120_000,
-      maxBuffer: 10 * 1024 * 1024,
-      encoding: 'utf8',
-      env: { ...process.env, CI: 'true', NODE_ENV: 'test' },
-    });
-  } catch (err: any) {
-    raw = err.stdout || '{}';
+interface LiveTestResult {
+  name: string;
+  suite: string;
+  project?: string;
+  status: 'passed' | 'failed' | 'skipped';
+  duration: number;
+  timestamp: number;
+  retries?: number;
+}
+
+interface LiveRun {
+  status: 'running' | 'done' | 'error';
+  startedAt: number;
+  results: LiveTestResult[];
+  finalReport?: TestReport;
+  error?: string;
+}
+
+const liveRuns: Record<string, LiveRun> = {};
+
+function parsePlaywrightLine(line: string): LiveTestResult | null {
+  const m = line.match(/^\s*([✓✔✘×✗·\-])\s+\d+\s+(?:\[(\w+)\]\s+›\s+)?(\S+?)(?::\d+:\d+)?\s+›\s+(.+?)\s+\((.+?)\)\s*$/);
+  if (!m) return null;
+  const [, icon, project, file, name, dur] = m;
+  const status = (icon === '✓' || icon === '✔') ? 'passed' : (icon === '-' || icon === '·') ? 'skipped' : 'failed';
+  const ms = dur.endsWith('ms') ? parseInt(dur) : dur.endsWith('s') ? Math.round(parseFloat(dur) * 1000) : parseInt(dur);
+  return { name: name.trim(), suite: file, project: project || undefined, status, duration: isNaN(ms) ? 0 : ms, timestamp: Date.now() };
+}
+
+function parseJestLine(line: string, currentSuite: string): { result?: LiveTestResult; newSuite?: string } {
+  const suiteMatch = line.match(/^\s*(PASS|FAIL)\s+(.+?)(?:\s+\([\d.]+\s*s?\))?\s*$/);
+  if (suiteMatch) return { newSuite: suiteMatch[2].trim() };
+
+  const testMatch = line.match(/^\s*([✓√✕✗×○●])\s+(.+?)(?:\s+\((\d+)\s*ms\))?\s*$/);
+  if (testMatch) {
+    const [, icon, name, durStr] = testMatch;
+    const status = (icon === '✓' || icon === '√') ? 'passed' : (icon === '○' || icon === '●') ? 'skipped' : 'failed';
+    return { result: { name: name.trim(), suite: currentSuite, status, duration: durStr ? parseInt(durStr) : 0, timestamp: Date.now() } };
   }
 
-  let json: any;
-  try {
-    const jsonStart = raw.indexOf('{');
-    json = JSON.parse(jsonStart >= 0 ? raw.substring(jsonStart) : raw);
-  } catch {
-    return {
-      generatedAt: new Date().toISOString(),
-      summary: { total: 0, passed: 0, failed: 0, suites: 0, duration: 0 },
-      suites: [],
-      coverage: null,
-    };
-  }
+  return {};
+}
 
-  const suites: TestSuite[] = (json.testResults || []).map((s: any) => ({
-    file: (s.name || '').replace(ROOT + '/', ''),
-    status: s.status === 'passed' ? 'passed' : 'failed',
-    duration: s.endTime - s.startTime,
-    tests: (s.assertionResults || []).map((t: any) => ({
-      name: t.ancestorTitles?.length ? `${t.ancestorTitles.join(' > ')} > ${t.title}` : t.title,
-      status: t.status === 'passed' ? 'passed' : 'failed',
-      duration: t.duration || 0,
-    })),
-  }));
-
-  const total = json.numTotalTests || 0;
-  const passed = json.numPassedTests || 0;
-  const failed = json.numFailedTests || 0;
-
-  let coverage: TestReport['coverage'] = null;
-  if (json.coverageMap) {
-    let stmtTotal = 0, stmtCov = 0;
-    let brTotal = 0, brCov = 0;
-    let fnTotal = 0, fnCov = 0;
-    let lineTotal = 0, lineCov = 0;
-    for (const file of Object.values(json.coverageMap) as any[]) {
-      const s = file.s || {};
-      for (const v of Object.values(s) as number[]) { stmtTotal++; if (v > 0) stmtCov++; }
-      const b = file.b || {};
-      for (const arr of Object.values(b) as number[][]) { for (const v of arr) { brTotal++; if (v > 0) brCov++; } }
-      const f = file.f || {};
-      for (const v of Object.values(f) as number[]) { fnTotal++; if (v > 0) fnCov++; }
-      const lm = file.getLineCoverage?.() || {};
-      for (const v of Object.values(lm) as number[]) { lineTotal++; if (v > 0) lineCov++; }
+function buildReportFromLive(results: LiveTestResult[]): TestReport {
+  const suiteMap = new Map<string, TestSuite>();
+  for (const r of results) {
+    if (!suiteMap.has(r.suite)) {
+      suiteMap.set(r.suite, { file: r.suite, status: 'passed', duration: 0, tests: [] });
     }
-    coverage = {
-      statements: stmtTotal > 0 ? +((stmtCov / stmtTotal) * 100).toFixed(1) : 0,
-      branches: brTotal > 0 ? +((brCov / brTotal) * 100).toFixed(1) : 0,
-      functions: fnTotal > 0 ? +((fnCov / fnTotal) * 100).toFixed(1) : 0,
-      lines: lineTotal > 0 ? +((lineCov / lineTotal) * 100).toFixed(1) : 0,
-    };
+    const suite = suiteMap.get(r.suite)!;
+    suite.tests.push({ name: r.name, status: r.status === 'passed' ? 'passed' : 'failed', duration: r.duration, retries: r.retries || 0, project: r.project });
+    suite.duration += r.duration;
+    if (r.status === 'failed') suite.status = 'failed';
   }
-
+  const suites = Array.from(suiteMap.values());
+  let total = 0, passed = 0, failed = 0, flaky = 0, totalDuration = 0;
+  for (const s of suites) {
+    for (const t of s.tests) {
+      total++;
+      if (t.status === 'passed') passed++; else failed++;
+      if ((t.retries || 0) > 0) flaky++;
+    }
+    totalDuration += s.duration;
+  }
   return {
     generatedAt: new Date().toISOString(),
-    summary: {
-      total,
-      passed,
-      failed,
-      suites: suites.length,
-      duration: json.testResults?.reduce((s: number, r: any) => s + (r.endTime - r.startTime), 0) || 0,
-    },
+    summary: { total, passed, failed, flaky, suites: suites.length, duration: totalDuration },
     suites,
-    coverage,
+    coverage: null,
   };
+}
+
+function readCoverage(dir: string): TestReport['coverage'] {
+  try {
+    const covPath = path.join(dir, 'coverage', 'coverage-summary.json');
+    if (!fs.existsSync(covPath)) return null;
+    const totals = JSON.parse(fs.readFileSync(covPath, 'utf8')).total;
+    return {
+      statements: totals.statements?.pct ?? 0,
+      branches: totals.branches?.pct ?? 0,
+      functions: totals.functions?.pct ?? 0,
+      lines: totals.lines?.pct ?? 0,
+    };
+  } catch { return null; }
 }
 
 // ---------------------------------------------------------------------------
@@ -950,45 +959,264 @@ router.post('/invalidate', (_req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-/** GET /tests/:area — Return cached test results for backend or frontend */
-router.get('/tests/:area', async (req: Request, res: Response) => {
-  const area = req.params.area as 'backend' | 'frontend';
-  if (area !== 'backend' && area !== 'frontend') {
-    return res.status(400).json({ error: 'Area must be "backend" or "frontend"' });
-  }
+const E2E_JSON_PATH = path.join(ROOT, 'e2e-results.json');
 
+/** GET /tests/e2e — Return live results while running, or final report */
+router.get('/tests/e2e', (_req: Request, res: Response) => {
   try {
-    const cacheKey = `tests_${area}`;
-    const cached = testCache[cacheKey];
-    if (cached && Date.now() - cached.ts < TEST_CACHE_TTL) {
-      return res.json(cached.data);
+    const run = liveRuns.e2e;
+
+    if (run?.status === 'running') {
+      const passed = run.results.filter(r => r.status === 'passed').length;
+      const failed = run.results.filter(r => r.status === 'failed').length;
+      const retrying = run.results.filter(r => (r.retries || 0) > 0).length;
+      return res.json({
+        status: 'running',
+        startedAt: run.startedAt,
+        elapsed: Date.now() - run.startedAt,
+        liveResults: run.results,
+        liveSummary: { completed: run.results.length, passed, failed, retrying },
+      });
     }
-    const report = runTests(area);
-    testCache[cacheKey] = { data: report, ts: Date.now() };
-    res.json(report);
+
+    if (run?.status === 'done' && run.finalReport) {
+      return res.json({ status: 'ready', ...run.finalReport });
+    }
+
+    if (!fs.existsSync(E2E_JSON_PATH)) {
+      return res.json({ status: 'none' });
+    }
+    const raw = fs.readFileSync(E2E_JSON_PATH, 'utf8');
+    const report = parsePlaywrightJson(raw);
+    res.json({ status: 'ready', ...report });
   } catch (err) {
-    console.error(`Test runner error (${area}):`, err);
-    res.status(500).json({ error: 'Failed to run tests' });
+    console.error('E2E load error:', err);
+    res.status(500).json({ error: 'Failed to load E2E results' });
   }
 });
 
-/** POST /tests/:area/run — Run a fresh test suite for backend or frontend, bypassing cache */
-router.post('/tests/:area/run', async (req: Request, res: Response) => {
+/** POST /tests/e2e/run — Kick off an async E2E run with real-time result streaming */
+router.post('/tests/e2e/run', (_req: Request, res: Response) => {
+  if (liveRuns.e2e?.status === 'running') {
+    return res.json({ status: 'running' });
+  }
+
+  setTestMode(true);
+  liveRuns.e2e = { status: 'running', startedAt: Date.now(), results: [] };
+  try { fs.unlinkSync(E2E_JSON_PATH); } catch { /* ignore */ }
+
+  const child = spawn('npx', ['playwright', 'test'], {
+    cwd: ROOT,
+    env: { ...process.env, CI: 'true' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: true,
+  });
+
+  const processChunk = (chunk: Buffer) => {
+    for (const line of chunk.toString().split('\n')) {
+      const result = parsePlaywrightLine(line);
+      if (!result) continue;
+      const existing = liveRuns.e2e!.results.find(r => r.name === result.name && r.suite === result.suite && r.project === result.project);
+      if (existing) {
+        existing.retries = (existing.retries || 0) + 1;
+        existing.status = result.status;
+        existing.duration = result.duration;
+        existing.timestamp = result.timestamp;
+      } else {
+        liveRuns.e2e!.results.push(result);
+      }
+    }
+  };
+
+  child.stdout?.on('data', processChunk);
+  child.stderr?.on('data', processChunk);
+
+  child.on('close', (code) => {
+    if (fs.existsSync(E2E_JSON_PATH)) {
+      try {
+        const raw = fs.readFileSync(E2E_JSON_PATH, 'utf8');
+        liveRuns.e2e!.finalReport = parsePlaywrightJson(raw);
+      } catch { /* ignore */ }
+    }
+    if (!liveRuns.e2e!.finalReport && liveRuns.e2e!.results.length > 0) {
+      liveRuns.e2e!.finalReport = buildReportFromLive(liveRuns.e2e!.results);
+    }
+    liveRuns.e2e!.status = 'done';
+    console.log(`E2E tests finished with exit code ${code ?? 0}`);
+  });
+
+  child.on('error', (err) => {
+    liveRuns.e2e!.status = 'error';
+    liveRuns.e2e!.error = err.message;
+    console.error('E2E spawn error:', err.message);
+  });
+
+  res.json({ status: 'started' });
+});
+
+/** GET /tests/:area — Return cached results, live progress, or 'none' */
+router.get('/tests/:area', (req: Request, res: Response) => {
   const area = req.params.area as 'backend' | 'frontend';
   if (area !== 'backend' && area !== 'frontend') {
     return res.status(400).json({ error: 'Area must be "backend" or "frontend"' });
   }
 
-  try {
-    const cacheKey = `tests_${area}`;
-    delete testCache[cacheKey];
-    const report = runTests(area);
-    testCache[cacheKey] = { data: report, ts: Date.now() };
-    res.json(report);
-  } catch (err) {
-    console.error(`Test runner error (${area}):`, err);
-    res.status(500).json({ error: 'Failed to run tests' });
+  const runKey = `unit_${area}`;
+  const run = liveRuns[runKey];
+
+  if (run?.status === 'running') {
+    const passed = run.results.filter(r => r.status === 'passed').length;
+    const failed = run.results.filter(r => r.status === 'failed').length;
+    return res.json({
+      status: 'running',
+      startedAt: run.startedAt,
+      elapsed: Date.now() - run.startedAt,
+      liveResults: run.results,
+      liveSummary: { completed: run.results.length, passed, failed },
+    });
   }
+
+  const cacheKey = `tests_${area}`;
+  const cached = testCache[cacheKey];
+  if (cached && Date.now() - cached.ts < TEST_CACHE_TTL) {
+    return res.json({ status: 'ready', ...cached.data });
+  }
+
+  if (run?.status === 'done' && run.finalReport) {
+    return res.json({ status: 'ready', ...run.finalReport });
+  }
+
+  return res.json({ status: 'none' });
 });
+
+/** POST /tests/:area/run — Start an async test run with live result streaming */
+router.post('/tests/:area/run', (req: Request, res: Response) => {
+  const area = req.params.area as 'backend' | 'frontend';
+  if (area !== 'backend' && area !== 'frontend') {
+    return res.status(400).json({ error: 'Area must be "backend" or "frontend"' });
+  }
+
+  const runKey = `unit_${area}`;
+  if (liveRuns[runKey]?.status === 'running') {
+    return res.json({ status: 'running' });
+  }
+
+  const dir = area === 'backend' ? path.join(ROOT, 'backend') : path.join(ROOT, 'frontend');
+  const cacheKey = `tests_${area}`;
+  delete testCache[cacheKey];
+
+  liveRuns[runKey] = { status: 'running', startedAt: Date.now(), results: [] };
+
+  const child = spawn('npx', ['jest', '--verbose', '--coverage', '--passWithNoTests', '--forceExit'], {
+    cwd: dir,
+    env: { ...process.env, CI: 'true', NODE_ENV: 'test' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: true,
+  });
+
+  let currentSuite = '';
+  const processChunk = (chunk: Buffer) => {
+    for (const line of chunk.toString().split('\n')) {
+      const { result, newSuite } = parseJestLine(line, currentSuite);
+      if (newSuite) currentSuite = newSuite;
+      if (result) liveRuns[runKey]!.results.push(result);
+    }
+  };
+
+  child.stdout?.on('data', processChunk);
+  child.stderr?.on('data', processChunk);
+
+  child.on('close', () => {
+    const run = liveRuns[runKey]!;
+    run.finalReport = buildReportFromLive(run.results);
+    run.finalReport.coverage = readCoverage(dir);
+    run.status = 'done';
+    testCache[cacheKey] = { data: run.finalReport, ts: Date.now() };
+    console.log(`${area} tests finished: ${run.finalReport.summary.passed}/${run.finalReport.summary.total} passed`);
+  });
+
+  child.on('error', (err) => {
+    liveRuns[runKey]!.status = 'error';
+    liveRuns[runKey]!.error = err.message;
+    console.error(`${area} test spawn error:`, err.message);
+  });
+
+  res.json({ status: 'started' });
+});
+
+function parsePlaywrightJson(raw: string): TestReport {
+  let json: any;
+  try {
+    const jsonStart = raw.indexOf('{');
+    json = JSON.parse(jsonStart >= 0 ? raw.substring(jsonStart) : raw);
+  } catch {
+    return {
+      generatedAt: new Date().toISOString(),
+      summary: { total: 0, passed: 0, failed: 0, flaky: 0, suites: 0, duration: 0 },
+      suites: [],
+      coverage: null,
+    };
+  }
+
+  const suiteMap = new Map<string, TestSuite>();
+
+  function collectSpecs(node: any, file: string, prefix: string) {
+    const suite = suiteMap.get(file)!;
+    for (const spec of node.specs || []) {
+      for (const test of spec.tests || []) {
+        const results = test.results || [];
+        const lastResult = results[results.length - 1];
+        const status = lastResult?.status === 'passed' ? 'passed' : 'failed';
+        const duration = lastResult?.duration || 0;
+        const retries = Math.max(0, results.length - 1);
+        suite.tests.push({
+          name: prefix ? `${prefix} > ${spec.title}` : spec.title,
+          status,
+          duration,
+          retries,
+          project: test.projectName || undefined,
+        });
+        suite.duration += duration;
+        if (status === 'failed') suite.status = 'failed';
+      }
+    }
+    for (const child of node.suites || []) {
+      collectSpecs(child, file, prefix ? `${prefix} > ${child.title}` : child.title);
+    }
+  }
+
+  function walkSuites(nodes: any[]) {
+    for (const node of nodes) {
+      const file = node.file ? node.file.replace(ROOT + '/', '') : '';
+      if (file) {
+        if (!suiteMap.has(file)) {
+          suiteMap.set(file, { file, status: 'passed', duration: 0, tests: [] });
+        }
+        collectSpecs(node, file, '');
+      } else {
+        walkSuites(node.suites || []);
+      }
+    }
+  }
+  walkSuites(json.suites || []);
+
+  const suites = Array.from(suiteMap.values());
+  let total = 0, passed = 0, failed = 0, flaky = 0, totalDuration = 0;
+  for (const s of suites) {
+    for (const t of s.tests) {
+      total++;
+      if (t.status === 'passed') passed++; else failed++;
+      if ((t.retries || 0) > 0) flaky++;
+    }
+    totalDuration += s.duration;
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    summary: { total, passed, failed, flaky, suites: suites.length, duration: totalDuration },
+    suites,
+    coverage: null,
+  };
+}
 
 export default router;

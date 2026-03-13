@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -8,13 +8,11 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 import { getCachedConversations, setCachedConversations, invalidateConversationCache } from '../lib/redis';
 import { getConnectedUserIds } from '../lib/conversation';
 import { processImageVariants, deleteImageVariants, PROFILE_VARIANTS, COVER_VARIANTS } from '../lib/imageResize';
-import { maybeRegenerateDMSummary, setSummaryPrisma } from '../services/summaryEngine';
+import { maybeRegenerateDMSummary } from '../services/summaryEngine';
 import { getConversations } from '../lib/getConversations';
 import { Server } from 'socket.io';
 
 const router = Router();
-const prisma = new PrismaClient();
-setSummaryPrisma(prisma);
 
 let _io: Server | null = null;
 export function setUsersSocketIO(io: Server) { _io = io; }

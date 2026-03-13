@@ -17,7 +17,8 @@
     "debug-auth": "node src/scripts/debug-websocket-auth.js",
     "seed:users": "ts-node --project tsconfig.seed.json prisma/seed-test-users.ts",
     "seed:bot": "ts-node -r tsconfig-paths/register --project tsconfig.seed.json prisma/seed-ai-bot.ts",
-    "seed:support": "ts-node --project tsconfig.seed.json prisma/seed-support-user.ts"
+    "seed:support": "ts-node --project tsconfig.seed.json prisma/seed-support-user.ts",
+    "cleanup:e2e": "ts-node --project tsconfig.seed.json prisma/cleanup-e2e.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.995.0",
