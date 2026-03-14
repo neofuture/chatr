@@ -66,6 +66,8 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
 
   // ── Load all friend data ──────────────────────────────────────────────────
   const refresh = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token || token === 'undefined') { setLoading(false); return; }
     try {
       const [fr, inc, out, bl] = await Promise.all([
         socketFirst(socket, 'friends:list', {}, 'GET', '/api/friends'),

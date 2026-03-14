@@ -398,7 +398,7 @@ function SuiteRow({ suite, area, defaultOpen = false }: { suite: D; area?: strin
       <div onClick={() => setOpen(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', cursor: 'pointer', fontSize: '0.8rem' }}>
         <i className={`fas fa-${allPassed ? 'check-circle' : 'times-circle'}`} style={{ color: allPassed ? '#10b981' : '#ef4444', fontSize: '0.7rem' }} />
         {area && <Badge color={area === 'frontend' ? '#3b82f6' : '#10b981'}>{area === 'frontend' ? 'FE' : 'BE'}</Badge>}
-        {projects.map((p: string) => <Badge key={p} color={PROJECT_COLORS[p] || '#6b7280'}>{PROJECT_LABELS[p] || p}</Badge>)}
+        {projects.map((p) => <Badge key={String(p)} color={PROJECT_COLORS[String(p)] || '#6b7280'}>{PROJECT_LABELS[String(p)] || String(p)}</Badge>)}
         {hasRetries && <Badge color="#f59e0b">↻ flaky</Badge>}
         <code title={suite.file} style={{ color: '#60a5fa', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {suite.file.replace(/^(backend|frontend)\/src\//, '').replace(/^e2e\//, '').replace(/\.spec\.ts$/, '').replace(/\.test\.tsx?$/, '')}
