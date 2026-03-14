@@ -270,9 +270,9 @@ function buildDashboard(): object {
   const currentBranch = git('rev-parse --abbrev-ref HEAD');
   const latestHash = git('log -1 --format=%h');
   const latestMessage = git('log -1 --format=%s');
-  // Recent commits with per-commit size (insertions/deletions) — exclude version bumps
+  // Recent commits with per-commit size (insertions/deletions/files changed) — exclude version bumps
   const commitSizeRaw = git('log -80 --no-merges --format="HASH:%h|%s" --shortstat');
-  const commitSizes: Record<string, { added: number; deleted: number }> = {};
+  const commitSizes: Record<string, { added: number; deleted: number; files: number }> = {};
   const bumpHashes = new Set<string>();
   if (commitSizeRaw) {
     let currentHash = '';
@@ -287,7 +287,12 @@ function buildDashboard(): object {
       } else if (currentHash && line.includes('changed')) {
         const addMatch = line.match(/(\d+) insertion/);
         const delMatch = line.match(/(\d+) deletion/);
-        commitSizes[currentHash] = { added: addMatch ? parseInt(addMatch[1], 10) : 0, deleted: delMatch ? parseInt(delMatch[1], 10) : 0 };
+        const filesMatch = line.match(/(\d+) file/);
+        commitSizes[currentHash] = {
+          added: addMatch ? parseInt(addMatch[1], 10) : 0,
+          deleted: delMatch ? parseInt(delMatch[1], 10) : 0,
+          files: filesMatch ? parseInt(filesMatch[1], 10) : 0,
+        };
       }
     }
   }
@@ -298,7 +303,60 @@ function buildDashboard(): object {
       hash: c.hash, date: c.date, message: c.message, author: c.author,
       added: commitSizes[c.hash]?.added ?? 0,
       deleted: commitSizes[c.hash]?.deleted ?? 0,
+      files: commitSizes[c.hash]?.files ?? 0,
     }));
+
+  // Commit type breakdown (conventional commit prefixes)
+  const typeMap: Record<string, number> = {};
+  for (const c of commits) {
+    const m = c.message.match(/^(\w+)[\s(:!]/);
+    const type = m ? m[1].toLowerCase() : 'other';
+    const normalised = ['feat', 'fix', 'chore', 'test', 'docs', 'style', 'refactor', 'perf', 'ci', 'build'].includes(type) ? type : 'other';
+    typeMap[normalised] = (typeMap[normalised] || 0) + 1;
+  }
+  const commitTypes = Object.entries(typeMap)
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Commit size distribution
+  const sizeBuckets = { tiny: 0, small: 0, medium: 0, large: 0, huge: 0 };
+  const allSizes = Object.values(commitSizes);
+  for (const s of allSizes) {
+    const total = s.added + s.deleted;
+    if (total <= 10) sizeBuckets.tiny++;
+    else if (total <= 50) sizeBuckets.small++;
+    else if (total <= 200) sizeBuckets.medium++;
+    else if (total <= 500) sizeBuckets.large++;
+    else sizeBuckets.huge++;
+  }
+  const avgCommitSize = allSizes.length > 0
+    ? Math.round(allSizes.reduce((sum, s) => sum + s.added + s.deleted, 0) / allSizes.length)
+    : 0;
+  const avgFilesPerCommit = allSizes.length > 0
+    ? +(allSizes.reduce((sum, s) => sum + s.files, 0) / allSizes.length).toFixed(1)
+    : 0;
+
+  // Weekly velocity (insertions/deletions aggregated per week)
+  const weeklyVelocity: Record<string, { added: number; deleted: number; commits: number }> = {};
+  for (const c of recentCommits) {
+    const d = new Date(c.date);
+    const yr = d.getFullYear();
+    const wk = Math.ceil(((d.getTime() - new Date(yr, 0, 1).getTime()) / 86400000 + new Date(yr, 0, 1).getDay() + 1) / 7);
+    const weekKey = `${yr}-W${String(wk).padStart(2, '0')}`;
+    if (!weeklyVelocity[weekKey]) weeklyVelocity[weekKey] = { added: 0, deleted: 0, commits: 0 };
+    weeklyVelocity[weekKey].added += c.added;
+    weeklyVelocity[weekKey].deleted += c.deleted;
+    weeklyVelocity[weekKey].commits++;
+  }
+  const weeklyVelocityArr = Object.entries(weeklyVelocity)
+    .map(([week, v]) => ({ week, ...v }))
+    .sort((a, b) => a.week.localeCompare(b.week));
+
+  // Biggest commits (top 5 by total changes)
+  const biggestCommits = [...recentCommits]
+    .sort((a, b) => (b.added + b.deleted) - (a.added + a.deleted))
+    .slice(0, 5)
+    .map(c => ({ hash: c.hash, message: c.message, added: c.added, deleted: c.deleted, files: c.files, date: c.date }));
 
   // Components
   const componentsDir = path.join(frontendDir, 'components');
@@ -798,6 +856,11 @@ function buildDashboard(): object {
     codeChurn,
     commitStreaks: { current: currentStreak, longest: longestStreak },
     linesChanged: { added: linesAdded, deleted: linesDeleted, net: linesAdded - linesDeleted },
+    commitTypes,
+    commitSizeDistribution: sizeBuckets,
+    commitSizeStats: { avgSize: avgCommitSize, avgFiles: avgFilesPerCommit },
+    weeklyVelocity: weeklyVelocityArr,
+    biggestCommits,
     codeOwnership,
     branchCount,
     tagCount,
@@ -838,7 +901,7 @@ interface TestSuite {
 
 interface TestReport {
   generatedAt: string;
-  summary: { total: number; passed: number; failed: number; flaky: number; suites: number; duration: number };
+  summary: { total: number; passed: number; failed: number; flaky: number; suites: number; duration: number; elapsed?: number };
   suites: TestSuite[];
   coverage: { statements: number; branches: number; functions: number; lines: number } | null;
 }
@@ -871,12 +934,15 @@ interface LiveRun {
 const liveRuns: Record<string, LiveRun> = {};
 
 function parsePlaywrightLine(line: string): LiveTestResult | null {
-  const m = line.match(/^\s*([✓✔✘×✗·\-])\s+\d+\s+(?:\[(\w+)\]\s+›\s+)?(\S+?)(?::\d+:\d+)?\s+›\s+(.+?)\s+\((.+?)\)\s*$/);
+  const m = line.match(/^\s*([✓✔✘×✗↻·\-])\s+\d+\s+(?:\[(\w+)\]\s+›\s+)?(\S+?)(?::\d+:\d+)?\s+›\s+(.+?)\s+\((.+?)\)\s*$/);
   if (!m) return null;
-  const [, icon, project, file, name, dur] = m;
+  const [, icon, project, file, rawName, dur] = m;
+  const name = rawName.replace(/\s*\(retry #\d+\)\s*$/, '').trim();
+  const isRetry = icon === '↻' || /retry #\d+/.test(rawName);
   const status = (icon === '✓' || icon === '✔') ? 'passed' : (icon === '-' || icon === '·') ? 'skipped' : 'failed';
-  const ms = dur.endsWith('ms') ? parseInt(dur) : dur.endsWith('s') ? Math.round(parseFloat(dur) * 1000) : parseInt(dur);
-  return { name: name.trim(), suite: file, project: project || undefined, status, duration: isNaN(ms) ? 0 : ms, timestamp: Date.now() };
+  const durClean = dur.replace(/retry #\d+/g, '').trim();
+  const ms = durClean.endsWith('ms') ? parseInt(durClean) : durClean.endsWith('s') ? Math.round(parseFloat(durClean) * 1000) : parseInt(durClean);
+  return { name, suite: file, project: project || undefined, status, duration: isNaN(ms) ? 0 : ms, timestamp: Date.now(), retries: isRetry ? 1 : 0 };
 }
 
 function parseJestLine(line: string, currentSuite: string): { result?: LiveTestResult; newSuite?: string } {
@@ -960,6 +1026,20 @@ router.post('/invalidate', (_req: Request, res: Response) => {
 });
 
 const E2E_JSON_PATH = path.join(ROOT, 'e2e-results.json');
+const TEST_RESULTS_DIR = path.join(ROOT, '.test-cache');
+function saveTestReport(area: string, report: TestReport) {
+  try {
+    fs.mkdirSync(TEST_RESULTS_DIR, { recursive: true });
+    fs.writeFileSync(path.join(TEST_RESULTS_DIR, `${area}.json`), JSON.stringify(report));
+  } catch { /* ignore */ }
+}
+function loadTestReport(area: string): TestReport | null {
+  try {
+    const p = path.join(TEST_RESULTS_DIR, `${area}.json`);
+    if (!fs.existsSync(p)) return null;
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch { return null; }
+}
 
 /** GET /tests/e2e — Return live results while running, or final report */
 router.get('/tests/e2e', (_req: Request, res: Response) => {
@@ -983,12 +1063,17 @@ router.get('/tests/e2e', (_req: Request, res: Response) => {
       return res.json({ status: 'ready', ...run.finalReport });
     }
 
-    if (!fs.existsSync(E2E_JSON_PATH)) {
-      return res.json({ status: 'none' });
+    if (fs.existsSync(E2E_JSON_PATH)) {
+      const raw = fs.readFileSync(E2E_JSON_PATH, 'utf8');
+      const report = parsePlaywrightJson(raw);
+      saveTestReport('e2e', report);
+      return res.json({ status: 'ready', ...report });
     }
-    const raw = fs.readFileSync(E2E_JSON_PATH, 'utf8');
-    const report = parsePlaywrightJson(raw);
-    res.json({ status: 'ready', ...report });
+
+    const saved = loadTestReport('e2e');
+    if (saved) return res.json({ status: 'ready', ...saved });
+
+    return res.json({ status: 'none' });
   } catch (err) {
     console.error('E2E load error:', err);
     res.status(500).json({ error: 'Failed to load E2E results' });
@@ -1002,12 +1087,13 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
   }
 
   setTestMode(true);
+  process.env.SUPPRESS_SMS = '1';
   liveRuns.e2e = { status: 'running', startedAt: Date.now(), results: [] };
   try { fs.unlinkSync(E2E_JSON_PATH); } catch { /* ignore */ }
 
   const child = spawn('npx', ['playwright', 'test'], {
     cwd: ROOT,
-    env: { ...process.env, CI: 'true' },
+    env: { ...process.env, CI: 'true', SUPPRESS_SMS: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: true,
   });
@@ -1032,6 +1118,7 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
   child.stderr?.on('data', processChunk);
 
   child.on('close', (code) => {
+    const wallClock = Date.now() - liveRuns.e2e!.startedAt;
     if (fs.existsSync(E2E_JSON_PATH)) {
       try {
         const raw = fs.readFileSync(E2E_JSON_PATH, 'utf8');
@@ -1041,8 +1128,14 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
     if (!liveRuns.e2e!.finalReport && liveRuns.e2e!.results.length > 0) {
       liveRuns.e2e!.finalReport = buildReportFromLive(liveRuns.e2e!.results);
     }
+    if (liveRuns.e2e!.finalReport && !liveRuns.e2e!.finalReport.summary.elapsed) {
+      liveRuns.e2e!.finalReport.summary.elapsed = wallClock;
+    }
+    if (liveRuns.e2e!.finalReport) {
+      saveTestReport('e2e', liveRuns.e2e!.finalReport);
+    }
     liveRuns.e2e!.status = 'done';
-    console.log(`E2E tests finished with exit code ${code ?? 0}`);
+    console.log(`E2E tests finished with exit code ${code ?? 0} (${Math.round(wallClock / 1000)}s)`);
   });
 
   child.on('error', (err) => {
@@ -1086,6 +1179,12 @@ router.get('/tests/:area', (req: Request, res: Response) => {
     return res.json({ status: 'ready', ...run.finalReport });
   }
 
+  const saved = loadTestReport(area);
+  if (saved) {
+    testCache[cacheKey] = { data: saved, ts: Date.now() };
+    return res.json({ status: 'ready', ...saved });
+  }
+
   return res.json({ status: 'none' });
 });
 
@@ -1103,11 +1202,29 @@ router.post('/tests/:area/run', (req: Request, res: Response) => {
 
   const dir = area === 'backend' ? path.join(ROOT, 'backend') : path.join(ROOT, 'frontend');
   const cacheKey = `tests_${area}`;
-  delete testCache[cacheKey];
 
+  const failedOnly = req.body?.failedOnly === true;
+  let testNamePattern = '';
+  if (failedOnly) {
+    const prev = testCache[cacheKey]?.data || liveRuns[runKey]?.finalReport || loadTestReport(area);
+    if (prev) {
+      const failedNames = prev.suites.flatMap((s: TestSuite) => s.tests.filter((t: TestResult) => t.status === 'failed').map((t: TestResult) => t.name));
+      if (failedNames.length > 0) {
+        testNamePattern = failedNames.map((n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      }
+    }
+    if (!testNamePattern) {
+      return res.json({ status: 'skipped', message: 'No failed tests to re-run' });
+    }
+  }
+
+  delete testCache[cacheKey];
   liveRuns[runKey] = { status: 'running', startedAt: Date.now(), results: [] };
 
-  const child = spawn('npx', ['jest', '--verbose', '--coverage', '--passWithNoTests', '--forceExit'], {
+  const jestArgs = ['jest', '--verbose', '--coverage', '--passWithNoTests', '--forceExit'];
+  if (testNamePattern) jestArgs.push('--testNamePattern', testNamePattern);
+
+  const child = spawn('npx', jestArgs, {
     cwd: dir,
     env: { ...process.env, CI: 'true', NODE_ENV: 'test' },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -1132,6 +1249,7 @@ router.post('/tests/:area/run', (req: Request, res: Response) => {
     run.finalReport.coverage = readCoverage(dir);
     run.status = 'done';
     testCache[cacheKey] = { data: run.finalReport, ts: Date.now() };
+    saveTestReport(area, run.finalReport);
     console.log(`${area} tests finished: ${run.finalReport.summary.passed}/${run.finalReport.summary.total} passed`);
   });
 
@@ -1160,7 +1278,7 @@ function parsePlaywrightJson(raw: string): TestReport {
 
   const suiteMap = new Map<string, TestSuite>();
 
-  function collectSpecs(node: any, file: string, prefix: string) {
+  function collectSpecs(node: any, file: string, prefix: string, project: string) {
     const suite = suiteMap.get(file)!;
     for (const spec of node.specs || []) {
       for (const test of spec.tests || []) {
@@ -1174,31 +1292,33 @@ function parsePlaywrightJson(raw: string): TestReport {
           status,
           duration,
           retries,
-          project: test.projectName || undefined,
+          project: test.projectName || project || undefined,
         });
         suite.duration += duration;
         if (status === 'failed') suite.status = 'failed';
       }
     }
     for (const child of node.suites || []) {
-      collectSpecs(child, file, prefix ? `${prefix} > ${child.title}` : child.title);
+      collectSpecs(child, file, prefix ? `${prefix} > ${child.title}` : child.title, project);
     }
   }
 
-  function walkSuites(nodes: any[]) {
+  function walkSuites(nodes: any[], inheritedProject: string) {
     for (const node of nodes) {
       const file = node.file ? node.file.replace(ROOT + '/', '') : '';
+      const project = node.project?.name || inheritedProject;
       if (file) {
         if (!suiteMap.has(file)) {
           suiteMap.set(file, { file, status: 'passed', duration: 0, tests: [] });
         }
-        collectSpecs(node, file, '');
+        collectSpecs(node, file, '', project);
       } else {
-        walkSuites(node.suites || []);
+        const projFromTitle = !file && node.title && ['chromium', 'mobile', 'setup', 'teardown', 'firefox', 'webkit'].includes(node.title.toLowerCase()) ? node.title.toLowerCase() : '';
+        walkSuites(node.suites || [], projFromTitle || project);
       }
     }
   }
-  walkSuites(json.suites || []);
+  walkSuites(json.suites || [], '');
 
   const suites = Array.from(suiteMap.values());
   let total = 0, passed = 0, failed = 0, flaky = 0, totalDuration = 0;
@@ -1211,9 +1331,11 @@ function parsePlaywrightJson(raw: string): TestReport {
     totalDuration += s.duration;
   }
 
+  const elapsed = json.stats?.duration || undefined;
+
   return {
     generatedAt: new Date().toISOString(),
-    summary: { total, passed, failed, flaky, suites: suites.length, duration: totalDuration },
+    summary: { total, passed, failed, flaky, suites: suites.length, duration: totalDuration, elapsed },
     suites,
     coverage: null,
   };

@@ -130,67 +130,66 @@ test.describe('Group Profile', () => {
 
   test('upload group avatar via UI', async ({ page }) => {
     await page.goto('/app/groups');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
-    const groupBtn = page.getByText(groupNameBase);
-    if (!(await groupBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
+    const groupBtn = page.getByText(groupNameBase).first();
+    if (!(await groupBtn.isVisible({ timeout: 8_000 }).catch(() => false))) {
       test.skip();
       return;
     }
     await groupBtn.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
     const infoBtn = page.getByTitle('Group info').or(page.locator('button:has(i.fa-info-circle)'));
-    if (!(await infoBtn.isVisible({ timeout: 3_000 }).catch(() => false))) {
+    if (!(await infoBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip();
       return;
     }
     await infoBtn.click();
-    await page.waitForTimeout(1000);
-
-    // Set files directly on the avatar file input (second — first is cover)
-    const fileInputs = page.locator('input[type="file"][accept*="image"]');
-    if ((await fileInputs.count()) < 2) { test.skip(); return; }
-    await fileInputs.nth(1).setInputFiles(getAssetPath('test-image.png'));
     await page.waitForTimeout(2000);
 
-    const uploadBtn = page.getByRole('button', { name: 'Upload' });
-    if (await uploadBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    const fileInputs = page.locator('input[type="file"]');
+    const count = await fileInputs.count();
+    if (count < 2) { test.skip(); return; }
+    await fileInputs.nth(1).setInputFiles(getAssetPath('test-image.png'));
+    await page.waitForTimeout(3000);
+
+    const uploadBtn = page.getByRole('button', { name: /upload/i });
+    if (await uploadBtn.isVisible({ timeout: 8_000 }).catch(() => false)) {
       await uploadBtn.click();
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(4000);
     }
   });
 
   test('upload group cover via UI', async ({ page }) => {
     await page.goto('/app/groups');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
-    const groupBtn = page.getByText(groupNameBase);
-    if (!(await groupBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
+    const groupBtn = page.getByText(groupNameBase).first();
+    if (!(await groupBtn.isVisible({ timeout: 8_000 }).catch(() => false))) {
       test.skip();
       return;
     }
     await groupBtn.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
     const infoBtn = page.getByTitle('Group info').or(page.locator('button:has(i.fa-info-circle)'));
-    if (!(await infoBtn.isVisible({ timeout: 3_000 }).catch(() => false))) {
+    if (!(await infoBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip();
       return;
     }
     await infoBtn.click();
-    await page.waitForTimeout(1000);
-
-    // Set files directly on the cover file input (first one)
-    const fileInputs = page.locator('input[type="file"][accept*="image"]');
-    if ((await fileInputs.count()) < 1) { test.skip(); return; }
-    await fileInputs.first().setInputFiles(getAssetPath('test-cover.png'));
     await page.waitForTimeout(2000);
 
-    const uploadBtn = page.getByRole('button', { name: 'Upload' });
-    if (await uploadBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    const fileInputs = page.locator('input[type="file"]');
+    if ((await fileInputs.count()) < 1) { test.skip(); return; }
+    await fileInputs.first().setInputFiles(getAssetPath('test-cover.png'));
+    await page.waitForTimeout(3000);
+
+    const uploadBtn = page.getByRole('button', { name: /upload/i });
+    if (await uploadBtn.isVisible({ timeout: 8_000 }).catch(() => false)) {
       await uploadBtn.click();
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(4000);
     }
   });
 

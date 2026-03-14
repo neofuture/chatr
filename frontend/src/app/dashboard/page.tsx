@@ -25,6 +25,19 @@ const GRID3: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minm
 const SCROLLBOX: React.CSSProperties = { maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 };
 const SUB: React.CSSProperties = { fontSize: '0.7rem', color: 'var(--text-secondary)' };
 
+function fmtMs(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  if (m < 60) return rem > 0 ? `${m}m ${rem}s` : `${m}m`;
+  const h = Math.floor(m / 60);
+  const remM = m % 60;
+  return remM > 0 ? `${h}h ${remM}m` : `${h}h`;
+}
+
+function fmtSec(sec: number): string { return fmtMs(sec * 1000); }
+
 // ---------------------------------------------------------------------------
 // Icon helper (Font Awesome)
 // ---------------------------------------------------------------------------
@@ -251,38 +264,37 @@ function LiveSummaryBar({ live, color = '#3b82f6' }: { live: D; color?: string }
   const { completed = 0, passed = 0, failed = 0, retrying = 0 } = live.liveSummary || {};
   return (
     <div>
-      <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <i className="fad fa-spinner-third fa-spin" style={{ color, fontSize: '1rem' }} />
-          <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{completed}</span>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>tests completed</span>
+      <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: failed === 0 ? '#10b981' : '#ef4444' }}>
+            {passed}/{completed}
+          </div>
+          <div style={SUB}>tests passed</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-          <span style={{ fontWeight: 600, color: '#10b981' }}>{passed}</span>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>passed</span>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{fmtSec(elapsed)}</div>
+          <div style={SUB}>duration</div>
         </div>
         {failed > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
-            <span style={{ fontWeight: 600, color: '#ef4444' }}>{failed}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>failed</span>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{failed}</div>
+            <div style={SUB}>failed</div>
           </div>
         )}
         {retrying > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <i className="fas fa-rotate" style={{ color: '#f59e0b', fontSize: '0.65rem' }} />
-            <span style={{ fontWeight: 600, color: '#f59e0b' }}>{retrying}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>retried</span>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>{retrying}</div>
+            <div style={SUB}>retried</div>
           </div>
         )}
-        <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-          <i className="far fa-clock" style={{ marginRight: 4 }} />{elapsed}s elapsed
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <i className="fad fa-spinner-third fa-spin" style={{ color, fontSize: '0.9rem' }} />
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color }}>RUNNING</span>
         </div>
       </div>
       {completed > 0 && (
-        <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem', display: 'flex' }}>
-          {passed > 0 && <div style={{ width: `${(passed / completed) * 100}%`, height: '100%', background: '#10b981', transition: 'width 0.3s' }} />}
+        <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem', display: 'flex' }}>
+          {passed > 0 && <div style={{ width: `${(passed / completed) * 100}%`, height: '100%', background: failed === 0 ? 'linear-gradient(to right, #10b981, #34d399)' : '#10b981', transition: 'width 0.3s' }} />}
           {failed > 0 && <div style={{ width: `${(failed / completed) * 100}%`, height: '100%', background: '#ef4444', transition: 'width 0.3s' }} />}
         </div>
       )}
@@ -305,13 +317,13 @@ function LiveTestFeed({ live, color = '#3b82f6' }: { live: D; color?: string }) 
             <i className={`fas fa-${r.status === 'passed' ? 'check-circle' : r.status === 'skipped' ? 'minus-circle' : 'times-circle'}`}
               style={{ color: r.status === 'passed' ? '#10b981' : r.status === 'skipped' ? '#94a3b8' : '#ef4444', fontSize: '0.7rem', width: 14, flexShrink: 0 }} />
             {r.area && <Badge color={r.area === 'frontend' ? '#3b82f6' : '#10b981'}>{r.area === 'frontend' ? 'FE' : 'BE'}</Badge>}
-            {(r.retries || 0) > 0 && <Badge color={r.status === 'passed' ? '#f59e0b' : '#ef4444'}>↻{r.retries}</Badge>}
+            {(r.retries || 0) > 0 && <Badge color={r.status === 'passed' ? '#f59e0b' : '#ef4444'}>↻ attempt {(r.retries || 0) + 1}/3</Badge>}
             <code style={{ color: '#60a5fa', minWidth: 100, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}
               title={r.suite}>{r.suite.replace(/.*\//, '').replace(/\.\w+$/, '')}</code>
             <span style={{ flex: 1, color: r.status === 'passed' ? 'var(--text-secondary)' : '#fca5a5', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
               title={r.name}>{r.name}</span>
             <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0, minWidth: 45, textAlign: 'right' }}>
-              {r.duration >= 1000 ? `${(r.duration / 1000).toFixed(1)}s` : `${r.duration}ms`}
+              {fmtMs(r.duration)}
             </span>
           </div>
         ))}
@@ -338,7 +350,7 @@ function groupResultsBySuite(results: D[]): D[] {
   return Array.from(map.values());
 }
 
-function LiveE2EFeed({ live, color = '#a855f7' }: { live: D; color?: string }) {
+function LiveE2EFeed({ live, color = '#a855f7', expandAll = false }: { live: D; color?: string; expandAll?: boolean }) {
   const results: D[] = live.liveResults || [];
   const suites = groupResultsBySuite(results);
   return (
@@ -346,15 +358,38 @@ function LiveE2EFeed({ live, color = '#a855f7' }: { live: D; color?: string }) {
       <LiveSummaryBar live={live} color={color} />
       <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
         {suites.map((suite: D) => (
-          <SuiteRow key={suite.file} suite={suite} />
+          <SuiteRow key={`${suite.file}-${expandAll}`} suite={suite} defaultOpen={expandAll} />
         ))}
       </div>
     </div>
   );
 }
 
-function SuiteRow({ suite, area }: { suite: D; area?: string }) {
-  const [open, setOpen] = useState(false);
+function FilterPills({ options, value, onChange }: { options: { id: string; label: string; count: number }[]; value: string; onChange: (v: string) => void }) {
+  const PILL: React.CSSProperties = { padding: '2px 10px', borderRadius: 12, fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', border: '1px solid transparent', transition: 'all 0.15s' };
+  return (
+    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      {options.map(o => {
+        const active = value === o.id;
+        const pillColors: Record<string, string> = { failed: '#f87171', flaky: '#f59e0b', retried: '#a78bfa' };
+        const accent = pillColors[o.id] || '#60a5fa';
+        const accentBg = `${accent}33`;
+        const accentBorder = `${accent}66`;
+        const isSpecial = o.id in pillColors;
+        return (
+          <button key={o.id} onClick={() => onChange(o.id)}
+            style={{ ...PILL, background: active ? accentBg : 'rgba(255,255,255,0.04)', color: active ? accent : (isSpecial ? accent : 'var(--text-secondary)'), borderColor: active ? accentBorder : 'rgba(255,255,255,0.06)' }}>
+            {o.label} <span style={{ opacity: 0.6, marginLeft: 3 }}>{o.count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SuiteRow({ suite, area, defaultOpen = false }: { suite: D; area?: string; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
   const allPassed = suite.tests.every((t: D) => t.status === 'passed');
   const hasRetries = suite.tests.some((t: D) => (t.retries || 0) > 0);
   const projects = [...new Set(suite.tests.map((t: D) => t.project).filter(Boolean))];
@@ -372,27 +407,39 @@ function SuiteRow({ suite, area }: { suite: D; area?: string }) {
           {suite.tests.filter((t: D) => t.status === 'passed').length}/{suite.tests.length}
         </span>
         <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', minWidth: 40, textAlign: 'right' }}>
-          {(suite.duration / 1000).toFixed(1)}s
+          {fmtMs(suite.duration)}
         </span>
         <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ fontSize: '0.5rem', color: 'var(--text-secondary)' }} />
       </div>
       {open && (
         <div style={{ paddingLeft: 20, paddingBottom: 6 }}>
-          {suite.tests.map((t: D, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', padding: '2px 0' }}>
-              <i className={`fas fa-${t.status === 'passed' ? 'check' : 'xmark'}`}
-                style={{ color: t.status === 'passed' ? '#10b981' : '#ef4444', fontSize: '0.6rem', width: 10 }} />
-              <span style={{ flex: 1, color: t.status === 'passed' ? 'var(--text-secondary)' : '#fca5a5' }}>{t.name}</span>
-              {(t.retries || 0) > 0 && (
-                <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3, background: t.status === 'passed' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)', color: t.status === 'passed' ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
-                  ↻{t.retries} {t.status === 'passed' ? 'flaky' : 'retried'}
+          {suite.tests.map((t: D, i: number) => {
+            const retries = t.retries || 0;
+            const attempt = retries + 1;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', padding: '2px 0' }}>
+                <i className={`fas fa-${t.status === 'passed' ? 'check' : 'xmark'}`}
+                  style={{ color: t.status === 'passed' ? '#10b981' : '#ef4444', fontSize: '0.6rem', width: 10 }} />
+                <span style={{ flex: 1, color: t.status === 'passed' ? 'var(--text-secondary)' : '#fca5a5' }}>{t.name}</span>
+                {retries > 0 && (
+                  <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3,
+                    background: t.status === 'passed' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
+                    color: t.status === 'passed' ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
+                    ↻ attempt {attempt}/3 {t.status === 'passed' ? '· flaky' : '· failed'}
+                  </span>
+                )}
+                {retries === 0 && t.status === 'failed' && (
+                  <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3,
+                    background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontWeight: 600 }}>
+                    1/3
+                  </span>
+                )}
+                <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
+                  {fmtMs(t.duration || 0)}
                 </span>
-              )}
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
-                {(t.duration || 0) >= 1000 ? `${((t.duration || 0) / 1000).toFixed(1)}s` : `${t.duration || 0}ms`}
-              </span>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -432,6 +479,8 @@ export default function DashboardPage() {
   const [beLive, setBeLive] = useState<D>(null);
   const [e2eReport, setE2eReport] = useState<D>(null);
   const [e2eRunning, setE2eRunning] = useState(false);
+  const [unitFilter, setUnitFilter] = useState<string>('all');
+  const [e2eFilter, setE2eFilter] = useState<string>('all');
   const [e2eLive, setE2eLive] = useState<D>(null);
 
   const fetchData = useCallback(() => {
@@ -441,52 +490,26 @@ export default function DashboardPage() {
       .catch(e => setError(String(e)));
   }, []);
 
-  const loadTests = useCallback(() => {
-    setFeRunning(true);
-    setBeRunning(true);
-    const tryLoad = (area: 'frontend' | 'backend', setReport: (d: D) => void, setLive: (d: D) => void, setRunning: (b: boolean) => void) => {
-      fetch(`${API}/api/dashboard/tests/${area}`)
-        .then(r => r.ok ? r.json() : Promise.reject(''))
-        .then(d => {
-          if (d.status === 'ready') { setReport(d); setRunning(false); setLive(null); }
-          else if (d.status === 'running') { setLive(d); }
-          else { runFreshTests(area); }
-        })
-        .catch(() => setRunning(false));
-    };
-    tryLoad('frontend', setFeReport, setFeLive, setFeRunning);
-    tryLoad('backend', setBeReport, setBeLive, setBeRunning);
-  }, []);
-
-  const runFreshTests = useCallback((area?: 'frontend' | 'backend') => {
+  const runFreshTests = useCallback((area?: 'frontend' | 'backend', failedOnly?: boolean) => {
     const areas = area ? [area] : ['frontend', 'backend'] as const;
     for (const a of areas) {
-      if (a === 'frontend') { setFeReport(null); setFeLive(null); setFeRunning(true); }
-      else { setBeReport(null); setBeLive(null); setBeRunning(true); }
-      fetch(`${API}/api/dashboard/tests/${a}/run`, { method: 'POST' }).catch(() => {
+      if (!failedOnly) {
+        if (a === 'frontend') { setFeReport(null); setFeLive(null); }
+        else { setBeReport(null); setBeLive(null); }
+      }
+      if (a === 'frontend') setFeRunning(true); else setBeRunning(true);
+      fetch(`${API}/api/dashboard/tests/${a}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ failedOnly: !!failedOnly }),
+      }).then(r => r.json()).then(d => {
+        if (d.status === 'skipped') {
+          if (a === 'frontend') setFeRunning(false); else setBeRunning(false);
+        }
+      }).catch(() => {
         if (a === 'frontend') setFeRunning(false); else setBeRunning(false);
       });
     }
-  }, []);
-
-  const loadE2E = useCallback(() => {
-    fetch(`${API}/api/dashboard/tests/e2e`)
-      .then(r => r.ok ? r.json() : Promise.reject('Failed'))
-      .then(d => {
-        if (d.status === 'running') {
-          setE2eRunning(true);
-          setE2eLive(d);
-        } else if (d.status === 'ready') {
-          setE2eReport(d);
-          setE2eRunning(false);
-          setE2eLive(null);
-        } else {
-          setE2eReport(null);
-          setE2eRunning(false);
-          setE2eLive(null);
-        }
-      })
-      .catch(() => { setE2eRunning(false); });
   }, []);
 
   const startE2E = useCallback(() => {
@@ -582,6 +605,9 @@ export default function DashboardPage() {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
+        @media (max-width: 1280px) {
+          .db-overview { grid-template-columns: repeat(4, 1fr) !important; }
+        }
         @media (max-width: 1024px) {
           .db-overview { grid-template-columns: repeat(3, 1fr) !important; }
         }
@@ -623,7 +649,7 @@ export default function DashboardPage() {
         {data && (<>
 
           {/* ── Overview Cards ──────────────────────────────────────── */}
-          <div className="db-overview" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+          <div className="db-overview" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
             <StatCard label="Total Commits" value={data.overview.totalCommits} sub={`${data.health.commitsPerDay}/day avg`} icon="fas fa-code-commit" color="#3b82f6" scrollTo="sec-activity" />
             <StatCard label="Lines of Code" value={data.overview.totalLines} sub={`~${Math.round(data.overview.totalLines / 1000)}k`} icon="fas fa-laptop-code" color="#8b5cf6" scrollTo="sec-languages" />
             <StatCard label="Source Files" value={data.overview.totalFiles} sub={`${data.health.avgFileSize} avg loc`} icon="fas fa-folder" color="#06b6d4" scrollTo="sec-largest" />
@@ -671,6 +697,148 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+
+          {/* ── Commit Intelligence ─────────────────────────────── */}
+          <div className="db-grid2" style={{ ...GRID2, marginBottom: '1.5rem' }}>
+            {/* Commit Types */}
+            {data.commitTypes?.length > 0 && (
+              <div style={CARD}>
+                <h2 style={H2}><Ico>fad fa-tags</Ico> Commit Types</h2>
+                {(() => {
+                  const total = data.commitTypes.reduce((s: number, t: D) => s + t.count, 0);
+                  const typeColors: Record<string, string> = {
+                    feat: '#10b981', fix: '#ef4444', chore: '#6b7280', test: '#3b82f6',
+                    refactor: '#8b5cf6', docs: '#06b6d4', style: '#ec4899', perf: '#f59e0b',
+                    ci: '#14b8a6', build: '#f97316', other: '#475569',
+                  };
+                  return (
+                    <div>
+                      <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: '0.75rem' }}>
+                        {data.commitTypes.map((t: D) => (
+                          <div key={t.type} title={`${t.type}: ${t.count}`}
+                            style={{ width: `${(t.count / total) * 100}%`, background: typeColors[t.type] || '#475569', transition: 'width 0.3s' }} />
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                        {data.commitTypes.map((t: D) => (
+                          <div key={t.type} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem' }}>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: typeColors[t.type] || '#475569', flexShrink: 0 }} />
+                            <span style={{ fontWeight: 600, color: typeColors[t.type] || '#94a3b8' }}>{t.type}</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>{t.count}</span>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.65rem' }}>({Math.round((t.count / total) * 100)}%)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Commit Size Stats */}
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-ruler-combined</Ico> Commit Size</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#3b82f6' }}>{data.commitSizeStats?.avgSize ?? 0}</div>
+                  <div style={SUB}>avg lines/commit</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#8b5cf6' }}>{data.commitSizeStats?.avgFiles ?? 0}</div>
+                  <div style={SUB}>avg files/commit</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: data.linesChanged.deleted > 0 ? '#f59e0b' : '#10b981' }}>
+                    {data.linesChanged.added > 0 ? (data.linesChanged.deleted / data.linesChanged.added * 100).toFixed(0) : 0}%
+                  </div>
+                  <div style={SUB}>churn rate</div>
+                </div>
+              </div>
+              {data.commitSizeDistribution && (() => {
+                const d = data.commitSizeDistribution;
+                const buckets = [
+                  { label: '≤10', count: d.tiny, color: '#10b981' },
+                  { label: '11–50', count: d.small, color: '#3b82f6' },
+                  { label: '51–200', count: d.medium, color: '#8b5cf6' },
+                  { label: '201–500', count: d.large, color: '#f59e0b' },
+                  { label: '500+', count: d.huge, color: '#ef4444' },
+                ];
+                const maxCount = Math.max(...buckets.map(b => b.count), 1);
+                return (
+                  <div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>SIZE DISTRIBUTION (lines changed)</div>
+                    {buckets.map(b => (
+                      <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.72rem' }}>
+                        <span style={{ width: 48, textAlign: 'right', color: 'var(--text-secondary)', flexShrink: 0 }}>{b.label}</span>
+                        <div style={{ flex: 1, height: 14, borderRadius: 3, background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                          <div style={{ width: `${(b.count / maxCount) * 100}%`, height: '100%', background: b.color, borderRadius: 3, transition: 'width 0.3s' }} />
+                        </div>
+                        <span style={{ width: 28, color: 'var(--text-secondary)', fontWeight: 600 }}>{b.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* ── Weekly Velocity ─────────────────────────────────── */}
+          {data.weeklyVelocity?.length > 1 && (
+            <div style={{ ...CARD, marginBottom: '1.5rem' }}>
+              <h2 style={H2}><Ico>fad fa-gauge-high</Ico> Weekly Velocity</h2>
+              {(() => {
+                const weeks = data.weeklyVelocity;
+                const maxVal = Math.max(...weeks.map((w: D) => Math.max(w.added, w.deleted)), 1);
+                const barW = Math.max(8, Math.min(24, 800 / weeks.length));
+                return (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, overflowX: 'auto', paddingBottom: 20 }}>
+                      {weeks.map((w: D, i: number) => (
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, flexShrink: 0 }} title={`${w.week}: +${w.added.toLocaleString()} / -${w.deleted.toLocaleString()} (${w.commits} commits)`}>
+                          <div style={{ width: barW, height: Math.max(2, (w.added / maxVal) * 100), background: '#10b981', borderRadius: '2px 2px 0 0' }} />
+                          <div style={{ width: barW, height: Math.max(2, (w.deleted / maxVal) * 100), background: '#ef4444', borderRadius: '0 0 2px 2px' }} />
+                          <span style={{ fontSize: '0.5rem', color: 'var(--text-secondary)', transform: 'rotate(-45deg)', transformOrigin: 'top left', whiteSpace: 'nowrap', marginTop: 4 }}>
+                            {w.week.replace(/^\d{4}-/, '')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '1.5rem', marginTop: 8, fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                      <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#10b981', borderRadius: 2, marginRight: 6 }} />Insertions</span>
+                      <span><span style={{ display: 'inline-block', width: 10, height: 10, background: '#ef4444', borderRadius: 2, marginRight: 6 }} />Deletions</span>
+                      <span style={{ marginLeft: 'auto' }}>
+                        Avg: +{Math.round(weeks.reduce((s: number, w: D) => s + w.added, 0) / weeks.length).toLocaleString()}
+                        / -{Math.round(weeks.reduce((s: number, w: D) => s + w.deleted, 0) / weeks.length).toLocaleString()} per week
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ── Biggest Commits ──────────────────────────────────── */}
+          {data.biggestCommits?.length > 0 && (
+            <div style={{ ...CARD, marginBottom: '1.5rem' }}>
+              <h2 style={H2}><Ico>fad fa-explosion</Ico> Biggest Commits</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {data.biggestCommits.map((c: D, i: number) => {
+                  const total = (c.added || 0) + (c.deleted || 0);
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0', borderBottom: i < data.biggestCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#8b5cf6', width: 24, textAlign: 'center', flexShrink: 0 }}>#{i + 1}</span>
+                      <code style={{ fontSize: '0.7rem', color: '#60a5fa', flexShrink: 0, fontWeight: 600 }}>{c.hash}</code>
+                      <span title={c.message} style={{ fontSize: '0.8rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.message}</span>
+                      <span style={{ fontSize: '0.7rem', color: '#10b981', flexShrink: 0, fontWeight: 600 }}>+{(c.added || 0).toLocaleString()}</span>
+                      <span style={{ fontSize: '0.7rem', color: '#ef4444', flexShrink: 0, fontWeight: 600 }}>-{(c.deleted || 0).toLocaleString()}</span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{c.files || 0} files</span>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: total > 500 ? '#ef4444' : total > 200 ? '#f59e0b' : '#3b82f6', flexShrink: 0 }}>{total.toLocaleString()} Δ</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ── Security & Build Status ──────────────────────────── */}
           <div className="db-grid2" style={GRID2}>
@@ -1375,16 +1543,40 @@ export default function DashboardPage() {
           {(() => {
             const anyRunning = feRunning || beRunning;
             const hasReport = feReport || beReport;
-            const total = (feReport?.summary?.total || 0) + (beReport?.summary?.total || 0);
-            const passed = (feReport?.summary?.passed || 0) + (beReport?.summary?.passed || 0);
-            const failed = (feReport?.summary?.failed || 0) + (beReport?.summary?.failed || 0);
-            const flaky = (feReport?.summary?.flaky || 0) + (beReport?.summary?.flaky || 0);
-            const suiteCount = (feReport?.summary?.suites || 0) + (beReport?.summary?.suites || 0);
-            const duration = (feReport?.summary?.duration || 0) + (beReport?.summary?.duration || 0);
-            const allSuites = [
+            const allSuitesRaw = [
               ...(feReport?.suites || []).map((s: D) => ({ ...s, area: 'frontend' })),
               ...(beReport?.suites || []).map((s: D) => ({ ...s, area: 'backend' })),
             ];
+            const liveUnitResults: D[] = [
+              ...(feLive?.liveResults || []).map((r: D) => ({ ...r, area: 'frontend' })),
+              ...(beLive?.liveResults || []).map((r: D) => ({ ...r, area: 'backend' })),
+            ];
+            const failedCount = hasReport
+              ? allSuitesRaw.reduce((s: number, su: D) => s + su.tests.filter((t: D) => t.status !== 'passed').length, 0)
+              : liveUnitResults.filter((t: D) => t.status === 'failed').length;
+            const allSuites = (() => {
+              if (unitFilter === 'all') return allSuitesRaw;
+              if (unitFilter === 'failed') return allSuitesRaw.map((s: D) => {
+                const ft = s.tests.filter((t: D) => t.status !== 'passed');
+                return ft.length ? { ...s, tests: ft, duration: ft.reduce((sum: number, t: D) => sum + (t.duration || 0), 0) } : null;
+              }).filter(Boolean);
+              return allSuitesRaw.filter((s: D) => s.area === unitFilter);
+            })();
+            const feCount = feReport ? (feReport.summary?.total || 0) : liveUnitResults.filter((t: D) => t.area === 'frontend').length;
+            const beCount = beReport ? (beReport.summary?.total || 0) : liveUnitResults.filter((t: D) => t.area === 'backend').length;
+            const hasData = hasReport || liveUnitResults.length > 0;
+            const unitFilterOptions = [
+              { id: 'all', label: 'All', count: feCount + beCount },
+              ...((feReport || feRunning) ? [{ id: 'frontend', label: 'Frontend', count: feCount }] : []),
+              ...((beReport || beRunning) ? [{ id: 'backend', label: 'Backend', count: beCount }] : []),
+              ...(failedCount > 0 ? [{ id: 'failed', label: 'Failed', count: failedCount }] : []),
+            ];
+            const total = allSuites.reduce((s: number, su: D) => s + su.tests.length, 0);
+            const passed = allSuites.reduce((s: number, su: D) => s + su.tests.filter((t: D) => t.status === 'passed').length, 0);
+            const failed = total - passed;
+            const flaky = allSuites.reduce((s: number, su: D) => s + su.tests.filter((t: D) => (t.retries || 0) > 0).length, 0);
+            const suiteCount = allSuites.length;
+            const duration = allSuites.reduce((s: number, su: D) => s + (su.duration || 0), 0);
             const combinedLive = (anyRunning && (feLive || beLive)) ? {
               elapsed: Math.max(feLive?.elapsed || 0, beLive?.elapsed || 0),
               liveResults: [
@@ -1402,13 +1594,16 @@ export default function DashboardPage() {
 
             return (
               <div id="sec-test-results" style={{ ...CARD, marginTop: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', gap: 8 }}>
                   <h2 style={{ ...H2, margin: 0 }}><Ico>fad fa-vial</Ico> Test Results</h2>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={loadTests}
-                      style={{ background: hasReport ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${hasReport ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem', color: hasReport ? '#60a5fa' : 'var(--text-secondary)' }}>
-                      <i className="fas fa-download" style={{ marginRight: 4 }} /> Load Results
-                    </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {hasData && <FilterPills options={unitFilterOptions} value={unitFilter} onChange={setUnitFilter} />}
+                    {failedCount > 0 && !anyRunning && (
+                      <button onClick={() => runFreshTests(undefined, true)}
+                        style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem', color: '#ef4444' }}>
+                        <i className="fas fa-redo" style={{ marginRight: 4 }} /> Re-run Failed
+                      </button>
+                    )}
                     <button onClick={() => runFreshTests()}
                       disabled={anyRunning}
                       style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '3px 10px', cursor: anyRunning ? 'wait' : 'pointer', fontSize: '0.75rem', color: '#10b981', opacity: anyRunning ? 0.6 : 1 }}>
@@ -1420,20 +1615,25 @@ export default function DashboardPage() {
                 {!hasReport && !anyRunning && (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                     <i className="fad fa-flask" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8, opacity: 0.4 }} />
-                    Click <strong>Load Results</strong> for cached reports or <strong>Run All</strong> to execute frontend & backend tests
+                    No test results yet. Click <strong>Run All</strong> to execute frontend & backend tests.
                   </div>
                 )}
 
-                {anyRunning && !hasReport && (
-                  combinedLive && combinedLive.liveResults.length > 0 ? (
-                    <LiveTestFeed live={combinedLive} color="#8b5cf6" />
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                      <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8 }} />
-                      Starting frontend & backend tests...
-                    </div>
-                  )
-                )}
+                {anyRunning && !hasReport && (() => {
+                  if (!combinedLive || combinedLive.liveResults.length === 0) {
+                    return (
+                      <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                        <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8 }} />
+                        Starting frontend & backend tests...
+                      </div>
+                    );
+                  }
+                  const filteredResults = unitFilter === 'all' ? combinedLive.liveResults
+                    : unitFilter === 'failed' ? combinedLive.liveResults.filter((t: D) => t.status === 'failed')
+                    : combinedLive.liveResults.filter((t: D) => t.area === unitFilter);
+                  const filteredLive = { ...combinedLive, liveResults: filteredResults, liveSummary: { completed: filteredResults.length, passed: filteredResults.filter((t: D) => t.status === 'passed').length, failed: filteredResults.filter((t: D) => t.status === 'failed').length } };
+                  return <LiveTestFeed live={filteredLive} color="#8b5cf6" />;
+                })()}
 
                 {hasReport && (
                   <div>
@@ -1456,7 +1656,7 @@ export default function DashboardPage() {
                         <div style={SUB}>suites</div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{(duration / 1000).toFixed(1)}s</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{fmtMs(duration)}</div>
                         <div style={SUB}>duration</div>
                       </div>
                       {failed > 0 && (
@@ -1516,7 +1716,7 @@ export default function DashboardPage() {
 
                     <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
                       {allSuites.map((suite: D) => (
-                        <SuiteRow key={`${suite.area}-${suite.file}`} suite={suite} area={suite.area} />
+                        <SuiteRow key={`${suite.area}-${suite.file}-${unitFilter}`} suite={suite} area={suite.area} defaultOpen={unitFilter === 'failed'} />
                       ))}
                     </div>
 
@@ -1532,14 +1732,59 @@ export default function DashboardPage() {
           })()}
 
           {/* ── E2E Test Results ────────────────────────────────────── */}
+          {(() => {
+            const liveResults: D[] = e2eLive?.liveResults || [];
+            const reportTests: D[] = e2eReport ? (e2eReport.suites || []).flatMap((s: D) => s.tests) : [];
+            const allTests = e2eReport ? reportTests : liveResults;
+            const allProjects: string[] = [...new Set(allTests.map((t: D) => t.project).filter(Boolean))];
+            const failedCount = allTests.filter((t: D) => t.status !== 'passed' && t.status !== 'running').length;
+            const flakyCount = allTests.filter((t: D) => (t.retries || 0) > 0 && t.status === 'passed').length;
+            const retriedCount = allTests.filter((t: D) => (t.retries || 0) > 0).length;
+            const hasData = e2eReport || liveResults.length > 0;
+            const e2eFilterOptions = [
+              { id: 'all', label: 'All', count: allTests.length },
+              ...allProjects.map((p: string) => ({
+                id: p,
+                label: p === 'chromium' ? 'Chrome' : p === 'mobile' ? 'Mobile' : p.charAt(0).toUpperCase() + p.slice(1),
+                count: allTests.filter((t: D) => t.project === p).length,
+              })),
+              ...(failedCount > 0 ? [{ id: 'failed', label: 'Failed', count: failedCount }] : []),
+              ...(flakyCount > 0 ? [{ id: 'flaky', label: 'Flaky', count: flakyCount }] : []),
+              ...(retriedCount > 0 ? [{ id: 'retried', label: 'Retried', count: retriedCount }] : []),
+            ];
+
+            const filterTest = (t: D) => {
+              if (e2eFilter === 'all') return true;
+              if (e2eFilter === 'failed') return t.status !== 'passed';
+              if (e2eFilter === 'flaky') return (t.retries || 0) > 0 && t.status === 'passed';
+              if (e2eFilter === 'retried') return (t.retries || 0) > 0;
+              return t.project === e2eFilter;
+            };
+
+            const filteredE2ESuites = e2eReport ? (e2eReport.suites || []).map((s: D) => {
+              if (e2eFilter === 'all') return s;
+              const filtered = s.tests.filter(filterTest);
+              if (filtered.length === 0) return null;
+              return { ...s, tests: filtered, duration: filtered.reduce((sum: number, t: D) => sum + (t.duration || 0), 0) };
+            }).filter(Boolean) : [];
+
+            const filteredLiveResults = liveResults.filter(filterTest);
+
+            const e2eSummary = e2eFilter === 'all' && e2eReport ? e2eReport.summary : (() => {
+              const tests = e2eReport ? filteredE2ESuites.flatMap((s: D) => s.tests) : filteredLiveResults;
+              const p = tests.filter((t: D) => t.status === 'passed').length;
+              const f = tests.filter((t: D) => t.status === 'failed').length;
+              const fl = tests.filter((t: D) => (t.retries || 0) > 0).length;
+              const dur = tests.reduce((s: number, t: D) => s + (t.duration || 0), 0);
+              return { total: tests.length, passed: p, failed: f, flaky: fl, suites: e2eReport ? filteredE2ESuites.length : 0, duration: dur };
+            })();
+
+            return (
           <div id="sec-e2e" style={{ ...CARD, marginTop: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', gap: 8 }}>
               <h2 style={{ ...H2, margin: 0 }}><Ico>fad fa-browser</Ico> E2E Tests (Playwright)</h2>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={loadE2E}
-                  style={{ background: e2eReport ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${e2eReport ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem', color: e2eReport ? '#60a5fa' : 'var(--text-secondary)' }}>
-                  <i className="fas fa-download" style={{ marginRight: 4 }} /> Load Results
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {hasData && <FilterPills options={e2eFilterOptions} value={e2eFilter} onChange={setE2eFilter} />}
                 <button onClick={startE2E} disabled={e2eRunning}
                   style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 6, padding: '3px 10px', cursor: e2eRunning ? 'wait' : 'pointer', fontSize: '0.75rem', color: '#a855f7', opacity: e2eRunning ? 0.6 : 1 }}>
                   {e2eRunning ? <><i className="fad fa-spinner-third fa-spin" style={{ marginRight: 4 }} /> Running...</> : <><i className="fas fa-play" style={{ marginRight: 4 }} /> Run E2E</>}
@@ -1547,16 +1792,20 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {!e2eReport && !e2eRunning && (
+            {!e2eReport && !e2eRunning && !e2eLive && (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                 <i className="fad fa-browser" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8, opacity: 0.4 }} />
-                Click <strong>Load Results</strong> for cached report or <strong>Run E2E</strong> to execute all Playwright tests
+                No E2E results yet. Click <strong>Run E2E</strong> to execute all Playwright tests.
               </div>
             )}
 
             {e2eRunning && !e2eReport && (
-              e2eLive?.liveResults?.length > 0 ? (
-                <LiveE2EFeed live={e2eLive} />
+              filteredLiveResults.length > 0 ? (
+                <LiveE2EFeed expandAll={e2eFilter === 'failed' || e2eFilter === 'flaky' || e2eFilter === 'retried'} live={{ ...e2eLive, liveResults: filteredLiveResults, liveSummary: { completed: filteredLiveResults.length, passed: filteredLiveResults.filter((t: D) => t.status === 'passed').length, failed: filteredLiveResults.filter((t: D) => t.status === 'failed').length, retrying: filteredLiveResults.filter((t: D) => (t.retries || 0) > 0).length } }} />
+              ) : e2eLive?.liveResults?.length > 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  No results match the current filter.
+                </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                   <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8 }} />
@@ -1569,56 +1818,62 @@ export default function DashboardPage() {
               <div>
                 <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: e2eReport.summary.failed === 0 ? '#10b981' : '#ef4444' }}>
-                      {e2eReport.summary.passed}/{e2eReport.summary.total}
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: e2eSummary.failed === 0 ? '#10b981' : '#ef4444' }}>
+                      {e2eSummary.passed}/{e2eSummary.total}
                     </div>
                     <div style={SUB}>tests passed</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#a855f7' }}>{e2eReport.summary.suites}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#a855f7' }}>{e2eSummary.suites}</div>
                     <div style={SUB}>suites</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{(e2eReport.summary.duration / 1000).toFixed(1)}s</div>
-                    <div style={SUB}>duration</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#8b5cf6' }}>{fmtMs(e2eSummary.duration)}</div>
+                    <div style={SUB}>test time</div>
                   </div>
-                  {e2eReport.summary.failed > 0 && (
+                  {(e2eReport?.summary?.elapsed || e2eSummary.elapsed) && (
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{e2eReport.summary.failed}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6366f1' }}>{fmtMs(e2eReport?.summary?.elapsed || e2eSummary.elapsed)}</div>
+                      <div style={SUB}>wall clock</div>
+                    </div>
+                  )}
+                  {e2eSummary.failed > 0 && (
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{e2eSummary.failed}</div>
                       <div style={SUB}>failed</div>
                     </div>
                   )}
-                  {(e2eReport.summary.flaky || 0) > 0 && (
+                  {(e2eSummary.flaky || 0) > 0 && (
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>{e2eReport.summary.flaky}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>{e2eSummary.flaky}</div>
                       <div style={SUB}>flaky</div>
                     </div>
                   )}
                   <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{
                       width: 10, height: 10, borderRadius: '50%',
-                      background: e2eReport.summary.failed === 0 ? '#10b981' : '#ef4444',
-                      boxShadow: `0 0 8px ${e2eReport.summary.failed === 0 ? '#10b981' : '#ef4444'}`,
+                      background: e2eSummary.failed === 0 ? '#10b981' : '#ef4444',
+                      boxShadow: `0 0 8px ${e2eSummary.failed === 0 ? '#10b981' : '#ef4444'}`,
                     }} />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: e2eReport.summary.failed === 0 ? '#10b981' : '#ef4444' }}>
-                      {e2eReport.summary.failed === 0 ? 'ALL PASSING' : 'FAILURES DETECTED'}
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: e2eSummary.failed === 0 ? '#10b981' : '#ef4444' }}>
+                      {e2eSummary.failed === 0 ? 'ALL PASSING' : 'FAILURES DETECTED'}
                     </span>
                   </div>
                 </div>
 
                 <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem' }}>
                   <div style={{
-                    width: `${e2eReport.summary.total > 0 ? (e2eReport.summary.passed / e2eReport.summary.total) * 100 : 0}%`,
+                    width: `${e2eSummary.total > 0 ? (e2eSummary.passed / e2eSummary.total) * 100 : 0}%`,
                     height: '100%', borderRadius: 4, transition: 'width 0.5s',
-                    background: e2eReport.summary.failed === 0
+                    background: e2eSummary.failed === 0
                       ? 'linear-gradient(to right, #a855f7, #c084fc)'
                       : 'linear-gradient(to right, #a855f7, #f59e0b, #ef4444)',
                   }} />
                 </div>
 
                 <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
-                  {e2eReport.suites.map((suite: D) => (
-                    <SuiteRow key={suite.file} suite={suite} />
+                  {filteredE2ESuites.map((suite: D) => (
+                    <SuiteRow key={`${suite.file}-${e2eFilter}`} suite={suite} defaultOpen={e2eFilter === 'failed' || e2eFilter === 'flaky' || e2eFilter === 'retried'} />
                   ))}
                 </div>
 
@@ -1630,53 +1885,118 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+            );
+          })()}
 
           {/* ── Commit Size Graph ──────────────────────────────────── */}
           {data.recentCommits.length > 0 && (() => {
             const commits = [...data.recentCommits].reverse();
             const maxLines = Math.max(...commits.map((c: D) => Math.max(c.added || 0, c.deleted || 0)), 1);
-            const W = 960, H = 200, PAD = 50, GRAPH_W = W - PAD * 2, GRAPH_H = H - 50;
-            const step = commits.length > 1 ? GRAPH_W / (commits.length - 1) : 0;
-            const logMax = Math.log10(Math.max(maxLines, 1));
+            const maxFiles = Math.max(...commits.map((c: D) => c.files || 0), 1);
+            const W = 960, H = 260, PAD = 50, GRAPH_TOP = 40, GRAPH_H = 140, BAR_ZONE = 40;
+            const baseline = GRAPH_TOP + GRAPH_H;
+            const step = commits.length > 1 ? (W - PAD * 2) / (commits.length - 1) : 0;
+            const barW = Math.max(3, Math.min(10, step * 0.4));
+            const sqrtMax = Math.sqrt(maxLines);
             const toY = (v: number) => {
-              if (v <= 0) return 30 + GRAPH_H;
-              return 30 + GRAPH_H - (Math.log10(v) / logMax) * GRAPH_H;
+              if (v <= 0) return baseline;
+              return baseline - (Math.sqrt(v) / sqrtMax) * GRAPH_H;
+            };
+            // Commit type colors
+            const typeColors: Record<string, string> = {
+              feat: '#10b981', fix: '#ef4444', chore: '#6b7280', test: '#3b82f6',
+              refactor: '#8b5cf6', docs: '#06b6d4', style: '#ec4899', perf: '#f59e0b',
+              ci: '#14b8a6', build: '#f97316',
+            };
+            const getType = (msg: string) => {
+              const m = msg.match(/^(\w+)[\s(:!]/);
+              const t = m ? m[1].toLowerCase() : 'other';
+              return ['feat', 'fix', 'chore', 'test', 'docs', 'style', 'refactor', 'perf', 'ci', 'build'].includes(t) ? t : 'other';
             };
             const addedPts = commits.map((c: D, i: number) => `${PAD + i * step},${toY(c.added || 0)}`).join(' ');
             const deletedPts = commits.map((c: D, i: number) => `${PAD + i * step},${toY(c.deleted || 0)}`).join(' ');
-            const addedArea = `${PAD},${toY(0)} ${addedPts} ${PAD + (commits.length - 1) * step},${toY(0)}`;
-            const deletedArea = `${PAD},${toY(0)} ${deletedPts} ${PAD + (commits.length - 1) * step},${toY(0)}`;
+            // Net growth (cumulative)
+            let cumNet = 0;
+            const netData = commits.map((c: D) => { cumNet += (c.added || 0) - (c.deleted || 0); return cumNet; });
+            const netMax = Math.max(Math.abs(Math.min(...netData)), Math.abs(Math.max(...netData)), 1);
+            const netMid = 20;
+            const netScale = 16;
+            const toNetY = (v: number) => netMid - (v / netMax) * netScale;
+            const netPts = netData.map((v, i) => `${PAD + i * step},${toNetY(v)}`).join(' ');
+            // Grid lines
             const gridLines: number[] = [];
-            for (let p = 0; p <= Math.ceil(logMax); p++) {
-              const v = Math.pow(10, p);
-              if (v <= maxLines) gridLines.push(v);
-            }
-            if (!gridLines.includes(maxLines)) gridLines.push(maxLines);
+            const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+            const targetLines = 5;
+            const gridStep = niceSteps.find(s => maxLines / s <= targetLines) || Math.ceil(maxLines / targetLines);
+            for (let v = gridStep; v <= maxLines; v += gridStep) gridLines.push(v);
+            if (!gridLines.includes(maxLines) && maxLines > gridStep) gridLines.push(maxLines);
             return (
               <div style={{ marginTop: '1rem' }}>
                 <Section title={`Commit Size (Last ${commits.length})`} icon="fad fa-chart-line">
                   <div style={{ overflowX: 'auto' }}>
                     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
+                      {/* Grid */}
                       {gridLines.map((v, i) => (
                         <g key={i}>
                           <line x1={PAD} y1={toY(v)} x2={W - PAD} y2={toY(v)} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
-                          <text x={PAD - 6} y={toY(v) + 4} textAnchor="end" fill="var(--text-secondary)" fontSize={9}>{v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : v}</text>
+                          <text x={PAD - 6} y={toY(v) + 4} textAnchor="end" fill="var(--text-secondary)" fontSize={9}>{v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : v % 1000 === 0 ? 0 : 1)}k` : v}</text>
                         </g>
                       ))}
+                      {/* Files changed — subtle vertical bars behind everything */}
+                      {commits.map((c: D, i: number) => {
+                        const fh = maxFiles > 0 ? ((c.files || 0) / maxFiles) * GRAPH_H * 0.5 : 0;
+                        return fh > 0 ? (
+                          <rect key={`f${i}`} x={PAD + i * step - barW / 2} y={baseline - fh} width={barW} height={fh}
+                            fill="rgba(148,163,184,0.08)" rx={1} />
+                        ) : null;
+                      })}
+                      {/* Baseline */}
+                      <line x1={PAD} y1={baseline} x2={W - PAD} y2={baseline} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+                      {/* Net per-commit bars below baseline */}
+                      {commits.map((c: D, i: number) => {
+                        const net = (c.added || 0) - (c.deleted || 0);
+                        if (net === 0) return null;
+                        const h = Math.min(BAR_ZONE - 4, Math.max(2, (Math.abs(net) / maxLines) * BAR_ZONE * 2));
+                        return (
+                          <rect key={`n${i}`} x={PAD + i * step - barW / 2} y={net > 0 ? baseline + 2 : baseline + 2}
+                            width={barW} height={h} fill={net > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'} rx={1} />
+                        );
+                      })}
+                      {/* Net growth sparkline at top */}
+                      <line x1={PAD} y1={netMid} x2={W - PAD} y2={netMid} stroke="rgba(255,255,255,0.04)" strokeWidth={1} />
+                      <polyline points={netPts} fill="none" stroke="#60a5fa" strokeWidth={1.5} opacity={0.6} />
+                      <text x={W - PAD + 6} y={netMid + 3} fill="#60a5fa" fontSize={8} opacity={0.7}>net {cumNet >= 0 ? '+' : ''}{cumNet.toLocaleString()}</text>
+                      {/* Main lines */}
                       <polyline points={deletedPts} fill="none" stroke="#f87171" strokeWidth={1} strokeDasharray="4 2" />
-                      <polyline points={addedPts} fill="none" stroke="#34d399" strokeWidth={1} />
-                      {commits.map((c: D, i: number) => (
-                        <g key={i}>
-                          <circle cx={PAD + i * step} cy={toY(c.added || 0)} r={1.5} fill="#34d399" />
-                          <circle cx={PAD + i * step} cy={toY(c.deleted || 0)} r={1.5} fill="#f87171" />
-                          <title>{`${c.hash}: +${c.added || 0} / -${c.deleted || 0}\n${c.message}`}</title>
-                        </g>
-                      ))}
+                      <polyline points={addedPts} fill="none" stroke="#34d399" strokeWidth={1.5} />
+                      {/* Dots color-coded by commit type */}
+                      {commits.map((c: D, i: number) => {
+                        const type = getType(c.message);
+                        const dotColor = typeColors[type] || '#94a3b8';
+                        const cx = PAD + i * step;
+                        return (
+                          <g key={i}>
+                            <circle cx={cx} cy={toY(c.added || 0)} r={2.5} fill="#34d399" stroke={dotColor} strokeWidth={1.5} />
+                            <circle cx={cx} cy={toY(c.deleted || 0)} r={2} fill="#f87171" opacity={0.7} />
+                            {/* Files badge for large commits */}
+                            {(c.files || 0) > 20 && (
+                              <text x={cx} y={toY(c.added || 0) - 6} textAnchor="middle" fill="#94a3b8" fontSize={7}>{c.files}f</text>
+                            )}
+                            <title>{`${c.hash} [${type}]: +${(c.added || 0).toLocaleString()} / -${(c.deleted || 0).toLocaleString()} (${c.files || 0} files)\nnet: ${((c.added || 0) - (c.deleted || 0)).toLocaleString()}\n${c.message}`}</title>
+                          </g>
+                        );
+                      })}
+                      {/* Right-side labels */}
+                      <text x={W - PAD + 6} y={baseline + BAR_ZONE / 2 + 3} fill="var(--text-secondary)" fontSize={7} opacity={0.5}>net/commit</text>
                     </svg>
                   </div>
-                  <div style={{ display: 'flex', gap: '1.5rem', marginTop: 6, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#34d399', borderRadius: 2, marginRight: 6 }} />Insertions</span>
-                    <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#f87171', borderRadius: 2, marginRight: 6, borderTop: '1px dashed #f87171' }} />Deletions</span>
+                  <div style={{ display: 'flex', gap: '1.2rem', marginTop: 6, fontSize: '0.72rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+                    <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#34d399', borderRadius: 2, marginRight: 5 }} />Insertions</span>
+                    <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#f87171', borderRadius: 2, marginRight: 5, borderTop: '1px dashed #f87171' }} />Deletions</span>
+                    <span><span style={{ display: 'inline-block', width: 12, height: 2, background: '#60a5fa', borderRadius: 2, marginRight: 5, opacity: 0.6 }} />Cumulative Net</span>
+                    <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(148,163,184,0.15)', borderRadius: 1, marginRight: 5 }} />Files Changed</span>
+                    <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(52,211,153,0.3)', borderRadius: 1, marginRight: 5 }} />Net +/−</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.65rem' }}>dot ring = commit type</span>
                   </div>
                 </Section>
               </div>
@@ -1692,8 +2012,9 @@ export default function DashboardPage() {
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.recentCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <code style={{ fontSize: '0.7rem', color: '#60a5fa', flexShrink: 0, fontWeight: 600 }}>{c.hash}</code>
                     <span title={c.message} style={{ fontSize: '0.82rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.message}</span>
-                    <span style={{ fontSize: '0.7rem', color: '#34d399', flexShrink: 0 }}>+{c.added || 0}</span>
-                    <span style={{ fontSize: '0.7rem', color: '#f87171', flexShrink: 0 }}>-{c.deleted || 0}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{c.files || 0}f</span>
+                    <span style={{ fontSize: '0.7rem', color: '#34d399', flexShrink: 0 }}>+{(c.added || 0).toLocaleString()}</span>
+                    <span style={{ fontSize: '0.7rem', color: '#f87171', flexShrink: 0 }}>-{(c.deleted || 0).toLocaleString()}</span>
                     <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{c.author}</span>
                     <span style={{ ...SUB, flexShrink: 0 }}>{fmtDate(c.date)}</span>
                   </div>

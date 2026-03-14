@@ -1,3 +1,4 @@
+import { isTestMode } from '../lib/testMode';
 
 /**
  * SMS Service for sending text messages
@@ -22,9 +23,8 @@ const SMS_WORKS_SENDER = process.env.SMS_WORKS_SENDER || PRODUCT_NAME; // Use pr
  * @param message - SMS message content
  */
 export async function sendSMS(phoneNumber: string, message: string): Promise<void> {
-  const { isTestMode } = require('../lib/testMode');
-  if (isTestMode()) {
-    console.log(`📱 [SMS] Test mode — suppressed SMS to ${phoneNumber}`);
+  if (isTestMode() || process.env.SUPPRESS_SMS === '1' || (process.env.NODE_ENV !== 'production' && process.env.ENABLE_SMS !== '1')) {
+    console.log(`📱 [SMS] Suppressed (test/dev mode) — SMS to ${phoneNumber}`);
     return;
   }
   console.log('📱 [SMS Works] Sending SMS:');

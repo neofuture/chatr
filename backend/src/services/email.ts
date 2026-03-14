@@ -1,5 +1,6 @@
 import { MailtrapClient } from 'mailtrap';
-import { LOGO_BASE64 } from './logo-base64-constant'
+import { LOGO_BASE64 } from './logo-base64-constant';
+import { isTestMode } from '../lib/testMode';
 const MAILTRAP_API_KEY = process.env.MAILTRAP_API_KEY || '';
 const MAIL_FROM_ADDRESS = process.env.MAIL_FROM_ADDRESS || 'noreply@emberlyn.co.uk';
 const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Chatr';
@@ -276,7 +277,7 @@ export function getPasswordResetEmailHtml(code: string, username: string, email:
   `.trim();
 }
 
-function checkTestMode() { const { isTestMode } = require('../lib/testMode'); return isTestMode(); }
+function checkTestMode() { return isTestMode() || process.env.SUPPRESS_SMS === '1'; }
 
 export async function sendVerificationEmail(
   email: string,

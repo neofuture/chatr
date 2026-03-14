@@ -3,13 +3,26 @@ import {
   formatPhoneNumber,
 } from '../services/sms';
 
+jest.mock('../lib/testMode', () => ({
+  isTestMode: jest.fn(() => false),
+}));
+
 // Mock global fetch for sendSMS tests
 const mockFetch = jest.fn();
 global.fetch = mockFetch as any;
 
 describe('SMS Service', () => {
+  const origEnableSMS = process.env.ENABLE_SMS;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.ENABLE_SMS = '1';
+    process.env.NODE_ENV = 'production';
+  });
+
+  afterEach(() => {
+    process.env.ENABLE_SMS = origEnableSMS;
+    process.env.NODE_ENV = 'test';
   });
 
   describe('validatePhoneNumber', () => {
