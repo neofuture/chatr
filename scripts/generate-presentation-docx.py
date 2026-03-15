@@ -266,7 +266,7 @@ P('For a commercial audience, Chatr shows what a complete product looks like whe
 
 P('For a technical audience, Chatr demonstrates mastery across frontend development (React 19, Next.js 16), backend engineering (Node.js, Express, Socket.IO), database design (PostgreSQL, Prisma), caching infrastructure (Redis), AI integration (OpenAI GPT-4o-mini), cloud deployment (AWS), and automated testing (Jest, Playwright). Every layer is production-grade, documented, and covered by automated tests.')
 
-stats([('50+', 'User Features'), ('1,300+', 'Automated Tests'), ('69,542', 'Lines of Code'), ('22', 'Days to Ship')])
+stats([('50+', 'User Features'), ('1,300+', 'Automated Tests'), ('78,000+', 'Lines of Code'), ('22', 'Days to Ship')])
 
 callout('This document serves as both a commercial presentation and a technical reference. Each section explains what a feature does, why it matters commercially, and how it is implemented technically.')
 
@@ -823,7 +823,7 @@ H('By the Numbers')
 
 stat_line('User-facing features', '50+')
 stat_line('Automated tests', '1,300+')
-stat_line('Lines of code', '69,542')
+stat_line('Lines of code', '78,000+')
 stat_line('Source files', '369')
 stat_line('REST API endpoints', '70+')
 stat_line('WebSocket event types', '40+')

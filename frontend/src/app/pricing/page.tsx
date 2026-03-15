@@ -101,8 +101,8 @@ export default function PricingPage() {
                 <li key={i}><i className={item.icon} /> {item.text}</li>
               ))}
             </ul>
-            <Link href="/app" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-              Get Started Free <i className="fas fa-arrow-right" />
+            <Link href="/contact" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
+              <i className="fas fa-envelope" /> Get Started — Contact Us
             </Link>
           </div>
 
@@ -181,8 +181,8 @@ export default function PricingPage() {
             Deploy Chatr today — zero cost, full ownership, no strings attached.
           </p>
           <div className={s.heroCtas}>
-            <Link href="/app" className={s.btnPrimary}>
-              Open App <i className="fas fa-arrow-right" />
+            <Link href="/contact" className={s.btnPrimary}>
+              <i className="fas fa-envelope" /> Contact Us
             </Link>
             <Link href="/product" className={s.btnSecondary}>
               Full Product Overview <i className="fas fa-book-open" />

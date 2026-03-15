@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SiteNav from '@/components/site/SiteNav';
 import SiteFooter from '@/components/site/SiteFooter';
-import AuthPanel from '@/components/panels/AuthPanel/AuthPanel';
 import { useBodyScroll } from '@/components/site/useBodyScroll';
 import s from '@/components/site/Site.module.css';
 
@@ -14,8 +13,6 @@ const SS = '/screenshots';
 
 export default function HomePage() {
   const router = useRouter();
-  const [authPanelOpen, setAuthPanelOpen] = useState(false);
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   useBodyScroll();
 
@@ -33,11 +30,6 @@ export default function HomePage() {
       }
     }
   }, [router]);
-
-  const openAuth = (view: 'login' | 'register') => {
-    setAuthView(view);
-    setAuthPanelOpen(true);
-  };
 
   return (
     <div className={s.page}>
@@ -66,14 +58,14 @@ export default function HomePage() {
             typing indicators, read receipts, and an embeddable support widget — ready to deploy today.
           </p>
           <div className={s.heroCtas}>
-            <button onClick={() => openAuth('register')} className={s.btnPrimary}>
-              <i className="fas fa-rocket" /> Get Started Free
-            </button>
-            <button onClick={() => openAuth('login')} className={s.btnSecondary}>
-              Sign In
-            </button>
+            <Link href="/contact" className={s.btnPrimary}>
+              <i className="fas fa-envelope" /> Contact Us
+            </Link>
             <Link href="/features" className={s.btnSecondary}>
               <i className="fas fa-th-large" /> Explore Features
+            </Link>
+            <Link href="/pricing" className={s.btnSecondary}>
+              <i className="fas fa-tag" /> View Pricing
             </Link>
           </div>
         </div>
@@ -92,7 +84,7 @@ export default function HomePage() {
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.statsRow}>
-            {[['50+', 'Features'], ['1,300+', 'Automated Tests'], ['69,542', 'Lines of Code'], ['22', 'Days to Ship']].map(([v, l]) => (
+            {[['50+', 'Features'], ['1,300+', 'Automated Tests'], ['78,000+', 'Lines of Code'], ['22', 'Days to Ship']].map(([v, l]) => (
               <div key={l} className={s.statBox}>
                 <div className={s.statVal}>{v}</div>
                 <div className={s.statLbl}>{l}</div>
@@ -133,6 +125,27 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ── Contact banner ─────────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter} style={{ maxWidth: 640, margin: '0 auto' }}>
+            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Interested in Chatr for your business?</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+              Whether you need enterprise licensing, custom development, or a tailored deployment —
+              get in touch and we&rsquo;ll discuss how Chatr can work for you.
+            </p>
+            <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
+              <Link href="/contact" className={s.btnPrimary}>
+                <i className="fas fa-envelope" /> Contact Us
+              </Link>
+              <Link href="/pricing" className={s.btnSecondary}>
+                <i className="fas fa-tag" /> View Pricing
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Widget callout ────────────────────────────── */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
@@ -148,12 +161,12 @@ export default function HomePage() {
                 A fully white-labelled Palette Designer lets you customise every colour, toggle dark mode,
                 and copy the embed snippet with one click.
               </p>
-              <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem' }}>
+              <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <Link href="/widget" className={s.btnPrimary}>
                   <i className="fas fa-external-link-alt" /> Learn More
                 </Link>
-                <Link href="/pricing" className={s.btnSecondary}>
-                  See Pricing
+                <Link href="/contact" className={s.btnSecondary}>
+                  <i className="fas fa-envelope" /> Talk to Us
                 </Link>
               </div>
             </div>
@@ -251,9 +264,9 @@ export default function HomePage() {
               50+ features, 1,300+ tests, zero cost. Create your account and start messaging in seconds.
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.5rem' }}>
-              <button onClick={() => openAuth('register')} className={s.btnPrimary}>
-                <i className="fas fa-rocket" /> Create Free Account
-              </button>
+              <Link href="/contact" className={s.btnPrimary}>
+                <i className="fas fa-envelope" /> Contact Us
+              </Link>
               <Link href="/product" className={s.btnSecondary}>
                 <i className="fas fa-file-alt" /> Full Product Overview
               </Link>
@@ -266,12 +279,6 @@ export default function HomePage() {
       </div>
 
       <SiteFooter />
-
-      <AuthPanel
-        isOpen={authPanelOpen}
-        onClose={() => setAuthPanelOpen(false)}
-        initialView={authView}
-      />
     </div>
   );
 }

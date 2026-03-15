@@ -57,14 +57,22 @@ export default function TechnologyPage() {
             React, Node.js, PostgreSQL, Redis, AWS — the same stack trusted by
             Slack, Netflix, and Uber. Any JavaScript developer can be productive on day one.
           </p>
+          <div className={s.heroCtas}>
+            <Link href="/contact" className={s.btnPrimary}>
+              <i className="fas fa-envelope" /> Contact Us
+            </Link>
+            <Link href="/features" className={s.btnSecondary}>
+              <i className="fas fa-list" /> View Features
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* The Stack */}
       <div className={s.section}>
-        <div className={s.sectionTag}>Technology</div>
-        <h2 className={s.sectionH2}>The Stack</h2>
-        <p className={s.sectionP}>
+        <div className={`${s.sectionTag} ${s.sectionCenter}`}>Technology</div>
+        <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>The Stack</h2>
+        <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
           Six layers of production-grade infrastructure, each chosen for reliability, performance, and developer familiarity.
         </p>
 
@@ -133,9 +141,9 @@ export default function TechnologyPage() {
 
       {/* Database Schema */}
       <div className={s.section}>
-        <div className={s.sectionTag}>Data Layer</div>
-        <h2 className={s.sectionH2}>Database Schema</h2>
-        <p className={s.sectionP}>
+        <div className={`${s.sectionTag} ${s.sectionCenter}`}>Data Layer</div>
+        <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Database Schema</h2>
+        <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
           9 Prisma models with type-safe queries, automatic migrations, and indexed fields for fast lookups.
         </p>
 
@@ -149,6 +157,27 @@ export default function TechnologyPage() {
               <div className={s.cardText}>{model.desc}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Contact CTA */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter} style={{ maxWidth: 640, margin: '0 auto' }}>
+            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Built for production. Ready for your stack.</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+              Deploy on your own infrastructure with full source code access and zero recurring fees.
+              Get in touch to discuss your requirements.
+            </p>
+            <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
+              <Link href="/contact" className={s.btnPrimary}>
+                <i className="fas fa-envelope" /> Contact Us
+              </Link>
+              <Link href="/pricing" className={s.btnSecondary}>
+                <i className="fas fa-tag" /> View Pricing
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -231,6 +260,9 @@ export default function TechnologyPage() {
           <div className={s.heroCtas}>
             <Link href="/docs" className={s.btnPrimary}>
               <i className="fas fa-book" /> Documentation
+            </Link>
+            <Link href="/contact" className={s.btnPrimary}>
+              <i className="fas fa-envelope" /> Contact Us
             </Link>
             <Link href="/dashboard" className={s.btnSecondary}>
               <i className="fas fa-chart-line" /> Dashboard

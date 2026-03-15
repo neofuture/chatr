@@ -14,6 +14,7 @@ const LINKS = [
   { href: '/pricing', label: 'Pricing' },
   { href: '/technology', label: 'Technology' },
   { href: '/product', label: 'Full Overview' },
+  { href: '/contact', label: 'Contact' },
 ];
 
 export default function SiteNav() {

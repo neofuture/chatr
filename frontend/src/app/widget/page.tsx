@@ -29,6 +29,14 @@ export default function WidgetPage() {
             replacing Intercom, Drift, and Zendesk at zero recurring cost. No sign-up
             required for visitors. Full ownership of your data.
           </p>
+          <div className={s.heroCtas}>
+            <Link href="/contact" className={s.btnPrimary}>
+              <i className="fas fa-envelope" /> Contact Us
+            </Link>
+            <Link href="/pricing" className={s.btnSecondary}>
+              <i className="fas fa-tag" /> View Pricing
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -191,6 +199,9 @@ export default function WidgetPage() {
               <li><i className="fas fa-check" /> White-label branding</li>
               <li><i className="fas fa-check" /> Full data ownership</li>
             </ul>
+            <Link href="/contact" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.75rem' }}>
+              <i className="fas fa-envelope" /> Get Started — Contact Us
+            </Link>
           </div>
         </div>
       </div>
@@ -340,6 +351,9 @@ export default function WidgetPage() {
             <div className={s.heroCtas}>
               <Link href="/widget-demo" className={s.btnPrimary}>
                 <i className="fas fa-play-circle" /> Live Widget Demo
+              </Link>
+              <Link href="/contact" className={s.btnPrimary}>
+                <i className="fas fa-envelope" /> Contact Us
               </Link>
               <Link href="/product" className={s.btnSecondary}>
                 <i className="fas fa-book-open" /> Full Product Overview

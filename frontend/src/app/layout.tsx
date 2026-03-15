@@ -7,18 +7,53 @@ import ClientProviders from '@/components/ClientProviders';
 const inter = Inter({ subsets: ['latin'] });
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chatr.emberlyn.co.uk';
 
 export const metadata: Metadata = {
-  title: `${PRODUCT_NAME} - Real-time Chat Application`,
-  description: 'Connect and chat in real-time with friends and groups',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${PRODUCT_NAME} — Real-Time Messaging Platform`,
+    template: `%s | ${PRODUCT_NAME}`,
+  },
+  description: 'A complete real-time messaging platform with voice notes, video, file sharing, AI assistant, typing indicators, read receipts, and an embeddable support widget. 50+ features, 1,300+ tests, production-deployed.',
+  keywords: [
+    'real-time chat', 'messaging platform', 'live chat widget', 'customer support chat',
+    'embeddable chat', 'WebSocket messaging', 'AI chatbot', 'typing indicators',
+    'read receipts', 'voice messages', 'group chat', 'white-label chat',
+    'Intercom alternative', 'open source chat', 'Next.js chat', 'React messaging',
+    'Node.js chat', 'PostgreSQL chat', 'Redis real-time', 'Socket.IO',
+  ],
+  authors: [{ name: 'Carl Fearby', url: SITE_URL }],
+  creator: 'Carl Fearby',
+  publisher: PRODUCT_NAME,
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-video-preview': -1, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_GB',
+    url: SITE_URL,
+    siteName: PRODUCT_NAME,
+    title: `${PRODUCT_NAME} — Real-Time Messaging Platform`,
+    description: 'A complete messaging platform with 50+ features: voice notes, video, AI chatbot, embeddable widget, and enterprise security. Production-deployed, fully tested.',
+    images: [{ url: '/screenshots/01-landing-page.png', width: 1200, height: 630, alt: `${PRODUCT_NAME} — Real-Time Messaging Platform` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${PRODUCT_NAME} — Real-Time Messaging Platform`,
+    description: 'A complete messaging platform with 50+ features: voice notes, video, AI chatbot, embeddable widget, and enterprise security.',
+    images: ['/screenshots/01-landing-page.png'],
+  },
+  alternates: { canonical: SITE_URL },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: PRODUCT_NAME,
   },
-  formatDetection: {
-    telephone: false,
-  },
+  formatDetection: { telephone: false },
+  category: 'technology',
 };
 
 export const viewport: Viewport = {
@@ -30,6 +65,20 @@ export const viewport: Viewport = {
   themeColor: '#0f172a',
 };
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: PRODUCT_NAME,
+  applicationCategory: 'CommunicationApplication',
+  operatingSystem: 'Web',
+  description: 'A complete real-time messaging platform with voice notes, video, file sharing, AI assistant, typing indicators, read receipts, and an embeddable support widget.',
+  url: SITE_URL,
+  author: { '@type': 'Person', name: 'Carl Fearby' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP', availability: 'https://schema.org/InStock' },
+  featureList: 'Real-time messaging, Voice notes, Video sharing, File sharing, AI chatbot, Embeddable widget, Typing indicators, Read receipts, Group chats, Dark/Light themes',
+  screenshot: `${SITE_URL}/screenshots/01-landing-page.png`,
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -39,12 +88,15 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <script
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: `(function(){try{const APP_VERSION='${versionModule.version}';const APP_VERSION_KEY='chatrr-app-version';const storedVersion=localStorage.getItem(APP_VERSION_KEY);if(storedVersion&&storedVersion!==APP_VERSION){console.log('[Version] Updating from',storedVersion,'to',APP_VERSION);if('caches' in window){caches.keys().then(function(names){return Promise.all(names.map(function(name){return caches.delete(name);}));}).then(function(){localStorage.setItem(APP_VERSION_KEY,APP_VERSION);window.location.reload();});}else{localStorage.setItem(APP_VERSION_KEY,APP_VERSION);window.location.reload();}}else if(!storedVersion){console.log('[Version] Initializing version',APP_VERSION);localStorage.setItem(APP_VERSION_KEY,APP_VERSION);}}catch(e){console.error('[Version] Error:',e);}})();`,
           }}
         />
-        {/* Preload critical app routes */}
         <link rel="prefetch" href="/app" />
         <link rel="prefetch" href="/app/groups" />
         <link rel="prefetch" href="/app/updates" />

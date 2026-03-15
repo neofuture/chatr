@@ -407,6 +407,15 @@
   line-height: 1.5;
 }
 
+/* ── Contact form layout ─────────────────────────── */
+.contactGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
 /* ── Responsive ───────────────────────────────────── */
 @media (max-width: 900px) {
   .heroH1 { font-size: 2.2rem; }
@@ -415,4 +424,5 @@
   .grid2 { grid-template-columns: 1fr; }
   .statsRow { grid-template-columns: repeat(2, 1fr); }
   .screenshotMobile { width: 160px; }
+  .contactGrid { grid-template-columns: 1fr; }
 }

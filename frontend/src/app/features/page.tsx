@@ -29,6 +29,14 @@ export default function FeaturesPage() {
             group chats, AI assistant, embeddable widget — matching the feature sets of
             WhatsApp, Slack, and iMessage in a single platform.
           </p>
+          <div className={s.heroCtas}>
+            <Link href="/contact" className={s.btnPrimary}>
+              <i className="fas fa-envelope" /> Contact Us
+            </Link>
+            <Link href="/pricing" className={s.btnSecondary}>
+              <i className="fas fa-tag" /> View Pricing
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -291,6 +299,27 @@ export default function FeaturesPage() {
         </div>
       </div>
 
+      {/* ── Contact CTA banner ───────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter} style={{ maxWidth: 640, margin: '0 auto' }}>
+            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Want these features in your product?</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+              Chatr delivers all of this out of the box — no per-seat fees, no vendor lock-in,
+              full source code ownership. Let&rsquo;s talk about your requirements.
+            </p>
+            <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
+              <Link href="/contact" className={s.btnPrimary}>
+                <i className="fas fa-envelope" /> Contact Us
+              </Link>
+              <Link href="/pricing" className={s.btnSecondary}>
+                <i className="fas fa-tag" /> View Pricing
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Groups & Social ───────────────────────────────── */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
@@ -361,6 +390,9 @@ export default function FeaturesPage() {
             <div className={s.heroCtas}>
               <Link href="/widget" className={s.btnPrimary}>
                 <i className="fas fa-puzzle-piece" /> Explore the Widget
+              </Link>
+              <Link href="/contact" className={s.btnPrimary}>
+                <i className="fas fa-envelope" /> Contact Us
               </Link>
               <Link href="/product" className={s.btnSecondary}>
                 <i className="fas fa-book-open" /> Full Product Overview

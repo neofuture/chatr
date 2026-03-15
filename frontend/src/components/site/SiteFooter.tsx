@@ -28,16 +28,16 @@ export default function SiteFooter() {
 
         <div className={s.col}>
           <div className={s.colTitle}>Get Started</div>
+          <Link href="/contact">Contact Sales</Link>
           <Link href="/app">Open App</Link>
           <Link href="/register">Create Account</Link>
-          <Link href="/login">Sign In</Link>
         </div>
       </div>
 
       <div className={s.bottom}>
         <span>&copy; {new Date().getFullYear()} Chatr. Built with React 19, Next.js 16, Node.js, PostgreSQL, Redis &amp; AWS.</span>
         <div className={s.stats}>
-          <span className={s.stat}><span>69,542</span> lines of code</span>
+          <span className={s.stat}><span>78,000+</span> lines of code</span>
           <span className={s.stat}><span>1,300+</span> tests</span>
           <span className={s.stat}><span>22</span> days</span>
         </div>

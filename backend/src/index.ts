@@ -25,6 +25,7 @@ import widgetRoutes from './routes/widget';
 import dashboardRoutes from './routes/dashboard';
 import linkPreviewRoutes from './routes/link-preview';
 import testCleanupRoutes from './routes/test-cleanup';
+import contactRoutes from './routes/contact';
 import { setWidgetSocketIO, cleanupStaleGuests } from './routes/widget';
 
 // Import Socket.io handlers
@@ -132,6 +133,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/link-preview', linkPreviewRoutes);
 app.use('/api/test', testCleanupRoutes);
 app.use('/api', emailTemplatesRoutes);
+app.use('/api', contactRoutes);
 
 // Serve the embeddable widget JS with open CORS so any site can load it
 app.use('/widget', (_req, res, next) => {
