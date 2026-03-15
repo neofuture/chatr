@@ -474,7 +474,7 @@ export default function DashboardPage() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [testPassword, setTestPassword] = useState<string>('');
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [pendingAction, setPendingAction] = useState<((pw: string) => void) | null>(null);
   const [passwordError, setPasswordError] = useState<string>('');
   const [feReport, setFeReport] = useState<D>(null);
   const [beReport, setBeReport] = useState<D>(null);
