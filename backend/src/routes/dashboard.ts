@@ -7,6 +7,17 @@ import { setTestMode } from '../lib/testMode';
 const router = Router();
 const ROOT = path.resolve(__dirname, '../../../');
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.git']);
+const TEST_PASSWORD = process.env.DASHBOARD_TEST_PASSWORD || '';
+
+function requireTestPassword(req: Request, res: Response): boolean {
+  if (!TEST_PASSWORD) return false;
+  const pw = req.headers['x-test-password'] as string | undefined;
+  if (pw !== TEST_PASSWORD) {
+    res.status(401).json({ error: 'Invalid password' });
+    return true;
+  }
+  return false;
+}
 
 let cache: { data: object; ts: number } | null = null;
 const CACHE_TTL = 30_000;
@@ -1082,6 +1093,7 @@ router.get('/tests/e2e', (_req: Request, res: Response) => {
 
 /** POST /tests/e2e/run — Kick off an async E2E run with real-time result streaming */
 router.post('/tests/e2e/run', (_req: Request, res: Response) => {
+  if (requireTestPassword(_req, res)) return;
   if (liveRuns.e2e?.status === 'running') {
     return res.json({ status: 'running' });
   }
@@ -1190,6 +1202,7 @@ router.get('/tests/:area', (req: Request, res: Response) => {
 
 /** POST /tests/:area/run — Start an async test run with live result streaming */
 router.post('/tests/:area/run', (req: Request, res: Response) => {
+  if (requireTestPassword(req, res)) return;
   const area = req.params.area as 'backend' | 'frontend';
   if (area !== 'backend' && area !== 'frontend') {
     return res.status(400).json({ error: 'Area must be "backend" or "frontend"' });

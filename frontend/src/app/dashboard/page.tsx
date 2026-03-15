@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import SiteNav from '@/components/site/SiteNav';
 import { version } from '@/version';
@@ -472,6 +472,10 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [testPassword, setTestPassword] = useState<string>('');
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [passwordError, setPasswordError] = useState<string>('');
   const [feReport, setFeReport] = useState<D>(null);
   const [beReport, setBeReport] = useState<D>(null);
   const [feRunning, setFeRunning] = useState(false);
@@ -491,36 +495,65 @@ export default function DashboardPage() {
       .catch(e => setError(String(e)));
   }, []);
 
-  const runFreshTests = useCallback((area?: 'frontend' | 'backend', failedOnly?: boolean) => {
-    const areas = area ? [area] : ['frontend', 'backend'] as const;
-    for (const a of areas) {
-      if (!failedOnly) {
-        if (a === 'frontend') { setFeReport(null); setFeLive(null); }
-        else { setBeReport(null); setBeLive(null); }
-      }
-      if (a === 'frontend') setFeRunning(true); else setBeRunning(true);
-      fetch(`${API}/api/dashboard/tests/${a}/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ failedOnly: !!failedOnly }),
-      }).then(r => r.json()).then(d => {
-        if (d.status === 'skipped') {
-          if (a === 'frontend') setFeRunning(false); else setBeRunning(false);
-        }
-      }).catch(() => {
-        if (a === 'frontend') setFeRunning(false); else setBeRunning(false);
-      });
-    }
+  const pwRef = useRef(testPassword);
+  pwRef.current = testPassword;
+
+  const getTestHeaders = useCallback((pw?: string) => {
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    const p = pw || pwRef.current;
+    if (p) h['x-test-password'] = p;
+    return h;
   }, []);
 
-  const startE2E = useCallback(() => {
-    setE2eRunning(true);
-    setE2eReport(null);
-    setE2eLive(null);
-    fetch(`${API}/api/dashboard/tests/e2e/run`, { method: 'POST' })
-      .then(r => r.ok ? r.json() : Promise.reject('Failed'))
-      .catch(() => {});
+  const requirePassword = useCallback((action: (pw: string) => void) => {
+    if (pwRef.current) { action(pwRef.current); return; }
+    setPendingAction(() => action);
+    setPasswordError('');
+    setShowPasswordPrompt(true);
   }, []);
+
+  const runFreshTests = useCallback((area?: 'frontend' | 'backend', failedOnly?: boolean) => {
+    const doRun = (pw: string) => {
+      const areas = area ? [area] : ['frontend', 'backend'] as const;
+      for (const a of areas) {
+        if (!failedOnly) {
+          if (a === 'frontend') { setFeReport(null); setFeLive(null); }
+          else { setBeReport(null); setBeLive(null); }
+        }
+        if (a === 'frontend') setFeRunning(true); else setBeRunning(true);
+        fetch(`${API}/api/dashboard/tests/${a}/run`, {
+          method: 'POST',
+          headers: getTestHeaders(pw),
+          body: JSON.stringify({ failedOnly: !!failedOnly }),
+        }).then(r => {
+          if (r.status === 401) { setTestPassword(''); setShowPasswordPrompt(true); setPendingAction(() => doRun); setPasswordError('Invalid password'); throw new Error('Unauthorized'); }
+          return r.json();
+        }).then(d => {
+          if (d.status === 'skipped') {
+            if (a === 'frontend') setFeRunning(false); else setBeRunning(false);
+          }
+        }).catch(() => {
+          if (a === 'frontend') setFeRunning(false); else setBeRunning(false);
+        });
+      }
+    };
+    requirePassword(doRun);
+  }, [getTestHeaders, requirePassword]);
+
+  const startE2E = useCallback(() => {
+    const doRun = (pw: string) => {
+      setE2eRunning(true);
+      setE2eReport(null);
+      setE2eLive(null);
+      fetch(`${API}/api/dashboard/tests/e2e/run`, { method: 'POST', headers: getTestHeaders(pw) })
+        .then(r => {
+          if (r.status === 401) { setTestPassword(''); setE2eRunning(false); setShowPasswordPrompt(true); setPendingAction(() => doRun); setPasswordError('Invalid password'); throw new Error('Unauthorized'); }
+          return r.ok ? r.json() : Promise.reject('Failed');
+        })
+        .catch(() => {});
+    };
+    requirePassword(doRun);
+  }, [getTestHeaders, requirePassword]);
 
   useEffect(() => {
     if (!e2eRunning) return;
@@ -2029,6 +2062,50 @@ export default function DashboardPage() {
 
         </>)}
       </div>
+
+      {showPasswordPrompt && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}
+          onClick={() => { setShowPasswordPrompt(false); setPendingAction(null); }}>
+          <div style={{ background: 'var(--bg, #1e293b)', border: '1px solid var(--border, #334155)', borderRadius: 12, padding: '1.5rem', width: 360, maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>
+              <i className="fas fa-lock" style={{ marginRight: 8, color: '#f59e0b' }} />
+              Test Runner Password
+            </h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-secondary, #94a3b8)' }}>
+              Enter the dashboard password to run tests on production.
+            </p>
+            {passwordError && (
+              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8rem', color: '#ef4444' }}>
+                <i className="fas fa-exclamation-triangle" style={{ marginRight: 6 }} />{passwordError}
+              </div>
+            )}
+            <form onSubmit={e => {
+              e.preventDefault();
+              const input = (e.target as HTMLFormElement).elements.namedItem('pw') as HTMLInputElement;
+              const pw = input.value.trim();
+              if (!pw) return;
+              setTestPassword(pw);
+              setShowPasswordPrompt(false);
+              setPasswordError('');
+              if (pendingAction) { const fn = pendingAction; setPendingAction(null); setTimeout(() => fn(pw), 0); }
+            }}>
+              <input name="pw" type="password" autoFocus placeholder="Password"
+                style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: 8, border: '1px solid var(--border, #334155)', background: 'var(--bg-secondary, #0f172a)', color: 'inherit', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+              <div style={{ display: 'flex', gap: 8, marginTop: '1rem', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => { setShowPasswordPrompt(false); setPendingAction(null); }}
+                  style={{ padding: '0.5rem 1rem', borderRadius: 8, border: '1px solid var(--border, #334155)', background: 'transparent', color: 'var(--text-secondary, #94a3b8)', cursor: 'pointer', fontSize: '0.85rem' }}>
+                  Cancel
+                </button>
+                <button type="submit"
+                  style={{ padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+                  <i className="fas fa-unlock" style={{ marginRight: 6 }} />Unlock
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
