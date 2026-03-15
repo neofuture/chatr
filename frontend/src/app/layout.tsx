@@ -38,13 +38,13 @@ export const metadata: Metadata = {
     siteName: PRODUCT_NAME,
     title: `${PRODUCT_NAME} — Real-Time Messaging Platform`,
     description: 'A complete messaging platform with 50+ features: voice notes, video, AI chatbot, embeddable widget, and enterprise security. Production-deployed, fully tested.',
-    images: [{ url: '/screenshots/01-landing-page.png', width: 1200, height: 630, alt: `${PRODUCT_NAME} — Real-Time Messaging Platform` }],
+    images: [{ url: '/screenshots/10-dashboard-top.png', width: 1440, height: 900, alt: `${PRODUCT_NAME} — Real-Time Messaging Platform` }],
   },
   twitter: {
     card: 'summary_large_image',
     title: `${PRODUCT_NAME} — Real-Time Messaging Platform`,
     description: 'A complete messaging platform with 50+ features: voice notes, video, AI chatbot, embeddable widget, and enterprise security.',
-    images: ['/screenshots/01-landing-page.png'],
+    images: ['/screenshots/10-dashboard-top.png'],
   },
   alternates: { canonical: SITE_URL },
   appleWebApp: {
@@ -65,19 +65,39 @@ export const viewport: Viewport = {
   themeColor: '#0f172a',
 };
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: PRODUCT_NAME,
-  applicationCategory: 'CommunicationApplication',
-  operatingSystem: 'Web',
-  description: 'A complete real-time messaging platform with voice notes, video, file sharing, AI assistant, typing indicators, read receipts, and an embeddable support widget.',
-  url: SITE_URL,
-  author: { '@type': 'Person', name: 'Carl Fearby' },
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP', availability: 'https://schema.org/InStock' },
-  featureList: 'Real-time messaging, Voice notes, Video sharing, File sharing, AI chatbot, Embeddable widget, Typing indicators, Read receipts, Group chats, Dark/Light themes',
-  screenshot: `${SITE_URL}/screenshots/01-landing-page.png`,
-};
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: PRODUCT_NAME,
+    applicationCategory: 'CommunicationApplication',
+    operatingSystem: 'Web',
+    description: 'A complete real-time messaging platform with voice notes, video, file sharing, AI assistant, typing indicators, read receipts, and an embeddable support widget.',
+    url: SITE_URL,
+    author: { '@type': 'Person', name: 'Carl Fearby' },
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP', availability: 'https://schema.org/InStock' },
+    featureList: 'Real-time messaging, Voice notes, Video sharing, File sharing, AI chatbot, Embeddable widget, Typing indicators, Read receipts, Group chats, Dark/Light themes',
+    screenshot: `${SITE_URL}/screenshots/01-landing-page.png`,
+    aggregateRating: { '@type': 'AggregateRating', ratingValue: '5', bestRating: '5', ratingCount: '1' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: PRODUCT_NAME,
+    url: SITE_URL,
+    logo: `${SITE_URL}/images/logo-horizontal.png`,
+    contactPoint: { '@type': 'ContactPoint', contactType: 'sales', url: `${SITE_URL}/contact` },
+    sameAs: ['https://github.com/neofuture/chatr'],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: PRODUCT_NAME,
+    url: SITE_URL,
+    description: 'A complete real-time messaging platform with 50+ features, 1,300+ automated tests, and production deployment.',
+    publisher: { '@type': 'Organization', name: PRODUCT_NAME, logo: { '@type': 'ImageObject', url: `${SITE_URL}/images/logo-horizontal.png` } },
+  },
+];
 
 export default function RootLayout({
   children,
@@ -87,10 +107,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        {jsonLd.map((schema, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          />
+        ))}
         <script
           suppressHydrationWarning
           dangerouslySetInnerHTML={{

@@ -7,17 +7,19 @@ export const metadata: Metadata = {
   description:
     'Comprehensive product overview with architecture details, screenshots, and commercial analysis. 16 sections covering every aspect of the Chatr messaging platform.',
   openGraph: {
+    type: 'website',
     title: 'Product Overview — Complete Technical & Commercial Reference',
     description:
       'Comprehensive product overview with architecture details, screenshots, and commercial analysis. 16 sections covering every aspect of the Chatr messaging platform.',
     url: SITE_URL + '/product',
-    images: [{ url: SITE_URL + '/screenshots/03-conversations.png', width: 1200, height: 630 }],
+    images: [{ url: SITE_URL + '/screenshots/10-dashboard-top.png', width: 1440, height: 900, alt: 'Chatr Product Overview' }],
   },
   twitter: {
+    card: 'summary_large_image',
     title: 'Product Overview — Complete Technical & Commercial Reference',
     description:
       'Comprehensive product overview with architecture details, screenshots, and commercial analysis. 16 sections covering every aspect of the Chatr messaging platform.',
-    images: [SITE_URL + '/screenshots/03-conversations.png'],
+    images: [SITE_URL + '/screenshots/10-dashboard-top.png'],
   },
   alternates: { canonical: SITE_URL + '/product' },
 };

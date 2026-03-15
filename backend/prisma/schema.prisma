@@ -216,6 +216,18 @@ model Conversation {
   @@index([participantB])
 }
 
+model ContactSubmission {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  company   String?
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([email])
+}
+
 model Friendship {
   id          String   @id @default(uuid())
   requesterId String

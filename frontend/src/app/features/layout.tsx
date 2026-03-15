@@ -7,17 +7,19 @@ export const metadata: Metadata = {
   description:
     'Seven message types, typing indicators, read receipts, voice notes, reactions, group chats, AI assistant, and an embeddable support widget. Every feature your messaging platform needs.',
   openGraph: {
+    type: 'website',
     title: 'Features — 50+ Real-Time Messaging Features',
     description:
       'Seven message types, typing indicators, read receipts, voice notes, reactions, group chats, AI assistant, and an embeddable support widget. Every feature your messaging platform needs.',
     url: SITE_URL + '/features',
-    images: [{ url: SITE_URL + '/screenshots/04-chat-view.png', width: 1200, height: 630 }],
+    images: [{ url: SITE_URL + '/screenshots/10-dashboard-top.png', width: 1440, height: 900, alt: 'Chatr Features — Real-Time Messaging' }],
   },
   twitter: {
+    card: 'summary_large_image',
     title: 'Features — 50+ Real-Time Messaging Features',
     description:
       'Seven message types, typing indicators, read receipts, voice notes, reactions, group chats, AI assistant, and an embeddable support widget. Every feature your messaging platform needs.',
-    images: [SITE_URL + '/screenshots/04-chat-view.png'],
+    images: [SITE_URL + '/screenshots/10-dashboard-top.png'],
   },
   alternates: { canonical: SITE_URL + '/features' },
 };

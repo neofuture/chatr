@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
 import { mailtrapClient } from '../services/email';
 import { LOGO_BASE64 } from '../services/logo-base64-constant';
 
 const router = Router();
+const prisma = new PrismaClient();
 
 const MAIL_FROM_ADDRESS = process.env.MAIL_FROM_ADDRESS || 'noreply@emberlyn.co.uk';
 const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Chatr';
@@ -58,6 +60,14 @@ router.post('/contact', async (req: Request, res: Response) => {
 
   if (message.length > 5000) {
     return res.status(400).json({ error: 'Message too long (max 5000 characters).' });
+  }
+
+  try {
+    await prisma.contactSubmission.create({
+      data: { name, email, company: company || null, message },
+    });
+  } catch (dbError) {
+    console.error('⚠️ Failed to store contact submission:', dbError);
   }
 
   const htmlContent = getContactEmailHtml(name, email, company || '', message);
