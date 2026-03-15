@@ -10,6 +10,7 @@ import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import SiteNav from '@/components/site/SiteNav';
 import docStyles from './Docs.module.css';
 
 // Mermaid is browser-only — load with ssr:false so webpack never bundles it for the server
@@ -612,10 +613,13 @@ export default function DocsPage() {
   return (
     <div style={{
       display: 'flex',
+      flexDirection: 'column',
       minHeight: '100vh',
       background: 'var(--bg-primary)',
       color: 'var(--text-primary)'
     }}>
+      <SiteNav />
+      <div style={{ display: 'flex', flex: 1, paddingTop: 64 }}>
       {/* Show loading screen until mounted and width is loaded */}
       {!mounted ? (
         <div style={{
@@ -653,7 +657,7 @@ export default function DocsPage() {
           overflowX: 'hidden',
           transition: (isDragging || !hasInteracted) ? 'none' : 'width 0.3s ease-in-out',
           position: 'fixed',
-          top: 0,
+          top: 64,
           left: 0,
           bottom: 0,
           zIndex: 100,
@@ -878,7 +882,7 @@ export default function DocsPage() {
           onClick={() => setSidebarOpen(!sidebarOpen)}
           style={{
             position: 'fixed',
-            top: '0.5rem',
+            top: 'calc(64px + 0.5rem)',
             left: sidebarOpen ? `${sidebarWidth + 8}px` : '8px',
             zIndex: 1001,
             background: 'rgba(59, 130, 246, 0.2)',
@@ -1089,6 +1093,7 @@ export default function DocsPage() {
       </div>
       </>
       )}
+      </div>
     </div>
   );
 }

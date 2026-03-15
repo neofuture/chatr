@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import SiteNav from '@/components/site/SiteNav';
 import { version } from '@/version';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -594,7 +595,9 @@ export default function DashboardPage() {
       '--text': '#e2e8f0', '--text-secondary': '#94a3b8', '--bg': '#0f172a',
       minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      paddingTop: 64,
     } as React.CSSProperties}>
+      <SiteNav />
 
       <style>{`
         @keyframes liveTestFadeIn {
