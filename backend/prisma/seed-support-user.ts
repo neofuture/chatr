@@ -7,16 +7,18 @@ const prisma = new PrismaClient();
 async function main() {
   const email = process.env.SUPPORT_AGENT_EMAIL || 'carlfearby@me.com';
 
-  const user = await prisma.user.findFirst({ where: { email } });
-  if (!user) {
+  const rows = await prisma.$queryRaw<{ id: string; displayName: string | null; username: string }[]>`
+    SELECT id, "displayName", username FROM "User" WHERE email = ${email} LIMIT 1
+  `;
+
+  if (!rows.length) {
     console.error(`❌ User with email ${email} not found`);
     process.exit(1);
   }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { isSupport: true },
-  });
+  const user = rows[0];
+
+  await prisma.$executeRaw`UPDATE "User" SET "isSupport" = true WHERE id = ${user.id}`;
 
   console.log(`✅ Marked ${email} (${user.displayName || user.username}) as support agent`);
 }
