@@ -45,6 +45,9 @@ for i in {1..30}; do
 done
 echo ""
 
+# Apply any pending database migrations and regenerate client
+(cd "$SCRIPT_DIR/backend" && npx prisma migrate deploy --skip-generate 2>/dev/null && npx prisma generate 2>/dev/null) || true
+
 # Start servers
 (cd "$SCRIPT_DIR/backend" && npm run dev) &
 BACKEND_PID=$!

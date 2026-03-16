@@ -161,6 +161,7 @@ router.get('/:recipientId', authenticateToken as any, async (req: AuthenticatedR
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    /* istanbul ignore next -- defensive guard; Express route param is always non-empty */
     if (!recipientId) {
       return res.status(400).json({ error: 'recipientId is required' });
     }

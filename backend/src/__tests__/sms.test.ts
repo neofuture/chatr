@@ -83,6 +83,38 @@ describe('SMS Service', () => {
     });
   });
 
+  describe('sendSMS suppression', () => {
+    it('should suppress SMS when isTestMode returns true', async () => {
+      const testModeModule = require('../lib/testMode');
+      (testModeModule.isTestMode as jest.Mock).mockReturnValueOnce(true);
+
+      const { sendSMS } = require('../services/sms');
+      await sendSMS('+447911123456', 'Test');
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should suppress SMS when SUPPRESS_SMS is set', async () => {
+      process.env.SUPPRESS_SMS = '1';
+
+      const { sendSMS } = require('../services/sms');
+      await sendSMS('+447911123456', 'Test');
+
+      expect(mockFetch).not.toHaveBeenCalled();
+      delete process.env.SUPPRESS_SMS;
+    });
+
+    it('should suppress SMS in non-production mode without ENABLE_SMS', async () => {
+      process.env.NODE_ENV = 'development';
+      delete process.env.ENABLE_SMS;
+
+      const { sendSMS } = require('../services/sms');
+      await sendSMS('+447911123456', 'Test');
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
   describe('sendSMS', () => {
     it('should call SMS Works API with correct payload', async () => {
       mockFetch.mockResolvedValue({

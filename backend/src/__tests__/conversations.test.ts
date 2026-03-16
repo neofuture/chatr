@@ -20,7 +20,7 @@ jest.mock('../routes/widget', () => ({
   deleteGuestUser: jest.fn().mockResolvedValue(undefined),
 }));
 
-import conversationsRouter from '../routes/conversations';
+import conversationsRouter, { setConversationsSocketIO } from '../routes/conversations';
 import { PrismaClient } from '@prisma/client';
 import { acceptConversation, declineConversation, nukeConversation, nukeByParticipants } from '../lib/conversation';
 import { invalidateConversationCache } from '../lib/redis';
@@ -239,6 +239,117 @@ describe('Conversation Routes', () => {
         .expect(500);
 
       expect(response.body.error).toBe('Failed to nuke');
+    });
+  });
+
+  describe('socket notifications', () => {
+    const mockEmit = jest.fn();
+    const mockTo = jest.fn();
+    const mockIo = { to: mockTo } as any;
+
+    beforeEach(() => {
+      mockTo.mockReturnValue({ emit: mockEmit });
+      (redisModule.isTokenBlacklisted as jest.Mock).mockResolvedValue(false);
+      (redisModule.invalidateConversationCache as jest.Mock).mockResolvedValue(undefined);
+      (redisModule.getSocketId as jest.Mock).mockResolvedValue(null);
+      setConversationsSocketIO(mockIo);
+    });
+
+    afterAll(() => {
+      setConversationsSocketIO(null as any);
+    });
+
+    it('should notify initiator when conversation is accepted and socket is found', async () => {
+      (redisModule.getSocketId as jest.Mock).mockResolvedValue('socket-123');
+      (acceptConversation as jest.Mock).mockResolvedValue({
+        id: 'conv-1',
+        participantA: testUserId,
+        participantB: 'user-other',
+        initiatorId: 'user-other',
+      });
+
+      await request(app)
+        .post('/api/conversations/conv-1/accept')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(mockTo).toHaveBeenCalledWith('user:user-other');
+      expect(mockEmit).toHaveBeenCalledWith('conversation:accepted', expect.objectContaining({
+        conversationId: 'conv-1',
+        acceptedBy: testUserId,
+      }));
+    });
+
+    it('should notify initiator when conversation is declined', async () => {
+      (declineConversation as jest.Mock).mockResolvedValue({
+        id: 'conv-1',
+        participantA: testUserId,
+        participantB: 'user-other',
+        initiatorId: 'user-other',
+      });
+
+      await request(app)
+        .post('/api/conversations/conv-1/decline')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(mockTo).toHaveBeenCalledWith('user:user-other');
+      expect(mockEmit).toHaveBeenCalledWith('conversation:declined', expect.any(Object));
+    });
+
+    it('should notify both participants when conversation is nuked', async () => {
+      (nukeConversation as jest.Mock).mockResolvedValue({
+        id: 'conv-1',
+        participantA: testUserId,
+        participantB: 'user-other',
+      });
+      (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+
+      await request(app)
+        .post('/api/conversations/conv-1/nuke')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(mockTo).toHaveBeenCalledWith(`user:${testUserId}`);
+      expect(mockTo).toHaveBeenCalledWith('user:user-other');
+      expect(mockEmit).toHaveBeenCalledTimes(2);
+    });
+
+    it('should notify both participants when nuked by user', async () => {
+      (nukeByParticipants as jest.Mock).mockResolvedValue({
+        participantA: testUserId,
+        participantB: 'user-other',
+      });
+      (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+
+      await request(app)
+        .post('/api/conversations/nuke-by-user/user-other')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(mockTo).toHaveBeenCalledWith(`user:${testUserId}`);
+      expect(mockTo).toHaveBeenCalledWith('user:user-other');
+      expect(mockEmit).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('error handling (additional)', () => {
+    it('should return 500 when nuke throws', async () => {
+      (nukeConversation as jest.Mock).mockRejectedValue(new Error('DB error'));
+      const response = await request(app)
+        .post('/api/conversations/conv-1/nuke')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(500);
+      expect(response.body.error).toBe('Internal server error');
+    });
+
+    it('should return 500 when nuke-by-user throws', async () => {
+      (nukeByParticipants as jest.Mock).mockRejectedValue(new Error('DB error'));
+      const response = await request(app)
+        .post('/api/conversations/nuke-by-user/user-other')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(500);
+      expect(response.body.error).toBe('Internal server error');
     });
   });
 });

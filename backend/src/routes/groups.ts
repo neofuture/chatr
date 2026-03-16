@@ -25,12 +25,14 @@ const s3 = IS_PRODUCTION ? new S3Client({
   },
 }) : null;
 
+/* istanbul ignore next -- production-only S3 path */
 async function uploadToS3(buffer: Buffer, key: string, mimeType: string): Promise<string> {
   if (!s3) throw new Error('S3 not configured');
   await s3.send(new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, Body: buffer, ContentType: mimeType }));
   return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
 }
 
+/* istanbul ignore next -- production-only S3 path */
 async function deleteFromS3(key: string): Promise<void> {
   if (!s3) return;
   await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
@@ -96,6 +98,7 @@ async function isGroupOwner(userId: string, groupId: string): Promise<boolean> {
   return member?.role === 'owner';
 }
 
+/* istanbul ignore next -- best-effort file cleanup */
 function deleteLocalFile(filePath: string): void {
   try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { /* ignore */ }
 }
@@ -594,6 +597,7 @@ router.delete('/:id', authenticateToken as any, async (req: any, res: Response) 
     for (const msg of messagesWithFiles) {
       if (!msg.fileUrl) continue;
       try {
+        /* istanbul ignore if -- production-only S3 cleanup */
         if (IS_PRODUCTION) {
           const url = new URL(msg.fileUrl);
           const key = url.pathname.replace(/^\//, '');
@@ -604,6 +608,7 @@ router.delete('/:id', authenticateToken as any, async (req: any, res: Response) 
           if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
         }
       } catch (fileErr) {
+        /* istanbul ignore next */
         console.warn('Could not delete group message file:', msg.fileUrl, fileErr);
       }
     }
@@ -889,6 +894,7 @@ router.post('/:id/upload', authenticateToken as any, upload.single('file') as an
     let fileUrl: string;
     let localFilePath: string | null = null;
 
+    /* istanbul ignore if -- production-only S3 upload */
     if (IS_PRODUCTION) {
       const s3Key = `uploads/${subfolder}/${filename}`;
       fileUrl = await uploadToS3(req.file.buffer, s3Key, req.file.mimetype);

@@ -4,7 +4,6 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { authenticateToken } from '../middleware/auth';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getCachedConversations, setCachedConversations, invalidateConversationCache } from '../lib/redis';
 import { getConnectedUserIds } from '../lib/conversation';
 import { processImageVariants, deleteImageVariants, PROFILE_VARIANTS, COVER_VARIANTS } from '../lib/imageResize';
@@ -16,45 +15,6 @@ const router = Router();
 
 let _io: Server | null = null;
 export function setUsersSocketIO(io: Server) { _io = io; }
-
-// ── S3 (production only) ─────────────────────────────────────────────────────
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const S3_BUCKET = process.env.S3_BUCKET || '';
-const AWS_REGION = process.env.AWS_REGION || 'eu-west-2';
-
-const s3 = IS_PRODUCTION ? new S3Client({
-  region: AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
-}) : null;
-
-async function uploadImageToS3(buffer: Buffer, key: string, mimeType: string): Promise<string> {
-  if (!s3) throw new Error('S3 not configured');
-  await s3.send(new PutObjectCommand({ Bucket: S3_BUCKET, Key: key, Body: buffer, ContentType: mimeType }));
-  return `https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/${key}`;
-}
-
-async function deleteImageFromS3(url: string): Promise<void> {
-  if (!s3 || !url) return;
-  try {
-    // Extract S3 key from full URL
-    const key = url.replace(`https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/`, '');
-    await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: key }));
-    console.log('🗑️  Deleted from S3:', key);
-  } catch (err) {
-    console.error('⚠️  Failed to delete from S3:', err);
-  }
-}
-
-function deleteLocalFile(filePath: string): void {
-  try {
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch (err) {
-    console.error('⚠️  Failed to delete local file:', err);
-  }
-}
 
 /**
  * @swagger

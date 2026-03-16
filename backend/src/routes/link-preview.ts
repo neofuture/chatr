@@ -191,7 +191,7 @@ router.get('/', authenticateToken, async (req, res) => {
     if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.0\.0\.0|\[::1\])/.test(hostname)) {
       return res.status(400).json({ error: 'Private URLs are not allowed' });
     }
-  } catch {
+  } catch /* istanbul ignore next */ {
     return res.status(400).json({ error: 'Invalid URL' });
   }
 

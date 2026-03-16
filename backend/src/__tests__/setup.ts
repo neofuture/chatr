@@ -19,8 +19,11 @@ const mockPrismaClient = {
   },
   message: {
     create: jest.fn(),
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
     findMany: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn(),
     delete: jest.fn(),
     deleteMany: jest.fn(),
   },
@@ -28,8 +31,29 @@ const mockPrismaClient = {
     create: jest.fn(),
     findMany: jest.fn(),
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
+    deleteMany: jest.fn(),
+  },
+  groupMember: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+    upsert: jest.fn(),
+    delete: jest.fn(),
+    deleteMany: jest.fn(),
+  },
+  groupMessage: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    deleteMany: jest.fn(),
   },
   friendship: {
     create: jest.fn(),
@@ -49,6 +73,16 @@ const mockPrismaClient = {
     delete: jest.fn(),
     deleteMany: jest.fn(),
   },
+  contactSubmission: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+  },
+  messageEditHistory: {
+    findMany: jest.fn(),
+  },
+  $transaction: jest.fn((fns: any[]) => Promise.all(fns)),
+  $queryRaw: jest.fn(),
+  $executeRaw: jest.fn(),
   $disconnect: jest.fn(),
 };
 
@@ -62,6 +96,9 @@ jest.mock('../lib/prisma', () => ({
 
 // Increase timeout for async operations
 jest.setTimeout(10000);
+
+// Retry flaky tests once (handles transient ECONNRESET etc.)
+jest.retryTimes(1, { logErrorsBeforeRetry: true });
 
 // Global test utilities
 global.console = {

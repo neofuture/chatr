@@ -1,6 +1,7 @@
 import { keys } from '../lib/redis';
 
 jest.mock('ioredis', () => {
+  const eventHandlers: Record<string, Function> = {};
   const mRedis = {
     hmset: jest.fn().mockResolvedValue('OK'),
     hgetall: jest.fn().mockResolvedValue({}),
@@ -15,11 +16,21 @@ jest.mock('ioredis', () => {
     ttl: jest.fn().mockResolvedValue(60),
     pipeline: jest.fn().mockReturnValue({ hgetall: jest.fn().mockReturnThis(), exec: jest.fn().mockResolvedValue([]) }),
     connect: jest.fn().mockResolvedValue(undefined),
-    quit: jest.fn().mockResolvedValue(undefined),
-    on: jest.fn().mockReturnThis(),
+    quit: jest.fn().mockReturnValue(Promise.resolve('OK')),
+    on: jest.fn().mockImplementation(function (this: any, event: string, handler: Function) {
+      eventHandlers[event] = handler;
+      return this;
+    }),
     status: 'ready',
+    __eventHandlers: eventHandlers,
   };
-  return jest.fn(() => mRedis);
+  const MockRedis = jest.fn((_url: string, opts?: any) => {
+    if (opts?.retryStrategy) {
+      (MockRedis as any).__retryStrategy = opts.retryStrategy;
+    }
+    return mRedis;
+  });
+  return MockRedis;
 });
 
 import {
@@ -27,6 +38,7 @@ import {
   getPresence,
   removePresence,
   getAllOnlineUserIds,
+  getMultiplePresences,
   setSocketMapping,
   getSocketId,
   removeSocketMapping,
@@ -39,7 +51,12 @@ import {
   storeVerificationCode,
   getVerificationCode,
   deleteVerificationCode,
+  isRedisConnected,
+  connectRedis,
+  disconnectRedis,
   redis,
+  redisPub,
+  redisSub,
 } from '../lib/redis';
 
 describe('Redis Library', () => {
@@ -216,6 +233,112 @@ describe('Redis Library', () => {
     it('should use correct key for each type', async () => {
       await deleteVerificationCode('reset', 'u1');
       expect(redis.del).toHaveBeenCalledWith('chatr:verify:reset:u1');
+    });
+  });
+
+  describe('retryStrategy', () => {
+    it('should return null after 10 retries', () => {
+      const IoRedis = require('ioredis');
+      const retryStrategy = IoRedis.__retryStrategy;
+      expect(retryStrategy).toBeDefined();
+      expect(retryStrategy(11)).toBeNull();
+    });
+
+    it('should return increasing delay capped at 5000ms', () => {
+      const IoRedis = require('ioredis');
+      const retryStrategy = IoRedis.__retryStrategy;
+      expect(retryStrategy(1)).toBe(200);
+      expect(retryStrategy(5)).toBe(1000);
+      expect(retryStrategy(10)).toBe(2000);
+    });
+  });
+
+  describe('isRedisConnected', () => {
+    const handlers = () => (redis as any).__eventHandlers as Record<string, Function>;
+
+    it('should return false before connect event fires', () => {
+      expect(isRedisConnected()).toBe(false);
+    });
+
+    it('should return true after connect event fires and status is ready', () => {
+      handlers()['connect']();
+      expect(isRedisConnected()).toBe(true);
+    });
+
+    it('should return false after error event fires', () => {
+      handlers()['connect']();
+      handlers()['error'](new Error('boom'));
+      expect(isRedisConnected()).toBe(false);
+    });
+
+    it('should return false after close event fires', () => {
+      handlers()['connect']();
+      handlers()['close']();
+      expect(isRedisConnected()).toBe(false);
+    });
+  });
+
+  describe('connectRedis', () => {
+    it('should connect all three redis instances', async () => {
+      await connectRedis();
+      expect(redis.connect).toHaveBeenCalled();
+      expect(redisPub.connect).toHaveBeenCalled();
+      expect(redisSub.connect).toHaveBeenCalled();
+    });
+  });
+
+  describe('disconnectRedis', () => {
+    it('should quit all three redis instances', async () => {
+      (redis.quit as jest.Mock).mockReturnValue(Promise.resolve('OK'));
+      (redisPub.quit as jest.Mock).mockReturnValue(Promise.resolve('OK'));
+      (redisSub.quit as jest.Mock).mockReturnValue(Promise.resolve('OK'));
+
+      await disconnectRedis();
+      expect(redis.quit).toHaveBeenCalled();
+      expect(redisPub.quit).toHaveBeenCalled();
+      expect(redisSub.quit).toHaveBeenCalled();
+    });
+  });
+
+  describe('getMultiplePresences', () => {
+    it('should return presence data for multiple users', async () => {
+      const mockExec = jest.fn().mockResolvedValue([
+        [null, { userId: 'u1', socketId: 's1', status: 'online', lastSeen: '2026-01-01', hideOnlineStatus: '1' }],
+        [null, { userId: 'u2', socketId: 's2', status: 'away', lastSeen: '2026-01-02', hideOnlineStatus: '0' }],
+      ]);
+      const mockPipeline = { hgetall: jest.fn().mockReturnThis(), exec: mockExec };
+      (redis.pipeline as jest.Mock).mockReturnValue(mockPipeline);
+
+      const results = await getMultiplePresences(['u1', 'u2']);
+      expect(results).toHaveLength(2);
+      expect(results[0]).toEqual({
+        userId: 'u1', socketId: 's1', status: 'online',
+        lastSeen: '2026-01-01', hideOnlineStatus: true,
+      });
+      expect(results[1]).toEqual({
+        userId: 'u2', socketId: 's2', status: 'away',
+        lastSeen: '2026-01-02', hideOnlineStatus: false,
+      });
+    });
+
+    it('should return null for users with errors or missing data', async () => {
+      const mockExec = jest.fn().mockResolvedValue([
+        [new Error('fail'), null],
+        [null, {}],
+      ]);
+      const mockPipeline = { hgetall: jest.fn().mockReturnThis(), exec: mockExec };
+      (redis.pipeline as jest.Mock).mockReturnValue(mockPipeline);
+
+      const results = await getMultiplePresences(['u1', 'u2']);
+      expect(results).toEqual([null, null]);
+    });
+
+    it('should return all nulls when pipeline returns null', async () => {
+      const mockPipeline = { hgetall: jest.fn().mockReturnThis(), exec: jest.fn().mockResolvedValue(null) };
+      (redis.pipeline as jest.Mock).mockReturnValue(mockPipeline);
+
+      const results = await getMultiplePresences(['u1', 'u2']);
+      expect(results).toEqual([null, null]);
     });
   });
 });

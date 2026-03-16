@@ -116,4 +116,91 @@ describe('OpenAI Service', () => {
       await expect(generateAIReply([], 'Hi')).rejects.toThrow('OPENAI_API_KEY');
     });
   });
+
+  describe('generateConversationSummary', () => {
+    it('should call OpenAI with summary prompt and return result', async () => {
+      process.env.OPENAI_API_KEY = 'test-key';
+      const mockCreate = jest.fn().mockResolvedValue({
+        choices: [{ message: { content: 'Planning a trip' } }],
+      });
+      jest.doMock('openai', () => ({
+        __esModule: true,
+        default: jest.fn(() => ({
+          chat: { completions: { create: mockCreate } },
+        })),
+      }));
+
+      const { generateConversationSummary } = require('../services/openai');
+      const summary = await generateConversationSummary([
+        { sender: 'Alice', content: 'Want to go to the beach?' },
+        { sender: 'Bob', content: 'Sounds great!' },
+      ]);
+
+      expect(summary).toBe('Planning a trip');
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: 'gpt-4o-mini',
+          max_tokens: 100,
+          temperature: 0.3,
+        })
+      );
+    });
+
+    it('should include transcript in the user message', async () => {
+      process.env.OPENAI_API_KEY = 'test-key';
+      const mockCreate = jest.fn().mockResolvedValue({
+        choices: [{ message: { content: 'Chatting' } }],
+      });
+      jest.doMock('openai', () => ({
+        __esModule: true,
+        default: jest.fn(() => ({
+          chat: { completions: { create: mockCreate } },
+        })),
+      }));
+
+      const { generateConversationSummary } = require('../services/openai');
+      await generateConversationSummary([
+        { sender: 'Alice', content: 'Hello' },
+        { sender: 'Bob', content: 'Hi there' },
+      ]);
+
+      const call = mockCreate.mock.calls[0][0];
+      expect(call.messages[1].content).toContain('Alice: Hello');
+      expect(call.messages[1].content).toContain('Bob: Hi there');
+    });
+
+    it('should return empty string on API error', async () => {
+      process.env.OPENAI_API_KEY = 'test-key';
+      jest.doMock('openai', () => ({
+        __esModule: true,
+        default: jest.fn(() => ({
+          chat: { completions: { create: jest.fn().mockRejectedValue(new Error('API error')) } },
+        })),
+      }));
+
+      const { generateConversationSummary } = require('../services/openai');
+      const summary = await generateConversationSummary([
+        { sender: 'Alice', content: 'Hello' },
+      ]);
+      expect(summary).toBe('');
+    });
+
+    it('should return empty string when response content is null', async () => {
+      process.env.OPENAI_API_KEY = 'test-key';
+      jest.doMock('openai', () => ({
+        __esModule: true,
+        default: jest.fn(() => ({
+          chat: { completions: { create: jest.fn().mockResolvedValue({
+            choices: [{ message: { content: null } }],
+          }) } },
+        })),
+      }));
+
+      const { generateConversationSummary } = require('../services/openai');
+      const summary = await generateConversationSummary([
+        { sender: 'Alice', content: 'Hello' },
+      ]);
+      expect(summary).toBe('');
+    });
+  });
 });

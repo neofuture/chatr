@@ -629,4 +629,106 @@ describe('Friends Routes', () => {
       expect(response.body).toEqual({ blocked: true, blockedByMe: false });
     });
   });
+
+  // ── Error handling (catch blocks) ──────────────────────────────────────────
+
+  describe('error handling', () => {
+    it('GET /api/friends returns 500 on error', async () => {
+      (prisma.friendship.findMany as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .get('/api/friends')
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+      expect(res.body.message).toBe('Server error');
+    });
+
+    it('GET /api/friends/requests/incoming returns 500 on error', async () => {
+      (prisma.friendship.findMany as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .get('/api/friends/requests/incoming')
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('GET /api/friends/requests/outgoing returns 500 on error', async () => {
+      (prisma.friendship.findMany as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .get('/api/friends/requests/outgoing')
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('GET /api/friends/search returns 500 on error', async () => {
+      (prisma.user.findMany as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .get('/api/friends/search?q=test')
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('POST /api/friends/request returns 500 on error', async () => {
+      (prisma.friendship.findFirst as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .post('/api/friends/request')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ addresseeId: otherUserId });
+      expect(res.status).toBe(500);
+    });
+
+    it('POST /api/friends/:id/accept returns 500 on error', async () => {
+      (prisma.friendship.findUnique as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .post('/api/friends/fs-1/accept')
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('POST /api/friends/:id/decline returns 500 on error', async () => {
+      (prisma.friendship.findUnique as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .post('/api/friends/fs-1/decline')
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('DELETE /api/friends/:id returns 500 on error', async () => {
+      (prisma.friendship.findUnique as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .delete('/api/friends/fs-1')
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('POST /api/friends/:id/block returns 500 on error', async () => {
+      (prisma.friendship.deleteMany as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .post(`/api/friends/${otherUserId}/block`)
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('POST /api/friends/:id/unblock returns 500 on error', async () => {
+      (prisma.friendship.deleteMany as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .post(`/api/friends/${otherUserId}/unblock`)
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('GET /api/friends/blocked returns 500 on error', async () => {
+      (prisma.friendship.findMany as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .get('/api/friends/blocked')
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+
+    it('GET /api/friends/:id/block-status returns 500 on error', async () => {
+      (prisma.friendship.findFirst as jest.Mock).mockRejectedValue(new Error('DB'));
+      const res = await request(app)
+        .get(`/api/friends/${otherUserId}/block-status`)
+        .set('Authorization', `Bearer ${authToken}`);
+      expect(res.status).toBe(500);
+    });
+  });
 });

@@ -29,6 +29,7 @@ backend/uploads/**/*
 /test-results/
 /blob-report/
 /e2e-results.json
+/jest-results.json
 /.test-cache/
 
 # Python venv
