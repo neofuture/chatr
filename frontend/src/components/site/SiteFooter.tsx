@@ -1,7 +1,13 @@
+'use client';
+
 import Link from 'next/link';
 import s from './SiteFooter.module.css';
 
 export default function SiteFooter() {
+  const openRegister = () => {
+    window.dispatchEvent(new CustomEvent('chatr:open-auth', { detail: { view: 'register' } }));
+  };
+
   return (
     <footer className={s.footer}>
       <div className={s.inner}>
@@ -30,14 +36,14 @@ export default function SiteFooter() {
           <div className={s.colTitle}>Get Started</div>
           <Link href="/contact">Contact Sales</Link>
           <Link href="/app">Open App</Link>
-          <Link href="/register">Create Account</Link>
+          <button onClick={openRegister} className={s.footerBtn}>Create Account</button>
         </div>
       </div>
 
       <div className={s.bottom}>
         <span>&copy; {new Date().getFullYear()} Chatr. Built with React 19, Next.js 16, Node.js, PostgreSQL, Redis &amp; AWS.</span>
         <div className={s.stats}>
-          <span className={s.stat}><span>78,000+</span> lines of code</span>
+          <span className={s.stat}><span>80,000+</span> lines of code</span>
           <span className={s.stat}><span>1,300+</span> tests</span>
           <span className={s.stat}><span>22</span> days</span>
         </div>

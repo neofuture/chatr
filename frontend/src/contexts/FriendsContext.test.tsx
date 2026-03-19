@@ -1,5 +1,5 @@
 jest.mock('@/contexts/WebSocketContext', () => ({
-  useWebSocket: () => ({ socket: null, connected: false, connecting: false, disconnect: jest.fn(), reconnect: jest.fn() }),
+  useWebSocket: () => ({ socket: null, connected: true, connecting: false, disconnect: jest.fn(), reconnect: jest.fn() }),
 }));
 jest.mock('@/contexts/ToastContext', () => ({
   useToast: () => ({ toasts: [], showToast: jest.fn(), removeToast: jest.fn() }),

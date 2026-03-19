@@ -50,7 +50,7 @@ interface UserSettingsContextValue {
 const UserSettingsContext = createContext<UserSettingsContextValue | null>(null);
 
 export function UserSettingsProvider({ children }: { children: ReactNode }) {
-  const { socket } = useWebSocket();
+  const { socket, connected } = useWebSocket();
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [settings, setSettings] = useState<UserSettings>(() => {
@@ -66,6 +66,7 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token || token === 'undefined') return;
+    if (!connected) return;
 
     let cancelled = false;
     socketFirst(socket, 'users:me', {}, 'GET', '/api/users/me')
@@ -109,7 +110,7 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [socket]);
+  }, [socket, connected]);
 
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {

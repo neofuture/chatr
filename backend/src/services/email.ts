@@ -277,7 +277,7 @@ export function getPasswordResetEmailHtml(code: string, username: string, email:
   `.trim();
 }
 
-function checkTestMode() { return isTestMode() || process.env.SUPPRESS_SMS === '1'; }
+function checkTestMode() { return isTestMode(); }
 
 export async function sendVerificationEmail(
   email: string,

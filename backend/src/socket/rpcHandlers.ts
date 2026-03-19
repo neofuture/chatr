@@ -5,6 +5,7 @@ import { invalidateConversationCache, getSocketId } from '../lib/redis';
 import { getConnectedUserIds, acceptConversation, declineConversation, nukeConversation, nukeByParticipants } from '../lib/conversation';
 import { maybeRegenerateGroupSummary } from '../services/summaryEngine';
 import { deleteGuestUser } from '../routes/widget';
+import { isTestMode } from '../lib/testMode';
 
 type Ack = (res: any) => void;
 
@@ -106,8 +107,10 @@ export function registerRPCHandlers(socket: Socket, io: Server, userId: string) 
         const cachePromises = Array.from(connectedIds).map(id => invalidateConversationCache(id));
         cachePromises.push(invalidateConversationCache(userId));
         await Promise.all(cachePromises);
-        const payload = { userId, displayName: updated.displayName, firstName: updated.firstName, lastName: updated.lastName, profileImage: updated.profileImage };
-        for (const cid of connectedIds) io.to(`user:${cid}`).emit('user:profileUpdate', payload);
+        if (!isTestMode()) {
+          const payload = { userId, displayName: updated.displayName, firstName: updated.firstName, lastName: updated.lastName, profileImage: updated.profileImage };
+          for (const cid of connectedIds) io.to(`user:${cid}`).emit('user:profileUpdate', payload);
+        }
       } catch {}
       ack?.(updated);
     } catch (e) { console.error('users:me:update error:', e); ack?.({ error: 'Internal error' }); }
@@ -386,7 +389,7 @@ export function registerRPCHandlers(socket: Socket, io: Server, userId: string) 
   // ══════════════════════════════════════════════════════════════════════
 
   socket.on('groups:list', async (_data: any, ack?: Ack) => {
-    try {
+    const fetchGroups = async () => {
       const memberships = await prisma.groupMember.findMany({
         where: { userId, status: 'accepted' },
         include: {
@@ -399,12 +402,26 @@ export function registerRPCHandlers(socket: Socket, io: Server, userId: string) 
         },
         orderBy: { joinedAt: 'desc' },
       });
-      const groups = memberships.map(m => {
+      return memberships.filter(m => m.group != null).map(m => {
         maybeRegenerateGroupSummary(m.group.id, m.group.summaryMessageCount, m.group.summaryGeneratedAt);
         return { ...m.group, lastMessage: m.group.messages[0] ?? null, summary: m.group.summary ?? null };
       });
+    };
+    try {
+      const groups = await fetchGroups();
       ack?.({ groups });
-    } catch (e) { console.error('groups:list error:', e); ack?.({ error: 'Internal error' }); }
+    } catch (e: any) {
+      // Retry once on "Inconsistent query result" (cascade delete race condition)
+      if (e?.message?.includes('Inconsistent query result')) {
+        try {
+          const groups = await fetchGroups();
+          ack?.({ groups });
+          return;
+        } catch { /* fall through to error */ }
+      }
+      console.error('groups:list error:', e);
+      ack?.({ error: 'Internal error' });
+    }
   });
 
   socket.on('groups:invites', async (_data: any, ack?: Ack) => {

@@ -13,7 +13,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function BottomNav() {
   const { theme: themeMode } = useTheme();
-  const { socket } = useWebSocket();
+  const { socket, connected } = useWebSocket();
   const pathname = usePathname();
   const [profileImageUrl, setProfileImageUrl] = useState('/profile/default-profile.jpg');
   const [firstName, setFirstName] = useState('ME');
@@ -59,8 +59,9 @@ export default function BottomNav() {
     return () => window.removeEventListener('profileImageUpdated', handler);
   }, []);
 
-  // Fetch unread chat count on mount + poll (socket-first, REST fallback)
+  // Fetch unread chat count when socket connects + poll
   useEffect(() => {
+    if (!connected) return;
     const fetchUnread = async () => {
       try {
         const { socketFirst } = await import('@/lib/socketRPC');
@@ -96,10 +97,11 @@ export default function BottomNav() {
       window.removeEventListener('chatr:unread-changed', onUpdate);
       window.removeEventListener('chatr:group-unread-changed', onGroupUpdate);
     };
-  }, []);
+  }, [socket, connected]);
 
-  // Fetch incoming friend request count — socket-first with REST fallback
+  // Fetch incoming friend request count when socket connects
   useEffect(() => {
+    if (!connected) return;
     const fetchPending = async () => {
       try {
         const { socketFirst } = await import('@/lib/socketRPC');
@@ -116,7 +118,7 @@ export default function BottomNav() {
       clearInterval(interval);
       window.removeEventListener('chatr:friends-changed', onFriendsChanged);
     };
-  }, [socket]);
+  }, [socket, connected]);
 
   // Listen to socket friend:update events directly for instant badge updates
   useEffect(() => {

@@ -101,24 +101,19 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
         setConnected(false);
         setConnecting(false);
         const errorMessage = error?.message || 'Unknown connection error';
-        console.error('❌ WebSocket connection error:', errorMessage);
-        addLog('error', 'socket:connect_error', { message: errorMessage });
-        if (errorMessage.includes('Authentication error')) {
-          console.warn('⚠️  Authentication failed - token may be invalid. Consider logging out.');
+        const isAuthError = errorMessage.includes('Authentication error');
+        if (isAuthError) {
+          console.error('❌ WebSocket auth error — token may be invalid');
+        } else {
+          console.warn('🔌 WebSocket connect error (will retry):', errorMessage);
         }
+        addLog(isAuthError ? 'error' : 'info', 'socket:connect_error', { message: errorMessage });
       });
 
       newSocket.on('error', (error) => {
-        if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
-          console.warn('⚠️  WebSocket error occurred (no details provided)');
-          return;
-        }
+        if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) return;
         const errorMessage = error?.message || error?.toString() || 'Unknown error';
-        const errorDetails = typeof error === 'object' ? JSON.stringify(error) : error;
-        console.error('❌ WebSocket error:', errorMessage);
-        if (errorDetails !== errorMessage) {
-          console.error('   Error details:', errorDetails);
-        }
+        console.warn('🔌 WebSocket error:', errorMessage);
         addLog('error', 'socket:error', { message: errorMessage });
       });
 
@@ -136,7 +131,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       });
 
       newSocket.io.on('reconnect_failed', () => {
-        console.error('❌ WebSocket reconnection failed');
+        console.warn('🔌 WebSocket reconnection failed — will not retry automatically');
         setConnecting(false);
         addLog('error', 'socket:reconnect_failed', {});
       });

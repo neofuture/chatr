@@ -1,7 +1,17 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 
 jest.mock('next/link', () => ({ __esModule: true, default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push: jest.fn() }),
+}));
 jest.mock('@/version', () => ({ version: '1.0.0-test' }));
+jest.mock('@/contexts/PanelContext', () => ({
+  usePanels: () => ({ openPanel: jest.fn() }),
+}));
+jest.mock('@/contexts/ToastContext', () => ({
+  useToast: () => ({ showToast: jest.fn(), toasts: [], removeToast: jest.fn() }),
+}));
 
 global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({
   overview: { totalCommits: 100, totalLines: 5000, totalFiles: 50, testFiles: 10, currentBranch: 'main', latestHash: 'abc123', daysActive: 30, latestMessage: 'test' },
@@ -30,14 +40,20 @@ global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resol
 import DashboardPage from './page';
 
 describe('DashboardPage', () => {
-  it('should render without crashing', () => {
-    render(<DashboardPage />);
-    expect(screen.getByText(/Project Dashboard/)).toBeInTheDocument();
+  beforeEach(() => {
+    localStorage.clear();
   });
 
-  it('should show loading state initially', () => {
+  it('should render without crashing', async () => {
+    await act(async () => { render(<DashboardPage />); });
+    await waitFor(() => {
+      expect(screen.getByText(/Project Dashboard/)).toBeInTheDocument();
+    });
+  });
+
+  it('should show loading state initially', async () => {
     (global.fetch as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
-    render(<DashboardPage />);
+    await act(async () => { render(<DashboardPage />); });
     expect(screen.getByText(/Loading metrics/)).toBeInTheDocument();
   });
 });

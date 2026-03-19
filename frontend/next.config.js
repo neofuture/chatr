@@ -7,6 +7,21 @@ const nextConfig = {
   reactStrictMode: false,
   outputFileTracingRoot: path.join(__dirname, '../'),
   devIndicators: false,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3001',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.amazonaws.com',
+        pathname: '/**',
+      },
+    ],
+  },
   async headers() {
     return [
       {

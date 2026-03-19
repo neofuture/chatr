@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import SiteNav from '@/components/site/SiteNav';
 import SiteFooter from '@/components/site/SiteFooter';
 import { useBodyScroll } from '@/components/site/useBodyScroll';
@@ -12,24 +10,7 @@ import s from '@/components/site/Site.module.css';
 const SS = '/screenshots';
 
 export default function HomePage() {
-  const router = useRouter();
-
   useBodyScroll();
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    if (token && user && token !== 'undefined' && user !== 'undefined') {
-      try {
-        JSON.parse(user);
-        router.push('/app');
-      } catch {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('chatr_user_settings');
-      }
-    }
-  }, [router]);
 
   return (
     <div className={s.page}>
@@ -84,7 +65,7 @@ export default function HomePage() {
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.statsRow}>
-            {[['50+', 'Features'], ['1,300+', 'Automated Tests'], ['78,000+', 'Lines of Code'], ['22', 'Days to Ship']].map(([v, l]) => (
+            {[['50+', 'Features'], ['1,300+', 'Automated Tests'], ['80,000+', 'Lines of Code'], ['22', 'Days to Ship']].map(([v, l]) => (
               <div key={l} className={s.statBox}>
                 <div className={s.statVal}>{v}</div>
                 <div className={s.statLbl}>{l}</div>

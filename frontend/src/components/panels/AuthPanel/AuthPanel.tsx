@@ -32,7 +32,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [verificationMethod, setVerificationMethod] = useState<'email' | 'sms'>('sms'); // Default to SMS
+  const [verificationMethod, setVerificationMethod] = useState<'email' | 'sms'>('email'); // Default to email
 
   // Register state
   const [regEmail, setRegEmail] = useState('');
@@ -241,6 +241,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
           setEmail('');
           setPassword('');
           setShowPassword(false);
+          setVerificationMethod('email');
         } else {
           // Reset registration form
           setRegEmail('');
@@ -343,7 +344,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
 
       // Check if 2FA is required
       if (data.requiresTwoFactor) {
-        showToast('2FA required - please use /login page for 2FA authentication', 'info');
+        showToast('2FA authentication is not yet supported in the panel', 'info');
         setLoading(false);
         return;
       }
@@ -364,10 +365,8 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      console.log('[AuthPanel] Stored auth data:', {
-        hasToken: !!data.token,
-        user: data.user.username
-      });
+      // Notify SiteNav (storage event only fires cross-tab)
+      window.dispatchEvent(new Event('chatr:auth-changed'));
 
       showToast('Login successful!', 'success');
 
@@ -375,16 +374,10 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
       setEmail('');
       setPassword('');
       setShowPassword(false);
-      setVerificationMethod('sms');
+      setVerificationMethod('email');
 
-      // Close panel
+      // Close panel — stay on current page, user can go to app via avatar menu
       onClose();
-
-      // Small delay to ensure localStorage is written before redirect
-      setTimeout(() => {
-        console.log('[AuthPanel] Redirecting to /app');
-        router.push('/app');
-      }, 150);
     } catch (err: any) {
       setError(err.message || 'Login failed');
       showToast(err.message || 'Login failed', 'error');

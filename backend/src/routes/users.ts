@@ -9,6 +9,7 @@ import { getConnectedUserIds } from '../lib/conversation';
 import { processImageVariants, deleteImageVariants, PROFILE_VARIANTS, COVER_VARIANTS } from '../lib/imageResize';
 import { maybeRegenerateDMSummary } from '../services/summaryEngine';
 import { getConversations } from '../lib/getConversations';
+import { isTestMode } from '../lib/testMode';
 import { Server } from 'socket.io';
 
 const router = Router();
@@ -516,7 +517,8 @@ router.put('/me', authenticateToken as any, async (req: any, res: any) => {
     });
 
     // Broadcast profile changes to connected users so their UIs update in real time
-    if (_io) {
+    // Skip during E2E test mode to avoid corrupting live users' cached data
+    if (_io && !isTestMode()) {
       try {
         const { all: connectedIds } = await getConnectedUserIds(userId);
         const cachePromises = Array.from(connectedIds).map(id => invalidateConversationCache(id));
@@ -685,8 +687,7 @@ router.post('/profile-image', authenticateToken as any, upload.single('profileIm
       cachePromises.push(invalidateConversationCache(userId));
       await Promise.all(cachePromises);
 
-      // Broadcast to connected users so they update in real time
-      if (_io) {
+      if (_io && !isTestMode()) {
         for (const cid of connectedIds) {
           _io.to(`user:${cid}`).emit('user:profileUpdate', {
             userId,

@@ -5,6 +5,7 @@ import { getAssetPath } from './helpers/test-assets';
 
 let originalProfileImage: string | null = null;
 let originalCoverImage: string | null = null;
+const snapshot = api.loadProfileSnapshot('a');
 
 test.describe('User Profile', () => {
 
@@ -24,143 +25,308 @@ test.describe('User Profile', () => {
     const ctx = await playwrightRequest.newContext();
     try {
       const { token } = await apiLogin(ctx, TEST_USERS.userA);
-      await api.restoreImages(ctx, token, {
-        profileImage: originalProfileImage,
-        coverImage: originalCoverImage,
-      }).catch(() => {});
+      if (snapshot) {
+        await api.retryCleanup(() =>
+          api.updateProfile(ctx, token, api.pickProfileRestore(snapshot))
+        );
+      }
+      await api.retryCleanup(() =>
+        api.restoreImages(ctx, token, {
+          profileImage: originalProfileImage,
+          coverImage: originalCoverImage,
+        })
+      );
     } finally {
       await ctx.dispose();
     }
   });
 
-  test('edit display name via UI and reset', async ({ page, request }) => {
-    const { token: tokenA } = await apiLogin(request, TEST_USERS.userA);
+  // ── Profile page loads ───────────────────────────────────────────────
+
+  test('profile page loads and shows user info', async ({ page, request }) => {
+    const { token } = await apiLogin(request, TEST_USERS.userA);
+    const me = await api.getMe(request, token);
 
     await page.goto('/app/profile');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
-    const displayNameBtn = page.locator('button').filter({ hasText: /Add a display name/ }).first();
-    if (await displayNameBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await displayNameBtn.click();
-      await page.waitForTimeout(500);
-
-      const input = page.getByPlaceholder('Add a display name');
-      await expect(input).toBeVisible({ timeout: 3_000 });
-      await input.fill('Carl E2E Test');
-      await input.blur();
-      await page.waitForTimeout(2000);
-
-      await expect(page.getByText('Carl E2E Test').first()).toBeVisible({ timeout: 5_000 });
-
-      // Cleanup — don't fail the test if cleanup has a transient network error
-      await api.updateProfile(request, tokenA, { displayName: null }).catch(() => {});
-    }
+    await expect(page.getByText(`@${me.username?.replace(/^@/, '')}`).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Profile').first()).toBeVisible();
+    await expect(page.getByText('Account').first()).toBeVisible();
   });
 
-  test('edit first name via UI and reset', async ({ page, request }) => {
-    const { token: tokenA } = await apiLogin(request, TEST_USERS.userA);
+  // ── Display name ─────────────────────────────────────────────────────
+
+  test('set display name via UI', async ({ page, request }) => {
+    const { token } = await apiLogin(request, TEST_USERS.userA);
+    const before = await api.getMe(request, token);
 
     await page.goto('/app/profile');
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Find the row containing "First name" label, then click its edit button
-    const firstNameRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'First name' }) });
-    const btn = firstNameRow.locator('button').first();
-    if (await btn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await btn.click();
-      await page.waitForTimeout(500);
-      const input = firstNameRow.locator('input').first();
-      if (await input.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await input.fill('Alexander');
-        await input.blur();
-        await page.waitForTimeout(2000);
-      }
-    }
+    // Click the display name field — may show a value or a placeholder
+    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'Display name' }) });
+    const btn = fieldRow.locator('button').first();
+    await expect(btn).toBeVisible({ timeout: 5_000 });
+    await btn.click();
 
-    // Cleanup
-    await api.updateProfile(request, tokenA, { firstName: 'Carl' }).catch(() => {});
+    // Input should appear
+    const input = fieldRow.locator('input').first();
+    await expect(input).toBeVisible({ timeout: 3_000 });
+
+    await input.fill('E2E DisplayName');
+    await input.blur();
+
+    // Wait for save indicator
+    await expect(page.getByText('Saved').first()).toBeVisible({ timeout: 10_000 });
+
+    // Verify via API
+    const after = await api.getMe(request, token);
+    expect(after.displayName).toBe('E2E DisplayName');
+
+    // Verify it shows in the UI hero section
+    await expect(page.getByText('E2E DisplayName').first()).toBeVisible({ timeout: 5_000 });
+
+    // Restore
+    await api.updateProfile(request, token, { displayName: before.displayName ?? null });
   });
 
-  test('profile image upload via UI', async ({ page }) => {
+  // ── First name ───────────────────────────────────────────────────────
+
+  test('set first name via UI', async ({ page, request }) => {
+    const { token } = await apiLogin(request, TEST_USERS.userA);
+    const before = await api.getMe(request, token);
+
     await page.goto('/app/profile');
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    const cameraBtn = page.locator('button:has(i.fa-camera)').first();
-    if (await cameraBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await cameraBtn.click();
-      await page.waitForTimeout(500);
+    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'First name' }) });
+    const btn = fieldRow.locator('button').first();
+    await expect(btn).toBeVisible({ timeout: 5_000 });
+    await btn.click();
 
-      const uploadBtn = page.getByText('Upload New Picture').first();
-      if (await uploadBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        const fileInput = page.locator('input[type="file"][accept*="image"]').first();
-        await fileInput.setInputFiles(getAssetPath('test-image.png'));
-        await page.waitForTimeout(2000);
+    const input = fieldRow.locator('input').first();
+    await expect(input).toBeVisible({ timeout: 3_000 });
 
-        const cropperUpload = page.getByRole('button', { name: 'Upload' });
-        if (await cropperUpload.isVisible({ timeout: 5_000 }).catch(() => false)) {
-          await cropperUpload.click();
-          await page.waitForTimeout(3000);
-        }
-      }
-    }
+    await input.fill('Alexander');
+    await input.blur();
+
+    await expect(page.getByText('Saved').first()).toBeVisible({ timeout: 10_000 });
+
+    const after = await api.getMe(request, token);
+    expect(after.firstName).toBe('Alexander');
+
+    await api.updateProfile(request, token, { firstName: before.firstName ?? null });
   });
 
-  test('cover image upload via UI', async ({ page }) => {
+  // ── Last name ────────────────────────────────────────────────────────
+
+  test('set last name via UI', async ({ page, request }) => {
+    const { token } = await apiLogin(request, TEST_USERS.userA);
+    const before = await api.getMe(request, token);
+
     await page.goto('/app/profile');
+    await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    const cameraBtns = page.locator('button:has(i.fa-camera)');
-    const coverCameraBtn = cameraBtns.first();
-    if (await coverCameraBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await coverCameraBtn.click();
-      await page.waitForTimeout(500);
+    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'Last name' }) });
+    const btn = fieldRow.locator('button').first();
+    await expect(btn).toBeVisible({ timeout: 5_000 });
+    await btn.click();
 
-      const uploadBtn = page.getByText('Upload New Picture').first();
-      if (await uploadBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        const fileInput = page.locator('input[type="file"][accept*="image"]').first();
-        await fileInput.setInputFiles(getAssetPath('test-cover.png'));
-        await page.waitForTimeout(2000);
+    const input = fieldRow.locator('input').first();
+    await expect(input).toBeVisible({ timeout: 3_000 });
 
-        const cropperUpload = page.getByRole('button', { name: 'Upload' });
-        if (await cropperUpload.isVisible({ timeout: 5_000 }).catch(() => false)) {
-          await cropperUpload.click();
-          await page.waitForTimeout(3000);
-        }
-      }
-    }
+    await input.fill('Testington');
+    await input.blur();
+
+    await expect(page.getByText('Saved').first()).toBeVisible({ timeout: 10_000 });
+
+    const after = await api.getMe(request, token);
+    expect(after.lastName).toBe('Testington');
+
+    await api.updateProfile(request, token, { lastName: before.lastName ?? null });
   });
 
-  test('update profile via API and verify', async ({ request }) => {
-    const { token: tokenA } = await apiLogin(request, TEST_USERS.userA);
+  // ── Gender ───────────────────────────────────────────────────────────
 
-    const updated = await api.updateProfile(request, tokenA, {
-      displayName: 'API Display Name',
+  test('set gender via UI', async ({ page, request }) => {
+    const { token } = await apiLogin(request, TEST_USERS.userA);
+    const before = await api.getMe(request, token);
+
+    await page.goto('/app/profile');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Click gender field to open select
+    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'Gender' }) });
+    const btn = fieldRow.locator('button').first();
+    await expect(btn).toBeVisible({ timeout: 5_000 });
+    await btn.click();
+
+    // Select "Male"
+    const select = fieldRow.locator('select').first();
+    await expect(select).toBeVisible({ timeout: 3_000 });
+    await select.selectOption('male');
+
+    await expect(page.getByText('Saved').first()).toBeVisible({ timeout: 10_000 });
+
+    const after = await api.getMe(request, token);
+    expect(after.gender).toBe('male');
+
+    // Verify label shows in UI
+    await expect(fieldRow.getByText('Male')).toBeVisible({ timeout: 5_000 });
+
+    await api.updateProfile(request, token, { gender: before.gender ?? null });
+  });
+
+  // ── Profile image upload via UI ──────────────────────────────────────
+
+  test('upload profile image via UI', async ({ page }) => {
+    await page.goto('/app/profile');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // The profile image uploader has a camera button
+    const avatarWrap = page.locator('[class*="avatarWrap"]');
+    const cameraBtn = avatarWrap.locator('button:has(i.fa-camera)').first();
+    await expect(cameraBtn).toBeVisible({ timeout: 5_000 });
+    await cameraBtn.click();
+
+    // Should show upload option
+    const uploadBtn = page.getByText('Upload New Picture').first();
+    await expect(uploadBtn).toBeVisible({ timeout: 5_000 });
+
+    // Set file via file input
+    const fileInput = page.locator('input[type="file"][accept*="image"]').first();
+    await fileInput.setInputFiles(getAssetPath('test-image.png'));
+
+    // Cropper should appear with Upload button
+    const cropperUpload = page.getByRole('button', { name: 'Upload' });
+    await expect(cropperUpload).toBeVisible({ timeout: 10_000 });
+    await cropperUpload.click();
+
+    // Wait for upload to complete
+    await page.waitForTimeout(3000);
+  });
+
+  // ── Cover image upload via UI ────────────────────────────────────────
+
+  test('upload cover image via UI', async ({ page }) => {
+    await page.goto('/app/profile');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // The cover image uploader also has a camera button — it's in the cover area
+    const coverWrap = page.locator('[class*="cover"]').first();
+    const cameraBtn = coverWrap.locator('button:has(i.fa-camera)').first();
+    await expect(cameraBtn).toBeVisible({ timeout: 5_000 });
+    await cameraBtn.click();
+
+    const uploadBtn = page.getByText('Upload New Picture').first();
+    await expect(uploadBtn).toBeVisible({ timeout: 5_000 });
+
+    const fileInput = page.locator('input[type="file"][accept*="image"]').first();
+    await fileInput.setInputFiles(getAssetPath('test-cover.png'));
+
+    const cropperUpload = page.getByRole('button', { name: 'Upload' });
+    await expect(cropperUpload).toBeVisible({ timeout: 10_000 });
+    await cropperUpload.click();
+
+    await page.waitForTimeout(3000);
+  });
+
+  // ── API: update profile and verify ───────────────────────────────────
+
+  test('update profile fields via API and verify round-trip', async ({ request }) => {
+    const { token } = await apiLogin(request, TEST_USERS.userA);
+    const before = await api.getMe(request, token);
+
+    const updated = await api.updateProfile(request, token, {
+      displayName: 'API DisplayName Test',
       firstName: 'APIFirst',
       lastName: 'APILast',
+      gender: 'non-binary',
     });
-    expect(updated.displayName).toBe('API Display Name');
+    expect(updated.displayName).toBe('API DisplayName Test');
     expect(updated.firstName).toBe('APIFirst');
     expect(updated.lastName).toBe('APILast');
+    expect(updated.gender).toBe('non-binary');
 
-    const me = await api.getMe(request, tokenA);
-    expect(me.displayName).toBe('API Display Name');
+    // Verify via GET
+    const me = await api.getMe(request, token);
+    expect(me.displayName).toBe('API DisplayName Test');
+    expect(me.firstName).toBe('APIFirst');
+    expect(me.lastName).toBe('APILast');
+    expect(me.gender).toBe('non-binary');
 
-    // Cleanup
-    await api.updateProfile(request, tokenA, {
-      displayName: null,
-      firstName: 'Carl',
-      lastName: 'Fearby',
+    // Restore
+    await api.updateProfile(request, token, {
+      displayName: before.displayName ?? null,
+      firstName: before.firstName ?? null,
+      lastName: before.lastName ?? null,
+      gender: before.gender ?? null,
     });
   });
 
-  test('change gender via API and verify', async ({ request }) => {
-    const { token: tokenA } = await apiLogin(request, TEST_USERS.userA);
+  // ── API: gender values ───────────────────────────────────────────────
 
-    await api.updateProfile(request, tokenA, { gender: 'male' });
-    const me = await api.getMe(request, tokenA);
-    expect(me.gender).toBe('male');
+  test('cycle through all gender options via API', async ({ request }) => {
+    const { token } = await apiLogin(request, TEST_USERS.userA);
+    const before = await api.getMe(request, token);
 
-    // Cleanup
-    await api.updateProfile(request, tokenA, { gender: null });
+    const genders = ['male', 'female', 'non-binary', 'prefer-not-to-say'];
+    for (const g of genders) {
+      await api.updateProfile(request, token, { gender: g });
+      const me = await api.getMe(request, token);
+      expect(me.gender).toBe(g);
+    }
+
+    // Clear gender
+    await api.updateProfile(request, token, { gender: null });
+    const cleared = await api.getMe(request, token);
+    expect(cleared.gender).toBeNull();
+
+    // Restore
+    await api.updateProfile(request, token, { gender: before.gender ?? null });
+  });
+
+  // ── Profile data persists across reload ──────────────────────────────
+
+  test('profile data persists after page reload', async ({ page, request }) => {
+    const { token } = await apiLogin(request, TEST_USERS.userA);
+    const before = await api.getMe(request, token);
+
+    // Set known values via API
+    await api.updateProfile(request, token, {
+      displayName: 'Persist Test Name',
+      gender: 'female',
+    });
+
+    // Load profile page
+    await page.goto('/app/profile');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    await expect(page.getByText('Persist Test Name').first()).toBeVisible({ timeout: 10_000 });
+
+    // Reload the page
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // Data should still be there
+    await expect(page.getByText('Persist Test Name').first()).toBeVisible({ timeout: 10_000 });
+
+    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'Gender' }) });
+    await expect(fieldRow.getByText('Female')).toBeVisible({ timeout: 5_000 });
+
+    // Restore
+    await api.updateProfile(request, token, {
+      displayName: before.displayName ?? null,
+      gender: before.gender ?? null,
+    });
   });
 });

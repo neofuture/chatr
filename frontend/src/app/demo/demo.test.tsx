@@ -16,7 +16,7 @@ jest.mock('@/components/BottomSheetDemo/BottomSheetDemo', () => ({ __esModule: t
 jest.mock('@/components/ThemeToggle/ThemeToggle', () => ({ __esModule: true, default: () => <div data-testid="theme-toggle" /> }));
 jest.mock('@/components/form-controls/DatePicker/DatePicker', () => ({ __esModule: true, default: () => <div data-testid="datepicker" /> }));
 jest.mock('@/components/form-controls/Button/Button', () => ({ __esModule: true, default: (props: any) => <button>{props.children}</button> }));
-jest.mock('@/components/panels/DemoPanels/DemoPanels', () => ({ Panel1Content: () => <div />, Demo2FAContent: () => <div /> }));
+jest.mock('@/components/panels/DemoPanels/DemoPanels', () => ({ Panel1Content: () => <div /> }));
 
 import DemoPage from './page';
 

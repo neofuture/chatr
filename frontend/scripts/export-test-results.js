@@ -184,7 +184,6 @@ try {
     'DemoPanels',
     'ThemeToggle',
     'BurgerMenu',
-    'Demo2FA',
     'MobileLayout'
   ];
 

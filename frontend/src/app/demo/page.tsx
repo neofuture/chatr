@@ -6,7 +6,6 @@ import { usePanels } from '@/contexts/PanelContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useConfirmation } from '@/contexts/ConfirmationContext';
 import { Panel1Content } from '@/components/panels/DemoPanels/DemoPanels';
-import { Demo2FAContent } from '@/components/Demo2FA/Demo2FA';
 import BackgroundBlobs from '@/components/BackgroundBlobs/BackgroundBlobs';
 import BottomSheetDemo from '@/components/BottomSheetDemo/BottomSheetDemo';
 import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
@@ -31,10 +30,6 @@ export default function DemoPage() {
 
   const openDemoPanel = () => {
     openPanel('Panel 1', <Panel1Content />);
-  };
-
-  const open2FADemo = () => {
-    openPanel('Verify Your Email', <Demo2FAContent />);
   };
 
   // Demo toast handlers
@@ -246,10 +241,6 @@ export default function DemoPage() {
           }}>
             <Button onClick={openDemoPanel} variant="purple">
               <i className="fas fa-layer-group"></i> Stacked Panels Demo
-            </Button>
-
-            <Button onClick={open2FADemo} variant="green">
-              <i className="fas fa-envelope-open-text"></i> Email Verification Demo
             </Button>
           </div>
         </div>

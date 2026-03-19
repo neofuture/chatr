@@ -29,21 +29,20 @@ async function openDMWithSimon(page: import('@playwright/test').Page) {
   await page.goto('/app');
   await page.waitForTimeout(2500);
 
-  // Try clicking the conversation in the sidebar first
-  const convRow = page.locator('button').filter({ hasText: /simonjames/i }).first();
+  // Try clicking the conversation in the sidebar first (match displayName or username)
+  const convRow = page.locator('button').filter({ hasText: /Simon James|simonjames/i }).first();
   if (await convRow.isVisible({ timeout: 5_000 }).catch(() => false)) {
     await convRow.click();
     await page.waitForTimeout(1000);
-    // If the message input appeared, we're good
     if (await page.getByPlaceholder('Message…').isVisible({ timeout: 3_000 }).catch(() => false)) return;
   }
 
   // Fallback: use New Message panel
   await page.getByTitle('New message').click();
   await page.waitForTimeout(500);
-  await page.getByPlaceholder('Search users...').fill('simonjames');
+  await page.getByPlaceholder('Search users...').fill('simon');
   await page.waitForTimeout(1500);
-  await page.locator('button').filter({ hasText: /simonjames/ }).first().click({ force: true });
+  await page.locator('button').filter({ hasText: /Simon/i }).first().click({ force: true });
   await page.waitForTimeout(2000);
 }
 

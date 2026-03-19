@@ -29,6 +29,7 @@ class CacheReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
+    if (result.status === 'skipped') return;
     const file = test.location.file.replace(process.cwd() + '/', '');
     if (!this.suiteMap.has(file)) {
       this.suiteMap.set(file, { file, status: 'passed', duration: 0, tests: [] });
@@ -52,11 +53,14 @@ class CacheReporter implements Reporter {
   }
 
   onEnd(result: FullResult) {
+    const INFRA_PROJECTS = new Set(['setup', 'teardown']);
     const elapsed = Date.now() - this.startTime;
-    const suites = Array.from(this.suiteMap.values());
+    const suites = Array.from(this.suiteMap.values())
+      .filter(s => s.tests.some(t => !INFRA_PROJECTS.has(t.project || '')));
 
     let total = 0, passed = 0, failed = 0, flaky = 0, totalDuration = 0;
     for (const s of suites) {
+      s.tests = s.tests.filter(t => !INFRA_PROJECTS.has(t.project || ''));
       for (const t of s.tests) {
         total++;
         if (t.status === 'passed') passed++; else failed++;
@@ -64,6 +68,8 @@ class CacheReporter implements Reporter {
       }
       totalDuration += s.duration;
     }
+
+    if (total === 0) return;
 
     const report = {
       generatedAt: new Date().toISOString(),
@@ -74,6 +80,10 @@ class CacheReporter implements Reporter {
 
     try {
       fs.mkdirSync(CACHE_DIR, { recursive: true });
+      const existing = fs.existsSync(CACHE_FILE)
+        ? JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'))
+        : null;
+      if (existing?.summary?.total > 0 && total < existing.summary.total * 0.5) return;
       fs.writeFileSync(CACHE_FILE, JSON.stringify(report));
     } catch { /* best-effort */ }
   }

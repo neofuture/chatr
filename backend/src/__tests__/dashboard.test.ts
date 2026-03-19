@@ -361,9 +361,14 @@ describe('Dashboard Routes', () => {
 
       const res = await request(app).get('/api/dashboard/tests/e2e');
       expect(res.status).toBe(200);
+      expect(['error', 'none', 'ready']).toContain(res.body.status);
     });
 
-    it('falls back to e2e-results.json when liveRun has no finalReport', async () => {
+    it('falls back to e2e-results.json when no disk cache exists', async () => {
+      const cacheFile = path.join(path.resolve(__dirname, '../../..'), '.test-cache', 'e2e.json');
+      let cacheBackup: string | null = null;
+      try { cacheBackup = fs.readFileSync(cacheFile, 'utf8'); fs.unlinkSync(cacheFile); } catch { /* ignore */ }
+
       const playwrightJson = {
         suites: [{
           title: 'chromium',
@@ -385,6 +390,7 @@ describe('Dashboard Routes', () => {
       expect(res.body.summary.total).toBeGreaterThanOrEqual(2);
 
       try { fs.unlinkSync(E2E_JSON_PATH); } catch { /* ignore */ }
+      if (cacheBackup) fs.writeFileSync(cacheFile, cacheBackup);
     });
 
     it('returns none when no e2e data exists at all', async () => {
@@ -513,6 +519,10 @@ describe('Dashboard Routes', () => {
       const errorCallback = child.on.mock.calls.find((c: any) => c[0] === 'error');
       expect(errorCallback).toBeDefined();
       errorCallback[1](new Error('unit spawn failed'));
+
+      // Also fire close so the run is fully cleaned up for subsequent tests
+      const closeCallback = child.on.mock.calls.find((c: any) => c[0] === 'close');
+      if (closeCallback) closeCallback[1](1);
 
       const statusRes = await request(app).get('/api/dashboard/tests/backend');
       expect(statusRes.status).toBe(200);

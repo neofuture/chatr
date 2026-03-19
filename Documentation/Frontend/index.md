@@ -10,10 +10,7 @@ The frontend is a Next.js 16 application using the App Router with React 19 and 
 
 ```mermaid
 graph TD
-    root["/"] --> login["/login"]
-    root --> register["/register"]
-    root --> setup2fa["/setup-2fa"]
-    root --> demo["/demo<br/>Component showcase"]
+    root["/"] --> demo["/demo<br/>Component showcase"]
     root --> docs["/docs<br/>Documentation viewer"]
     root --> emailpreview["/email-preview"]
     root --> app["/app — requires auth"]

@@ -237,7 +237,7 @@ export default function ProductPage() {
         </div>
 
         <div className={s.statsBar}>
-          {[['50+', 'Features'], ['1,300+', 'Tests'], ['78,000+', 'Lines of Code'], ['22', 'Days']].map(([v, l]) => (
+          {[['50+', 'Features'], ['1,300+', 'Tests'], ['80,000+', 'Lines of Code'], ['22', 'Days']].map(([v, l]) => (
             <div key={l} className={s.statCard}>
               <div className={s.statValue}>{v}</div>
               <div className={s.statLabel}>{l}</div>
@@ -717,7 +717,7 @@ export default function ProductPage() {
             {[
               ['User-facing features', '50+'],
               ['Automated tests', '1,300+'],
-              ['Lines of code', '78,000+'],
+              ['Lines of code', '80,000+'],
               ['Source files', '369'],
               ['REST API endpoints', '70+'],
               ['WebSocket event types', '40+'],

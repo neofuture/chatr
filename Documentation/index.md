@@ -18,7 +18,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | [Hooks](./Frontend/Hooks/index.md) | `useAuth`, `useConversationList`, `useFriends`, `useConversation`, `useGroupMessageInput` |
 | [Lib](./Frontend/Lib/index.md) | api.ts, db.ts, offline.ts, auth helpers, image services, messageCache |
 | [Types](./Frontend/Types/index.md) | Shared TypeScript interfaces |
-| [Demo Components](./Frontend/Components/Demo/index.md) | Dev/demo-only components — Demo2FA, BottomSheetDemo, DemoPanels |
+| [Demo Components](./Frontend/Components/Demo/index.md) | Dev/demo-only components — BottomSheetDemo, DemoPanels |
 | [Backend](./Backend/index.md) | Backend overview, middleware, env vars |
 | [Routes](./Backend/Routes.md) | Express route files — auth, users, messages, friends, conversations, dashboard |
 | [Socket Handlers](./Backend/Socket_Handlers.md) | Socket.io event handlers, Redis presence, conversation-aware broadcasting |

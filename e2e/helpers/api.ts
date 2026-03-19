@@ -1,6 +1,9 @@
 import type { APIRequestContext } from '@playwright/test';
+import path from 'path';
+import fs from 'fs';
 
 const API = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
+const AUTH_DIR = path.join(__dirname, '..', '.auth');
 
 function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -97,6 +100,39 @@ export async function cleanupTestData(request: APIRequestContext, token: string,
   await request.post(`${API}/api/test/cleanup`, { headers: headers(token), data: { recipientId } });
 }
 
+/**
+ * Register a new user via API. Returns { userId } — user still needs email verification.
+ */
+export async function registerUser(request: APIRequestContext, data: {
+  email: string; password: string; username: string;
+  firstName: string; lastName: string; phoneNumber: string;
+  gender?: string;
+}) {
+  const res = await request.post(`${API}/api/auth/register`, {
+    headers: { 'Content-Type': 'application/json' },
+    data,
+  });
+  return res.json();
+}
+
+/**
+ * Verify a user's email using the test bypass OTP code.
+ */
+export async function verifyEmail(request: APIRequestContext, userId: string, code = '000000') {
+  const res = await request.post(`${API}/api/auth/verify-email`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: { userId, code },
+  });
+  return res.json();
+}
+
+/**
+ * Delete a user account by ID (test-mode only cleanup).
+ */
+export async function deleteUser(request: APIRequestContext, token: string, userId: string) {
+  await request.delete(`${API}/api/test/user/${userId}`, { headers: headers(token) }).catch(() => {});
+}
+
 export async function deleteProfileImage(request: APIRequestContext, token: string) {
   await request.delete(`${API}/api/users/profile-image`, { headers: headers(token) });
 }
@@ -107,4 +143,40 @@ export async function deleteCoverImage(request: APIRequestContext, token: string
 
 export async function restoreImages(request: APIRequestContext, token: string, data: { profileImage?: string | null; coverImage?: string | null }) {
   await request.post(`${API}/api/test/restore-images`, { headers: headers(token), data });
+}
+
+/**
+ * Load the pre-test profile snapshot saved by global-setup.
+ * Returns null if not found (tests should skip destructive cleanup in that case).
+ */
+export function loadProfileSnapshot(user: 'a' | 'b'): Record<string, any> | null {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(AUTH_DIR, `profile-snapshot-${user}.json`), 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+const PROFILE_FIELDS = ['displayName', 'firstName', 'lastName', 'gender'] as const;
+
+/** Pick only the profile fields we need to restore. */
+export function pickProfileRestore(snapshot: Record<string, any>): Record<string, any> {
+  const data: Record<string, any> = {};
+  for (const key of PROFILE_FIELDS) data[key] = snapshot[key] ?? null;
+  return data;
+}
+
+/**
+ * Retry an async cleanup operation up to `retries` times.
+ * Swallows the error only after all retries are exhausted.
+ */
+export async function retryCleanup(fn: () => Promise<any>, retries = 3): Promise<void> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      await fn();
+      return;
+    } catch {
+      if (i < retries) await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
+  }
 }

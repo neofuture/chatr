@@ -102,12 +102,12 @@ describe('AuthPanel', () => {
     expect(passwordInput).toHaveAttribute('type', 'text');
   });
 
-  it('shows verification method toggle with SMS default', async () => {
+  it('shows verification method toggle with Email default', async () => {
     render(<AuthPanel {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText('SMS')).toBeInTheDocument();
+      expect(screen.getByText('Email')).toBeInTheDocument();
     });
-    expect(screen.getByText('Email')).toBeInTheDocument();
+    expect(screen.getByText('SMS')).toBeInTheDocument();
   });
 
   it('shows Forgot password link', async () => {
@@ -167,7 +167,7 @@ describe('AuthPanel', () => {
     await user.click(submitBtn);
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('alice@test.com', 'Password1!', undefined, 'sms');
+      expect(mockLogin).toHaveBeenCalledWith('alice@test.com', 'Password1!', undefined, 'email');
     });
 
     await waitFor(() => {
@@ -250,6 +250,18 @@ describe('AuthPanel', () => {
   describe('register form', () => {
     const regProps = { ...defaultProps, initialView: 'register' as const };
 
+    beforeEach(() => {
+      jest.useFakeTimers();
+      global.fetch = jest.fn().mockResolvedValue({
+        json: () => Promise.resolve({ available: true }),
+      }) as any;
+    });
+
+    afterEach(async () => {
+      await act(async () => { jest.runAllTimers(); });
+      jest.useRealTimers();
+    });
+
     it('renders all registration fields', async () => {
       render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
@@ -260,7 +272,7 @@ describe('AuthPanel', () => {
     });
 
     it('auto-populates username from name', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
       await user.type(screen.getByPlaceholderText('First name'), 'John');
@@ -276,7 +288,7 @@ describe('AuthPanel', () => {
     });
 
     it('validates empty first name on submit', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
 
@@ -297,7 +309,7 @@ describe('AuthPanel', () => {
     });
 
     it('validates email format on submit', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
 
@@ -321,8 +333,7 @@ describe('AuthPanel', () => {
     });
 
     it('validates phone number on submit', async () => {
-      const user = userEvent.setup();
-      global.fetch = jest.fn().mockResolvedValue({ json: () => Promise.resolve({ available: true }) }) as any;
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
 
@@ -347,8 +358,7 @@ describe('AuthPanel', () => {
     });
 
     it('validates password requirements on submit', async () => {
-      const user = userEvent.setup();
-      global.fetch = jest.fn().mockResolvedValue({ json: () => Promise.resolve({ available: true }) }) as any;
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
 
@@ -358,7 +368,7 @@ describe('AuthPanel', () => {
       await user.type(screen.getByPlaceholderText(/\+447911123456/), '07911123456');
       await user.clear(screen.getByPlaceholderText('username'));
       await user.type(screen.getByPlaceholderText('username'), 'johndoe');
-      await new Promise(r => setTimeout(r, 900));
+      await act(async () => { jest.advanceTimersByTime(900); });
 
       const passwordInputs = screen.getAllByPlaceholderText('••••••••');
       await user.type(passwordInputs[0], 'weak');
@@ -374,8 +384,7 @@ describe('AuthPanel', () => {
     });
 
     it('validates password match on submit', async () => {
-      const user = userEvent.setup();
-      global.fetch = jest.fn().mockResolvedValue({ json: () => Promise.resolve({ available: true }) }) as any;
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
 
@@ -385,7 +394,7 @@ describe('AuthPanel', () => {
       await user.type(screen.getByPlaceholderText(/\+447911123456/), '07911123456');
       await user.clear(screen.getByPlaceholderText('username'));
       await user.type(screen.getByPlaceholderText('username'), 'johndoe');
-      await new Promise(r => setTimeout(r, 900));
+      await act(async () => { jest.advanceTimersByTime(900); });
 
       const passwordInputs = screen.getAllByPlaceholderText('••••••••');
       await user.type(passwordInputs[0], 'StrongPass1!');
@@ -398,7 +407,7 @@ describe('AuthPanel', () => {
     });
 
     it('shows password strength bar when typing password', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       const { container } = render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
       const passwordInputs = screen.getAllByPlaceholderText('••••••••');
@@ -411,7 +420,7 @@ describe('AuthPanel', () => {
     });
 
     it('shows "Passwords do not match" hint when passwords differ', async () => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       render(<AuthPanel {...regProps} />);
       await waitFor(() => screen.getByPlaceholderText('First name'));
       const passwordInputs = screen.getAllByPlaceholderText('••••••••');

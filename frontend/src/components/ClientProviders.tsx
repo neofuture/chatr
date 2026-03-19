@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LogProvider } from '@/contexts/LogContext';
 import { UserSettingsProvider } from '@/contexts/UserSettingsContext';
@@ -15,7 +15,52 @@ import ToastContainer from '@/components/ToastContainer/ToastContainer';
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog/ConfirmationDialog';
 import RoutePreloader from '@/components/RoutePreloader';
 
+const TRANSIENT_PATTERNS = [
+  'Load failed',
+  'Failed to fetch',
+  'NetworkError',
+  'The operation was aborted',
+  'ERR_CONNECTION_REFUSED',
+  'ECONNRESET',
+  'AbortError',
+  'fetch failed',
+];
+
+function matchesTransient(text: string): boolean {
+  return TRANSIENT_PATTERNS.some(p => text.includes(p));
+}
+
+function isTransientNetworkError(...args: unknown[]): boolean {
+  const msg = args.map(a => (a instanceof Error ? a.message : String(a))).join(' ');
+  return matchesTransient(msg);
+}
+
 export default function ClientProviders({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+
+    const origError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (isTransientNetworkError(...args)) return;
+      origError.apply(console, args);
+    };
+
+    const onError = (e: ErrorEvent) => {
+      if (e.message && matchesTransient(e.message)) e.preventDefault();
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const msg = e.reason instanceof Error ? e.reason.message : String(e.reason ?? '');
+      if (matchesTransient(msg)) e.preventDefault();
+    };
+
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      console.error = origError;
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+  }, []);
   return (
     <ThemeProvider>
       <LogProvider>

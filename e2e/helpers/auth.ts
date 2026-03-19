@@ -63,16 +63,20 @@ export async function apiLogin(request: APIRequestContext, user: TestUser, retri
 }
 
 /**
- * Log in via the browser UI — fills the login form, submits the OTP bypass code.
+ * Log in via the browser UI — opens auth panel from nav, fills login form, submits the OTP bypass code.
  * Returns the page with the user fully authenticated.
  */
 export async function browserLogin(page: Page, user: TestUser) {
-  await page.goto('/login');
+  await page.goto('/');
 
-  // Fill credentials
+  // Open avatar dropdown and click Login
+  await page.getByLabel('User menu').click();
+  await page.getByText('Login').click();
+
+  // Fill credentials in auth panel
   await page.getByPlaceholder(/email|username/i).fill(user.email);
-  await page.getByPlaceholder(/password/i).fill(user.password);
-  await page.getByRole('button', { name: /log\s*in|sign\s*in/i }).click();
+  await page.locator('input[type="password"]').fill(user.password);
+  await page.getByRole('button', { name: /sign\s*in/i }).click();
 
   // Wait for OTP screen
   await page.waitForSelector('[data-testid="otp-input"], input[maxlength="6"], input[placeholder*="code"]', { timeout: 10_000 });

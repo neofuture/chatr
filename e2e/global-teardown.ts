@@ -27,47 +27,47 @@ teardown('cleanup', async () => {
     // ── Surgically delete test messages via pattern-matching endpoint ───
     await api.cleanupTestData(ctx, tokenA, userBId).catch(() => {});
 
-    // ── Delete test groups by name prefix ─────────────────────────────────
-    const testPrefixes = [
-      'UI Group ', 'Admin Test ', 'Ownership Test ', 'Kick Test ',
-      'Leave Test ', 'Delete Test ', 'E2E GrpMsg ', 'E2E Group ',
-      'ProfileGrp ', 'Test Group ',
-    ];
-
-    for (const token of [tokenA, tokenB]) {
-      const groups = await api.getGroups(ctx, token);
-      for (const g of groups) {
-        if (testPrefixes.some(p => g.name?.startsWith(p))) {
-          await api.deleteGroup(ctx, tokenA, g.id).catch(() =>
-            api.deleteGroup(ctx, tokenB, g.id).catch(() => {})
-          );
-        }
-      }
-    }
+    // ── Delete test groups via cleanup-all endpoint ─────────────────────────
+    await ctx.post(`${API}/api/test/cleanup-all`).catch(() => {});
 
     // ── Unblock users in case a test left them blocked ────────────────────
     await api.unblockUser(ctx, tokenA, userBId).catch(() => {});
     await api.unblockUser(ctx, tokenB, userAId).catch(() => {});
 
-    // ── Restore profiles (only fields E2E tests modify) ───────────────────
-    await api.updateProfile(ctx, tokenA, {
-      displayName: null, firstName: 'Carl', gender: null,
-    }).catch(() => {});
-    await api.updateProfile(ctx, tokenB, {
-      displayName: null, firstName: 'Simon', gender: null,
-    }).catch(() => {});
+    // ── Restore profiles from pre-test snapshots (with retries) ────────────
+    const snapshotA = api.loadProfileSnapshot('a');
+    const snapshotB = api.loadProfileSnapshot('b');
 
-    // ── Restore privacy settings ──────────────────────────────────────────
-    const defaultPrivacy = {
-      privacyOnlineStatus: 'everyone',
-      privacyPhone: 'nobody',
-      privacyEmail: 'nobody',
-      privacyFullName: 'everyone',
-      privacyGender: 'nobody',
-      privacyJoinedDate: 'everyone',
-    };
-    await api.updateSettings(ctx, tokenA, defaultPrivacy).catch(() => {});
-    await api.updateSettings(ctx, tokenB, defaultPrivacy).catch(() => {});
+    if (snapshotA) {
+      await api.retryCleanup(() =>
+        api.updateProfile(ctx, tokenA, api.pickProfileRestore(snapshotA))
+      );
+    }
+    if (snapshotB) {
+      await api.retryCleanup(() =>
+        api.updateProfile(ctx, tokenB, api.pickProfileRestore(snapshotB))
+      );
+    }
+
+    // ── Restore privacy settings from snapshots ────────────────────────────
+    const privacyFieldsA = snapshotA ? {
+      privacyOnlineStatus: snapshotA.privacyOnlineStatus ?? 'everyone',
+      privacyPhone: snapshotA.privacyPhone ?? 'nobody',
+      privacyEmail: snapshotA.privacyEmail ?? 'nobody',
+      privacyFullName: snapshotA.privacyFullName ?? 'everyone',
+      privacyGender: snapshotA.privacyGender ?? 'nobody',
+      privacyJoinedDate: snapshotA.privacyJoinedDate ?? 'everyone',
+    } : null;
+    const privacyFieldsB = snapshotB ? {
+      privacyOnlineStatus: snapshotB.privacyOnlineStatus ?? 'everyone',
+      privacyPhone: snapshotB.privacyPhone ?? 'nobody',
+      privacyEmail: snapshotB.privacyEmail ?? 'nobody',
+      privacyFullName: snapshotB.privacyFullName ?? 'everyone',
+      privacyGender: snapshotB.privacyGender ?? 'nobody',
+      privacyJoinedDate: snapshotB.privacyJoinedDate ?? 'everyone',
+    } : null;
+    if (privacyFieldsA) await api.retryCleanup(() => api.updateSettings(ctx, tokenA, privacyFieldsA));
+    if (privacyFieldsB) await api.retryCleanup(() => api.updateSettings(ctx, tokenB, privacyFieldsB));
 
     console.log('✅ E2E teardown: cleaned up all test data surgically');
   } catch (err) {

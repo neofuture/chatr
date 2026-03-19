@@ -46,7 +46,7 @@ function saveFriendsCache(data: { friends: FriendEntry[]; incoming: FriendReques
 }
 
 export function FriendsProvider({ children }: { children: ReactNode }) {
-  const { socket } = useWebSocket();
+  const { socket, connected } = useWebSocket();
   const { showToast } = useToast();
   const cachedFriends = useRef(loadFriendsCache());
 
@@ -68,6 +68,7 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token || token === 'undefined') { setLoading(false); return; }
+    if (!connected) { setLoading(false); return; }
     try {
       const [fr, inc, out, bl] = await Promise.all([
         socketFirst(socket, 'friends:list', {}, 'GET', '/api/friends'),
@@ -84,7 +85,7 @@ export function FriendsProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [socket]);
+  }, [socket, connected]);
 
   useEffect(() => { refresh(); }, [refresh]);
 

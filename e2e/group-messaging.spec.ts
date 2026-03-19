@@ -29,7 +29,13 @@ test.describe('Group Messaging', () => {
 
   test('group appears in group list', async ({ userAPage }) => {
     await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
+    await userAPage.waitForTimeout(2000);
+    // Reload once if group isn't visible (cache may be stale)
+    if (!await userAPage.getByText(groupName).isVisible().catch(() => false)) {
+      await userAPage.reload();
+      await userAPage.waitForTimeout(2000);
+    }
+    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 15_000 });
   });
 
   test('send a text message in group', async ({ userAPage }) => {

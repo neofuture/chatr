@@ -22,50 +22,56 @@ test.describe('Group Management', () => {
     const { tokenA } = await setup(request);
 
     await userAPage.goto('/app/groups');
-    await userAPage.waitForTimeout(1000);
 
+    // Click create new group button
     const createBtn = userAPage.getByTitle('Create new group');
-    await expect(createBtn).toBeVisible({ timeout: 5_000 });
+    await expect(createBtn).toBeVisible({ timeout: 10_000 });
     await createBtn.click();
-    await userAPage.waitForTimeout(1000);
 
-    // Scope all interactions to the topmost panel (the New Group panel)
-    const panel = userAPage.locator('.auth-panel').last();
-    const memberSearch = panel.getByPlaceholder('Add people…');
-    await expect(memberSearch).toBeVisible({ timeout: 5_000 });
+    // Search for a user to add
+    const memberSearch = userAPage.getByPlaceholder(/add people/i);
+    await expect(memberSearch).toBeVisible({ timeout: 10_000 });
     await memberSearch.fill('simon');
-    await userAPage.waitForTimeout(2000);
 
-    const simonRow = panel.locator('button').filter({ hasText: /simon/i }).first();
-    await expect(simonRow).toBeVisible({ timeout: 15_000 });
-    await simonRow.click({ force: true });
-    await userAPage.waitForTimeout(1500);
+    // Wait for search results (socketFirst: 4s WebSocket + 15s HTTP fallback max)
+    const simonRow = userAPage.getByText('Simon James').first();
+    await expect(simonRow).toBeVisible({ timeout: 25_000 });
+    await simonRow.click();
 
-    const nextBtn = panel.getByRole('button', { name: /next/i });
-    await expect(nextBtn).toBeVisible({ timeout: 10_000 });
-    await nextBtn.click({ force: true });
-    await userAPage.waitForTimeout(500);
+    // Click Next to go to name step
+    const nextBtn = userAPage.getByRole('button', { name: /next/i });
+    await expect(nextBtn).toBeVisible({ timeout: 5_000 });
+    await nextBtn.click();
 
+    // Enter group name and create
     const groupName = `UI Group ${ts()}`;
-    const nameInput = userAPage.getByPlaceholder('Group name…');
+    const nameInput = userAPage.getByPlaceholder(/group name/i);
     await expect(nameInput).toBeVisible({ timeout: 5_000 });
     await nameInput.fill(groupName);
-    await userAPage.getByRole('button', { name: /create/i }).click();
-    await userAPage.waitForTimeout(2000);
 
-    await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
+    const createGroupBtn = userAPage.getByRole('button', { name: /create group/i });
+    await expect(createGroupBtn).toBeVisible({ timeout: 5_000 });
+    await createGroupBtn.click();
+
+    // Wait for group to be created (verify via API)
+    let created: any;
+    for (let i = 0; i < 10; i++) {
+      await userAPage.waitForTimeout(1000);
+      const groups = await api.getGroups(request, tokenA);
+      created = groups.find((g: any) => g.name === groupName);
+      if (created) break;
+    }
+    expect(created).toBeTruthy();
 
     // Cleanup
-    const groups = await api.getGroups(request, tokenA);
-    const created = groups.find((g: any) => g.name === groupName);
     if (created) await api.deleteGroup(request, tokenA, created.id);
   });
 
   test('promote member to admin and demote back', async ({ userAPage, request }) => {
     const { tokenA, tokenB, userBId } = await setup(request);
 
-    const groupName = `Admin Test ${ts()}`;
+    // Create group via API
+    const groupName = `Promote Test ${ts()}`;
     const data = await api.createGroup(request, tokenA, groupName, [userBId]);
     const groupId = data.group?.id;
     if (!groupId) { test.skip(); return; }
@@ -75,41 +81,40 @@ test.describe('Group Management', () => {
       headers: { Authorization: `Bearer ${tokenB}` },
     });
 
+    // Navigate to groups and open the group
     await userAPage.goto('/app/groups');
-    await userAPage.waitForTimeout(1000);
+    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
     await userAPage.getByText(groupName).click();
-    await userAPage.waitForTimeout(1000);
 
-    const infoBtn = userAPage.getByTitle('Group info').or(userAPage.locator('button:has(i.fa-info-circle)'));
-    if (await infoBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await infoBtn.click();
-      await userAPage.waitForTimeout(1000);
+    // Open group profile panel
+    const panelTitle = userAPage.locator('.auth-panel-title').last();
+    await expect(panelTitle).toBeVisible({ timeout: 5_000 });
+    await panelTitle.click();
 
-      const actionBtns = userAPage.getByTitle('Actions');
-      if ((await actionBtns.count()) > 0) {
-        await actionBtns.last().click();
-        await userAPage.waitForTimeout(500);
+    // Find and click Actions for the member
+    const profilePanel = userAPage.locator('.auth-panel').last();
+    const actionBtns = profilePanel.getByTitle('Actions');
+    await expect(actionBtns.first()).toBeVisible({ timeout: 10_000 });
+    await actionBtns.last().click();
 
-        const makeAdmin = userAPage.getByText('Make Admin');
-        if (await makeAdmin.isVisible({ timeout: 2_000 }).catch(() => false)) {
-          await makeAdmin.click();
-          await userAPage.waitForTimeout(1000);
-          await expect(userAPage.getByText(/Admin/).first()).toBeVisible({ timeout: 5_000 });
+    // Click Make Admin
+    const makeAdmin = userAPage.getByText('Make Admin').first();
+    await expect(makeAdmin).toBeVisible({ timeout: 5_000 });
+    await makeAdmin.click();
 
-          const actionBtns2 = userAPage.getByTitle('Actions');
-          if ((await actionBtns2.count()) > 0) {
-            await actionBtns2.last().click();
-            await userAPage.waitForTimeout(500);
-            const removeAdmin = userAPage.getByText('Remove Admin');
-            if (await removeAdmin.isVisible({ timeout: 2_000 }).catch(() => false)) {
-              await removeAdmin.click();
-              await userAPage.waitForTimeout(1000);
-            }
-          }
-        }
-      }
-    }
+    // Confirm in dialog
+    const confirmBtn = userAPage.getByRole('button', { name: 'Make Admin' });
+    await expect(confirmBtn).toBeVisible({ timeout: 5_000 });
+    await confirmBtn.click();
 
+    // Verify via API
+    let detail = await request.get(`${API}/api/groups/${groupId}`, {
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    let memberRole = (await detail.json()).group?.members?.find((m: any) => m.userId === userBId)?.role;
+    expect(memberRole).toBe('admin');
+
+    // Cleanup
     await api.deleteGroup(request, tokenA, groupId);
   });
 

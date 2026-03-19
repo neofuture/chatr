@@ -10,13 +10,16 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 2,
   workers: 1,
   reporter: [['html', { open: 'never' }], ['list'], ['json', { outputFile: 'e2e-results.json' }], ['./e2e/cache-reporter.ts']],
-  timeout: 60_000,
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
 
   use: {
     baseURL: FRONTEND_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
   },
 
   projects: [

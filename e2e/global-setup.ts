@@ -1,6 +1,7 @@
 import { test as setup } from '@playwright/test';
 import { apiLogin, TEST_USERS, injectAuth } from './helpers/auth';
 import { ensureTestAssets } from './helpers/test-assets';
+import * as api from './helpers/api';
 import path from 'path';
 import fs from 'fs';
 
@@ -12,6 +13,8 @@ setup('enable test mode', async ({ request }) => {
     headers: { 'Content-Type': 'application/json' },
     data: { enabled: true },
   });
+  // Clean up any leftover test data from previous runs
+  await request.post(`${API}/api/test/cleanup-all`).catch(() => {});
 });
 
 setup('authenticate as user A', async ({ page, request }) => {
@@ -19,6 +22,12 @@ setup('authenticate as user A', async ({ page, request }) => {
   ensureTestAssets();
 
   const result = await apiLogin(request, TEST_USERS.userA);
+
+  const profile = await api.getMe(request, result.token);
+  fs.writeFileSync(
+    path.join(AUTH_DIR, 'profile-snapshot-a.json'),
+    JSON.stringify(profile, null, 2),
+  );
 
   await injectAuth(page, result);
   await page.goto('/app');
@@ -29,6 +38,12 @@ setup('authenticate as user A', async ({ page, request }) => {
 
 setup('authenticate as user B', async ({ page, request }) => {
   const result = await apiLogin(request, TEST_USERS.userB);
+
+  const profile = await api.getMe(request, result.token);
+  fs.writeFileSync(
+    path.join(AUTH_DIR, 'profile-snapshot-b.json'),
+    JSON.stringify(profile, null, 2),
+  );
 
   await injectAuth(page, result);
   await page.goto('/app');

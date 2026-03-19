@@ -47,6 +47,55 @@ function getContactEmailHtml(name: string, email: string, company: string, messa
 </html>`.trim();
 }
 
+/**
+ * @swagger
+ * /api/contact:
+ *   post:
+ *     summary: Submit a contact enquiry
+ *     description: >
+ *       Stores the submission in the database and sends a branded HTML email
+ *       to the site owner via Mailtrap. If Mailtrap is not configured the
+ *       message is logged to stdout instead.
+ *     tags: [Contact]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, message]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Jane Doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: jane@example.com
+ *               company:
+ *                 type: string
+ *                 example: Acme Inc
+ *               message:
+ *                 type: string
+ *                 maxLength: 5000
+ *                 example: I'd like to learn more about Chatr.
+ *     responses:
+ *       200:
+ *         description: Enquiry sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Validation error (missing fields, invalid email, or message too long)
+ *       500:
+ *         description: Email delivery failed
+ */
 router.post('/contact', async (req: Request, res: Response) => {
   const { name, email, company, message } = req.body;
 

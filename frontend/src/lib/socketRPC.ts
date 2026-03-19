@@ -51,17 +51,32 @@ export async function socketFirst<T = any>(
   const result = await socketRPC<T>(socket, event, socketData, timeout);
   if (result !== null) return result;
 
+  // HTTP fallback with 15s timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
   const opts: RequestInit = {
     method: restMethod,
     headers: authHeaders(),
+    signal: controller.signal,
   };
   if (restBody && restMethod !== 'GET') {
     opts.body = JSON.stringify(restBody);
   }
-  const res = await fetch(`${getApiBase()}${restPath}`, opts);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || body.message || `Request failed: ${res.status}`);
+
+  try {
+    const res = await fetch(`${getApiBase()}${restPath}`, opts);
+    clearTimeout(timeoutId);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || body.message || `Request failed: ${res.status}`);
+    }
+    return res.json();
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw err;
   }
-  return res.json();
 }

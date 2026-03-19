@@ -52,7 +52,6 @@ graph LR
     forms --> LoginVerification
     forms --> EmailVerification
     forms --> ForgotPassword
-    forms --> Demo2FA
 ```
 
 ```mermaid

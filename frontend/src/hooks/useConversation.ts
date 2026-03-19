@@ -159,7 +159,7 @@ export function useConversation() {
 
   // ── Fetch users ──────────────────────────────────────
   useEffect(() => {
-    if (!currentUserId) return;
+    if (!currentUserId || !connected) return;
     const ac = new AbortController();
     const run = async () => {
       const token = localStorage.getItem('token');
@@ -212,7 +212,6 @@ export function useConversation() {
 
         if (others.length > 0) {
           setTestRecipientId(prev => prev || others[0].id);
-          // Request initial presence for all users
           const s = socketRef.current;
           if (s) {
             const ids = others.map(u => u.id);
@@ -228,7 +227,7 @@ export function useConversation() {
     };
     run();
     return () => ac.abort();
-  }, [currentUserId, addLog]);
+  }, [currentUserId, connected, addLog]);
 
   // ── Drain queue when back online ─────────────────────
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { apiLogin, TEST_USERS } from './helpers/auth';
+import * as api from './helpers/api';
 
 const API = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
 
@@ -80,6 +81,11 @@ test.describe('Socket RPC endpoints (API-level)', () => {
   });
 
   test('PUT /api/users/me updates profile', async ({ request }) => {
+    const meRes = await request.get(`${API}/api/users/me`, {
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    const before = await meRes.json();
+
     const res = await request.put(`${API}/api/users/me`, {
       headers: {
         Authorization: `Bearer ${tokenA}`,
@@ -91,17 +97,22 @@ test.describe('Socket RPC endpoints (API-level)', () => {
     const data = await res.json();
     expect(data.displayName).toBe('Carl E2E');
 
-    // Reset
-    await request.put(`${API}/api/users/me`, {
+    await api.retryCleanup(() => request.put(`${API}/api/users/me`, {
       headers: {
         Authorization: `Bearer ${tokenA}`,
         'Content-Type': 'application/json',
       },
-      data: { displayName: null },
-    });
+      data: { displayName: before.displayName ?? null },
+    }));
   });
 
   test('PUT /api/users/me/settings updates privacy', async ({ request }) => {
+    const settingsRes = await request.get(`${API}/api/users/me/settings`, {
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    const beforeSettings = await settingsRes.json().catch(() => ({}));
+    const originalPrivacy = beforeSettings.privacyOnlineStatus ?? 'everyone';
+
     const res = await request.put(`${API}/api/users/me/settings`, {
       headers: {
         Authorization: `Bearer ${tokenA}`,
@@ -111,14 +122,13 @@ test.describe('Socket RPC endpoints (API-level)', () => {
     });
     expect(res.ok()).toBeTruthy();
 
-    // Reset
-    await request.put(`${API}/api/users/me/settings`, {
+    await api.retryCleanup(() => request.put(`${API}/api/users/me/settings`, {
       headers: {
         Authorization: `Bearer ${tokenA}`,
         'Content-Type': 'application/json',
       },
-      data: { privacyOnlineStatus: 'everyone' },
-    });
+      data: { privacyOnlineStatus: originalPrivacy },
+    }));
   });
 
   test('GET /api/friends/search returns search results', async ({ request }) => {

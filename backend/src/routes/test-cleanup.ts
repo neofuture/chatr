@@ -19,7 +19,7 @@ const router = Router();
 const E2E_GROUP_PREFIXES = [
   'UI Group ', 'Admin Test ', 'Ownership Test ', 'Kick Test ',
   'Leave Test ', 'Delete Test ', 'E2E GrpMsg ', 'E2E Group ',
-  'ProfileGrp ', 'Test Group ',
+  'ProfileGrp ', 'Test Group ', 'Promote Test ',
 ];
 
 const E2E_DM_CONTENT_PREFIXES = [
@@ -56,6 +56,57 @@ router.post('/mode', (req: Request, res: Response) => {
   res.json({ ok, testMode: enabled });
 });
 
+/**
+ * @swagger
+ * /api/test/cleanup:
+ *   post:
+ *     summary: Surgical E2E test-data cleanup
+ *     description: >
+ *       Deletes DM messages and groups created by E2E tests, matched by
+ *       known content prefixes and file names. Also removes empty
+ *       conversations left behind. Only available when test mode is active;
+ *       returns 404 otherwise.
+ *     tags: [Testing]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [recipientId]
+ *             properties:
+ *               recipientId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The other user in the DM conversation to clean up
+ *     responses:
+ *       200:
+ *         description: Cleanup completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 messagesDeleted:
+ *                   type: integer
+ *                   example: 12
+ *                 groupsDeleted:
+ *                   type: integer
+ *                   example: 3
+ *       400:
+ *         description: Missing recipientId
+ *       401:
+ *         description: Unauthorized (invalid or missing JWT)
+ *       404:
+ *         description: Test mode is not active
+ *       500:
+ *         description: Cleanup failed
+ */
 router.post('/cleanup', authenticateToken as any, async (req: Request, res: Response) => {
   if (!isTestMode()) {
     return res.status(404).json({ error: 'Not found' });
@@ -144,6 +195,47 @@ router.post('/cleanup', authenticateToken as any, async (req: Request, res: Resp
 });
 
 /**
+ * POST /api/test/cleanup-all
+ * Aggressive cleanup of ALL test groups (by name prefix) without requiring recipientId.
+ * Does not require authentication - just test mode.
+ */
+router.post('/cleanup-all', async (_req: Request, res: Response) => {
+  if (!isTestMode()) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
+  const stats = { groupsDeleted: 0, messagesDeleted: 0 };
+
+  try {
+    // Delete all test groups by name prefix
+    const testGroups = await prisma.group.findMany({
+      where: {
+        OR: E2E_GROUP_PREFIXES.map(p => ({ name: { startsWith: p } })),
+      },
+      select: { id: true, name: true },
+    });
+
+    if (testGroups.length > 0) {
+      const groupIds = testGroups.map(g => g.id);
+      console.log(`🧹 Cleaning up ${testGroups.length} test groups:`, testGroups.map(g => g.name));
+      
+      const msgDel = await prisma.groupMessage.deleteMany({ where: { groupId: { in: groupIds } } });
+      stats.messagesDeleted = msgDel.count;
+      
+      await prisma.groupMember.deleteMany({ where: { groupId: { in: groupIds } } });
+      const gDel = await prisma.group.deleteMany({ where: { id: { in: groupIds } } });
+      stats.groupsDeleted = gDel.count;
+    }
+
+    console.log(`✅ Test cleanup complete: ${stats.groupsDeleted} groups, ${stats.messagesDeleted} messages`);
+    res.json({ ok: true, ...stats });
+  } catch (err) {
+    console.error('❌ Test cleanup-all error:', err);
+    res.status(500).json({ error: 'Cleanup failed' });
+  }
+});
+
+/**
  * POST /api/test/restore-images
  * Restore profileImage and/or coverImage to their pre-test values.
  * Body: { profileImage?: string | null, coverImage?: string | null }
@@ -168,6 +260,34 @@ router.post('/restore-images', authenticateToken as any, async (req: Request, re
   } catch (err) {
     console.error('❌ Restore images error:', err);
     res.status(500).json({ error: 'Restore failed' });
+  }
+});
+
+/**
+ * DELETE /api/test/user/:userId
+ * Delete a test user and all related data. Test mode only.
+ */
+router.delete('/user/:userId', async (req: Request, res: Response) => {
+  if (!isTestMode()) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ error: 'userId required' });
+
+  try {
+    // Delete related data first to satisfy foreign key constraints
+    await prisma.messageReaction.deleteMany({ where: { message: { OR: [{ senderId: userId }, { recipientId: userId }] } } });
+    await prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { recipientId: userId }] } });
+    await prisma.groupMessage.deleteMany({ where: { senderId: userId } });
+    await prisma.groupMember.deleteMany({ where: { userId } });
+    await prisma.friendship.deleteMany({ where: { OR: [{ requesterId: userId }, { addresseeId: userId }] } });
+    await prisma.conversation.deleteMany({ where: { OR: [{ participantA: userId }, { participantB: userId }] } });
+    await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('❌ Delete test user error:', err);
+    res.status(500).json({ error: 'Delete failed' });
   }
 });
 

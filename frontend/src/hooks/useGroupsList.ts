@@ -60,7 +60,7 @@ export function useGroupsList() {
   const [invites, setInvites] = useState<GroupInvite[]>(cachedInvites.current);
   const [loading, setLoading] = useState(cachedGroups.current.length === 0);
   const [syncing, setSyncing] = useState(false);
-  const { socket } = useWebSocket();
+  const { socket, connected } = useWebSocket();
   const unreadRef = useRef<Record<string, number>>({});
 
   // Persist to localStorage whenever lists change
@@ -68,6 +68,7 @@ export function useGroupsList() {
   useEffect(() => { saveCache(INVITES_CACHE_KEY, invites); }, [invites]);
 
   const fetchGroups = useCallback(async () => {
+    if (!connected) { setSyncing(false); return; }
     try {
       setSyncing(true);
       const data = await socketFirst(socket, 'groups:list', {}, 'GET', '/api/groups') as any;
@@ -78,21 +79,22 @@ export function useGroupsList() {
         })));
       }
     } catch (e: any) {
-      console.error('useGroupsList fetch error:', e);
+      console.warn('useGroupsList fetch error:', e?.message || e);
     } finally {
       setLoading(false);
       setSyncing(false);
     }
-  }, [socket]);
+  }, [socket, connected]);
 
   const fetchInvites = useCallback(async () => {
+    if (!connected) return;
     try {
       const data = await socketFirst(socket, 'groups:invites', {}, 'GET', '/api/groups/invites') as any;
       if (data?.invites) setInvites(data.invites);
     } catch (e: any) {
-      console.error('useGroupsList fetchInvites error:', e);
+      console.warn('useGroupsList fetchInvites error:', e?.message || e);
     }
-  }, [socket]);
+  }, [socket, connected]);
 
   useEffect(() => {
     fetchGroups();

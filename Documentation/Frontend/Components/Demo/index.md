@@ -4,15 +4,6 @@ Dev-only and showcase components. All have Storybook stories.
 
 ---
 
-## `Demo2FA`
-
-**File:** `src/components/Demo2FA/Demo2FA.tsx`
-**Storybook:** `Forms/Demo2FA`
-
-Interactive demo of the 6-digit TOTP input UI. Pre-filled with code `123456` for demonstration. Used to showcase the 2FA verification component without a real backend call.
-
----
-
 ## `BottomSheetDemo`
 
 **File:** `src/components/BottomSheetDemo/BottomSheetDemo.tsx`

@@ -12,13 +12,23 @@ jest.mock('next/link', () => ({
 }));
 
 const mockUsePathname = jest.fn(() => '/');
+const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
+  useRouter: () => ({ push: mockPush }),
 }));
 
 jest.mock('@/components/ThemeToggle/ThemeToggle', () => ({
   __esModule: true,
   default: () => <button data-testid="theme-toggle">Toggle</button>,
+}));
+
+jest.mock('@/contexts/PanelContext', () => ({
+  usePanels: () => ({ openPanel: jest.fn() }),
+}));
+
+jest.mock('@/contexts/ToastContext', () => ({
+  useToast: () => ({ showToast: jest.fn(), toasts: [], removeToast: jest.fn() }),
 }));
 
 describe('SiteNav', () => {
@@ -61,17 +71,16 @@ describe('SiteNav', () => {
 
   it('opens mobile menu when hamburger is clicked', async () => {
     const user = userEvent.setup();
-    render(<SiteNav />);
-    const hamburger = screen.getAllByRole('button').find(b => b.getAttribute('data-testid') !== 'theme-toggle')!;
+    const { container } = render(<SiteNav />);
+    const hamburger = container.querySelector('[class*="hamburger"]') as HTMLElement;
     await user.click(hamburger);
-    // Mobile menu duplicates the links
     expect(screen.getAllByText('Home')).toHaveLength(2);
   });
 
   it('closes mobile menu when a link is clicked', async () => {
     const user = userEvent.setup();
-    render(<SiteNav />);
-    const hamburger = screen.getAllByRole('button').find(b => b.getAttribute('data-testid') !== 'theme-toggle')!;
+    const { container } = render(<SiteNav />);
+    const hamburger = container.querySelector('[class*="hamburger"]') as HTMLElement;
     await user.click(hamburger);
     expect(screen.getAllByText('Home')).toHaveLength(2);
     const mobileLinks = screen.getAllByText('Home');
@@ -82,10 +91,10 @@ describe('SiteNav', () => {
   it('toggles hamburger icon between bars and times', async () => {
     const user = userEvent.setup();
     const { container } = render(<SiteNav />);
-    expect(container.querySelector('.fa-bars')).toBeInTheDocument();
-    const hamburger = screen.getAllByRole('button').find(b => b.getAttribute('data-testid') !== 'theme-toggle')!;
+    const hamburger = container.querySelector('[class*="hamburger"]') as HTMLElement;
+    expect(hamburger.querySelector('.fa-bars')).toBeInTheDocument();
     await user.click(hamburger);
-    expect(container.querySelector('.fa-times')).toBeInTheDocument();
+    expect(hamburger.querySelector('.fa-times')).toBeInTheDocument();
   });
 
   it('applies active class to the current path link', () => {

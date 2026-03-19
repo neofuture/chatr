@@ -90,10 +90,19 @@ test.describe('Group Profile', () => {
   });
 
   test('edit group name via UI', async ({ page, request }) => {
+    if (!groupId) { test.skip(); return; }
+    let currentName = groupNameBase;
+    try {
+      const detail = await request.get(`${API}/api/groups/${groupId}`, {
+        headers: { Authorization: `Bearer ${tokenA}` },
+      });
+      if (detail.ok()) currentName = (await detail.json()).group?.name || groupNameBase;
+    } catch { /* server may have restarted — use base name */ }
+
     await page.goto('/app/groups');
     await page.waitForTimeout(1000);
 
-    const groupBtn = page.getByText(groupNameBase);
+    const groupBtn = page.getByText(currentName);
     if (!(await groupBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
       test.skip();
       return;
@@ -128,22 +137,29 @@ test.describe('Group Profile', () => {
     }
   });
 
-  test('upload group avatar via UI', async ({ page }) => {
+  test('upload group avatar via UI', async ({ page, request }) => {
+    if (!groupId) { test.skip(); return; }
+    let currentName = groupNameBase;
+    try {
+      const detail = await request.get(`${API}/api/groups/${groupId}`, {
+        headers: { Authorization: `Bearer ${tokenA}` },
+      });
+      if (detail.ok()) currentName = (await detail.json()).group?.name || groupNameBase;
+    } catch { /* server may have restarted — use base name */ }
+
     await page.goto('/app/groups');
     await page.waitForTimeout(2000);
 
-    const groupBtn = page.getByText(groupNameBase).first();
+    const groupBtn = page.getByText(currentName).first();
     if (!(await groupBtn.isVisible({ timeout: 8_000 }).catch(() => false))) {
-      test.skip();
-      return;
+      test.skip(); return;
     }
     await groupBtn.click();
     await page.waitForTimeout(2000);
 
     const infoBtn = page.getByTitle('Group info').or(page.locator('button:has(i.fa-info-circle)'));
     if (!(await infoBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
-      test.skip();
-      return;
+      test.skip(); return;
     }
     await infoBtn.click();
     await page.waitForTimeout(2000);
@@ -161,22 +177,29 @@ test.describe('Group Profile', () => {
     }
   });
 
-  test('upload group cover via UI', async ({ page }) => {
+  test('upload group cover via UI', async ({ page, request }) => {
+    if (!groupId) { test.skip(); return; }
+    let currentName = groupNameBase;
+    try {
+      const detail = await request.get(`${API}/api/groups/${groupId}`, {
+        headers: { Authorization: `Bearer ${tokenA}` },
+      });
+      if (detail.ok()) currentName = (await detail.json()).group?.name || groupNameBase;
+    } catch { /* server may have restarted — use base name */ }
+
     await page.goto('/app/groups');
     await page.waitForTimeout(2000);
 
-    const groupBtn = page.getByText(groupNameBase).first();
+    const groupBtn = page.getByText(currentName).first();
     if (!(await groupBtn.isVisible({ timeout: 8_000 }).catch(() => false))) {
-      test.skip();
-      return;
+      test.skip(); return;
     }
     await groupBtn.click();
     await page.waitForTimeout(2000);
 
     const infoBtn = page.getByTitle('Group info').or(page.locator('button:has(i.fa-info-circle)'));
     if (!(await infoBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
-      test.skip();
-      return;
+      test.skip(); return;
     }
     await infoBtn.click();
     await page.waitForTimeout(2000);

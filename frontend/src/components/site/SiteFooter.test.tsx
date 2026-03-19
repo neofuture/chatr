@@ -62,6 +62,11 @@ describe('SiteFooter', () => {
     expect(screen.getByText('Architecture').closest('a')).toHaveAttribute('href', '/technology');
     expect(screen.getByText('Contact Sales').closest('a')).toHaveAttribute('href', '/contact');
     expect(screen.getByText('Open App').closest('a')).toHaveAttribute('href', '/app');
-    expect(screen.getByText('Create Account').closest('a')).toHaveAttribute('href', '/register');
+  });
+
+  it('Create Account is a button that triggers auth panel', () => {
+    render(<SiteFooter />);
+    const btn = screen.getByText('Create Account');
+    expect(btn.tagName).toBe('BUTTON');
   });
 });

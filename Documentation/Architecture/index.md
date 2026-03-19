@@ -181,7 +181,7 @@ graph TD
     frontend --> ftypes["types/<br/>User · Message · Conversation · Group"]
     frontend --> futils["utils/<br/>extractWaveform · audio"]
 
-    fapp --> apppages["login · register · setup-2fa<br/>demo · docs · dashboard · email-preview"]
+    fapp --> apppages["demo · docs · dashboard · email-preview"]
     fapp --> appauth["app/ authenticated<br/>chat · friends · settings · groups · updates · test"]
 
     fcomponents --> messaging["messaging/<br/>ConversationsList · ConversationView<br/>ChatView · MessageInput · NewChatPanel<br/>MessageBubble · MessageAudioPlayer<br/>VoiceRecorder · EmojiPicker"]
