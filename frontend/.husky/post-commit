@@ -1,5 +1,3 @@
 #!/bin/sh
-#!/bin/sh
-node scripts/increment-version.js
-git add src/version.ts
-
+# This hook is managed by the root .husky/post-commit
+# See .husky/post-commit for the full version with changelog updates

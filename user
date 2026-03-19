@@ -1,0 +1,21 @@
+
+Running 12 tests using 1 worker
+
+  ✓   1 [setup] › e2e/global-setup.ts:11:6 › enable test mode (66ms)
+  ✓   2 [setup] › e2e/global-setup.ts:18:6 › authenticate as user A (641ms)
+  ✓   3 [setup] › e2e/global-setup.ts:37:6 › authenticate as user B (633ms)
+  ✓   4 [chromium] › e2e/dm-messaging.spec.ts:63:7 › DM Messaging › send and receive a text message in real-time (10.0s)
+  ✓   5 [chromium] › e2e/group-messaging.spec.ts:95:7 › Group Messaging › real-time: user B sees group message from user A (8.9s)
+  ✘   6 [chromium] › e2e/messaging.spec.ts:19:7 › Real-time messaging › user A can see user B in new chat search (21.3s)
+  ✓   7 [chromium] › e2e/messaging.spec.ts:19:7 › Real-time messaging › user A can see user B in new chat search (retry #1) (4.3s)
+  ✘   8 [chromium] › e2e/messaging.spec.ts:37:7 › Real-time messaging › user A can send a message to user B (13.6s)
+  ✘   9 [chromium] › e2e/messaging.spec.ts:37:7 › Real-time messaging › user A can send a message to user B (retry #1) (13.8s)
+  ✘  10 [chromium] › e2e/messaging.spec.ts:37:7 › Real-time messaging › user A can send a message to user B (retry #2) (13.6s)
+  ✓  11 [mobile] › e2e/dm-messaging.spec.ts:63:7 › DM Messaging › send and receive a text message in real-time (11.4s)
+  ✓  12 [mobile] › e2e/group-messaging.spec.ts:95:7 › Group Messaging › real-time: user B sees group message from user A (8.0s)
+  ✘  13 [mobile] › e2e/messaging.spec.ts:19:7 › Real-time messaging › user A can see user B in new chat search (14.3s)
+  ✘  14 [mobile] › e2e/messaging.spec.ts:19:7 › Real-time messaging › user A can see user B in new chat search (retry #1) (15.4s)
+  ✘  15 [mobile] › e2e/messaging.spec.ts:19:7 › Real-time messaging › user A can see user B in new chat search (retry #2) (14.6s)
+  ✘  16 [mobile] › e2e/messaging.spec.ts:37:7 › Real-time messaging › user A can send a message to user B (15.1s)
+  ✘  17 [mobile] › e2e/messaging.spec.ts:37:7 › Real-time messaging › user A can send a message to user B (retry #1) (13.8s)
+  ✘  18 [mobile] › e2e/messaging.spec.ts:37:7 › Real-time messaging › user A can send a message to user B (retry #2) (4.1s)

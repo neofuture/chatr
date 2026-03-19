@@ -9,6 +9,11 @@ const ROOT = path.resolve(__dirname, '../../../');
 const SKIP = new Set(['node_modules', '.next', 'dist', 'coverage', '.git']);
 const TEST_PASSWORD = process.env.DASHBOARD_TEST_PASSWORD || '';
 
+const PW_BIN = path.join(ROOT, 'node_modules', '.bin', 'playwright');
+const JEST_BIN_BE = path.join(ROOT, 'backend', 'node_modules', '.bin', 'jest');
+const JEST_BIN_FE = path.join(ROOT, 'frontend', 'node_modules', '.bin', 'jest');
+const RUN_STATE_PATH = path.join(ROOT, '.test-cache', 'run-state.json');
+
 function requireTestPassword(req: Request, res: Response): boolean {
   if (!TEST_PASSWORD) return false;
   if (process.env.NODE_ENV !== 'production') return false;
@@ -21,7 +26,7 @@ function requireTestPassword(req: Request, res: Response): boolean {
 }
 
 let cache: { data: object; ts: number } | null = null;
-const CACHE_TTL = 60_000;
+const CACHE_TTL = 300_000;
 const DASH_CACHE_PATH = path.join(ROOT, '.test-cache', 'dashboard-metrics.json');
 
 function saveDashCache(data: object) {
@@ -974,15 +979,41 @@ interface LiveRun {
   results: LiveTestResult[];
   finalReport?: TestReport;
   error?: string;
+  pid?: number;
 }
 
 const liveRuns: Record<string, LiveRun> = {};
+
+function saveRunState(key: string, status: 'running' | 'done' | 'error', pid?: number) {
+  try {
+    fs.mkdirSync(path.dirname(RUN_STATE_PATH), { recursive: true });
+    let state: Record<string, any> = {};
+    try { state = JSON.parse(fs.readFileSync(RUN_STATE_PATH, 'utf8')); } catch { /* new file */ }
+    state[key] = { status, pid: pid || null, ts: Date.now() };
+    if (status !== 'running') delete state[key];
+    fs.writeFileSync(RUN_STATE_PATH, JSON.stringify(state));
+  } catch { /* ignore */ }
+}
+
+function loadRunState(key: string): { status: string; pid: number | null; ts: number } | null {
+  try {
+    const state = JSON.parse(fs.readFileSync(RUN_STATE_PATH, 'utf8'));
+    return state[key] || null;
+  } catch { return null; }
+}
+
+function isProcessAlive(pid: number): boolean {
+  try { process.kill(pid, 0); return true; } catch { return false; }
+}
+
+const INFRA_PROJECTS = new Set(['setup', 'teardown']);
 
 function parsePlaywrightLine(line: string): LiveTestResult | null {
   const m = line.match(/^\s*([✓✔✘×✗↻·\-])\s+\d+\s+(?:\[(\w+)\]\s+›\s+)?(\S+?)(?::\d+:\d+)?\s+›\s+(.+?)\s+\((.+?)\)\s*$/);
   if (!m) return null;
   const [, icon, project, file, rawName, dur] = m;
-  const name = rawName.replace(/\s*\(retry #\d+\)\s*$/, '').trim();
+  if (INFRA_PROJECTS.has((project || '').toLowerCase())) return null;
+  const name = rawName.replace(/\s*\(retry #\d+\)\s*$/, '').replace(/\s›\s/g, ' > ').trim();
   const isRetry = icon === '↻' || /retry #\d+/.test(rawName);
   const status = (icon === '✓' || icon === '✔') ? 'passed' : (icon === '-' || icon === '·') ? 'skipped' : 'failed';
   const durClean = dur.replace(/retry #\d+/g, '').trim();
@@ -1011,6 +1042,7 @@ function buildReportFromLive(results: LiveTestResult[]): TestReport {
       suiteMap.set(r.suite, { file: r.suite, status: 'passed', duration: 0, tests: [] });
     }
     const suite = suiteMap.get(r.suite)!;
+    if (r.status === 'skipped') continue;
     suite.tests.push({ name: r.name, status: r.status === 'passed' ? 'passed' : 'failed', duration: r.duration, retries: r.retries || 0, project: r.project });
     suite.duration += r.duration;
     if (r.status === 'failed') suite.status = 'failed';
@@ -1087,12 +1119,82 @@ function readCoverage(dir: string): TestReport['coverage'] {
 // Routes
 // ---------------------------------------------------------------------------
 
-/** GET / — Return full dashboard metrics (cached for performance) */
+let rebuilding = false;
+
+function backgroundRebuild() {
+  if (rebuilding) return;
+  rebuilding = true;
+  setTimeout(() => {
+    try {
+      const data = buildDashboard();
+      cache = { data, ts: Date.now() };
+      saveDashCache(data);
+      console.log('Dashboard cache rebuilt in background');
+    } catch (err) {
+      console.error('Background dashboard rebuild failed:', err);
+    } finally {
+      rebuilding = false;
+    }
+  }, 0);
+}
+
+/**
+ * @swagger
+ * /api/dashboard:
+ *   get:
+ *     summary: Full project dashboard metrics
+ *     description: >
+ *       Returns 60+ real-time metrics computed from the Git history,
+ *       source tree, Prisma schema, dependency manifests, and more.
+ *       Results are cached server-side; stale caches are rebuilt in
+ *       the background so requests never block for long.
+ *     tags: [Dashboard]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Dashboard payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 generatedAt:
+ *                   type: string
+ *                   format: date-time
+ *                 overview:
+ *                   type: object
+ *                   description: High-level project stats (commits, lines, files, branch, dates)
+ *                 loc:
+ *                   type: object
+ *                   description: Lines of code by language
+ *                 architecture:
+ *                   type: object
+ *                   description: Component, hook, route, context, and model counts
+ *                 health:
+ *                   type: object
+ *                   description: Code-health gauges (test ratio, avg file size, commits/day)
+ *                 contributors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 dailyCommits:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 dependencies:
+ *                   type: object
+ *                   description: Dependency counts per workspace
+ *       500:
+ *         description: Failed to generate dashboard data
+ */
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    if (cache && Date.now() - cache.ts < CACHE_TTL) return res.json(cache.data);
-    const testsRunning = Object.values(liveRuns).some(r => r?.status === 'running');
-    if (testsRunning && cache) return res.json(cache.data);
+    if (cache) {
+      const stale = Date.now() - cache.ts >= CACHE_TTL;
+      if (stale) backgroundRebuild();
+      return res.json(cache.data);
+    }
+    // No cache at all — must block (first ever request)
     const data = buildDashboard();
     cache = { data, ts: Date.now() };
     saveDashCache(data);
@@ -1120,18 +1222,19 @@ router.post('/invalidate', (_req: Request, res: Response) => {
 
 const E2E_JSON_PATH = path.join(ROOT, 'e2e-results.json');
 const TEST_RESULTS_DIR = path.join(ROOT, '.test-cache');
-function saveTestReport(area: string, report: TestReport) {
+function saveTestReport(area: string, report: TestReport, force = false) {
   try {
     fs.mkdirSync(TEST_RESULTS_DIR, { recursive: true });
     const p = path.join(TEST_RESULTS_DIR, `${area}.json`);
     const newTotal = report.suites.reduce((s, su) => s + su.tests.length, 0);
-    // Don't overwrite a good cache with empty/partial results
     if (newTotal === 0) return;
-    try {
-      const existing = JSON.parse(fs.readFileSync(p, 'utf8')) as TestReport;
-      const oldTotal = existing.suites.reduce((s, su) => s + su.tests.length, 0);
-      if (newTotal < oldTotal * 0.5) return;
-    } catch { /* no existing file, ok to write */ }
+    if (!force) {
+      try {
+        const existing = JSON.parse(fs.readFileSync(p, 'utf8')) as TestReport;
+        const oldTotal = existing.suites.reduce((s, su) => s + su.tests.length, 0);
+        if (newTotal < oldTotal * 0.5) return;
+      } catch { /* no existing file, ok to write */ }
+    }
     fs.writeFileSync(p, JSON.stringify(report));
   } catch { /* ignore */ }
 }
@@ -1146,10 +1249,16 @@ function loadTestReport(area: string): TestReport | null {
 /** GET /tests/e2e — Return live results while running, or final report */
 router.get('/tests/e2e', (_req: Request, res: Response) => {
   try {
-    const STALE_E2E_MS = 15 * 60 * 1000;
-    if (liveRuns.e2e?.status === 'running' && (Date.now() - liveRuns.e2e.startedAt) > STALE_E2E_MS) {
-      delete liveRuns.e2e;
+    // Crash recovery: if backend restarted but Playwright is still running
+    if (!liveRuns.e2e) {
+      const persisted = loadRunState('e2e');
+      if (persisted?.status === 'running' && persisted.pid && isProcessAlive(persisted.pid)) {
+        liveRuns.e2e = { status: 'running', startedAt: persisted.ts, results: [] };
+      } else if (persisted?.status === 'running') {
+        saveRunState('e2e', 'done');
+      }
     }
+
     const run = liveRuns.e2e;
 
     if (run?.status === 'running') {
@@ -1165,13 +1274,19 @@ router.get('/tests/e2e', (_req: Request, res: Response) => {
       });
     }
 
-    if ((run?.status === 'done' || run?.status === 'error') && run.finalReport) {
+    if (run?.status === 'error') {
+      const err = run.error || 'Unknown error';
+      delete liveRuns.e2e;
+      return res.json({ status: 'error', error: err });
+    }
+
+    if (run?.status === 'done' && run.finalReport) {
       return res.json({ status: 'ready', ...run.finalReport });
     }
 
-    if (run?.status === 'done' || run?.status === 'error') {
-      delete liveRuns.e2e;
-    }
+    // Fallback chain: disk cache → e2e-results.json → none
+    const saved = loadTestReport('e2e');
+    if (saved) return res.json({ status: 'ready', ...saved });
 
     if (fs.existsSync(E2E_JSON_PATH)) {
       const raw = fs.readFileSync(E2E_JSON_PATH, 'utf8');
@@ -1181,9 +1296,6 @@ router.get('/tests/e2e', (_req: Request, res: Response) => {
         return res.json({ status: 'ready', ...report });
       }
     }
-
-    const saved = loadTestReport('e2e');
-    if (saved) return res.json({ status: 'ready', ...saved });
 
     return res.json({ status: 'none' });
   } catch (err) {
@@ -1208,7 +1320,12 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
     if (prev) {
       const failedNames = prev.suites.flatMap((s: TestSuite) => s.tests.filter((t: TestResult) => t.status === 'failed').map((t: TestResult) => t.name));
       if (failedNames.length > 0) {
-        grepPattern = failedNames.map((n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+        // Use only the leaf test name (after the last ' > ') for --grep matching,
+        // since Playwright uses Unicode › internally and stored names use ASCII >
+        grepPattern = failedNames.map((n: string) => {
+          const leaf = n.includes(' > ') ? n.substring(n.lastIndexOf(' > ') + 3) : n;
+          return leaf.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }).join('|');
       }
     }
     if (!grepPattern) {
@@ -1221,26 +1338,41 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
     : null;
 
   setTestMode(true);
-  process.env.SUPPRESS_SMS = '1';
   liveRuns.e2e = { status: 'running', startedAt: Date.now(), results: [] };
 
-  const pwArgs = ['playwright', 'test'];
+  const pwArgs = ['test'];
   if (grepPattern) pwArgs.push('--grep', grepPattern);
 
-  const child = spawn('npx', pwArgs, {
-    cwd: ROOT,
-    env: { ...process.env, CI: 'true', SUPPRESS_SMS: '1' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
-  });
+  console.log(`[E2E] Spawning: ${PW_BIN} ${pwArgs.join(' ')}`);
+
+  let child: ReturnType<typeof spawn>;
+  try {
+    child = spawn(PW_BIN, pwArgs, {
+      cwd: ROOT,
+      env: { ...process.env, CI: 'true', SUPPRESS_SMS: '1' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (spawnErr: any) {
+    console.error(`[E2E] spawn threw:`, spawnErr.message);
+    liveRuns.e2e.status = 'error';
+    liveRuns.e2e.error = `Failed to spawn Playwright: ${spawnErr.message}`;
+    saveRunState('e2e', 'error');
+    return res.json({ status: 'error', error: liveRuns.e2e.error });
+  }
+
+  const childPid = child.pid;
+  if (liveRuns.e2e) liveRuns.e2e.pid = childPid;
+  saveRunState('e2e', 'running', childPid);
 
   let e2eLineBuf = '';
+  let stderrBuf = '';
   (child.stdout as any)?.setEncoding?.('utf8');
   (child.stderr as any)?.setEncoding?.('utf8');
 
   const processE2eChunk = (chunk: string | Buffer) => {
     if (!liveRuns.e2e) return;
-    e2eLineBuf += typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+    const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+    e2eLineBuf += text;
     const lines = e2eLineBuf.split('\n');
     e2eLineBuf = lines.pop() || '';
     for (const line of lines) {
@@ -1259,15 +1391,20 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
   };
 
   child.stdout?.on('data', processE2eChunk);
-  child.stderr?.on('data', processE2eChunk);
+  child.stderr?.on('data', (chunk: string | Buffer) => {
+    const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
+    stderrBuf += text;
+    processE2eChunk(chunk);
+  });
 
-  child.on('close', (code) => {
+  child.on('close', (code, signal) => {
     if (e2eLineBuf) processE2eChunk(e2eLineBuf + '\n');
     if (!liveRuns.e2e) {
-      console.log(`E2E close handler: liveRuns.e2e gone (server restarted?) — exit code ${code ?? 0}`);
+      console.log(`[E2E] close: liveRuns.e2e gone (server restarted?) — code ${code} signal ${signal}`);
       return;
     }
     const wallClock = Date.now() - liveRuns.e2e.startedAt;
+
     let newReport: TestReport | null = null;
     if (fs.existsSync(E2E_JSON_PATH)) {
       try {
@@ -1278,6 +1415,19 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
       newReport = buildReportFromLive(liveRuns.e2e.results);
     }
     if (newReport && newReport.summary.total === 0) newReport = null;
+
+    // No results from json or live parsing — likely a spawn/config failure
+    if (!newReport && liveRuns.e2e.results.length === 0) {
+      console.error(`[E2E] No results — code ${code} signal ${signal} (${Math.round(wallClock / 1000)}s)`);
+      if (stderrBuf) console.error(`[E2E] stderr:\n${stderrBuf.slice(0, 2000)}`);
+      liveRuns.e2e.status = 'error';
+      liveRuns.e2e.error = stderrBuf
+        ? `Playwright failed: ${stderrBuf.slice(0, 200)}`
+        : `Playwright exited with code ${code ?? '?'} and no test results`;
+      saveRunState('e2e', 'error');
+      return;
+    }
+
     if (newReport && !newReport.summary.elapsed) {
       newReport.summary.elapsed = wallClock;
     }
@@ -1290,20 +1440,49 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
       if (fallback) liveRuns.e2e.finalReport = fallback;
     }
     if (liveRuns.e2e.finalReport) {
-      saveTestReport('e2e', liveRuns.e2e.finalReport);
+      saveTestReport('e2e', liveRuns.e2e.finalReport, true);
     }
     liveRuns.e2e.status = 'done';
-    console.log(`E2E tests finished with exit code ${code ?? 0} (${Math.round(wallClock / 1000)}s)`);
+    saveRunState('e2e', 'done');
+    console.log(`[E2E] Finished: code ${code ?? 0} — ${liveRuns.e2e.finalReport?.summary?.total ?? 0} tests (${Math.round(wallClock / 1000)}s)`);
   });
 
   child.on('error', (err) => {
     if (!liveRuns.e2e) return;
+    console.error(`[E2E] spawn error: ${err.message}`);
     liveRuns.e2e.status = 'error';
     liveRuns.e2e.error = err.message;
-    console.error('E2E spawn error:', err.message);
+    saveRunState('e2e', 'error');
   });
 
   res.json({ status: 'started' });
+});
+
+/** POST /tests/e2e/stop — Stop a running E2E test */
+router.post('/tests/e2e/stop', (_req: Request, res: Response) => {
+  if (requireTestPassword(_req, res)) return;
+
+  const run = liveRuns.e2e;
+  if (!run || run.status !== 'running') {
+    return res.json({ status: 'not_running' });
+  }
+
+  const pid = run.pid || loadRunState('e2e')?.pid;
+  if (!pid) {
+    return res.json({ status: 'error', error: 'No PID found' });
+  }
+
+  try {
+    process.kill(pid, 'SIGTERM');
+    console.log(`[E2E] Stopped: killed PID ${pid}`);
+    run.status = 'error';
+    run.error = 'Stopped by user';
+    saveRunState('e2e', 'done');
+    return res.json({ status: 'stopped' });
+  } catch (err: any) {
+    console.error(`[E2E] Failed to kill PID ${pid}:`, err.message);
+    return res.json({ status: 'error', error: err.message });
+  }
 });
 
 /** GET /tests/:area — Return cached results, live progress, or 'none' */
@@ -1315,11 +1494,6 @@ router.get('/tests/:area', (req: Request, res: Response) => {
 
   const runKey = `unit_${area}`;
   const run = liveRuns[runKey];
-  const STALE_RUN_MS = 10 * 60 * 1000;
-
-  if (run?.status === 'running' && (Date.now() - run.startedAt) > STALE_RUN_MS) {
-    delete liveRuns[runKey];
-  }
 
   if (run?.status === 'running') {
     const passed = run.results.filter(r => r.status === 'passed').length;
@@ -1390,15 +1564,26 @@ router.post('/tests/:area/run', (req: Request, res: Response) => {
 
   liveRuns[runKey] = { status: 'running', startedAt: Date.now(), results: [] };
 
-  const jestArgs = ['jest', '--verbose', '--coverage', '--passWithNoTests', '--forceExit', '--runInBand'];
+  const jestBin = area === 'backend' ? JEST_BIN_BE : JEST_BIN_FE;
+  const jestArgs = ['--verbose', '--coverage', '--passWithNoTests', '--forceExit', '--runInBand'];
   if (testNamePattern) jestArgs.push('--testNamePattern', testNamePattern);
 
-  const child = spawn('npx', jestArgs, {
-    cwd: dir,
-    env: { ...process.env, CI: 'true', NODE_ENV: 'test' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
-  });
+  console.log(`[${area}] Spawning: ${jestBin} ${jestArgs.join(' ')}`);
+
+  const { SUPPRESS_SMS: _drop, ...cleanEnv } = process.env;
+  let child: ReturnType<typeof spawn>;
+  try {
+    child = spawn(jestBin, jestArgs, {
+      cwd: dir,
+      env: { ...cleanEnv, CI: 'true', NODE_ENV: 'test' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (spawnErr: any) {
+    console.error(`[${area}] spawn threw:`, spawnErr.message);
+    liveRuns[runKey].status = 'error';
+    liveRuns[runKey].error = `Failed to spawn Jest: ${spawnErr.message}`;
+    return res.json({ status: 'error', error: liveRuns[runKey].error });
+  }
 
   let currentSuite = '';
   let lineBuf = '';
@@ -1437,7 +1622,7 @@ router.post('/tests/:area/run', (req: Request, res: Response) => {
     run.finalReport = report;
     run.status = 'done';
     testCache[cacheKey] = { data: run.finalReport, ts: Date.now() };
-    saveTestReport(area, run.finalReport);
+    saveTestReport(area, run.finalReport, true);
     console.log(`${area} tests finished: ${run.finalReport.summary.passed}/${run.finalReport.summary.total} passed`);
   });
 
@@ -1468,6 +1653,7 @@ function parsePlaywrightJson(raw: string): TestReport | null {
       for (const test of spec.tests || []) {
         const results = test.results || [];
         const lastResult = results[results.length - 1];
+        if (lastResult?.status === 'skipped') continue;
         const status = lastResult?.status === 'passed' ? 'passed' : 'failed';
         const duration = lastResult?.duration || 0;
         const retries = Math.max(0, results.length - 1);
@@ -1504,7 +1690,10 @@ function parsePlaywrightJson(raw: string): TestReport | null {
   }
   walkSuites(json.suites || [], '');
 
-  const suites = Array.from(suiteMap.values());
+  const INFRA = new Set(['setup', 'teardown']);
+  const suites = Array.from(suiteMap.values())
+    .map(s => ({ ...s, tests: s.tests.filter(t => !INFRA.has(t.project || '')) }))
+    .filter(s => s.tests.length > 0);
   let total = 0, passed = 0, failed = 0, flaky = 0, totalDuration = 0;
   for (const s of suites) {
     for (const t of s.tests) {

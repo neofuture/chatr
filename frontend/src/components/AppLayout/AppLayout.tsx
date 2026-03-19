@@ -102,14 +102,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const navigation = [
     { name: 'Chats', href: '/app', icon: 'fa-comments', type: 'icon' },
+    { name: 'Friends', href: '/app/friends', icon: 'fa-user-group', type: 'icon' },
     { name: 'Groups', href: '/app/groups', icon: 'fa-users', type: 'icon' },
-    { name: 'Updates', href: '/app/updates', icon: 'fa-newspaper', type: 'icon' },
-    { name: 'Test', href: '/app/test', icon: 'fa-flask', type: 'icon' },
     { name: 'User', href: '/app/profile', icon: profileImageUrl, type: 'image' },
   ];
 
   const activeTitle = (() => {
     if (pathname === '/app') return 'Chats';
+    if (pathname === '/app/friends') return 'Friends';
     if (pathname === '/app/groups') return 'Groups';
     if (pathname === '/app/updates') return 'Updates';
     if (pathname === '/app/test') return 'Test Lab';

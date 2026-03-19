@@ -59,3 +59,16 @@
   white-space: nowrap;
 }
 
+.theme-toggle-compact {
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 12px;
+}
+
+.theme-toggle-compact:hover {
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 0.8;
+}
+

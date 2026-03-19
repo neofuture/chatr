@@ -14,8 +14,14 @@ if [ "$SKIP_POST_COMMIT" = "1" ]; then
 fi
 
 cd "$(git rev-parse --show-toplevel)"
+
+echo "🔄 Auto-incrementing version..."
 node frontend/scripts/increment-version.js
-git add frontend/src/version.ts
+
+echo "📝 Updating changelog..."
+node frontend/scripts/update-changelog.js
+
+git add frontend/src/version.ts Documentation/VERSION.md
 SKIP_POST_COMMIT=1 git commit --amend --no-edit --no-verify
 `;
 

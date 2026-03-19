@@ -122,7 +122,7 @@ export default function SiteNav() {
           </div>
 
           <div className={s.rightSection}>
-            <div className={s.themeBtn}><ThemeToggle /></div>
+            <div className={s.themeBtn}><ThemeToggle compact showLabel={false} /></div>
 
             <div className={s.avatarWrapper} ref={dropdownRef}>
               <button

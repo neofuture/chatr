@@ -29,7 +29,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | [Deployment](./Getting-Started/Deployment.md) | AWS infrastructure, deploy script |
 | [Getting Started](./Getting-Started/Local_Setup.md) | Local development setup |
 | [Testing](./Testing/index.md) | Test suite, Jest config, coverage |
-| [Changelog](./Versions/CHANGELOG.md) | Version history and release notes |
+| [Version History](./VERSION.md) | Version history and release notes |
 
 ## Quick Reference
 

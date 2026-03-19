@@ -75,7 +75,7 @@ describe('AppLayout Component', () => {
     }, { timeout: 3000 });
   });
 
-  it('renders navigation with Chats, Groups, Updates, User', async () => {
+  it('renders navigation with Chats, Friends, Groups, User', async () => {
     const { container } = render(
       <AppLayout>
         <div>Test Content</div>
@@ -92,11 +92,10 @@ describe('AppLayout Component', () => {
       const links = container.querySelectorAll('a');
       expect(links.length).toBeGreaterThanOrEqual(1);
 
-      // Look for the specific text content in links
       const linkTexts = Array.from(links).map(link => link.textContent);
       expect(linkTexts.some(text => text?.includes('Chats'))).toBeTruthy();
+      expect(linkTexts.some(text => text?.includes('Friends'))).toBeTruthy();
       expect(linkTexts.some(text => text?.includes('Groups'))).toBeTruthy();
-      expect(linkTexts.some(text => text?.includes('Updates'))).toBeTruthy();
       expect(linkTexts.some(text => text?.includes('User'))).toBeTruthy();
     }, { timeout: 3000 });
   });
@@ -137,13 +136,13 @@ describe('AppLayout Component', () => {
     await waitFor(() => {
       const links = Array.from(container.querySelectorAll('a'));
       const chatsLink = links.find(l => l.textContent?.includes('Chats'));
+      const friendsLink = links.find(l => l.textContent?.includes('Friends'));
       const groupsLink = links.find(l => l.textContent?.includes('Groups'));
-      const updatesLink = links.find(l => l.textContent?.includes('Updates'));
       const userLink = links.find(l => l.textContent?.includes('User'));
 
       expect(chatsLink).toHaveAttribute('href', '/app');
+      expect(friendsLink).toHaveAttribute('href', '/app/friends');
       expect(groupsLink).toHaveAttribute('href', '/app/groups');
-      expect(updatesLink).toHaveAttribute('href', '/app/updates');
       expect(userLink).toHaveAttribute('href', '/app/profile');
     }, { timeout: 3000 });
   });

@@ -7,7 +7,7 @@ import { useBodyScroll } from '@/components/site/useBodyScroll';
 import { version } from '@/version';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const REFRESH_INTERVAL = 30_000;
+const REFRESH_INTERVAL = 15_000;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type D = any;
@@ -507,20 +507,33 @@ export default function DashboardPage() {
   const [e2eFilter, setE2eFilter] = useState<string>('all');
   const [e2eLive, setE2eLive] = useState<D>(null);
 
+  const LS_DASH_KEY = 'chatr_dash_metrics';
+
   const fetchData = useCallback(() => {
     const attempt = (retries: number) => {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 25_000);
+      const timer = setTimeout(() => ctrl.abort(), 15_000);
       fetch(`${API}/api/dashboard`, { signal: ctrl.signal })
         .then(r => { clearTimeout(timer); return r.ok ? r.json() : Promise.reject('Failed to load'); })
-        .then(d => { setData(d); setLastRefresh(new Date()); setError(null); })
+        .then(d => {
+          setData(d); setLastRefresh(new Date()); setError(null);
+          try { localStorage.setItem(LS_DASH_KEY, JSON.stringify(d)); } catch { /* ignore */ }
+        })
         .catch(e => {
           clearTimeout(timer);
-          if (retries > 0) { setTimeout(() => attempt(retries - 1), 2000); }
-          else { setError(String(e?.message || e)); }
+          if (retries > 0) { setTimeout(() => attempt(retries - 1), 1000); }
+          else {
+            if (!data) {
+              try {
+                const cached = localStorage.getItem(LS_DASH_KEY);
+                if (cached) { setData(JSON.parse(cached)); setLastRefresh(null); }
+              } catch { /* ignore */ }
+            }
+            setError(String(e?.message || e));
+          }
         });
     };
-    attempt(2);
+    attempt(3);
   }, []);
 
   const refreshData = useCallback(() => {
@@ -552,10 +565,9 @@ export default function DashboardPage() {
     const doRun = (pw: string) => {
       const areas = area ? [area] : ['frontend', 'backend'] as const;
       for (const a of areas) {
-        if (!failedOnly) {
-          if (a === 'frontend') { setFeReport(null); setFeLive(null); }
-          else { setBeReport(null); setBeLive(null); }
-        }
+        // Always clear old results immediately for better UX
+        if (a === 'frontend') { setFeReport(null); setFeLive(null); try { localStorage.removeItem('chatr_dash_tests_frontend'); } catch {} }
+        else { setBeReport(null); setBeLive(null); try { localStorage.removeItem('chatr_dash_tests_backend'); } catch {} }
         if (a === 'frontend') setFeRunning(true); else setBeRunning(true);
         fetch(`${API}/api/dashboard/tests/${a}/run`, {
           method: 'POST',
@@ -579,7 +591,10 @@ export default function DashboardPage() {
   const startE2E = useCallback((failedOnly?: boolean) => {
     const doRun = (pw: string) => {
       setE2eRunning(true);
-      if (!failedOnly) setE2eLive(null);
+      setE2eFilter('all');
+      setE2eLive(null);
+      setE2eReport(null);
+      try { localStorage.removeItem('chatr_dash_tests_e2e'); } catch { /* ignore */ }
       fetch(`${API}/api/dashboard/tests/e2e/run`, {
         method: 'POST',
         headers: getTestHeaders(pw),
@@ -590,16 +605,35 @@ export default function DashboardPage() {
           return r.ok ? r.json() : Promise.reject('Failed');
         })
         .then(d => {
-          if (d?.status === 'skipped') setE2eRunning(false);
+          if (d?.status === 'skipped' || d?.status === 'error') {
+            setE2eRunning(false);
+            if (d.error) console.warn('[Dashboard] E2E start failed:', d.error);
+          }
         })
         .catch(() => { setE2eRunning(false); });
     };
     requirePassword(doRun);
   }, [getTestHeaders, requirePassword]);
 
+  const stopE2E = useCallback(() => {
+    fetch(`${API}/api/dashboard/tests/e2e/stop`, {
+      method: 'POST',
+      headers: getTestHeaders(''),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.status === 'stopped' || d.status === 'not_running') {
+          setE2eRunning(false);
+          setE2eLive(null);
+        }
+      })
+      .catch(() => {});
+  }, [getTestHeaders]);
+
   useEffect(() => {
     if (!e2eRunning) return;
     let noneCount = 0;
+    let errorCount = 0;
     const id = setInterval(() => {
       fetch(`${API}/api/dashboard/tests/e2e`)
         .then(r => r.ok ? r.json() : Promise.reject(''))
@@ -610,12 +644,20 @@ export default function DashboardPage() {
             setE2eLive(null);
             noneCount = 0;
             if (d.summary?.total > 0) { try { localStorage.setItem('chatr_dash_tests_e2e', JSON.stringify(d)); } catch { /* ignore */ } }
+          } else if (d.status === 'error') {
+            errorCount++;
+            if (errorCount >= 2) {
+              setE2eRunning(false);
+              setE2eLive(null);
+            }
+            console.warn('[Dashboard] E2E run error:', d.error);
           } else if (d.status === 'running') {
             setE2eLive(d);
             noneCount = 0;
+            errorCount = 0;
           } else {
             noneCount++;
-            if (noneCount >= 3) { setE2eRunning(false); setE2eLive(null); }
+            if (noneCount >= 15) { setE2eRunning(false); setE2eLive(null); }
           }
         })
         .catch(() => {});
@@ -624,44 +666,48 @@ export default function DashboardPage() {
   }, [e2eRunning]);
 
   useEffect(() => {
-    if (!feRunning || feReport) return;
+    if (!feRunning) return;
     let noneCount = 0;
     const id = setInterval(() => {
       fetch(`${API}/api/dashboard/tests/frontend`)
         .then(r => r.ok ? r.json() : Promise.reject(''))
         .then(d => {
           if (d.status === 'ready') {
-            setFeReport(d); setFeRunning(false); setFeLive(null);
+            setFeReport(d); setFeRunning(false); setFeLive(null); noneCount = 0;
             if (d.summary?.total > 0) { try { localStorage.setItem('chatr_dash_tests_frontend', JSON.stringify(d)); } catch { /* ignore */ } }
           }
           else if (d.status === 'running') { setFeLive(d); noneCount = 0; }
-          else { noneCount++; if (noneCount >= 3) { setFeRunning(false); setFeLive(null); } }
+          else { noneCount++; if (noneCount >= 15) { setFeRunning(false); setFeLive(null); } }
         })
         .catch(() => {});
     }, 2000);
     return () => clearInterval(id);
-  }, [feRunning, feReport]);
+  }, [feRunning]);
 
   useEffect(() => {
-    if (!beRunning || beReport) return;
+    if (!beRunning) return;
     let noneCount = 0;
     const id = setInterval(() => {
       fetch(`${API}/api/dashboard/tests/backend`)
         .then(r => r.ok ? r.json() : Promise.reject(''))
         .then(d => {
           if (d.status === 'ready') {
-            setBeReport(d); setBeRunning(false); setBeLive(null);
+            setBeReport(d); setBeRunning(false); setBeLive(null); noneCount = 0;
             if (d.summary?.total > 0) { try { localStorage.setItem('chatr_dash_tests_backend', JSON.stringify(d)); } catch { /* ignore */ } }
           }
           else if (d.status === 'running') { setBeLive(d); noneCount = 0; }
-          else { noneCount++; if (noneCount >= 3) { setBeRunning(false); setBeLive(null); } }
+          else { noneCount++; if (noneCount >= 15) { setBeRunning(false); setBeLive(null); } }
         })
         .catch(() => {});
     }, 2000);
     return () => clearInterval(id);
-  }, [beRunning, beReport]);
+  }, [beRunning]);
 
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem(LS_DASH_KEY);
+      if (cached) { setData(JSON.parse(cached)); }
+    } catch { /* ignore */ }
     fetchData();
     const LS_KEY_PREFIX = 'chatr_dash_tests_';
     const loadCached = (area: string, setReport: (d: D) => void, setRunning: (b: boolean) => void, setLive: (d: D) => void) => {
@@ -1845,7 +1891,7 @@ export default function DashboardPage() {
           {(() => {
             const liveResults: D[] = e2eLive?.liveResults || [];
             const reportTests: D[] = e2eReport ? (e2eReport.suites || []).flatMap((s: D) => s.tests) : [];
-            const allTests = e2eReport ? reportTests : liveResults;
+            const allTests = e2eRunning && liveResults.length > 0 ? liveResults : (e2eReport ? reportTests : liveResults);
             const allProjects: string[] = [...new Set(allTests.map((t: D) => t.project).filter(Boolean))];
             const failedCount = allTests.filter((t: D) => t.status !== 'passed' && t.status !== 'running').length;
             const flakyCount = allTests.filter((t: D) => (t.retries || 0) > 0 && t.status === 'passed').length;
@@ -1863,16 +1909,19 @@ export default function DashboardPage() {
               ...(retriedCount > 0 ? [{ id: 'retried', label: 'Retried', count: retriedCount }] : []),
             ];
 
+            const validFilterIds = new Set(e2eFilterOptions.map(o => o.id));
+            const activeFilter = validFilterIds.has(e2eFilter) ? e2eFilter : 'all';
+
             const filterTest = (t: D) => {
-              if (e2eFilter === 'all') return true;
-              if (e2eFilter === 'failed') return t.status !== 'passed';
-              if (e2eFilter === 'flaky') return (t.retries || 0) > 0 && t.status === 'passed';
-              if (e2eFilter === 'retried') return (t.retries || 0) > 0;
-              return t.project === e2eFilter;
+              if (activeFilter === 'all') return true;
+              if (activeFilter === 'failed') return t.status !== 'passed';
+              if (activeFilter === 'flaky') return (t.retries || 0) > 0 && t.status === 'passed';
+              if (activeFilter === 'retried') return (t.retries || 0) > 0;
+              return t.project === activeFilter;
             };
 
             const filteredE2ESuites = e2eReport ? (e2eReport.suites || []).map((s: D) => {
-              if (e2eFilter === 'all') return s;
+              if (activeFilter === 'all') return s;
               const filtered = s.tests.filter(filterTest);
               if (filtered.length === 0) return null;
               return { ...s, tests: filtered, duration: filtered.reduce((sum: number, t: D) => sum + (t.duration || 0), 0) };
@@ -1880,7 +1929,7 @@ export default function DashboardPage() {
 
             const filteredLiveResults = liveResults.filter(filterTest);
 
-            const e2eSummary = e2eFilter === 'all' && e2eReport ? e2eReport.summary : (() => {
+            const e2eSummary = activeFilter === 'all' && e2eReport ? e2eReport.summary : (() => {
               const tests = e2eReport ? filteredE2ESuites.flatMap((s: D) => s.tests) : filteredLiveResults;
               const p = tests.filter((t: D) => t.status === 'passed').length;
               const f = tests.filter((t: D) => t.status === 'failed').length;
@@ -1894,17 +1943,24 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', gap: 8 }}>
               <h2 style={{ ...H2, margin: 0 }}><Ico>fad fa-browser</Ico> E2E Tests (Playwright)</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {hasData && <FilterPills options={e2eFilterOptions} value={e2eFilter} onChange={setE2eFilter} />}
+                {hasData && <FilterPills options={e2eFilterOptions} value={activeFilter} onChange={setE2eFilter} />}
                 {failedCount > 0 && !e2eRunning && (
                   <button onClick={() => startE2E(true)}
                     style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem', color: '#ef4444' }}>
                     <i className="fas fa-redo" style={{ marginRight: 4 }} /> Re-run Failed
                   </button>
                 )}
-                <button onClick={() => startE2E()} disabled={e2eRunning}
-                  style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 6, padding: '3px 10px', cursor: e2eRunning ? 'wait' : 'pointer', fontSize: '0.75rem', color: '#a855f7', opacity: e2eRunning ? 0.6 : 1 }}>
-                  {e2eRunning ? <><i className="fad fa-spinner-third fa-spin" style={{ marginRight: 4 }} /> Running...</> : <><i className="fas fa-play" style={{ marginRight: 4 }} /> Run E2E</>}
-                </button>
+                {e2eRunning ? (
+                  <button onClick={stopE2E}
+                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem', color: '#ef4444' }}>
+                    <i className="fas fa-stop" style={{ marginRight: 4 }} /> Stop
+                  </button>
+                ) : (
+                  <button onClick={() => startE2E()}
+                    style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', fontSize: '0.75rem', color: '#a855f7' }}>
+                    <i className="fas fa-play" style={{ marginRight: 4 }} /> Run E2E
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1917,7 +1973,7 @@ export default function DashboardPage() {
 
             {e2eRunning && (
               filteredLiveResults.length > 0 ? (
-                <LiveE2EFeed expandAll={e2eFilter === 'failed' || e2eFilter === 'flaky' || e2eFilter === 'retried'} live={{ ...e2eLive, liveResults: filteredLiveResults, liveSummary: { completed: filteredLiveResults.length, passed: filteredLiveResults.filter((t: D) => t.status === 'passed').length, failed: filteredLiveResults.filter((t: D) => t.status === 'failed').length, retrying: filteredLiveResults.filter((t: D) => (t.retries || 0) > 0).length } }} />
+                <LiveE2EFeed expandAll={activeFilter === 'failed' || activeFilter === 'flaky' || activeFilter === 'retried'} live={{ ...e2eLive, liveResults: filteredLiveResults, liveSummary: { completed: filteredLiveResults.length, passed: filteredLiveResults.filter((t: D) => t.status === 'passed').length, failed: filteredLiveResults.filter((t: D) => t.status === 'failed').length, retrying: filteredLiveResults.filter((t: D) => (t.retries || 0) > 0).length } }} />
               ) : e2eLive?.liveResults?.length > 0 ? (
                 <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                   No results match the current filter.
@@ -1989,7 +2045,7 @@ export default function DashboardPage() {
 
                 <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
                   {filteredE2ESuites.map((suite: D) => (
-                    <SuiteRow key={`${suite.file}-${e2eFilter}`} suite={suite} defaultOpen={e2eFilter === 'failed' || e2eFilter === 'flaky' || e2eFilter === 'retried'} />
+                    <SuiteRow key={`${suite.file}-${activeFilter}`} suite={suite} defaultOpen={activeFilter === 'failed' || activeFilter === 'flaky' || activeFilter === 'retried'} />
                   ))}
                 </div>
 

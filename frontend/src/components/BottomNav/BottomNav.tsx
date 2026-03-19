@@ -133,10 +133,10 @@ export default function BottomNav() {
   }, [socket]);
 
   const menuItems = [
-    { name: 'CHATS',   href: '/app',          icon: 'fa-comments',   type: 'icon', badge: totalUnread },
-    { name: 'FRIENDS', href: '/app/friends',  icon: 'fa-user-group', type: 'icon', badge: pendingRequests },
-    { name: 'GROUPS',  href: '/app/groups',   icon: 'fa-users',      type: 'icon', badge: unreadGroups },
-    { name: firstName,  href: '/app/profile', icon: profileImageUrl, type: 'image' },
+    { name: 'CHATS',    href: '/app',           icon: 'fa-comments',   type: 'icon', badge: totalUnread },
+    { name: 'FRIENDS',  href: '/app/friends',   icon: 'fa-user-group', type: 'icon', badge: pendingRequests },
+    { name: 'GROUPS',   href: '/app/groups',    icon: 'fa-users',      type: 'icon', badge: unreadGroups },
+    { name: firstName,  href: '/app/profile',   icon: profileImageUrl,  type: 'image' },
   ];
 
   return (

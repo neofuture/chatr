@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, isValidElement } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import Image from 'next/image';
+
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
@@ -122,6 +122,7 @@ export default function DocsPage() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [showHome, setShowHome] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     // Only read from localStorage on client side during initialization
@@ -227,30 +228,33 @@ export default function DocsPage() {
     fetch('/api/docs')
       .then(res => res.json())
       .then(data => {
+        if (!data) {
+          setLoading(false);
+          return;
+        }
         setStructure(data);
 
         // Collapse all folders by default
         const allFolderPaths = new Set<string>();
         const collectFolderPaths = (folders: DocFolder[]) => {
+          if (!folders) return;
           folders.forEach(folder => {
             allFolderPaths.add(folder.path);
-            if (folder.children && folder.children.folders) {
+            if (folder.children?.folders) {
               collectFolderPaths(folder.children.folders);
             }
           });
         };
-        if (data.folders) {
-          collectFolderPaths(data.folders);
-        }
+        collectFolderPaths(data.folders);
         setCollapsedFolders(allFolderPaths);
 
         setLoading(false);
 
-        // Check for file parameter in URL
+        // Check for file parameter in URL, default to home view with VERSION.md
         const urlParams = new URLSearchParams(window.location.search);
         const fileParam = urlParams.get('file');
         if (fileParam) {
-          // Load the file from URL parameter
+          setShowHome(false);
           loadFile(fileParam);
 
           // Expand folders in the path
@@ -264,6 +268,9 @@ export default function DocsPage() {
               return next;
             });
           });
+        } else {
+          setShowHome(true);
+          loadFile('VERSION.md', undefined, true);
         }
       })
       .catch(err => {
@@ -276,10 +283,11 @@ export default function DocsPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const fileParam = urlParams.get('file');
       if (fileParam) {
+        setShowHome(false);
         loadFile(fileParam);
       } else {
-        setSelectedFile(null);
-        setContent('');
+        setShowHome(true);
+        loadFile('VERSION.md', undefined, true);
       }
     };
 
@@ -330,8 +338,9 @@ export default function DocsPage() {
     return { filePath: stack.join('/'), hash: rawHash || '' };
   };
 
-  // Load file content
-  const loadFile = async (filePath: string, hash?: string) => {
+  // Load file content. When isHomeLoad is true, the home view with quick links is preserved.
+  const loadFile = async (filePath: string, hash?: string, isHomeLoad = false) => {
+    if (!isHomeLoad) setShowHome(false);
     rememberSidebarScroll();
     pendingHash.current = hash || null;
     setLoading(true);
@@ -339,16 +348,33 @@ export default function DocsPage() {
 
     try {
       const res = await fetch(`/api/docs?file=${encodeURIComponent(filePath)}`);
-      const data = await res.json();
-      setContent(data.content || '');
+      const data = await res.json().catch(() => null);
 
-      // Update URL without page reload
-      const hashSuffix = pendingHash.current ? `#${pendingHash.current}` : '';
-      const newUrl = `/docs?file=${encodeURIComponent(filePath)}${hashSuffix}`;
-      window.history.pushState({ filePath }, '', newUrl);
+      if (!res.ok || !data || data.error) {
+        const status = res.status;
+        const fileName = filePath.split('/').pop() || filePath;
+        const folderPath = filePath.split('/').slice(0, -1).join('/');
+        setContent(
+          `# ${status === 404 ? '404 — File Not Found' : `${status} — Error`}\n\n` +
+          `The documentation file **${fileName}** could not be found` +
+          (folderPath ? ` in \`${folderPath}/\`` : '') +
+          `.\n\n` +
+          `**Requested path:** \`${filePath}\`\n\n` +
+          `---\n\n` +
+          `This file may have been moved, renamed, or deleted. Try using the sidebar or search to find what you\'re looking for.`
+        );
+      } else {
+        setContent(data.content || '');
+      }
+
+      if (!isHomeLoad) {
+        const hashSuffix = pendingHash.current ? `#${pendingHash.current}` : '';
+        const newUrl = `/docs?file=${encodeURIComponent(filePath)}${hashSuffix}`;
+        window.history.pushState({ filePath }, '', newUrl);
+      }
     } catch (err) {
       console.error('Error loading file:', err);
-      setContent('# Error\n\nFailed to load documentation file.');
+      setContent('# Error\n\nFailed to load documentation file. The server may be unavailable.');
     } finally {
       setLoading(false);
       requestAnimationFrame(() => {
@@ -649,10 +675,9 @@ export default function DocsPage() {
       {/* Sidebar */}
       <div
         ref={sidebarRef}
+        className={docStyles.sidebar}
         style={{
           width: sidebarOpen ? `${sidebarWidth}px` : '0',
-          background: 'rgba(15, 23, 42, 0.95)',
-          borderRight: '1px solid rgba(59, 130, 246, 0.3)',
           overflowY: 'auto',
           overflowX: 'hidden',
           transition: (isDragging || !hasInteracted) ? 'none' : 'width 0.3s ease-in-out',
@@ -670,34 +695,6 @@ export default function DocsPage() {
           transition: hasInteracted ? 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out' : 'none',
           pointerEvents: sidebarOpen ? 'auto' : 'none',
         }}>
-            {/* ...existing sidebar content... */}
-            <div style={{ marginBottom: '2rem' }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                marginBottom: '1rem'
-              }}>
-                <Image
-                  src="/images/logo-horizontal.png"
-                  alt={PRODUCT_NAME}
-                  width={150}
-                  height={50}
-                  priority
-                  style={{
-                    height: 'auto',
-                    filter: 'drop-shadow(0 4px 12px rgba(249, 115, 22, 0.3))'
-                  }}
-                />
-              </div>
-              <p style={{
-                color: 'var(--blue-300)',
-                fontSize: '0.875rem',
-                textAlign: 'center'
-              }}>
-                Project Documentation
-              </p>
-            </div>
-
             {/* Search Input */}
             <div style={{ marginBottom: '1.5rem' }}>
               <input
@@ -705,23 +702,7 @@ export default function DocsPage() {
                 placeholder="Search documentation..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  background: 'rgba(15, 23, 42, 0.8)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  borderRadius: '0.5rem',
-                  color: 'var(--blue-100)',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--orange-500)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
-                }}
+                className={docStyles.sidebarSearch}
               />
               {searchQuery && (
                 <div style={{
@@ -820,7 +801,7 @@ export default function DocsPage() {
               <div style={{ color: 'var(--blue-300)' }}>No documentation found</div>
             )}
 
-            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <div className={docStyles.sidebarDivider} style={{ marginTop: '2rem', paddingTop: '1rem' }}>
               <Link
                 href="/"
                 style={{
@@ -880,20 +861,18 @@ export default function DocsPage() {
         {/* Fixed Toggle Button */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
+          className={docStyles.toggleBtn}
           style={{
             position: 'fixed',
             top: 'calc(64px + 0.5rem)',
             left: sidebarOpen ? `${sidebarWidth + 8}px` : '8px',
             zIndex: 1001,
-            background: 'rgba(59, 130, 246, 0.2)',
-            border: '1px solid rgba(59, 130, 246, 0.5)',
-            color: 'white',
             padding: '0.5rem',
             borderRadius: '0.5rem',
             cursor: 'pointer',
             fontSize: '1.25rem',
             fontWeight: '600',
-            transition: hasInteracted ? 'left 0.3s ease-in-out, background 0.2s' : 'none',
+            transition: hasInteracted ? 'left 0.3s ease-in-out, opacity 0.2s' : 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -903,10 +882,10 @@ export default function DocsPage() {
             willChange: 'left',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.3)';
+            e.currentTarget.style.opacity = '0.8';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(59, 130, 246, 0.2)';
+            e.currentTarget.style.opacity = '1';
           }}
           title={sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
         >
@@ -928,166 +907,214 @@ export default function DocsPage() {
             }}>
               Loading documentation...
             </div>
-          ) : selectedFile ? (
-            <div className={docStyles['markdown-content']}>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkUnwrapParagraphs]}
-                rehypePlugins={[
-                  rehypeSlug,
-                  [rehypeAutolinkHeadings, {
-                    behavior: 'append',
-                    properties: {
-                      className: 'heading-anchor',
-                      ariaLabel: 'Link to section'
-                    },
-                    content: {
-                      type: 'element',
-                      tagName: 'span',
-                      properties: { className: 'anchor-icon' },
-                      children: [{ type: 'text', value: ' #' }]
-                    }
-                  }]
-                ]}
-                components={{
-                  h1: ({ children, ...props }) => <h1 {...props}>{processChildren(children)}</h1>,
-                  h2: ({ children, ...props }) => <h2 {...props}>{processChildren(children)}</h2>,
-                  h3: ({ children, ...props }) => <h3 {...props}>{processChildren(children)}</h3>,
-                  h4: ({ children, ...props }) => <h4 {...props}>{processChildren(children)}</h4>,
-                  h5: ({ children, ...props }) => <h5 {...props}>{processChildren(children)}</h5>,
-                  h6: ({ children, ...props }) => <h6 {...props}>{processChildren(children)}</h6>,
-                  a: ({ href, children, ...props }) => {
-                    if (href?.startsWith('#')) {
-                      return (
-                        <a
-                          href={href}
-                          {...props}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            window.history.replaceState({}, '', `/docs${window.location.search}${href}`);
-                            scrollToHash(href);
-                          }}
-                        >
-                          {children}
-                        </a>
-                      );
-                    }
-
-                    const resolved = resolveDocLink(href);
-                    if (resolved?.filePath) {
-                      const hashSuffix = resolved.hash ? `#${resolved.hash}` : '';
-                      const url = `/docs?file=${encodeURIComponent(resolved.filePath)}${hashSuffix}`;
-                      return (
-                        <Link
-                          href={url}
-                          {...props}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            loadFile(resolved.filePath, resolved.hash || undefined);
-                          }}
-                        >
-                          {children}
-                        </Link>
-                      );
-                    }
-                    return (
-                      <a href={href} {...props}>
-                        {children}
-                      </a>
-                    );
-                  },
-                  p: ({ children, ...props }) => {
-                    if (containsBlockElement(children)) {
-                      return <>{children}</>;
-                    }
-                    return <p {...props}>{children}</p>;
-                  },
-                  pre: ({ children }: any) => {
-                    const child = Array.isArray(children) ? children[0] : children;
-                    const className = child?.props?.className || '';
-                    const match = /language-(\w+)/.exec(className);
-                    const language = match ? match[1] : '';
-                    const codeText = typeof child?.props?.children === 'string'
-                      ? child.props.children.replace(/\n$/, '')
-                      : '';
-
-                    if (language === 'mermaid') {
-                      return <MermaidDiagram chart={codeText} />;
-                    }
-
-                    return <CodeBlock language={language} code={codeText} />;
-                  },
-                  code: ({ inline, className, children, ...props }: any) => {
-                    if (inline) {
-                      return (
-                        <code
-                          className={className}
-                          style={{
-                            background: 'rgba(59, 130, 246, 0.2)',
-                            padding: '0.2rem 0.4rem',
-                            borderRadius: '0.25rem',
-                          }}
-                          {...props}
-                        >
-                          {children}
-                        </code>
-                      );
-                    }
-
-                    return (
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    );
-                  },
-                }}
-              >
-                {content}
-              </ReactMarkdown>
-            </div>
           ) : (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem'
-            }}>
-              <h1 style={{
-                color: 'var(--blue-100)',
-                fontSize: '2.5rem',
-                marginBottom: '1rem'
-              }}>
-                Welcome to {PRODUCT_NAME} Documentation
-              </h1>
-              <p style={{
-                color: 'var(--blue-300)',
-                fontSize: '1.125rem',
-                marginBottom: '2rem'
-              }}>
-                Select a document from the sidebar to get started
-              </p>
-              <div style={{
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                borderRadius: '0.5rem',
-                padding: '2rem',
-                textAlign: 'left'
-              }}>
-                <h3 style={{
-                  color: 'var(--blue-100)',
-                  marginBottom: '1rem'
-                }}>
-                  📖 Quick Links
-                </h3>
-                <ul style={{
-                  color: 'var(--blue-300)',
-                  lineHeight: '2'
-                }}>
-                  <li>Getting Started guides</li>
-                  <li>API documentation</li>
-                  <li>Architecture overviews</li>
-                  <li>Development guides</li>
-                  <li>Feature implementations</li>
-                </ul>
-              </div>
-            </div>
+            <>
+              {showHome && (
+                <div style={{ padding: '2rem 0 1rem' }}>
+                  <h1 style={{
+                    color: 'var(--blue-100)',
+                    fontSize: '2.5rem',
+                    marginBottom: '0.5rem',
+                    textAlign: 'center',
+                  }}>
+                    {PRODUCT_NAME} Documentation
+                  </h1>
+                  <p style={{
+                    color: 'var(--blue-300)',
+                    fontSize: '1.125rem',
+                    marginBottom: '1.5rem',
+                    textAlign: 'center',
+                  }}>
+                    Select a document from the sidebar or quick links below
+                  </p>
+                  <div
+                    className={docStyles.quickLinksBox}
+                    style={{
+                      borderRadius: '0.5rem',
+                      padding: '1.5rem 2rem',
+                      marginBottom: '2rem',
+                    }}
+                  >
+                    <h3 style={{
+                      color: 'var(--blue-100)',
+                      marginBottom: '0.75rem'
+                    }}>
+                      <i className="fad fa-book" style={{ marginRight: '0.5rem' }} />
+                      Quick Links
+                    </h3>
+                    <ul style={{
+                      color: 'var(--blue-300)',
+                      lineHeight: '2.2',
+                      listStyle: 'none',
+                      padding: 0,
+                      margin: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                      gap: '0 2rem',
+                    }}>
+                      {[
+                        { label: 'Version History', file: 'VERSION.md', icon: 'fa-clock-rotate-left' },
+                        { label: 'Project Overview', file: 'index.md', icon: 'fa-home' },
+                        { label: 'Architecture', file: 'Architecture/index.md', icon: 'fa-sitemap' },
+                        { label: 'Getting Started', file: 'Getting-Started/LOCAL_SETUP.md', icon: 'fa-rocket' },
+                        { label: 'REST API Reference', file: 'API/REST_API.md', icon: 'fa-plug' },
+                        { label: 'WebSocket Events', file: 'WebSocket/EVENTS.md', icon: 'fa-bolt' },
+                        { label: 'Database Schema', file: 'Database/SCHEMA.md', icon: 'fa-database' },
+                        { label: 'Frontend', file: 'Frontend/index.md', icon: 'fa-browser' },
+                        { label: 'Backend', file: 'Backend/index.md', icon: 'fa-server' },
+                        { label: 'Authentication', file: 'Backend/AUTHENTICATION.md', icon: 'fa-lock' },
+                        { label: 'Messaging Features', file: 'Features/MESSAGING.md', icon: 'fa-comments' },
+                        { label: 'Widget', file: 'Widget/index.md', icon: 'fa-puzzle-piece' },
+                        { label: 'Testing', file: 'Testing/index.md', icon: 'fa-flask' },
+                        { label: 'Deployment', file: 'Getting-Started/DEPLOYMENT.md', icon: 'fa-cloud-upload' },
+                      ].map(link => (
+                        <li key={link.file}>
+                          <a
+                            href={`/docs?file=${encodeURIComponent(link.file)}`}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              loadFile(link.file);
+                            }}
+                            style={{
+                              color: 'var(--blue-300)',
+                              textDecoration: 'none',
+                              cursor: 'pointer',
+                              transition: 'color 0.2s',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#f97316'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--blue-300)'}
+                          >
+                            <i className={`fad ${link.icon}`} style={{ width: '1.2em', textAlign: 'center' }} />
+                            {link.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {content && (
+                <div className={docStyles['markdown-content']}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkUnwrapParagraphs]}
+                    rehypePlugins={[
+                      rehypeSlug,
+                      [rehypeAutolinkHeadings, {
+                        behavior: 'append',
+                        properties: {
+                          className: 'heading-anchor',
+                          ariaLabel: 'Link to section'
+                        },
+                        content: {
+                          type: 'element',
+                          tagName: 'span',
+                          properties: { className: 'anchor-icon' },
+                          children: [{ type: 'text', value: ' #' }]
+                        }
+                      }]
+                    ]}
+                    components={{
+                      h1: ({ children, ...props }) => <h1 {...props}>{processChildren(children)}</h1>,
+                      h2: ({ children, ...props }) => <h2 {...props}>{processChildren(children)}</h2>,
+                      h3: ({ children, ...props }) => <h3 {...props}>{processChildren(children)}</h3>,
+                      h4: ({ children, ...props }) => <h4 {...props}>{processChildren(children)}</h4>,
+                      h5: ({ children, ...props }) => <h5 {...props}>{processChildren(children)}</h5>,
+                      h6: ({ children, ...props }) => <h6 {...props}>{processChildren(children)}</h6>,
+                      a: ({ href, children, ...props }) => {
+                        if (href?.startsWith('#')) {
+                          return (
+                            <a
+                              href={href}
+                              {...props}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                window.history.replaceState({}, '', `/docs${window.location.search}${href}`);
+                                scrollToHash(href);
+                              }}
+                            >
+                              {children}
+                            </a>
+                          );
+                        }
+
+                        const resolved = resolveDocLink(href);
+                        if (resolved?.filePath) {
+                          const hashSuffix = resolved.hash ? `#${resolved.hash}` : '';
+                          const url = `/docs?file=${encodeURIComponent(resolved.filePath)}${hashSuffix}`;
+                          return (
+                            <Link
+                              href={url}
+                              {...props}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                loadFile(resolved.filePath, resolved.hash || undefined);
+                              }}
+                            >
+                              {children}
+                            </Link>
+                          );
+                        }
+                        return (
+                          <a href={href} {...props}>
+                            {children}
+                          </a>
+                        );
+                      },
+                      p: ({ children, ...props }) => {
+                        if (containsBlockElement(children)) {
+                          return <>{children}</>;
+                        }
+                        return <p {...props}>{children}</p>;
+                      },
+                      pre: ({ children }: any) => {
+                        const child = Array.isArray(children) ? children[0] : children;
+                        const className = child?.props?.className || '';
+                        const match = /language-(\w+)/.exec(className);
+                        const language = match ? match[1] : '';
+                        const codeText = typeof child?.props?.children === 'string'
+                          ? child.props.children.replace(/\n$/, '')
+                          : '';
+
+                        if (language === 'mermaid') {
+                          return <MermaidDiagram chart={codeText} />;
+                        }
+
+                        return <CodeBlock language={language} code={codeText} />;
+                      },
+                      code: ({ inline, className, children, ...props }: any) => {
+                        if (inline) {
+                          return (
+                            <code
+                              className={className}
+                              style={{
+                                background: 'rgba(59, 130, 246, 0.2)',
+                                padding: '0.2rem 0.4rem',
+                                borderRadius: '0.25rem',
+                              }}
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        }
+
+                        return (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        );
+                      },
+                    }}
+                  >
+                    {content}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

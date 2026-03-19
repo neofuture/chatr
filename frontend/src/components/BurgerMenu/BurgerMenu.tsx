@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePanels } from '@/contexts/PanelContext';
-import SettingsPanel from '@/components/settings/SettingsPanel';
 import styles from './BurgerMenu.module.css';
 
 interface BurgerMenuProps {
@@ -13,8 +11,6 @@ interface BurgerMenuProps {
 export default function BurgerMenu({ isDark }: BurgerMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
-  const { openPanel } = usePanels();
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -24,7 +20,7 @@ export default function BurgerMenu({ isDark }: BurgerMenuProps) {
 
   const handleOpenSettings = () => {
     setIsOpen(false);
-    openPanel('settings', <SettingsPanel />, 'Settings', 'center', undefined, undefined, true);
+    router.push('/app/settings');
   };
 
   const bgColor = isDark ? '#1e293b' : '#f8fafc';

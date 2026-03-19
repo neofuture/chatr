@@ -1,17 +1,9 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import BurgerMenu from './BurgerMenu';
 
+const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn() }),
-}));
-
-jest.mock('@/contexts/PanelContext', () => ({
-  usePanels: jest.fn(() => ({ openPanel: jest.fn() })),
-}));
-
-jest.mock('@/components/settings/SettingsPanel', () => ({
-  __esModule: true,
-  default: () => <div>Settings</div>,
+  useRouter: () => ({ push: mockPush }),
 }));
 
 // The burger toggle is always the first button rendered
@@ -57,13 +49,11 @@ describe('BurgerMenu', () => {
       expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
-    it('opens settings panel when Settings is clicked', () => {
-      const mockOpenPanel = jest.fn();
-      const { usePanels } = require('@/contexts/PanelContext');
-      (usePanels as jest.Mock).mockReturnValue({ openPanel: mockOpenPanel });
+    it('navigates to /app/settings when Settings is clicked', () => {
+      mockPush.mockClear();
       render(<BurgerMenu isDark={true} />);
       fireEvent.click(screen.getByText('Settings'));
-      expect(mockOpenPanel).toHaveBeenCalledWith('settings', expect.anything(), 'Settings', 'center', undefined, undefined, true);
+      expect(mockPush).toHaveBeenCalledWith('/app/settings');
     });
 
     it('renders Logout button', () => {
