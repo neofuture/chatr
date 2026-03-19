@@ -65,27 +65,22 @@ test.describe('User Profile', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Click the display name field — may show a value or a placeholder
-    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'Display name' }) });
+    const fieldRow = page.locator('[data-testid="field-displayName"]');
     const btn = fieldRow.locator('button').first();
     await expect(btn).toBeVisible({ timeout: 5_000 });
     await btn.click();
 
-    // Input should appear
     const input = fieldRow.locator('input').first();
     await expect(input).toBeVisible({ timeout: 3_000 });
 
     await input.fill('E2E DisplayName');
     await input.blur();
 
-    // Wait for save indicator
     await expect(page.getByText('Saved').first()).toBeVisible({ timeout: 10_000 });
 
-    // Verify via API
     const after = await api.getMe(request, token);
     expect(after.displayName).toBe('E2E DisplayName');
 
-    // Verify it shows in the UI hero section
     await expect(page.getByText('E2E DisplayName').first()).toBeVisible({ timeout: 5_000 });
 
     // Restore
@@ -102,7 +97,7 @@ test.describe('User Profile', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'First name' }) });
+    const fieldRow = page.locator('[data-testid="field-firstName"]');
     const btn = fieldRow.locator('button').first();
     await expect(btn).toBeVisible({ timeout: 5_000 });
     await btn.click();
@@ -131,7 +126,7 @@ test.describe('User Profile', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'Last name' }) });
+    const fieldRow = page.locator('[data-testid="field-lastName"]');
     const btn = fieldRow.locator('button').first();
     await expect(btn).toBeVisible({ timeout: 5_000 });
     await btn.click();
@@ -156,28 +151,32 @@ test.describe('User Profile', () => {
     const { token } = await apiLogin(request, TEST_USERS.userA);
     const before = await api.getMe(request, token);
 
+    // Ensure starting value differs from target so the save triggers
+    const target = before.gender === 'male' ? 'female' : 'male';
+    const expectedLabel = target === 'male' ? 'Male' : 'Female';
+    if (before.gender === target) {
+      await api.updateProfile(request, token, { gender: target === 'male' ? 'female' : 'male' });
+    }
+
     await page.goto('/app/profile');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Click gender field to open select
-    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'Gender' }) });
+    const fieldRow = page.locator('[data-testid="field-gender"]');
     const btn = fieldRow.locator('button').first();
     await expect(btn).toBeVisible({ timeout: 5_000 });
     await btn.click();
 
-    // Select "Male"
     const select = fieldRow.locator('select').first();
     await expect(select).toBeVisible({ timeout: 3_000 });
-    await select.selectOption('male');
+    await select.selectOption(target);
 
     await expect(page.getByText('Saved').first()).toBeVisible({ timeout: 10_000 });
 
     const after = await api.getMe(request, token);
-    expect(after.gender).toBe('male');
+    expect(after.gender).toBe(target);
 
-    // Verify label shows in UI
-    await expect(fieldRow.getByText('Male')).toBeVisible({ timeout: 5_000 });
+    await expect(fieldRow.getByText(expectedLabel)).toBeVisible({ timeout: 5_000 });
 
     await api.updateProfile(request, token, { gender: before.gender ?? null });
   });
@@ -189,8 +188,7 @@ test.describe('User Profile', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // The profile image uploader has a camera button
-    const avatarWrap = page.locator('[class*="avatarWrap"]');
+    const avatarWrap = page.locator('[data-testid="profile-avatar"]');
     const cameraBtn = avatarWrap.locator('button:has(i.fa-camera)').first();
     await expect(cameraBtn).toBeVisible({ timeout: 5_000 });
     await cameraBtn.click();
@@ -199,12 +197,12 @@ test.describe('User Profile', () => {
     const uploadBtn = page.getByText('Upload New Picture').first();
     await expect(uploadBtn).toBeVisible({ timeout: 5_000 });
 
-    // Set file via file input
-    const fileInput = page.locator('input[type="file"][accept*="image"]').first();
+    // Set file via the avatar uploader's file input (scoped to avoid cover uploader)
+    const fileInput = avatarWrap.locator('input[type="file"]');
     await fileInput.setInputFiles(getAssetPath('test-image.png'));
 
     // Cropper should appear with Upload button
-    const cropperUpload = page.getByRole('button', { name: 'Upload' });
+    const cropperUpload = page.locator('[data-testid="cropper-upload"]');
     await expect(cropperUpload).toBeVisible({ timeout: 10_000 });
     await cropperUpload.click();
 
@@ -219,8 +217,7 @@ test.describe('User Profile', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // The cover image uploader also has a camera button — it's in the cover area
-    const coverWrap = page.locator('[class*="cover"]').first();
+    const coverWrap = page.locator('[data-testid="profile-cover"]');
     const cameraBtn = coverWrap.locator('button:has(i.fa-camera)').first();
     await expect(cameraBtn).toBeVisible({ timeout: 5_000 });
     await cameraBtn.click();
@@ -228,10 +225,12 @@ test.describe('User Profile', () => {
     const uploadBtn = page.getByText('Upload New Picture').first();
     await expect(uploadBtn).toBeVisible({ timeout: 5_000 });
 
-    const fileInput = page.locator('input[type="file"][accept*="image"]').first();
+    // Set file via the cover uploader's file input (scoped to avoid avatar uploader)
+    const fileInput = coverWrap.locator('input[type="file"]');
     await fileInput.setInputFiles(getAssetPath('test-cover.png'));
 
-    const cropperUpload = page.getByRole('button', { name: 'Upload' });
+    // Cropper should appear with Upload button
+    const cropperUpload = page.locator('[data-testid="cropper-upload"]');
     await expect(cropperUpload).toBeVisible({ timeout: 10_000 });
     await cropperUpload.click();
 
@@ -320,8 +319,8 @@ test.describe('User Profile', () => {
     // Data should still be there
     await expect(page.getByText('Persist Test Name').first()).toBeVisible({ timeout: 10_000 });
 
-    const fieldRow = page.locator('div').filter({ has: page.locator('span', { hasText: 'Gender' }) });
-    await expect(fieldRow.getByText('Female')).toBeVisible({ timeout: 5_000 });
+    const genderRow = page.locator('[data-testid="field-gender"]');
+    await expect(genderRow.getByText('Female')).toBeVisible({ timeout: 5_000 });
 
     // Restore
     await api.updateProfile(request, token, {

@@ -343,6 +343,7 @@ export default function ProfileImageCropper({ imageFile, onCropComplete, onCance
           onClick={handleCrop}
           disabled={!imageLoaded}
           className={`${styles.uploadButton} ${isDark ? styles.dark : styles.light}`}
+          data-testid="cropper-upload"
         >
           Upload
         </button>

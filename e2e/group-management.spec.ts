@@ -70,48 +70,59 @@ test.describe('Group Management', () => {
   test('promote member to admin and demote back', async ({ userAPage, request }) => {
     const { tokenA, tokenB, userBId } = await setup(request);
 
-    // Create group via API
     const groupName = `Promote Test ${ts()}`;
     const data = await api.createGroup(request, tokenA, groupName, [userBId]);
     const groupId = data.group?.id;
     if (!groupId) { test.skip(); return; }
 
-    // Accept invite as user B
-    await request.post(`${API}/api/groups/${groupId}/accept`, {
+    const acceptRes = await request.post(`${API}/api/groups/${groupId}/accept`, {
       headers: { Authorization: `Bearer ${tokenB}` },
     });
+    expect(acceptRes.ok()).toBeTruthy();
 
-    // Navigate to groups and open the group
+    // Verify member is accepted before proceeding
+    const groupDetail = await request.get(`${API}/api/groups/${groupId}`, {
+      headers: { Authorization: `Bearer ${tokenA}` },
+    });
+    const members = (await groupDetail.json()).group?.members;
+    const bMember = members?.find((m: any) => m.userId === userBId);
+    expect(bMember).toBeTruthy();
+
     await userAPage.goto('/app/groups');
     await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
     await userAPage.getByText(groupName).click();
 
-    // Open group profile panel
+    // Wait for group chat panel to open, then click title to open profile
     const panelTitle = userAPage.locator('.auth-panel-title').last();
     await expect(panelTitle).toBeVisible({ timeout: 5_000 });
+    await userAPage.waitForTimeout(500);
     await panelTitle.click();
 
-    // Find and click Actions for the member
+    // Wait for the group profile panel to render members
     const profilePanel = userAPage.locator('.auth-panel').last();
     const actionBtns = profilePanel.getByTitle('Actions');
     await expect(actionBtns.first()).toBeVisible({ timeout: 10_000 });
     await actionBtns.last().click();
 
-    // Click Make Admin
+    // Click Make Admin in the bottom sheet
     const makeAdmin = userAPage.getByText('Make Admin').first();
     await expect(makeAdmin).toBeVisible({ timeout: 5_000 });
     await makeAdmin.click();
 
-    // Confirm in dialog
-    const confirmBtn = userAPage.getByRole('button', { name: 'Make Admin' });
-    await expect(confirmBtn).toBeVisible({ timeout: 5_000 });
+    // Confirm in the dialog — scope to the alertdialog to avoid matching the bottom sheet button
+    const dialog = userAPage.locator('[role="alertdialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5_000 });
+    const confirmBtn = dialog.getByRole('button', { name: 'Make Admin' });
     await confirmBtn.click();
 
+    // Wait for promotion to process
+    await userAPage.waitForTimeout(1000);
+
     // Verify via API
-    let detail = await request.get(`${API}/api/groups/${groupId}`, {
+    const detail = await request.get(`${API}/api/groups/${groupId}`, {
       headers: { Authorization: `Bearer ${tokenA}` },
     });
-    let memberRole = (await detail.json()).group?.members?.find((m: any) => m.userId === userBId)?.role;
+    const memberRole = (await detail.json()).group?.members?.find((m: any) => m.userId === userBId)?.role;
     expect(memberRole).toBe('admin');
 
     // Cleanup

@@ -11,7 +11,6 @@ const TEST_REG_USER = {
   username: `e2ereg${TS}`,
   firstName: 'E2E',
   lastName: 'Registrant',
-  phoneNumber: '+447940147138',
   gender: 'male',
 };
 
@@ -71,13 +70,18 @@ test.describe('User Registration', () => {
   test('register via browser UI panel', async ({ page }) => {
     await page.goto('/');
 
-    // Open avatar dropdown and click Register
-    await page.getByLabel('User menu').click();
-    await expect(page.getByText('Register')).toBeVisible({ timeout: 5_000 });
-    await page.getByText('Register').click();
+    // Open register panel — desktop uses avatar dropdown, mobile uses hamburger
+    const userMenu = page.getByLabel('User menu');
+    if (await userMenu.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await userMenu.click();
+      await page.getByText('Register').click();
+    } else {
+      await page.locator('button[class*="hamburger"]').click();
+      await page.getByRole('button', { name: /Register/i }).click();
+    }
 
     // Auth panel should show registration form
-    await expect(page.getByText('Create Account')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible({ timeout: 5_000 });
 
     // Fill registration form
     const ts2 = Date.now();

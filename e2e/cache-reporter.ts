@@ -11,6 +11,7 @@ interface CachedTest {
   duration: number;
   retries: number;
   project?: string;
+  error?: string;
 }
 
 interface CachedSuite {
@@ -39,13 +40,19 @@ class CacheReporter implements Reporter {
     const retries = result.retry;
     const project = test.parent?.project()?.name;
 
+    let error: string | undefined;
+    if (status === 'failed' && result.errors?.length) {
+      error = result.errors.map(e => e.message || e.stack || '').filter(Boolean).join('\n---\n').slice(0, 2000) || undefined;
+    }
+
     const existing = suite.tests.find(t => t.name === test.title && t.project === project);
     if (existing) {
       existing.retries = Math.max(existing.retries, retries);
       existing.status = status;
       existing.duration = result.duration;
+      if (error) existing.error = error;
     } else {
-      suite.tests.push({ name: test.title, status, duration: result.duration, retries, project: project || undefined });
+      suite.tests.push({ name: test.title, status, duration: result.duration, retries, project: project || undefined, error });
     }
 
     suite.duration += result.duration;
@@ -80,10 +87,6 @@ class CacheReporter implements Reporter {
 
     try {
       fs.mkdirSync(CACHE_DIR, { recursive: true });
-      const existing = fs.existsSync(CACHE_FILE)
-        ? JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'))
-        : null;
-      if (existing?.summary?.total > 0 && total < existing.summary.total * 0.5) return;
       fs.writeFileSync(CACHE_FILE, JSON.stringify(report));
     } catch { /* best-effort */ }
   }

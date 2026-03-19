@@ -367,6 +367,34 @@ function groupResultsBySuite(results: D[]): D[] {
   return Array.from(map.values());
 }
 
+function RunningBanner({ live, startedAt }: { live: D; startedAt: number }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!startedAt) return;
+    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  const completed = live?.liveSummary?.completed || 0;
+  const passed = live?.liveSummary?.passed || 0;
+  const failed = live?.liveSummary?.failed || 0;
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  return (
+    <div style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.1rem', color: '#a855f7' }} />
+      <div style={{ flex: 1, fontSize: '0.85rem' }}>
+        <strong style={{ color: '#a855f7' }}>Tests running</strong>
+        <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>
+          {completed > 0 ? `${completed} completed (${passed} passed, ${failed} failed)` : 'Starting...'} &middot; {timeStr}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function LiveE2EFeed({ live, color = '#a855f7', expandAll = false }: { live: D; color?: string; expandAll?: boolean }) {
   const results: D[] = live.liveResults || [];
   const suites = groupResultsBySuite(results);
@@ -375,7 +403,7 @@ function LiveE2EFeed({ live, color = '#a855f7', expandAll = false }: { live: D; 
       <LiveSummaryBar live={live} color={color} />
       <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
         {suites.map((suite: D) => (
-          <SuiteRow key={`${suite.file}-${expandAll}`} suite={suite} defaultOpen={expandAll} />
+          <SuiteRow key={`${suite.file}-${expandAll}`} suite={suite} defaultOpen={expandAll} autoExpandFailed />
         ))}
       </div>
     </div>
@@ -404,10 +432,55 @@ function FilterPills({ options, value, onChange }: { options: { id: string; labe
   );
 }
 
-function SuiteRow({ suite, area, defaultOpen = false }: { suite: D; area?: string; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
-  useEffect(() => { setOpen(defaultOpen); }, [defaultOpen]);
+function FailableTestRow({ t, retries, attempt }: { t: D; retries: number; attempt: number }) {
+  const [errorOpen, setErrorOpen] = useState(false);
+  const hasFailed = t.status === 'failed';
+  const hasError = hasFailed && t.error;
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', padding: '2px 0', cursor: hasError ? 'pointer' : 'default' }}
+        onClick={() => { if (hasError) setErrorOpen(p => !p); }}>
+        <i className={`fas fa-${hasFailed ? 'xmark' : 'check'}`}
+          style={{ color: hasFailed ? '#ef4444' : '#10b981', fontSize: '0.6rem', width: 10 }} />
+        <span style={{ flex: 1, color: hasFailed ? '#fca5a5' : 'var(--text-secondary)' }}>{t.name}</span>
+        {retries > 0 && (
+          <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3,
+            background: t.status === 'passed' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
+            color: t.status === 'passed' ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
+            ↻ attempt {attempt}/3 {t.status === 'passed' ? '· flaky' : '· failed'}
+          </span>
+        )}
+        {retries === 0 && hasFailed && (
+          <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3,
+            background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontWeight: 600 }}>
+            1/3
+          </span>
+        )}
+        <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
+          {fmtMs(t.duration || 0)}
+        </span>
+        {hasError && <i className={`fas fa-chevron-${errorOpen ? 'up' : 'down'}`} style={{ fontSize: '0.45rem', color: '#ef4444', width: 10 }} />}
+      </div>
+      {errorOpen && hasError && (
+        <pre style={{
+          margin: '2px 0 6px 16px', padding: '8px 10px', borderRadius: 6,
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+          fontSize: '0.65rem', lineHeight: 1.5, color: '#fca5a5',
+          whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 300, overflowY: 'auto',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        }}>
+          {t.error}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+function SuiteRow({ suite, area, defaultOpen = false, autoExpandFailed = false }: { suite: D; area?: string; defaultOpen?: boolean; autoExpandFailed?: boolean }) {
   const allPassed = suite.tests.every((t: D) => t.status === 'passed');
+  const shouldOpen = defaultOpen || (autoExpandFailed && !allPassed);
+  const [open, setOpen] = useState(shouldOpen);
+  useEffect(() => { setOpen(shouldOpen); }, [shouldOpen]);
   const hasFlaky = suite.tests.some((t: D) => (t.retries || 0) > 0 && t.status === 'passed');
   const hasRetriedFailures = suite.tests.some((t: D) => (t.retries || 0) > 0 && t.status === 'failed');
   const projects = [...new Set(suite.tests.map((t: D) => t.project).filter(Boolean))];
@@ -436,27 +509,7 @@ function SuiteRow({ suite, area, defaultOpen = false }: { suite: D; area?: strin
             const retries = t.retries || 0;
             const attempt = retries + 1;
             return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', padding: '2px 0' }}>
-                <i className={`fas fa-${t.status === 'passed' ? 'check' : 'xmark'}`}
-                  style={{ color: t.status === 'passed' ? '#10b981' : '#ef4444', fontSize: '0.6rem', width: 10 }} />
-                <span style={{ flex: 1, color: t.status === 'passed' ? 'var(--text-secondary)' : '#fca5a5' }}>{t.name}</span>
-                {retries > 0 && (
-                  <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3,
-                    background: t.status === 'passed' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)',
-                    color: t.status === 'passed' ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
-                    ↻ attempt {attempt}/3 {t.status === 'passed' ? '· flaky' : '· failed'}
-                  </span>
-                )}
-                {retries === 0 && t.status === 'failed' && (
-                  <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3,
-                    background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontWeight: 600 }}>
-                    1/3
-                  </span>
-                )}
-                <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>
-                  {fmtMs(t.duration || 0)}
-                </span>
-              </div>
+              <FailableTestRow key={i} t={t} retries={retries} attempt={attempt} />
             );
           })}
         </div>
@@ -544,6 +597,7 @@ export default function DashboardPage() {
 
   const pwRef = useRef(testPassword);
   pwRef.current = testPassword;
+  const runStartedAtRef = useRef<number>(0);
 
   const getTestHeaders = useCallback((pw?: string) => {
     const h: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -593,7 +647,8 @@ export default function DashboardPage() {
       setE2eRunning(true);
       setE2eFilter('all');
       setE2eLive(null);
-      setE2eReport(null);
+      runStartedAtRef.current = Date.now();
+      if (!failedOnly) setE2eReport(null);
       try { localStorage.removeItem('chatr_dash_tests_e2e'); } catch { /* ignore */ }
       fetch(`${API}/api/dashboard/tests/e2e/run`, {
         method: 'POST',
@@ -634,11 +689,17 @@ export default function DashboardPage() {
     if (!e2eRunning) return;
     let noneCount = 0;
     let errorCount = 0;
+    let seenRunning = false;
+    const GRACE_MS = 10_000;
     const id = setInterval(() => {
       fetch(`${API}/api/dashboard/tests/e2e`)
         .then(r => r.ok ? r.json() : Promise.reject(''))
         .then(d => {
+          const elapsed = Date.now() - runStartedAtRef.current;
           if (d.status === 'ready') {
+            // Ignore stale 'ready' responses during grace period —
+            // the POST may not have reached the backend yet
+            if (!seenRunning && elapsed < GRACE_MS) return;
             setE2eReport(d);
             setE2eRunning(false);
             setE2eLive(null);
@@ -652,10 +713,13 @@ export default function DashboardPage() {
             }
             console.warn('[Dashboard] E2E run error:', d.error);
           } else if (d.status === 'running') {
+            seenRunning = true;
             setE2eLive(d);
             noneCount = 0;
             errorCount = 0;
           } else {
+            // Ignore 'none' during grace period too
+            if (!seenRunning && elapsed < GRACE_MS) return;
             noneCount++;
             if (noneCount >= 15) { setE2eRunning(false); setE2eLive(null); }
           }
@@ -723,7 +787,10 @@ export default function DashboardPage() {
         if (d.status === 'ready' && d.summary?.total > 0) {
           setReport(d);
           try { localStorage.setItem(LS_KEY_PREFIX + area, JSON.stringify(d)); } catch { /* ignore */ }
-        } else if (d.status === 'running') { setRunning(true); setLive(d); }
+        } else if (d.status === 'running') {
+          setRunning(true); setLive(d);
+          if (area === 'e2e' && d.startedAt) runStartedAtRef.current = d.startedAt;
+        }
         else if (d.status === 'none') {
           try { localStorage.removeItem(LS_KEY_PREFIX + area); } catch { /* ignore */ }
         }
@@ -1972,21 +2039,19 @@ export default function DashboardPage() {
             )}
 
             {e2eRunning && (
-              filteredLiveResults.length > 0 ? (
-                <LiveE2EFeed expandAll={activeFilter === 'failed' || activeFilter === 'flaky' || activeFilter === 'retried'} live={{ ...e2eLive, liveResults: filteredLiveResults, liveSummary: { completed: filteredLiveResults.length, passed: filteredLiveResults.filter((t: D) => t.status === 'passed').length, failed: filteredLiveResults.filter((t: D) => t.status === 'failed').length, retrying: filteredLiveResults.filter((t: D) => (t.retries || 0) > 0).length } }} />
-              ) : e2eLive?.liveResults?.length > 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  No results match the current filter.
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                  <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.5rem', display: 'block', marginBottom: 8 }} />
-                  Starting E2E tests...
-                </div>
-              )
+              <>
+                <RunningBanner live={e2eLive} startedAt={runStartedAtRef.current} />
+                {filteredLiveResults.length > 0 ? (
+                  <LiveE2EFeed expandAll={activeFilter === 'failed' || activeFilter === 'flaky' || activeFilter === 'retried'} live={{ ...e2eLive, liveResults: filteredLiveResults, liveSummary: { completed: filteredLiveResults.length, passed: filteredLiveResults.filter((t: D) => t.status === 'passed').length, failed: filteredLiveResults.filter((t: D) => t.status === 'failed').length, retrying: filteredLiveResults.filter((t: D) => (t.retries || 0) > 0).length } }} />
+                ) : e2eLive?.liveResults?.length > 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    No results match the current filter.
+                  </div>
+                ) : null}
+              </>
             )}
 
-            {e2eReport && !e2eRunning && (
+            {e2eReport && (
               <div>
                 <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ textAlign: 'center' }}>
@@ -2045,7 +2110,7 @@ export default function DashboardPage() {
 
                 <div style={{ ...SCROLLBOX, maxHeight: 400 }}>
                   {filteredE2ESuites.map((suite: D) => (
-                    <SuiteRow key={`${suite.file}-${activeFilter}`} suite={suite} defaultOpen={activeFilter === 'failed' || activeFilter === 'flaky' || activeFilter === 'retried'} />
+                    <SuiteRow key={`${suite.file}-${activeFilter}`} suite={suite} defaultOpen={activeFilter === 'failed' || activeFilter === 'flaky' || activeFilter === 'retried'} autoExpandFailed />
                   ))}
                 </div>
 

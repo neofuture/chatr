@@ -299,6 +299,7 @@ export default function CoverImageCropper({ imageFile, onCropComplete, onCancel,
           onClick={handleCrop}
           disabled={!imageLoaded}
           className={`${styles.uploadButton} ${isDark ? styles.dark : styles.light}`}
+          data-testid="cropper-upload"
         >
           Upload
         </button>

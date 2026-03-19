@@ -102,10 +102,10 @@ export default function MyProfilePanel() {
     <div className={styles.page}>
       {/* Hero */}
       <div className={styles.hero}>
-        <div className={styles.cover}>
+        <div className={styles.cover} data-testid="profile-cover">
           <CoverImageUploader userId={userId} isDark={isDark} />
         </div>
-        <div className={styles.avatarWrap}>
+        <div className={styles.avatarWrap} data-testid="profile-avatar">
           <ProfileImageUploader userId={userId} isDark={isDark} />
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function MyProfilePanel() {
             <InlineField label="Display name" field="displayName" value={user.displayName || ''} placeholder="Add a display name" onSave={saveField} />
             <InlineField label="First name" field="firstName" value={user.firstName || ''} placeholder="Add your first name" onSave={saveField} />
             <InlineField label="Last name" field="lastName" value={user.lastName || ''} placeholder="Add your last name" onSave={saveField} />
-            <div className={styles.fieldRow}>
+            <div className={styles.fieldRow} data-testid="field-gender">
               <span className={styles.fieldLabel}>Gender</span>
               <GenderSelect value={user.gender || ''} options={GENDER_OPTIONS} genderLabel={genderLabel} onSave={saveField} />
             </div>
@@ -190,7 +190,7 @@ function InlineField({ label, field, value, placeholder, onSave }: {
   };
 
   return (
-    <div className={styles.fieldRow}>
+    <div className={styles.fieldRow} data-testid={`field-${field}`}>
       <span className={styles.fieldLabel}>{label}</span>
       {editing ? (
         <div className={styles.fieldEdit}>
@@ -223,14 +223,23 @@ function GenderSelect({ value, options, genderLabel, onSave }: {
   onSave: (updates: Record<string, any>) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState(value);
   const selectRef = useRef<HTMLSelectElement>(null);
+  const savingRef = useRef(false);
 
+  useEffect(() => { setSelected(value); }, [value]);
   useEffect(() => { if (editing && selectRef.current) selectRef.current.focus(); }, [editing]);
 
-  const save = async (newVal: string) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (savingRef.current) return;
+    const newVal = e.target.value;
+    setSelected(newVal);
+    savingRef.current = true;
     setEditing(false);
-    if (newVal === value) return;
-    await onSave({ gender: newVal || null });
+    if (newVal !== value) {
+      await onSave({ gender: newVal || null });
+    }
+    savingRef.current = false;
   };
 
   return editing ? (
@@ -239,9 +248,9 @@ function GenderSelect({ value, options, genderLabel, onSave }: {
         <select
           ref={selectRef}
           className={styles.fieldSelect}
-          defaultValue={value}
-          onChange={e => save(e.target.value)}
-          onBlur={() => setEditing(false)}
+          value={selected}
+          onChange={handleChange}
+          onBlur={() => { if (!savingRef.current) setEditing(false); }}
         >
           {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>

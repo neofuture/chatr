@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.0.152 — 2026-03-19
+
+**Commit:** `8d96ebc` — fix: E2E test reliability + dashboard live progress
+
+---
+
 ## v0.0.151 — 2026-03-19
 
 **Commit:** `f48e96d` — feat: docs light mode, settings to burger menu, compact theme toggle, Luna changelog, full version history
@@ -12,6 +18,28 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 - Move settings to the burger menu for easier access and navigation.
 - Introduce a compact theme toggle for enhanced user customization.
 - Update the changelog to include full version history for better tracking of changes.
+
+---
+
+## v0.0.150 — 2026-03-19
+
+**Commit:** `6720fd4` — docs: add changelog, update docs for auth panel, profile, E2E, and socketFirst changes
+
+- Created comprehensive changelog with full version history from v0.0.1 to v0.0.149
+- Updated AuthPanel, Backend Routes, Authentication, Testing, Architecture, and Frontend documentation
+- Added auto-generated changelog entry via post-commit hook
+- Added Settings to bottom navigation menu
+
+---
+
+## v0.0.150 — 2026-03-19
+
+**Commit:** `6720fd4` — docs: add changelog, update docs for auth panel, profile, E2E, and socketFirst changes
+
+- Created initial changelog with version history from v0.0.1 to v0.0.149
+- Updated documentation for AuthPanel, backend routes, authentication flow, and testing
+- Added auto-generated changelog entries via post-commit hook
+- Added Settings to bottom navigation menu
 
 ---
 
