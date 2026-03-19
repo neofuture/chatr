@@ -168,7 +168,13 @@ Phone numbers are stored in E.164 format (e.g. `+447911123456`). The `validatePh
 
 ---
 
-## Token Storage (Frontend)
+## Frontend Authentication Flow
+
+There are no dedicated `/login` or `/register` routes. All authentication is handled by the `AuthPanel` slide-in panel, accessible from the `SiteNav` avatar dropdown or via the `chatr:open-auth` custom event.
+
+The default login verification method is **email** (changed from SMS). Users can toggle between email and SMS verification in the login form.
+
+### Token Storage
 
 Tokens are stored in `localStorage`:
 
@@ -177,6 +183,8 @@ localStorage.setItem('token', token);
 localStorage.setItem('user', JSON.stringify(user));
 ```
 
-The `useAuth` hook reads these on mount and provides `login()` and `logout()` helpers. `AppLayout` enforces the presence of both before rendering protected routes.
+On successful login, the `AuthPanel` dispatches a `chatr:auth-changed` custom event so that `SiteNav` and other components update their UI immediately without requiring a page reload.
+
+`AppLayout` enforces the presence of both `token` and `user` in `localStorage` before rendering protected `/app/*` routes.
 
 WebSocketContext reads the token from `localStorage` and passes it as `auth.token` in the Socket.io handshake. If the token is absent or invalid, the connection is skipped or rejected.

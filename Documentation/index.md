@@ -29,6 +29,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | [Deployment](./Getting-Started/Deployment.md) | AWS infrastructure, deploy script |
 | [Getting Started](./Getting-Started/Local_Setup.md) | Local development setup |
 | [Testing](./Testing/index.md) | Test suite, Jest config, coverage |
+| [Changelog](./Versions/CHANGELOG.md) | Version history and release notes |
 
 ## Quick Reference
 
@@ -45,6 +46,10 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 
 ## Recent Additions
 
+- **Auth Panel Login/Register**: Dedicated `/login` and `/register` routes removed; all authentication now uses the `AuthPanel` slide-in panel from the SiteNav avatar dropdown
+- **Profile Management Overhaul**: Profile panel fetches fresh data on every view (multi-device support), uses direct HTTP instead of socketFirst, and shows save status indicators
+- **socketFirst Reliability**: All contexts and hooks now gate WebSocket RPC calls on `connected` state, eliminating timeout cascades
+- **E2E Test Coverage**: New registration and profile E2E tests covering user creation, email verification, display name, gender, avatar/cover image uploads, and data persistence
 - **Image/Video Captions**: File uploads accept an optional `caption` field — text displayed above the media in the chat bubble
 - **Resend Verification**: Users can resend email/SMS verification codes during login and registration
 - **Developer Dashboard Metrics**: Code churn (hot files), commit streaks, lines added/deleted, stale files, code ownership per contributor, bundle size, branch/tag counts, untested components, Prisma schema complexity

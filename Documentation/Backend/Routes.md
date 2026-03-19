@@ -131,9 +131,29 @@ See [File Upload](./File_Upload.md) for full detail.
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/` | ❌ | Full developer dashboard (git stats, LOC, architecture, health gauges, code churn, commit streaks, code ownership, stale files, untested components, Prisma complexity, contribution heatmap) |
-| `POST` | `/invalidate` | ❌ | Force-clear the 30-second dashboard cache |
+| `POST` | `/invalidate` | ❌ | Force-clear the 5-minute dashboard cache |
 
-The dashboard endpoint runs multiple `git` commands (`log`, `branch`, `tag`, `diff`), reads the filesystem (`du`, `find`, `wc`), and parses `schema.prisma` to build a comprehensive project metrics payload. Results are cached in-memory for 30 seconds.
+The dashboard endpoint runs multiple `git` commands (`log`, `branch`, `tag`, `diff`), reads the filesystem (`du`, `find`, `wc`), and parses `schema.prisma` to build a comprehensive project metrics payload. Results are cached in-memory for 5 minutes.
+
+---
+
+## Test Cleanup Routes — `/api/test`
+
+These endpoints are only available when the server is running in test mode (enabled via `POST /api/test/enable`). They are used by E2E tests to manage test data.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/enable` | ❌ | Enable test mode |
+| `POST` | `/disable` | ❌ | Disable test mode |
+| `POST` | `/cleanup` | ❌ | Clean up test groups and messages for a specific user |
+| `POST` | `/cleanup-all` | ❌ | Aggressive cleanup of all groups matching E2E prefixes |
+| `DELETE` | `/user/:userId` | ❌ | Delete a test user and all related data (messages, groups, friendships, conversations) |
+
+### Contact Route — `/api/contact`
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/contact` | ❌ | Submit a contact form message (stored in database) |
 
 ---
 

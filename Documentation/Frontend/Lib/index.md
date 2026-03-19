@@ -143,6 +143,45 @@ import { getCoverImageURL, uploadCoverImage } from '@/lib/coverImageService';
 
 ---
 
+## `socketRPC.ts`
+
+WebSocket-first API utility. Attempts a Socket.io RPC call first, then falls back to REST if the socket is not connected or times out.
+
+```typescript
+import { socketFirst } from '@/lib/socketRPC';
+
+const result = await socketFirst(socket, 'event:name', payload, {
+  method: 'GET',
+  path: '/api/fallback',
+  token,
+});
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `socket` | Socket.io instance (from `useWebSocket()`) |
+| Event name | The socket event to emit |
+| Payload | Data sent with the event |
+| HTTP fallback | REST method, path, and token for when the socket is unavailable |
+
+**Timeouts:**
+- Socket RPC: 4 seconds
+- HTTP fallback: 15 seconds (via `AbortController`)
+
+**Important:** All hooks and contexts that use `socketFirst` must guard calls with the `connected` boolean from `useWebSocket()` to prevent premature HTTP fallbacks when the socket is still connecting.
+
+---
+
+## `messageCache.ts`
+
+IndexedDB-backed message cache for conversation history. Stores and retrieves messages per conversation to reduce server round-trips.
+
+```typescript
+import { getCachedMessages, cacheMessages, clearConversationCache } from '@/lib/messageCache';
+```
+
+---
+
 ## See Also
 
 - [useOfflineSync hook](../Hooks/useOfflineSync.md)

@@ -17,7 +17,7 @@ graph TD
 
     app --> apphome["/app — Chats + Message Requests"]
     app --> friends["/app/friends — Friend management"]
-    app --> settings["/app/settings — Profile, Cover, 2FA"]
+    app --> settings["/app/settings — Profile, Cover"]
     app --> groups["/app/groups — Group chat"]
     app --> updates["/app/updates — Changelog"]
     app --> test["/app/test — Dev Test Lab"]

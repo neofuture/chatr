@@ -7,6 +7,7 @@
 | Test runner | Jest |
 | Frontend component tests | React Testing Library |
 | Backend integration tests | Supertest |
+| E2E tests | Playwright (Chromium + Mobile) |
 | Coverage | Jest built-in |
 | DOM environment | jest-environment-jsdom |
 
@@ -187,3 +188,62 @@ graph LR
 - Emoji reactions, edit, unsend, reply
 
 This page is only accessible to authenticated users and is not linked from the main navigation.
+
+---
+
+## E2E Tests (Playwright)
+
+Located in `e2e/`. Tests run against a live dev server with Chromium and a mobile viewport.
+
+### Running E2E Tests
+
+```bash
+# All E2E tests
+npx playwright test
+
+# Specific test file
+npx playwright test registration.spec.ts
+npx playwright test profile.spec.ts
+
+# With UI mode
+npx playwright test --ui
+
+# From the dashboard
+# Click "Run E2E Tests" on the developer dashboard
+```
+
+### Test Files
+
+| File | Description |
+|------|-------------|
+| `auth.spec.ts` | Login and authentication via AuthPanel |
+| `registration.spec.ts` | User registration (API + browser UI panel) |
+| `profile.spec.ts` | Profile management — display name, names, gender, avatar, cover image, data persistence |
+| `dm-messaging.spec.ts` | Direct message send and receive |
+| `messaging.spec.ts` | Real-time messaging — user search, message delivery |
+| `group-management.spec.ts` | Group CRUD — create, invite, join, leave |
+| `group-messaging.spec.ts` | Group message send and receive |
+| `group-profile.spec.ts` | Group profile editing |
+| `sockets.spec.ts` | WebSocket connection and events |
+
+### Global Setup and Teardown
+
+- **Global setup** (`e2e/global-setup.ts`): Enables test mode, runs `cleanup-all`, authenticates test users A and B
+- **Global teardown** (`e2e/global-teardown.ts`): Cleans up test groups and disables test mode
+
+### Test Helpers
+
+| Helper | File | Description |
+|--------|------|-------------|
+| `browserLogin` | `e2e/helpers/auth.ts` | Log in via the AuthPanel UI with bypass OTP |
+| `registerUser` | `e2e/helpers/api.ts` | Register a user via the API |
+| `verifyEmail` | `e2e/helpers/api.ts` | Verify email with bypass OTP code |
+| `deleteUser` | `e2e/helpers/api.ts` | Delete a test user and all related data |
+| `getMe` | `e2e/helpers/api.ts` | Fetch the authenticated user's profile |
+
+### Test Mode
+
+The backend supports a test mode that:
+- Accepts a bypass OTP code (`000000`) for all verification
+- Exposes cleanup endpoints for test data removal
+- Can be enabled/disabled via `POST /api/test/enable` and `POST /api/test/disable`

@@ -198,7 +198,7 @@ graph TD
     backend --> bsrc["src/"]
     bsrc --> bindexts["index.ts<br/>Express + Socket.io entry"]
     bsrc --> bmiddleware["middleware/<br/>auth.ts — JWT"]
-    bsrc --> broutes["routes/<br/>auth · users · messages<br/>friends · conversations<br/>groups · file-upload · email-templates · dashboard"]
+    bsrc --> broutes["routes/<br/>auth · users · messages<br/>friends · conversations<br/>groups · file-upload · email-templates<br/>dashboard · contact · test-cleanup"]
     bsrc --> bsocket["socket/<br/>handlers.ts — events + presence"]
     bsrc --> blib["lib/<br/>redis.ts · conversation.ts"]
     bsrc --> bservices["services/<br/>email · sms · waveform"]
