@@ -1,7 +1,23 @@
 import type { Page, APIRequestContext } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 const API = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
 const BYPASS_CODE = process.env.TEST_OTP_BYPASS || '000000';
+
+/**
+ * Read token and userId from a storage-state file written by global-setup.
+ * Avoids calling apiLogin (and its cookie side-effects) in test code.
+ */
+export function readStoredAuth(user: 'a' | 'b') {
+  const statePath = path.join(__dirname, '..', '.auth', `user-${user}.json`);
+  const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+  const origin = state.origins?.find((o: any) => o.origin.includes('localhost'));
+  return {
+    token: origin?.localStorage?.find((e: any) => e.name === 'token')?.value as string,
+    userId: JSON.parse(origin?.localStorage?.find((e: any) => e.name === 'user')?.value || '{}').id as string,
+  };
+}
 
 export interface TestUser {
   email: string;
@@ -25,35 +41,43 @@ export const TEST_USERS = {
 /**
  * Log in via the API (no browser needed) and return { token, user }.
  * Uses the TEST_OTP_BYPASS code to skip real OTP delivery.
+ * Uses longer timeouts to handle parallel test load.
  */
-export async function apiLogin(request: APIRequestContext, user: TestUser, retries = 2): Promise<{ token: string; user: Record<string, any> }> {
+export async function apiLogin(request: APIRequestContext, user: TestUser, retries = 3): Promise<{ token: string; user: Record<string, any> }> {
+  const timeout = 30_000;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const step1 = await request.post(`${API}/api/auth/login`, {
-        data: { email: user.email, password: user.password },
-      });
-      const body1 = await step1.json();
-
-      if (body1.token) return body1;
-
-      if (!body1.requiresLoginVerification && !body1.userId) {
-        throw new Error(`Login step 1 failed: ${JSON.stringify(body1)}`);
-      }
-
-      const step2 = await request.post(`${API}/api/auth/login`, {
+      // Send bypass code upfront so the backend test-mode fast-path
+      // returns a token in a single round-trip.
+      const res = await request.post(`${API}/api/auth/login`, {
         data: {
           email: user.email,
           password: user.password,
           loginVerificationCode: BYPASS_CODE,
         },
+        timeout,
       });
-      const body2 = await step2.json();
+      const body = await res.json();
 
-      if (!body2.token) {
+      if (body.token) return body;
+
+      // Bypass didn't fire (test mode may not be enabled yet) — fall back
+      // to the 2-step flow for non-test-mode compatibility.
+      if (body.requiresLoginVerification || body.userId) {
+        const step2 = await request.post(`${API}/api/auth/login`, {
+          data: {
+            email: user.email,
+            password: user.password,
+            loginVerificationCode: BYPASS_CODE,
+          },
+          timeout,
+        });
+        const body2 = await step2.json();
+        if (body2.token) return body2;
         throw new Error(`Login step 2 failed: ${JSON.stringify(body2)}`);
       }
 
-      return body2 as { token: string; user: Record<string, any> };
+      throw new Error(`Login failed: ${JSON.stringify(body)}`);
     } catch (err) {
       if (attempt === retries) throw err;
       await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));

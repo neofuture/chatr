@@ -1,5 +1,5 @@
 import { test as teardown, request } from '@playwright/test';
-import { apiLogin, TEST_USERS } from './helpers/auth';
+import { readStoredAuth } from './helpers/auth';
 import * as api from './helpers/api';
 
 /**
@@ -17,12 +17,12 @@ teardown('cleanup', async () => {
   const ctx = await request.newContext({ baseURL: API });
 
   try {
-    const resultA = await apiLogin(ctx, TEST_USERS.userA);
-    const resultB = await apiLogin(ctx, TEST_USERS.userB);
-    const tokenA = resultA.token;
-    const tokenB = resultB.token;
-    const userAId = resultA.user.id;
-    const userBId = resultB.user.id;
+    const storedA = readStoredAuth('a');
+    const storedB = readStoredAuth('b');
+    const tokenA = storedA.token;
+    const tokenB = storedB.token;
+    const userAId = storedA.userId;
+    const userBId = storedB.userId;
 
     // ── Surgically delete test messages via pattern-matching endpoint ───
     await api.cleanupTestData(ctx, tokenA, userBId).catch(() => {});

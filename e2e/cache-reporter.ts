@@ -24,6 +24,8 @@ interface CachedSuite {
 class CacheReporter implements Reporter {
   private suiteMap = new Map<string, CachedSuite>();
   private startTime = 0;
+  private lastFlush = 0;
+  private flushInterval = 2000; // Flush every 2 seconds at most
 
   onBegin(_config: FullConfig, _suite: Suite) {
     this.startTime = Date.now();
@@ -57,9 +59,16 @@ class CacheReporter implements Reporter {
 
     suite.duration += result.duration;
     if (status === 'failed') suite.status = 'failed';
+
+    // Flush to disk periodically for live updates
+    const now = Date.now();
+    if (now - this.lastFlush > this.flushInterval) {
+      this.flush();
+      this.lastFlush = now;
+    }
   }
 
-  onEnd(result: FullResult) {
+  private flush() {
     const INFRA_PROJECTS = new Set(['setup', 'teardown']);
     const elapsed = Date.now() - this.startTime;
     const suites = Array.from(this.suiteMap.values())
@@ -67,8 +76,8 @@ class CacheReporter implements Reporter {
 
     let total = 0, passed = 0, failed = 0, flaky = 0, totalDuration = 0;
     for (const s of suites) {
-      s.tests = s.tests.filter(t => !INFRA_PROJECTS.has(t.project || ''));
-      for (const t of s.tests) {
+      const filteredTests = s.tests.filter(t => !INFRA_PROJECTS.has(t.project || ''));
+      for (const t of filteredTests) {
         total++;
         if (t.status === 'passed') passed++; else failed++;
         if (t.retries > 0 && t.status === 'passed') flaky++;
@@ -81,7 +90,7 @@ class CacheReporter implements Reporter {
     const report = {
       generatedAt: new Date().toISOString(),
       summary: { total, passed, failed, flaky, suites: suites.length, duration: totalDuration, elapsed },
-      suites,
+      suites: suites.map(s => ({ ...s, tests: s.tests.filter(t => !INFRA_PROJECTS.has(t.project || '')) })),
       coverage: null,
     };
 
@@ -89,6 +98,11 @@ class CacheReporter implements Reporter {
       fs.mkdirSync(CACHE_DIR, { recursive: true });
       fs.writeFileSync(CACHE_FILE, JSON.stringify(report));
     } catch { /* best-effort */ }
+  }
+
+  onEnd(_result: FullResult) {
+    // Final flush to ensure all results are written
+    this.flush();
   }
 }
 

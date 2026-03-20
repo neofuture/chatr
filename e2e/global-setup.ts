@@ -9,11 +9,19 @@ const AUTH_DIR = path.join(__dirname, '.auth');
 const API = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
 
 setup('enable test mode', async ({ request }) => {
-  await request.post(`${API}/api/test/mode`, {
-    headers: { 'Content-Type': 'application/json' },
-    data: { enabled: true },
-  });
-  // Clean up any leftover test data from previous runs
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await request.post(`${API}/api/test/mode`, {
+        headers: { 'Content-Type': 'application/json' },
+        data: { enabled: true },
+        timeout: 10_000,
+      });
+      if (res.ok()) break;
+    } catch {
+      if (attempt === 4) throw new Error('Backend not reachable after 5 attempts');
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
   await request.post(`${API}/api/test/cleanup-all`).catch(() => {});
 });
 

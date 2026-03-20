@@ -979,6 +979,7 @@ interface LiveRun {
   status: 'running' | 'done' | 'error';
   startedAt: number;
   results: LiveTestResult[];
+  setupResults: LiveTestResult[];
   finalReport?: TestReport;
   error?: string;
   pid?: number;
@@ -1008,19 +1009,18 @@ function isProcessAlive(pid: number): boolean {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
 
-const INFRA_PROJECTS = new Set(['setup', 'teardown']);
-
-function parsePlaywrightLine(line: string): LiveTestResult | null {
+function parsePlaywrightLine(line: string): { result: LiveTestResult; isSetup: boolean; isTeardown: boolean } | null {
   const m = line.match(/^\s*([✓✔✘×✗↻·\-])\s+\d+\s+(?:\[(\w+)\]\s+›\s+)?(\S+?)(?::\d+:\d+)?\s+›\s+(.+?)\s+\((.+?)\)\s*$/);
   if (!m) return null;
   const [, icon, project, file, rawName, dur] = m;
-  if (INFRA_PROJECTS.has((project || '').toLowerCase())) return null;
+  const isSetup = (project || '').toLowerCase() === 'setup';
   const name = rawName.replace(/\s*\(retry #\d+\)\s*$/, '').replace(/\s›\s/g, ' > ').trim();
   const isRetry = icon === '↻' || /retry #\d+/.test(rawName);
+  const isTeardown = (project || '').toLowerCase() === 'teardown';
   const status = (icon === '✓' || icon === '✔') ? 'passed' : (icon === '-' || icon === '·') ? 'skipped' : 'failed';
   const durClean = dur.replace(/retry #\d+/g, '').trim();
   const ms = durClean.endsWith('ms') ? parseInt(durClean) : durClean.endsWith('s') ? Math.round(parseFloat(durClean) * 1000) : parseInt(durClean);
-  return { name, suite: file, project: project || undefined, status, duration: isNaN(ms) ? 0 : ms, timestamp: Date.now(), retries: isRetry ? 1 : 0 };
+  return { result: { name, suite: file, project: project || undefined, status, duration: isNaN(ms) ? 0 : ms, timestamp: Date.now(), retries: isRetry ? 1 : 0 }, isSetup, isTeardown };
 }
 
 function parseJestLine(line: string, currentSuite: string): { result?: LiveTestResult; newSuite?: string } {
@@ -1275,10 +1275,16 @@ router.get('/tests/e2e', (_req: Request, res: Response) => {
       const passed = run.results.filter(r => r.status === 'passed').length;
       const failed = run.results.filter(r => r.status === 'failed').length;
       const retrying = run.results.filter(r => (r.retries || 0) > 0).length;
+      const setupDone = run.setupResults.length;
+      const setupTotal = 3;
+      const phase = run.results.length > 0 ? 'testing' : setupDone > 0 ? 'setup' : 'starting';
       return res.json({
         status: 'running',
         startedAt: run.startedAt,
         elapsed: Date.now() - run.startedAt,
+        phase,
+        setupCompleted: setupDone,
+        setupTotal,
         liveResults: run.results,
         liveSummary: { completed: run.results.length, passed, failed, retrying },
       });
@@ -1371,7 +1377,13 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
     : null;
 
   setTestMode(true);
-  liveRuns.e2e = { status: 'running', startedAt: Date.now(), results: [] };
+
+  // Clear stale results from previous run so dashboard never shows old data
+  delete testCache.tests_e2e;
+  try { fs.unlinkSync(path.join(TEST_RESULTS_DIR, 'e2e.json')); } catch { /* ignore */ }
+  try { fs.unlinkSync(E2E_JSON_PATH); } catch { /* ignore */ }
+
+  liveRuns.e2e = { status: 'running', startedAt: Date.now(), results: [], setupResults: [] };
 
   const pwArgs = ['test'];
   if (grepPattern) pwArgs.push('--grep', grepPattern);
@@ -1382,7 +1394,7 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
   try {
     child = spawn(PW_BIN, pwArgs, {
       cwd: ROOT,
-      env: { ...process.env, CI: 'true', SUPPRESS_SMS: '1' },
+      env: { ...process.env, SUPPRESS_SMS: '1', FORCE_COLOR: '0', NO_COLOR: '1' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
   } catch (spawnErr: any) {
@@ -1412,15 +1424,26 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
     errorLines = [];
   };
 
+  const stripAnsi = (s: string) => s.replace(/\x1B\[[0-9;]*[A-Za-z]|\x1B\].*?\x07/g, '');
+
   const processE2eChunk = (chunk: string | Buffer) => {
     if (!liveRuns.e2e) return;
     const text = typeof chunk === 'string' ? chunk : chunk.toString('utf8');
     e2eLineBuf += text;
     const lines = e2eLineBuf.split('\n');
     e2eLineBuf = lines.pop() || '';
-    for (const line of lines) {
-      const result = parsePlaywrightLine(line);
-      if (result) {
+    for (const rawLine of lines) {
+      const line = stripAnsi(rawLine);
+      const parsed = parsePlaywrightLine(line);
+      if (parsed) {
+        const { result, isSetup, isTeardown } = parsed;
+        if (isSetup) {
+          if (!liveRuns.e2e.setupResults.some(r => r.name === result.name)) {
+            liveRuns.e2e.setupResults.push(result);
+          }
+          continue;
+        }
+        if (isTeardown) continue;
         flushError();
         const existing = liveRuns.e2e.results.find(r => r.name === result.name && r.suite === result.suite && r.project === result.project);
         if (existing) {
@@ -1546,6 +1569,17 @@ router.post('/tests/e2e/stop', (_req: Request, res: Response) => {
   }
 });
 
+/** POST /tests/e2e/clear — Flush all cached E2E results (memory + disk) */
+router.post('/tests/e2e/clear', (_req: Request, res: Response) => {
+  delete liveRuns.e2e;
+  delete testCache.tests_e2e;
+  try { fs.unlinkSync(path.join(TEST_RESULTS_DIR, 'e2e.json')); } catch { /* ignore */ }
+  try { fs.unlinkSync(E2E_JSON_PATH); } catch { /* ignore */ }
+  saveRunState('e2e', 'done');
+  console.log('[E2E] Cleared all cached results');
+  return res.json({ status: 'cleared' });
+});
+
 /** GET /tests/:area — Return cached results, live progress, or 'none' */
 router.get('/tests/:area', (req: Request, res: Response) => {
   const area = req.params.area as 'backend' | 'frontend';
@@ -1623,7 +1657,7 @@ router.post('/tests/:area/run', (req: Request, res: Response) => {
     ? (testCache[cacheKey]?.data || liveRuns[runKey]?.finalReport || loadTestReport(area))
     : null;
 
-  liveRuns[runKey] = { status: 'running', startedAt: Date.now(), results: [] };
+  liveRuns[runKey] = { status: 'running', startedAt: Date.now(), results: [], setupResults: [] };
 
   const jestBin = area === 'backend' ? JEST_BIN_BE : JEST_BIN_FE;
   const jestArgs = ['--verbose', '--coverage', '--passWithNoTests', '--forceExit', '--runInBand'];

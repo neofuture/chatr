@@ -223,6 +223,17 @@
   --text-secondary: var(--color-slate-300);
   --border-color:  var(--overlay-blue-20);
   --shadow-orange: var(--overlay-orange-30);
+
+  /* Dashboard-specific tokens (dark) */
+  --bg:            var(--color-slate-900);
+  --card-bg:       rgba(30, 41, 59, 0.5);
+  --border:        rgba(148, 163, 184, 0.15);
+  --text:          var(--color-slate-100);
+  --overlay-subtle: rgba(255, 255, 255, 0.06);
+  --overlay-medium: rgba(255, 255, 255, 0.08);
+  --header-bg:     rgba(15, 23, 42, 0.85);
+  --gauge-track:   rgba(255, 255, 255, 0.08);
+  --heatmap-empty: rgba(255, 255, 255, 0.04);
 }
 
 [data-theme='light'] {
@@ -243,6 +254,17 @@
   --text-secondary: var(--color-slate-600);
   --border-color:  var(--overlay-blue-30);
   --shadow-orange: var(--overlay-orange-20);
+
+  /* Dashboard-specific tokens (light) */
+  --bg:            var(--color-white);
+  --card-bg:       rgba(248, 250, 252, 0.9);
+  --border:        rgba(100, 116, 139, 0.2);
+  --text:          var(--color-slate-900);
+  --overlay-subtle: rgba(0, 0, 0, 0.04);
+  --overlay-medium: rgba(0, 0, 0, 0.06);
+  --header-bg:     rgba(255, 255, 255, 0.9);
+  --gauge-track:   rgba(0, 0, 0, 0.08);
+  --heatmap-empty: rgba(0, 0, 0, 0.04);
 }
 
 html {

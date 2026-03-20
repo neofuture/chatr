@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.0.153 — 2026-03-20
+
+**Commit:** `2afbc39` — fix: resolve E2E test flakiness and recover 4 missing tests
+
+---
+
 ## v0.0.152 — 2026-03-19
 
 **Commit:** `8d96ebc` — fix: E2E test reliability + dashboard live progress

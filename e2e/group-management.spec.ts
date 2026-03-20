@@ -1,49 +1,45 @@
 import { test, expect } from './fixtures/two-users';
-import { apiLogin, TEST_USERS } from './helpers/auth';
+import { readStoredAuth } from './helpers/auth';
 import * as api from './helpers/api';
 
 const API = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
 const ts = () => Date.now().toString(36);
 
-async function setup(request: any) {
-  const resultA = await apiLogin(request, TEST_USERS.userA);
-  const resultB = await apiLogin(request, TEST_USERS.userB);
+const storedA = readStoredAuth('a');
+const storedB = readStoredAuth('b');
+
+function setup() {
   return {
-    tokenA: resultA.token,
-    tokenB: resultB.token,
-    userAId: resultA.user.id,
-    userBId: resultB.user.id,
+    tokenA: storedA.token,
+    tokenB: storedB.token,
+    userAId: storedA.userId,
+    userBId: storedB.userId,
   };
 }
 
 test.describe('Group Management', () => {
 
   test('create a group via UI', async ({ userAPage, request }) => {
-    const { tokenA } = await setup(request);
+    const { tokenA } = setup();
 
     await userAPage.goto('/app/groups');
 
-    // Click create new group button
     const createBtn = userAPage.getByTitle('Create new group');
     await expect(createBtn).toBeVisible({ timeout: 10_000 });
     await createBtn.click();
 
-    // Search for a user to add
     const memberSearch = userAPage.getByPlaceholder(/add people/i);
     await expect(memberSearch).toBeVisible({ timeout: 10_000 });
     await memberSearch.fill('simon');
 
-    // Wait for search results (socketFirst: 4s WebSocket + 15s HTTP fallback max)
     const simonRow = userAPage.getByText('Simon James').first();
     await expect(simonRow).toBeVisible({ timeout: 25_000 });
     await simonRow.click();
 
-    // Click Next to go to name step
     const nextBtn = userAPage.getByRole('button', { name: /next/i });
     await expect(nextBtn).toBeVisible({ timeout: 5_000 });
     await nextBtn.click();
 
-    // Enter group name and create
     const groupName = `UI Group ${ts()}`;
     const nameInput = userAPage.getByPlaceholder(/group name/i);
     await expect(nameInput).toBeVisible({ timeout: 5_000 });
@@ -53,22 +49,21 @@ test.describe('Group Management', () => {
     await expect(createGroupBtn).toBeVisible({ timeout: 5_000 });
     await createGroupBtn.click();
 
-    // Wait for group to be created (verify via API)
+    // Poll API for the group to appear
     let created: any;
     for (let i = 0; i < 10; i++) {
-      await userAPage.waitForTimeout(1000);
       const groups = await api.getGroups(request, tokenA);
       created = groups.find((g: any) => g.name === groupName);
       if (created) break;
+      await userAPage.waitForTimeout(500);
     }
     expect(created).toBeTruthy();
 
-    // Cleanup
     if (created) await api.deleteGroup(request, tokenA, created.id);
   });
 
   test('promote member to admin and demote back', async ({ userAPage, request }) => {
-    const { tokenA, tokenB, userBId } = await setup(request);
+    const { tokenA, tokenB, userBId } = setup();
 
     const groupName = `Promote Test ${ts()}`;
     const data = await api.createGroup(request, tokenA, groupName, [userBId]);
@@ -77,60 +72,80 @@ test.describe('Group Management', () => {
 
     const acceptRes = await request.post(`${API}/api/groups/${groupId}/accept`, {
       headers: { Authorization: `Bearer ${tokenB}` },
+      timeout: 30_000,
     });
     expect(acceptRes.ok()).toBeTruthy();
 
-    // Verify member is accepted before proceeding
-    const groupDetail = await request.get(`${API}/api/groups/${groupId}`, {
-      headers: { Authorization: `Bearer ${tokenA}` },
-    });
-    const members = (await groupDetail.json()).group?.members;
-    const bMember = members?.find((m: any) => m.userId === userBId);
+    // Retry the GET — the accept may leave a stale keep-alive connection
+    let bMember: any;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const groupDetail = await request.get(`${API}/api/groups/${groupId}`, {
+          headers: { Authorization: `Bearer ${tokenA}` },
+          timeout: 30_000,
+        });
+        const members = (await groupDetail.json()).group?.members;
+        bMember = members?.find((m: any) => m.userId === userBId);
+        if (bMember) break;
+      } catch {
+        if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        else throw new Error(`Failed to fetch group details after 3 attempts`);
+      }
+    }
     expect(bMember).toBeTruthy();
 
     await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
+
+    // Wait for group to appear; reload once if needed for API-created group
+    let groupVisible = await userAPage.getByText(groupName).isVisible({ timeout: 5_000 }).catch(() => false);
+    if (!groupVisible) {
+      await userAPage.reload();
+    }
+
+    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 15_000 });
     await userAPage.getByText(groupName).click();
 
-    // Wait for group chat panel to open, then click title to open profile
-    const panelTitle = userAPage.locator('.auth-panel-title').last();
-    await expect(panelTitle).toBeVisible({ timeout: 5_000 });
-    await userAPage.waitForTimeout(500);
+    const panelTitle = userAPage.locator('.auth-panel-title, [class*="panel"] h2, [class*="panel"] h3').filter({ hasText: groupName }).first();
+    await expect(panelTitle).toBeVisible({ timeout: 10_000 });
     await panelTitle.click();
 
-    // Wait for the group profile panel to render members
-    const profilePanel = userAPage.locator('.auth-panel').last();
-    const actionBtns = profilePanel.getByTitle('Actions');
-    await expect(actionBtns.first()).toBeVisible({ timeout: 10_000 });
+    const actionBtns = userAPage.locator('button[title="Actions"], button:has(i.fa-ellipsis-v)');
+    await expect(actionBtns.first()).toBeVisible({ timeout: 15_000 });
     await actionBtns.last().click();
 
-    // Click Make Admin in the bottom sheet
     const makeAdmin = userAPage.getByText('Make Admin').first();
     await expect(makeAdmin).toBeVisible({ timeout: 5_000 });
     await makeAdmin.click();
 
-    // Confirm in the dialog — scope to the alertdialog to avoid matching the bottom sheet button
     const dialog = userAPage.locator('[role="alertdialog"]');
     await expect(dialog).toBeVisible({ timeout: 5_000 });
     const confirmBtn = dialog.getByRole('button', { name: 'Make Admin' });
     await confirmBtn.click();
 
-    // Wait for promotion to process
-    await userAPage.waitForTimeout(1000);
+    // Wait for dialog to close (promotion processed)
+    await expect(dialog).toBeHidden({ timeout: 10_000 });
 
-    // Verify via API
-    const detail = await request.get(`${API}/api/groups/${groupId}`, {
-      headers: { Authorization: `Bearer ${tokenA}` },
-    });
-    const memberRole = (await detail.json()).group?.members?.find((m: any) => m.userId === userBId)?.role;
+    let memberRole: string | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const detail = await request.get(`${API}/api/groups/${groupId}`, {
+          headers: { Authorization: `Bearer ${tokenA}` },
+          timeout: 30_000,
+        });
+        memberRole = (await detail.json()).group?.members?.find((m: any) => m.userId === userBId)?.role;
+        break;
+      } catch {
+        if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        else throw new Error(`Failed to verify promotion after 3 attempts`);
+      }
+    }
     expect(memberRole).toBe('admin');
 
-    // Cleanup
     await api.deleteGroup(request, tokenA, groupId);
   });
 
   test('transfer ownership to another member', async ({ request }) => {
-    const { tokenA, tokenB, userBId } = await setup(request);
+    const { tokenA, tokenB, userBId } = setup();
 
     const groupName = `Ownership Test ${ts()}`;
     const data = await api.createGroup(request, tokenA, groupName, [userBId]);
@@ -150,18 +165,18 @@ test.describe('Group Management', () => {
     });
     expect(transferRes.ok()).toBeTruthy();
 
-    const groupDetail = await request.get(`${API}/api/groups/${groupId}`, {
+    const groupDetailRes = await request.get(`${API}/api/groups/${groupId}`, {
       headers: { Authorization: `Bearer ${tokenA}` },
     });
-    const detail = await groupDetail.json();
-    const newOwner = detail.group?.members?.find((m: any) => m.userId === userBId);
+    const detailJson = await groupDetailRes.json();
+    const newOwner = detailJson.group?.members?.find((m: any) => m.userId === userBId);
     expect(newOwner?.role).toBe('owner');
 
     await api.deleteGroup(request, tokenB, groupId);
   });
 
   test('kick a member from group', async ({ request }) => {
-    const { tokenA, tokenB, userBId } = await setup(request);
+    const { tokenA, tokenB, userBId } = setup();
 
     const groupName = `Kick Test ${ts()}`;
     const data = await api.createGroup(request, tokenA, groupName, [userBId]);
@@ -181,14 +196,14 @@ test.describe('Group Management', () => {
       headers: { Authorization: `Bearer ${tokenA}` },
     });
     const g = await detail.json();
-    const bMember = g.group?.members?.find((m: any) => m.userId === userBId);
-    expect(bMember).toBeUndefined();
+    const bMemberCheck = g.group?.members?.find((m: any) => m.userId === userBId);
+    expect(bMemberCheck).toBeUndefined();
 
     await api.deleteGroup(request, tokenA, groupId);
   });
 
   test('member leaves group voluntarily', async ({ request }) => {
-    const { tokenA, tokenB, userBId } = await setup(request);
+    const { tokenA, tokenB, userBId } = setup();
 
     const groupName = `Leave Test ${ts()}`;
     const data = await api.createGroup(request, tokenA, groupName, [userBId]);
@@ -208,7 +223,7 @@ test.describe('Group Management', () => {
   });
 
   test('delete a group via API', async ({ request }) => {
-    const { tokenA } = await setup(request);
+    const { tokenA } = setup();
 
     const groupName = `Delete Test ${ts()}`;
     const data = await api.createGroup(request, tokenA, groupName);

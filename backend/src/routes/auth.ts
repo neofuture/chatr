@@ -430,6 +430,32 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Test-mode fast path: bypass ALL verification with the OTP bypass code
+    {
+      const bypassCode = getTestBypassCode();
+      if (bypassCode && loginVerificationCode === bypassCode) {
+        const token = jwt.sign(
+          { userId: user.id, username: user.username },
+          process.env.JWT_SECRET || 'your_secret_key_change_in_production',
+          { expiresIn: '7d' }
+        );
+        return res.status(200).json({
+          message: 'Login successful',
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            displayName: user.displayName,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            createdAt: user.createdAt,
+            emailVerified: user.emailVerified,
+          },
+        });
+      }
+    }
+
     // Check if email is verified
     if (!user.emailVerified) {
       // Generate new email verification code

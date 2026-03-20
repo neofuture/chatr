@@ -128,7 +128,7 @@ function LangBar({ loc }: { loc: D }) {
 
 function MiniBar({ value, max, color = '#3b82f6' }: { value: number; max: number; color?: string }) {
   return (
-    <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+    <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--overlay-subtle)', overflow: 'hidden' }}>
       <div style={{ width: `${Math.min((value / max) * 100, 100)}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.3s' }} />
     </div>
   );
@@ -139,7 +139,7 @@ function Badge({ children, color }: { children: React.ReactNode; color: string }
 }
 
 function Pill({ children }: { children: React.ReactNode }) {
-  return <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', display: 'inline-block' }}>{children}</span>;
+  return <span style={{ fontSize: '0.75rem', padding: '3px 10px', borderRadius: 6, background: 'var(--overlay-subtle)', color: 'var(--text-secondary)', display: 'inline-block' }}>{children}</span>;
 }
 
 function MethodBadge({ method }: { method: string }) {
@@ -149,7 +149,7 @@ function MethodBadge({ method }: { method: string }) {
 
 // GitHub-style contribution heatmap
 function Heatmap({ data }: { data: { date: string; count: number; level: number }[] }) {
-  const levels = ['rgba(255,255,255,0.04)', '#0e4429', '#006d32', '#26a641', '#39d353'];
+  const levels = ['var(--heatmap-empty)', '#0e4429', '#006d32', '#26a641', '#39d353'];
   const COL_W = 13;
   const LABEL_W = 28;
 
@@ -251,7 +251,7 @@ function HealthGauge({ label, value, max, unit, color }: { label: string; value:
       <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</div>
       <div style={{ position: 'relative', width: 80, height: 44, margin: '0 auto', overflow: 'hidden' }}>
         <svg width={80} height={44} viewBox="0 0 80 44">
-          <path d="M 8 40 A 32 32 0 0 1 72 40" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={6} strokeLinecap="round" pathLength={100} />
+          <path d="M 8 40 A 32 32 0 0 1 72 40" fill="none" stroke="var(--gauge-track)" strokeWidth={6} strokeLinecap="round" pathLength={100} />
           <path d="M 8 40 A 32 32 0 0 1 72 40" fill="none" stroke={color} strokeWidth={6} strokeLinecap="round"
             pathLength={100} strokeDasharray={`${pct} 100`} style={{ transition: 'stroke-dasharray 0.5s' }} />
         </svg>
@@ -310,7 +310,7 @@ function LiveSummaryBar({ live, color = '#3b82f6' }: { live: D; color?: string }
         </div>
       </div>
       {completed > 0 && (
-        <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem', display: 'flex' }}>
+        <div style={{ height: 8, borderRadius: 4, background: 'var(--overlay-subtle)', overflow: 'hidden', marginBottom: '1rem', display: 'flex' }}>
           {passed > 0 && <div style={{ width: `${(passed / completed) * 100}%`, height: '100%', background: failed === 0 ? 'linear-gradient(to right, #10b981, #34d399)' : '#10b981', transition: 'width 0.3s' }} />}
           {failed > 0 && <div style={{ width: `${(failed / completed) * 100}%`, height: '100%', background: '#ef4444', transition: 'width 0.3s' }} />}
         </div>
@@ -379,16 +379,24 @@ function RunningBanner({ live, startedAt }: { live: D; startedAt: number }) {
   const completed = live?.liveSummary?.completed || 0;
   const passed = live?.liveSummary?.passed || 0;
   const failed = live?.liveSummary?.failed || 0;
+  const phase = live?.phase || 'starting';
+  const setupDone = live?.setupCompleted || 0;
+  const setupTotal = live?.setupTotal || 3;
   const mins = Math.floor(elapsed / 60);
   const secs = elapsed % 60;
   const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  const phaseLabel = phase === 'testing'
+    ? `${completed} completed (${passed} passed, ${failed} failed)`
+    : phase === 'setup'
+      ? `Setting up (${setupDone}/${setupTotal} — authenticating test users)`
+      : 'Starting Playwright...';
   return (
     <div style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: 12 }}>
       <i className="fad fa-spinner-third fa-spin" style={{ fontSize: '1.1rem', color: '#a855f7' }} />
       <div style={{ flex: 1, fontSize: '0.85rem' }}>
-        <strong style={{ color: '#a855f7' }}>Tests running</strong>
+        <strong style={{ color: '#a855f7' }}>{phase === 'testing' ? 'Tests running' : 'Preparing'}</strong>
         <span style={{ color: 'var(--text-secondary)', marginLeft: 8 }}>
-          {completed > 0 ? `${completed} completed (${passed} passed, ${failed} failed)` : 'Starting...'} &middot; {timeStr}
+          {phaseLabel} &middot; {timeStr}
         </span>
       </div>
     </div>
@@ -423,7 +431,7 @@ function FilterPills({ options, value, onChange }: { options: { id: string; labe
         const isSpecial = o.id in pillColors;
         return (
           <button key={o.id} onClick={() => onChange(o.id)}
-            style={{ ...PILL, background: active ? accentBg : 'rgba(255,255,255,0.04)', color: active ? accent : (isSpecial ? accent : 'var(--text-secondary)'), borderColor: active ? accentBorder : 'rgba(255,255,255,0.06)' }}>
+            style={{ ...PILL, background: active ? accentBg : 'var(--overlay-subtle)', color: active ? accent : (isSpecial ? accent : 'var(--text-secondary)'), borderColor: active ? accentBorder : 'var(--overlay-subtle)' }}>
             {o.label} <span style={{ opacity: 0.6, marginLeft: 3 }}>{o.count}</span>
           </button>
         );
@@ -442,6 +450,7 @@ function FailableTestRow({ t, retries, attempt }: { t: D; retries: number; attem
         onClick={() => { if (hasError) setErrorOpen(p => !p); }}>
         <i className={`fas fa-${hasFailed ? 'xmark' : 'check'}`}
           style={{ color: hasFailed ? '#ef4444' : '#10b981', fontSize: '0.6rem', width: 10 }} />
+        {t.project && <Badge color={PROJECT_COLORS[String(t.project)] || '#6b7280'}>{PROJECT_LABELS[String(t.project)] || String(t.project)}</Badge>}
         <span style={{ flex: 1, color: hasFailed ? '#fca5a5' : 'var(--text-secondary)' }}>{t.name}</span>
         {retries > 0 && (
           <span style={{ fontSize: '0.55rem', padding: '1px 5px', borderRadius: 3,
@@ -530,6 +539,184 @@ function Section({ title, icon, children, defaultOpen = true, id }: { title: str
         <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ marginLeft: 'auto', fontSize: '0.6rem', color: 'var(--text-secondary)' }} />
       </h2>
       {open && children}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Commit Size Graph with hover popover
+// ---------------------------------------------------------------------------
+function CommitSizeGraph({ commits, maxLines, maxFiles, W, H, PAD, GRAPH_TOP, GRAPH_H, BAR_ZONE, baseline, step, barW, toY, typeColors, getType, addedPts, deletedPts, netPts, netMid, cumNet, gridLines, netData }: {
+  commits: D[]; maxLines: number; maxFiles: number;
+  W: number; H: number; PAD: number; GRAPH_TOP: number; GRAPH_H: number; BAR_ZONE: number;
+  baseline: number; step: number; barW: number;
+  toY: (v: number) => number; typeColors: Record<string, string>; getType: (msg: string) => string;
+  addedPts: string; deletedPts: string;
+  netPts: string; netMid: number; cumNet: number;
+  gridLines: number[]; netData: number[];
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<{ idx: number; x: number; y: number } | null>(null);
+
+  const handleDotEnter = useCallback((idx: number, e: React.MouseEvent<SVGElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const svgEl = containerRef.current.querySelector('svg');
+    if (!svgEl) return;
+    const svgRect = svgEl.getBoundingClientRect();
+    const scaleX = svgRect.width / W;
+    const scaleY = svgRect.height / H;
+    const cx = PAD + idx * step;
+    const cy = toY(commits[idx]?.added || 0);
+    const px = svgRect.left - rect.left + cx * scaleX;
+    const py = svgRect.top - rect.top + cy * scaleY;
+    setHover({ idx, x: px, y: py });
+  }, [W, H, PAD, step, toY, commits]);
+
+  const handleDotLeave = useCallback(() => setHover(null), []);
+
+  const hc = hover ? commits[hover.idx] : null;
+  const hType = hc ? getType(hc.message) : '';
+  const hNet = hc ? (hc.added || 0) - (hc.deleted || 0) : 0;
+  const hColor = hType ? (typeColors[hType] || '#94a3b8') : '#94a3b8';
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <div style={{ overflowX: 'auto' }}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
+          {gridLines.map((v, i) => (
+            <g key={i}>
+              <line x1={PAD} y1={toY(v)} x2={W - PAD} y2={toY(v)} stroke="var(--overlay-subtle)" strokeWidth={1} />
+              <text x={PAD - 6} y={toY(v) + 4} textAnchor="end" fill="var(--text-secondary)" fontSize={9}>{v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : v % 1000 === 0 ? 0 : 1)}k` : v}</text>
+            </g>
+          ))}
+          {commits.map((c: D, i: number) => {
+            const fh = maxFiles > 0 ? ((c.files || 0) / maxFiles) * GRAPH_H * 0.5 : 0;
+            return fh > 0 ? (
+              <rect key={`f${i}`} x={PAD + i * step - barW / 2} y={baseline - fh} width={barW} height={fh}
+                fill="rgba(148,163,184,0.08)" rx={1} />
+            ) : null;
+          })}
+          <line x1={PAD} y1={baseline} x2={W - PAD} y2={baseline} stroke="var(--overlay-medium)" strokeWidth={1} />
+          {commits.map((c: D, i: number) => {
+            const net = (c.added || 0) - (c.deleted || 0);
+            if (net === 0) return null;
+            const h = Math.min(BAR_ZONE - 4, Math.max(2, (Math.abs(net) / maxLines) * BAR_ZONE * 2));
+            return (
+              <rect key={`n${i}`} x={PAD + i * step - barW / 2} y={net > 0 ? baseline + 2 : baseline + 2}
+                width={barW} height={h} fill={net > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'} rx={1} />
+            );
+          })}
+          <line x1={PAD} y1={netMid} x2={W - PAD} y2={netMid} stroke="var(--overlay-subtle)" strokeWidth={1} />
+          <polyline points={netPts} fill="none" stroke="#60a5fa" strokeWidth={1.5} opacity={0.6} />
+          <text x={W - PAD + 6} y={netMid + 3} fill="#60a5fa" fontSize={8} opacity={0.7}>net {cumNet >= 0 ? '+' : ''}{cumNet.toLocaleString()}</text>
+          <polyline points={deletedPts} fill="none" stroke="#f87171" strokeWidth={1} strokeDasharray="4 2" />
+          <polyline points={addedPts} fill="none" stroke="#34d399" strokeWidth={1.5} />
+          {commits.map((c: D, i: number) => {
+            const type = getType(c.message);
+            const dotColor = typeColors[type] || '#94a3b8';
+            const cx = PAD + i * step;
+            const isHovered = hover?.idx === i;
+            return (
+              <g key={i}
+                onMouseEnter={(e) => handleDotEnter(i, e)}
+                onMouseLeave={handleDotLeave}
+                style={{ cursor: 'pointer' }}
+              >
+                {/* Invisible larger hit area */}
+                <circle cx={cx} cy={toY(c.added || 0)} r={8} fill="transparent" />
+                <circle cx={cx} cy={toY(c.added || 0)} r={isHovered ? 4 : 2.5} fill="#34d399" stroke={dotColor} strokeWidth={isHovered ? 2.5 : 1.5}
+                  style={{ transition: 'r 0.15s, stroke-width 0.15s' }} />
+                <circle cx={cx} cy={toY(c.deleted || 0)} r={isHovered ? 3 : 2} fill="#f87171" opacity={isHovered ? 1 : 0.7} />
+                {(c.files || 0) > 20 && (
+                  <text x={cx} y={toY(c.added || 0) - 6} textAnchor="middle" fill="#94a3b8" fontSize={7}>{c.files}f</text>
+                )}
+              </g>
+            );
+          })}
+          <text x={W - PAD + 6} y={baseline + BAR_ZONE / 2 + 3} fill="var(--text-secondary)" fontSize={7} opacity={0.5}>net/commit</text>
+        </svg>
+      </div>
+
+      {/* Popover */}
+      {hover && hc && (
+        <div style={{
+          position: 'absolute',
+          left: hover.x,
+          top: hover.y - 8,
+          transform: `translate(${hover.x > (containerRef.current?.offsetWidth || 600) * 0.7 ? 'calc(-100% - 12px)' : '12px'}, -50%)`,
+          background: 'var(--card-bg)',
+          backdropFilter: 'blur(16px)',
+          border: `1px solid ${hColor}44`,
+          borderRadius: 10,
+          padding: '10px 14px',
+          minWidth: 240,
+          maxWidth: 320,
+          zIndex: 50,
+          pointerEvents: 'none',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.25)',
+          animation: 'liveTestFadeIn 0.15s ease-out',
+        }}>
+          {/* Hash + type badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <code style={{ fontSize: '0.7rem', color: '#60a5fa', fontFamily: 'monospace' }}>{hc.hash?.slice(0, 8)}</code>
+            <span style={{
+              fontSize: '0.6rem', padding: '1px 6px', borderRadius: 4,
+              background: `${hColor}22`, color: hColor,
+              fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5,
+            }}>{hType}</span>
+            {hc.date && (
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
+                {new Date(hc.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </span>
+            )}
+          </div>
+
+          {/* Commit message */}
+          <div style={{
+            fontSize: '0.78rem', fontWeight: 500, color: 'var(--text)',
+            lineHeight: 1.35, marginBottom: 8,
+            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>
+            {hc.message}
+          </div>
+
+          {/* Stats row */}
+          <div style={{ display: 'flex', gap: 12, fontSize: '0.7rem', marginBottom: 6 }}>
+            <span style={{ color: '#34d399', fontWeight: 600 }}>+{(hc.added || 0).toLocaleString()}</span>
+            <span style={{ color: '#f87171', fontWeight: 600 }}>−{(hc.deleted || 0).toLocaleString()}</span>
+            <span style={{ color: hNet >= 0 ? '#34d399' : '#f87171', fontWeight: 600 }}>
+              net {hNet >= 0 ? '+' : ''}{hNet.toLocaleString()}
+            </span>
+          </div>
+
+          {/* Files + mini bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+            <i className="fas fa-file-code" style={{ fontSize: '0.6rem' }} />
+            <span>{hc.files || 0} files</span>
+            <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'var(--overlay-subtle)', overflow: 'hidden', display: 'flex' }}>
+              <div style={{ width: `${((hc.added || 0) / Math.max((hc.added || 0) + (hc.deleted || 0), 1)) * 100}%`, height: '100%', background: '#34d399' }} />
+              <div style={{ width: `${((hc.deleted || 0) / Math.max((hc.added || 0) + (hc.deleted || 0), 1)) * 100}%`, height: '100%', background: '#f87171' }} />
+            </div>
+          </div>
+
+          {/* Author if available */}
+          {hc.author && (
+            <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: 6 }}>
+              <i className="fas fa-user" style={{ marginRight: 4, fontSize: '0.55rem' }} />{hc.author}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '1.2rem', marginTop: 6, fontSize: '0.72rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+        <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#34d399', borderRadius: 2, marginRight: 5 }} />Insertions</span>
+        <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#f87171', borderRadius: 2, marginRight: 5, borderTop: '1px dashed #f87171' }} />Deletions</span>
+        <span><span style={{ display: 'inline-block', width: 12, height: 2, background: '#60a5fa', borderRadius: 2, marginRight: 5, opacity: 0.6 }} />Cumulative Net</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(148,163,184,0.15)', borderRadius: 1, marginRight: 5 }} />Files Changed</span>
+        <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(52,211,153,0.3)', borderRadius: 1, marginRight: 5 }} />Net +/−</span>
+        <span style={{ marginLeft: 'auto', fontSize: '0.65rem' }}>dot ring = commit type</span>
+      </div>
     </div>
   );
 }
@@ -808,12 +995,10 @@ export default function DashboardPage() {
 
   return (
     <div style={{
-      '--card-bg': 'rgba(255,255,255,0.04)', '--border': 'rgba(255,255,255,0.08)',
-      '--text': '#e2e8f0', '--text-secondary': '#94a3b8', '--bg': '#0f172a',
       minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       paddingTop: 64,
-    } as React.CSSProperties}>
+    }}>
       <SiteNav />
 
       <style>{`
@@ -844,7 +1029,7 @@ export default function DashboardPage() {
       `}</style>
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div className="db-header" style={{ borderBottom: '1px solid var(--border)', padding: '0.75rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 10, background: 'rgba(15,23,42,0.85)' }}>
+      <div className="db-header" style={{ borderBottom: '1px solid var(--border)', padding: '0.75rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 10, background: 'var(--header-bg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <Link href="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.85rem' }}>← Home</Link>
           <span style={{ color: 'var(--text-secondary)' }}>/</span>
@@ -854,10 +1039,10 @@ export default function DashboardPage() {
         </div>
         <div className="db-header-right" style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
           {lastRefresh && <span>Updated {lastRefresh.toLocaleTimeString()}</span>}
-          <button onClick={() => setAutoRefresh(p => !p)} style={{ background: autoRefresh ? '#10b98133' : 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '3px 10px', color: autoRefresh ? '#10b981' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}>
+          <button onClick={() => setAutoRefresh(p => !p)} style={{ background: autoRefresh ? '#10b98133' : 'var(--overlay-subtle)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 10px', color: autoRefresh ? '#10b981' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}>
             {autoRefresh ? '● Live' : '○ Paused'}
           </button>
-          <button onClick={refreshData} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '3px 10px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}>↻ Refresh</button>
+          <button onClick={refreshData} style={{ background: 'var(--overlay-subtle)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 10px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}>↻ Refresh</button>
           {data && <span className="db-header-branch"><i className="fas fa-code-branch" /> {data.overview.currentBranch} <code style={{ color: '#60a5fa', marginLeft: 4 }}>{data.overview.latestHash}</code></span>}
         </div>
       </div>
@@ -990,7 +1175,7 @@ export default function DashboardPage() {
                     {buckets.map(b => (
                       <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.72rem' }}>
                         <span style={{ width: 48, textAlign: 'right', color: 'var(--text-secondary)', flexShrink: 0 }}>{b.label}</span>
-                        <div style={{ flex: 1, height: 14, borderRadius: 3, background: 'rgba(255,255,255,0.04)', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, height: 14, borderRadius: 3, background: 'var(--overlay-subtle)', overflow: 'hidden' }}>
                           <div style={{ width: `${(b.count / maxCount) * 100}%`, height: '100%', background: b.color, borderRadius: 3, transition: 'width 0.3s' }} />
                         </div>
                         <span style={{ width: 28, color: 'var(--text-secondary)', fontWeight: 600 }}>{b.count}</span>
@@ -1076,7 +1261,7 @@ export default function DashboardPage() {
                 const statusColor = a.critical > 0 ? '#ef4444' : a.high > 0 ? '#f59e0b' : total > 0 ? '#3b82f6' : '#10b981';
                 const statusLabel = a.critical > 0 ? 'CRITICAL' : a.high > 0 ? 'HIGH RISK' : total > 0 ? 'LOW RISK' : 'CLEAN';
                 return (
-                  <div key={area} style={{ marginBottom: '0.75rem', padding: '0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: `1px solid ${statusColor}22` }}>
+                  <div key={area} style={{ marginBottom: '0.75rem', padding: '0.6rem', background: 'var(--overlay-subtle)', borderRadius: 6, border: `1px solid ${statusColor}22` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize' }}>{area}</span>
                       <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: 4, background: `${statusColor}18`, color: statusColor, fontWeight: 700 }}>{statusLabel}</span>
@@ -1088,7 +1273,7 @@ export default function DashboardPage() {
                         { label: 'Moderate', val: a.moderate, color: '#f59e0b' },
                         { label: 'Low', val: a.low, color: '#3b82f6' },
                       ].map(v => (
-                        <span key={v.label} style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: v.val > 0 ? `${v.color}15` : 'rgba(255,255,255,0.04)', color: v.val > 0 ? v.color : 'var(--text-secondary)' }}>
+                        <span key={v.label} style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: v.val > 0 ? `${v.color}15` : 'var(--overlay-subtle)', color: v.val > 0 ? v.color : 'var(--text-secondary)' }}>
                           {v.label}: {v.val}
                         </span>
                       ))}
@@ -1099,7 +1284,7 @@ export default function DashboardPage() {
                           const sevColors: Record<string, string> = { critical: '#ef4444', high: '#f97316', moderate: '#f59e0b', low: '#3b82f6', info: '#6b7280' };
                           const c = sevColors[d.severity] || '#6b7280';
                           return (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', borderBottom: i < a.details.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', borderBottom: i < a.details.length - 1 ? '1px solid var(--overlay-subtle)' : 'none' }}>
                               <span style={{ width: 6, height: 6, borderRadius: '50%', background: c, flexShrink: 0 }} />
                               <code style={{ color: c, fontWeight: 600, flexShrink: 0 }}>{d.name}</code>
                               <span title={d.via || d.severity} style={{ color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.via || d.severity}</span>
@@ -1124,7 +1309,7 @@ export default function DashboardPage() {
                 if (bc.ok) return null;
                 const color = bc.ok ? '#10b981' : '#ef4444';
                 return (
-                  <div key={bc.area} style={{ marginBottom: '0.75rem', padding: '0.6rem', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: `1px solid ${color}22` }}>
+                  <div key={bc.area} style={{ marginBottom: '0.75rem', padding: '0.6rem', background: 'var(--overlay-subtle)', borderRadius: 6, border: `1px solid ${color}22` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize' }}>
                         <i className={`fas fa-${bc.ok ? 'check-circle' : 'times-circle'}`} style={{ color, marginRight: 6 }} />
@@ -1135,13 +1320,13 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: 'var(--overlay-subtle)', color: 'var(--text-secondary)' }}>
                         tsc --noEmit
                       </span>
                       <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: bc.ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', color: bc.ok ? '#10b981' : '#ef4444' }}>
                         {bc.ok ? '0 errors' : `${bc.errors} error${bc.errors !== 1 ? 's' : ''}`}
                       </span>
-                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: 3, background: 'var(--overlay-subtle)', color: 'var(--text-secondary)' }}>
                         strict mode
                       </span>
                     </div>
@@ -1205,7 +1390,7 @@ export default function DashboardPage() {
           <div style={{ ...CARD, marginBottom: '1.5rem' }}>
             <h2 style={H2}><Ico>fad fa-book</Ico> API Documentation ({data.apiDocCoverage?.documented || 0}/{data.apiDocCoverage?.total || 0})</h2>
             {!data.apiDocCoverage || data.apiDocCoverage.total === 0 ? <EmptyState message="No endpoints found" /> : (<>
-              <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '0.75rem' }}>
+              <div style={{ height: 8, borderRadius: 4, background: 'var(--overlay-subtle)', overflow: 'hidden', marginBottom: '0.75rem' }}>
                 <div style={{
                   width: `${data.apiDocCoverage.total > 0 ? (data.apiDocCoverage.documented / data.apiDocCoverage.total) * 100 : 0}%`,
                   height: '100%', borderRadius: 4,
@@ -1514,7 +1699,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize', marginBottom: 4 }}>{area}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {data.scripts[area].map((s: D) => (
-                      <span key={s.name} title={s.command} style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: '#93c5fd', cursor: 'default' }}>
+                      <span key={s.name} title={s.command} style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 4, background: 'var(--overlay-subtle)', color: '#93c5fd', cursor: 'default' }}>
                         {s.name}
                       </span>
                     ))}
@@ -1540,14 +1725,14 @@ export default function DashboardPage() {
                     </div>
                     <div style={{ display: 'flex', gap: 2, height: 8, borderRadius: 4, overflow: 'hidden' }}>
                       <div style={{ width: `${(d.prod / (d.prod + d.dev || 1)) * 100}%`, background: '#3b82f6' }} />
-                      <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)' }} />
+                      <div style={{ flex: 1, background: 'var(--overlay-medium)' }} />
                     </div>
                   </div>
                 ))}
               </div>
               <div style={{ marginTop: '0.75rem', display: 'flex', gap: '1rem', ...SUB }}>
                 <span><span style={{ color: '#3b82f6' }}>■</span> Prod</span>
-                <span><span style={{ color: 'rgba(255,255,255,0.2)' }}>■</span> Dev</span>
+                <span><span style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>■</span> Dev</span>
               </div>
             </Section>
 
@@ -1629,7 +1814,7 @@ export default function DashboardPage() {
                         <span style={{ fontWeight: 600 }}>{o.author}</span>
                         <span style={SUB}>+{o.added.toLocaleString()} / -{o.deleted.toLocaleString()} = <strong style={{ color: 'var(--text)' }}>{o.net.toLocaleString()}</strong> net</span>
                       </div>
-                      <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{ height: 6, borderRadius: 3, background: 'var(--overlay-subtle)', overflow: 'hidden' }}>
                         <div style={{ width: `${Math.min((o.net / total) * 100, 100)}%`, height: '100%', background: colors[i % colors.length], borderRadius: 3, transition: 'width 0.3s' }} />
                       </div>
                     </div>
@@ -1643,7 +1828,7 @@ export default function DashboardPage() {
           <div className="db-grid2" style={GRID2}>
             <Section title={`Backend Test Coverage (${data.backendTestedCount}/${data.backendModules?.length || 0})`} icon="fad fa-shield-check">
               {!data.backendModules || data.backendModules.length === 0 ? <EmptyState message="No backend modules found" /> : (<>
-                <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                <div style={{ height: 8, borderRadius: 4, background: 'var(--overlay-subtle)', overflow: 'hidden', marginBottom: '0.75rem' }}>
                   <div style={{
                     width: `${data.backendModules.length > 0 ? (data.backendTestedCount / data.backendModules.length) * 100 : 0}%`,
                     height: '100%', borderRadius: 4,
@@ -1685,7 +1870,7 @@ export default function DashboardPage() {
             </Section>
             <Section title={`Frontend Test Coverage (${data.frontendTestedCount ?? 0}/${data.frontendModules?.length || 0})`} icon="fad fa-shield-check">
               {!data.frontendModules || data.frontendModules.length === 0 ? <EmptyState message="No frontend modules found" /> : (<>
-                <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                <div style={{ height: 8, borderRadius: 4, background: 'var(--overlay-subtle)', overflow: 'hidden', marginBottom: '0.75rem' }}>
                   <div style={{
                     width: `${data.frontendModules.length > 0 ? ((data.frontendTestedCount ?? 0) / data.frontendModules.length) * 100 : 0}%`,
                     height: '100%', borderRadius: 4,
@@ -1899,7 +2084,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem' }}>
+                    <div style={{ height: 8, borderRadius: 4, background: 'var(--overlay-subtle)', overflow: 'hidden', marginBottom: '1rem' }}>
                       <div style={{ width: `${total > 0 ? (passed / total) * 100 : 0}%`, height: '100%', borderRadius: 4, transition: 'width 0.5s', background: failed === 0 ? 'linear-gradient(to right, #10b981, #34d399)' : 'linear-gradient(to right, #10b981, #f59e0b, #ef4444)' }} />
                     </div>
 
@@ -2051,7 +2236,7 @@ export default function DashboardPage() {
               </>
             )}
 
-            {e2eReport && (
+            {e2eReport && !e2eRunning && (
               <div>
                 <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ textAlign: 'center' }}>
@@ -2098,7 +2283,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: '1rem' }}>
+                <div style={{ height: 8, borderRadius: 4, background: 'var(--overlay-subtle)', overflow: 'hidden', marginBottom: '1rem' }}>
                   <div style={{
                     width: `${e2eSummary.total > 0 ? (e2eSummary.passed / e2eSummary.total) * 100 : 0}%`,
                     height: '100%', borderRadius: 4, transition: 'width 0.5s',
@@ -2140,7 +2325,6 @@ export default function DashboardPage() {
               if (v <= 0) return baseline;
               return baseline - (Math.sqrt(v) / sqrtMax) * GRAPH_H;
             };
-            // Commit type colors
             const typeColors: Record<string, string> = {
               feat: '#10b981', fix: '#ef4444', chore: '#6b7280', test: '#3b82f6',
               refactor: '#8b5cf6', docs: '#06b6d4', style: '#ec4899', perf: '#f59e0b',
@@ -2153,7 +2337,6 @@ export default function DashboardPage() {
             };
             const addedPts = commits.map((c: D, i: number) => `${PAD + i * step},${toY(c.added || 0)}`).join(' ');
             const deletedPts = commits.map((c: D, i: number) => `${PAD + i * step},${toY(c.deleted || 0)}`).join(' ');
-            // Net growth (cumulative)
             let cumNet = 0;
             const netData = commits.map((c: D) => { cumNet += (c.added || 0) - (c.deleted || 0); return cumNet; });
             const netMax = Math.max(Math.abs(Math.min(...netData)), Math.abs(Math.max(...netData)), 1);
@@ -2161,7 +2344,6 @@ export default function DashboardPage() {
             const netScale = 16;
             const toNetY = (v: number) => netMid - (v / netMax) * netScale;
             const netPts = netData.map((v, i) => `${PAD + i * step},${toNetY(v)}`).join(' ');
-            // Grid lines
             const gridLines: number[] = [];
             const niceSteps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
             const targetLines = 5;
@@ -2171,71 +2353,15 @@ export default function DashboardPage() {
             return (
               <div style={{ marginTop: '1rem' }}>
                 <Section title={`Commit Size (Last ${commits.length})`} icon="fad fa-chart-line">
-                  <div style={{ overflowX: 'auto' }}>
-                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto' }}>
-                      {/* Grid */}
-                      {gridLines.map((v, i) => (
-                        <g key={i}>
-                          <line x1={PAD} y1={toY(v)} x2={W - PAD} y2={toY(v)} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
-                          <text x={PAD - 6} y={toY(v) + 4} textAnchor="end" fill="var(--text-secondary)" fontSize={9}>{v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : v % 1000 === 0 ? 0 : 1)}k` : v}</text>
-                        </g>
-                      ))}
-                      {/* Files changed — subtle vertical bars behind everything */}
-                      {commits.map((c: D, i: number) => {
-                        const fh = maxFiles > 0 ? ((c.files || 0) / maxFiles) * GRAPH_H * 0.5 : 0;
-                        return fh > 0 ? (
-                          <rect key={`f${i}`} x={PAD + i * step - barW / 2} y={baseline - fh} width={barW} height={fh}
-                            fill="rgba(148,163,184,0.08)" rx={1} />
-                        ) : null;
-                      })}
-                      {/* Baseline */}
-                      <line x1={PAD} y1={baseline} x2={W - PAD} y2={baseline} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
-                      {/* Net per-commit bars below baseline */}
-                      {commits.map((c: D, i: number) => {
-                        const net = (c.added || 0) - (c.deleted || 0);
-                        if (net === 0) return null;
-                        const h = Math.min(BAR_ZONE - 4, Math.max(2, (Math.abs(net) / maxLines) * BAR_ZONE * 2));
-                        return (
-                          <rect key={`n${i}`} x={PAD + i * step - barW / 2} y={net > 0 ? baseline + 2 : baseline + 2}
-                            width={barW} height={h} fill={net > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)'} rx={1} />
-                        );
-                      })}
-                      {/* Net growth sparkline at top */}
-                      <line x1={PAD} y1={netMid} x2={W - PAD} y2={netMid} stroke="rgba(255,255,255,0.04)" strokeWidth={1} />
-                      <polyline points={netPts} fill="none" stroke="#60a5fa" strokeWidth={1.5} opacity={0.6} />
-                      <text x={W - PAD + 6} y={netMid + 3} fill="#60a5fa" fontSize={8} opacity={0.7}>net {cumNet >= 0 ? '+' : ''}{cumNet.toLocaleString()}</text>
-                      {/* Main lines */}
-                      <polyline points={deletedPts} fill="none" stroke="#f87171" strokeWidth={1} strokeDasharray="4 2" />
-                      <polyline points={addedPts} fill="none" stroke="#34d399" strokeWidth={1.5} />
-                      {/* Dots color-coded by commit type */}
-                      {commits.map((c: D, i: number) => {
-                        const type = getType(c.message);
-                        const dotColor = typeColors[type] || '#94a3b8';
-                        const cx = PAD + i * step;
-                        return (
-                          <g key={i}>
-                            <circle cx={cx} cy={toY(c.added || 0)} r={2.5} fill="#34d399" stroke={dotColor} strokeWidth={1.5} />
-                            <circle cx={cx} cy={toY(c.deleted || 0)} r={2} fill="#f87171" opacity={0.7} />
-                            {/* Files badge for large commits */}
-                            {(c.files || 0) > 20 && (
-                              <text x={cx} y={toY(c.added || 0) - 6} textAnchor="middle" fill="#94a3b8" fontSize={7}>{c.files}f</text>
-                            )}
-                            <title>{`${c.hash} [${type}]: +${(c.added || 0).toLocaleString()} / -${(c.deleted || 0).toLocaleString()} (${c.files || 0} files)\nnet: ${((c.added || 0) - (c.deleted || 0)).toLocaleString()}\n${c.message}`}</title>
-                          </g>
-                        );
-                      })}
-                      {/* Right-side labels */}
-                      <text x={W - PAD + 6} y={baseline + BAR_ZONE / 2 + 3} fill="var(--text-secondary)" fontSize={7} opacity={0.5}>net/commit</text>
-                    </svg>
-                  </div>
-                  <div style={{ display: 'flex', gap: '1.2rem', marginTop: 6, fontSize: '0.72rem', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-                    <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#34d399', borderRadius: 2, marginRight: 5 }} />Insertions</span>
-                    <span><span style={{ display: 'inline-block', width: 12, height: 3, background: '#f87171', borderRadius: 2, marginRight: 5, borderTop: '1px dashed #f87171' }} />Deletions</span>
-                    <span><span style={{ display: 'inline-block', width: 12, height: 2, background: '#60a5fa', borderRadius: 2, marginRight: 5, opacity: 0.6 }} />Cumulative Net</span>
-                    <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(148,163,184,0.15)', borderRadius: 1, marginRight: 5 }} />Files Changed</span>
-                    <span><span style={{ display: 'inline-block', width: 8, height: 8, background: 'rgba(52,211,153,0.3)', borderRadius: 1, marginRight: 5 }} />Net +/−</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.65rem' }}>dot ring = commit type</span>
-                  </div>
+                  <CommitSizeGraph
+                    commits={commits} maxLines={maxLines} maxFiles={maxFiles}
+                    W={W} H={H} PAD={PAD} GRAPH_TOP={GRAPH_TOP} GRAPH_H={GRAPH_H} BAR_ZONE={BAR_ZONE}
+                    baseline={baseline} step={step} barW={barW}
+                    toY={toY} typeColors={typeColors} getType={getType}
+                    addedPts={addedPts} deletedPts={deletedPts}
+                    netPts={netPts} netMid={netMid} cumNet={cumNet}
+                    gridLines={gridLines} netData={netData}
+                  />
                 </Section>
               </div>
             );

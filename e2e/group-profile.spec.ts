@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { apiLogin, TEST_USERS } from './helpers/auth';
+import { readStoredAuth } from './helpers/auth';
 import * as api from './helpers/api';
 import { getAssetPath } from './helpers/test-assets';
 import fs from 'fs';
@@ -7,25 +7,21 @@ import fs from 'fs';
 const API = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
 const ts = () => Date.now().toString(36);
 
+const storedA = readStoredAuth('a');
+
 test.describe('Group Profile', () => {
   const groupNameBase = `ProfileGrp ${ts()}`;
   let groupId: string;
-  let tokenA: string;
+  const tokenA = storedA.token;
 
   test.beforeEach(async ({ request }) => {
-    if (!tokenA) {
-      const result = await apiLogin(request, TEST_USERS.userA);
-      tokenA = result.token;
-    }
     if (!groupId) {
       const data = await api.createGroup(request, tokenA, groupNameBase);
       groupId = data.group?.id;
     }
   });
 
-  test.afterEach(async () => {
-    // Keep group alive for the suite — cleanup in last test
-  });
+  test.afterEach(async () => {});
 
   test('edit group name via API', async ({ request }) => {
     const newName = `Renamed ${ts()}`;
@@ -41,7 +37,6 @@ test.describe('Group Profile', () => {
     const g = await detail.json();
     expect(g.group.name).toBe(newName);
 
-    // Reset
     await request.patch(`${API}/api/groups/${groupId}`, {
       headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/json' },
       data: { name: groupNameBase },
@@ -58,7 +53,6 @@ test.describe('Group Profile', () => {
         profileImage: { name: 'test-image.png', mimeType: 'image/png', buffer: fileBuffer },
       },
     });
-    // Small test PNGs may fail image processing — accept 200 or 400, just not crash
     expect([200, 400, 500].includes(res.status())).toBeTruthy();
   });
 
@@ -97,38 +91,37 @@ test.describe('Group Profile', () => {
         headers: { Authorization: `Bearer ${tokenA}` },
       });
       if (detail.ok()) currentName = (await detail.json()).group?.name || groupNameBase;
-    } catch { /* server may have restarted — use base name */ }
+    } catch {}
 
     await page.goto('/app/groups');
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     const groupBtn = page.getByText(currentName);
-    if (!(await groupBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
+    if (!(await groupBtn.isVisible({ timeout: 15_000 }).catch(() => false))) {
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+    }
+    if (!(await groupBtn.isVisible({ timeout: 10_000 }).catch(() => false))) {
       test.skip();
       return;
     }
     await groupBtn.click();
-    await page.waitForTimeout(1000);
 
     const infoBtn = page.getByTitle('Group info').or(page.locator('button:has(i.fa-info-circle)'));
-    if (await infoBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    if (await infoBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
       await infoBtn.click();
-      await page.waitForTimeout(1000);
 
       const editIcon = page.locator('i.fa-pen').first();
-      if (await editIcon.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      if (await editIcon.isVisible({ timeout: 5_000 }).catch(() => false)) {
         await editIcon.click();
-        await page.waitForTimeout(500);
 
         const nameInput = page.locator('input').first();
         const newName = `UI Renamed ${ts()}`;
         await nameInput.fill(newName);
         await nameInput.press('Enter');
-        await page.waitForTimeout(2000);
 
-        await expect(page.getByText(newName)).toBeVisible({ timeout: 5_000 });
+        await expect(page.getByText(newName)).toBeVisible({ timeout: 10_000 });
 
-        // Reset
         await request.patch(`${API}/api/groups/${groupId}`, {
           headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/json' },
           data: { name: groupNameBase },
@@ -145,35 +138,34 @@ test.describe('Group Profile', () => {
         headers: { Authorization: `Bearer ${tokenA}` },
       });
       if (detail.ok()) currentName = (await detail.json()).group?.name || groupNameBase;
-    } catch { /* server may have restarted — use base name */ }
+    } catch {}
 
     await page.goto('/app/groups');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     const groupBtn = page.getByText(currentName).first();
-    if (!(await groupBtn.isVisible({ timeout: 8_000 }).catch(() => false))) {
-      test.skip(); return;
+    if (!(await groupBtn.isVisible({ timeout: 15_000 }).catch(() => false))) {
+      await page.reload();
+      await page.waitForLoadState('networkidle');
     }
+    await expect(groupBtn).toBeVisible({ timeout: 15_000 });
     await groupBtn.click();
-    await page.waitForTimeout(2000);
 
-    const infoBtn = page.getByTitle('Group info').or(page.locator('button:has(i.fa-info-circle)'));
-    if (!(await infoBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
-      test.skip(); return;
-    }
-    await infoBtn.click();
-    await page.waitForTimeout(2000);
+    // Open group profile by clicking the group name in the panel header
+    const panelTitle = page.locator('.auth-panel-title').filter({ hasText: currentName });
+    await expect(panelTitle).toBeVisible({ timeout: 10_000 });
+    await panelTitle.click();
 
     const fileInputs = page.locator('input[type="file"]');
+    await expect(fileInputs.first()).toBeAttached({ timeout: 10_000 });
     const count = await fileInputs.count();
     if (count < 2) { test.skip(); return; }
     await fileInputs.nth(1).setInputFiles(getAssetPath('test-image.png'));
-    await page.waitForTimeout(3000);
 
     const uploadBtn = page.getByRole('button', { name: /upload/i });
     if (await uploadBtn.isVisible({ timeout: 8_000 }).catch(() => false)) {
       await uploadBtn.click();
-      await page.waitForTimeout(4000);
+      await expect(uploadBtn).toBeHidden({ timeout: 15_000 }).catch(() => {});
     }
   });
 
@@ -185,34 +177,33 @@ test.describe('Group Profile', () => {
         headers: { Authorization: `Bearer ${tokenA}` },
       });
       if (detail.ok()) currentName = (await detail.json()).group?.name || groupNameBase;
-    } catch { /* server may have restarted — use base name */ }
+    } catch {}
 
     await page.goto('/app/groups');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('networkidle');
 
     const groupBtn = page.getByText(currentName).first();
-    if (!(await groupBtn.isVisible({ timeout: 8_000 }).catch(() => false))) {
-      test.skip(); return;
+    if (!(await groupBtn.isVisible({ timeout: 15_000 }).catch(() => false))) {
+      await page.reload();
+      await page.waitForLoadState('networkidle');
     }
+    await expect(groupBtn).toBeVisible({ timeout: 15_000 });
     await groupBtn.click();
-    await page.waitForTimeout(2000);
 
-    const infoBtn = page.getByTitle('Group info').or(page.locator('button:has(i.fa-info-circle)'));
-    if (!(await infoBtn.isVisible({ timeout: 5_000 }).catch(() => false))) {
-      test.skip(); return;
-    }
-    await infoBtn.click();
-    await page.waitForTimeout(2000);
+    // Open group profile by clicking the group name in the panel header
+    const panelTitle = page.locator('.auth-panel-title').filter({ hasText: currentName });
+    await expect(panelTitle).toBeVisible({ timeout: 10_000 });
+    await panelTitle.click();
 
     const fileInputs = page.locator('input[type="file"]');
+    await expect(fileInputs.first()).toBeAttached({ timeout: 10_000 });
     if ((await fileInputs.count()) < 1) { test.skip(); return; }
     await fileInputs.first().setInputFiles(getAssetPath('test-cover.png'));
-    await page.waitForTimeout(3000);
 
     const uploadBtn = page.getByRole('button', { name: /upload/i });
     if (await uploadBtn.isVisible({ timeout: 8_000 }).catch(() => false)) {
       await uploadBtn.click();
-      await page.waitForTimeout(4000);
+      await expect(uploadBtn).toBeHidden({ timeout: 15_000 }).catch(() => {});
     }
   });
 

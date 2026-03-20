@@ -96,8 +96,29 @@ echo ""
 echo "Press Ctrl+C to stop"
 echo ""
 
-# Trap Ctrl+C
-trap 'echo ""; echo "Stopping..."; kill $BACKEND_PID $FRONTEND_PID $PRISMA_PID $WIDGET_PID $DASHBOARD_PID 2>/dev/null; pkill -f "storybook dev" 2>/dev/null; echo "Stopping database containers..."; docker-compose down; exit 0' INT TERM
+cleanup() {
+  echo ""
+  echo "🛑 Stopping all runners..."
+  kill $BACKEND_PID $FRONTEND_PID $PRISMA_PID $WIDGET_PID $DASHBOARD_PID 2>/dev/null
+  sleep 0.5
+  pkill -9 -f "npm run dev" 2>/dev/null
+  pkill -9 -f "next dev" 2>/dev/null
+  pkill -9 -f "tsx watch" 2>/dev/null
+  pkill -9 -f "prisma studio" 2>/dev/null
+  pkill -9 -f "storybook dev" 2>/dev/null
+  pkill -9 -f "widget-src/build.js" 2>/dev/null
+  pkill -9 -f "fswatch.*chatr" 2>/dev/null
+  pkill -9 -f "playwright test" 2>/dev/null
+  lsof -ti:3000 | xargs kill -9 2>/dev/null
+  lsof -ti:3001 | xargs kill -9 2>/dev/null
+  lsof -ti:5555 | xargs kill -9 2>/dev/null
+  lsof -ti:6006 | xargs kill -9 2>/dev/null
+  echo "🐘 Stopping database containers..."
+  docker-compose down
+  echo "✅ All stopped."
+  exit 0
+}
+trap cleanup INT TERM
 
 # Wait
 wait $BACKEND_PID $FRONTEND_PID $PRISMA_PID $WIDGET_PID

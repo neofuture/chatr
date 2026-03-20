@@ -1,18 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { apiLogin, TEST_USERS } from './helpers/auth';
+import { readStoredAuth, TEST_USERS } from './helpers/auth';
 import * as api from './helpers/api';
 
 const API = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
+const storedA = readStoredAuth('a');
 
 test.describe('Socket RPC endpoints (API-level)', () => {
-  let tokenA: string;
-
-  test.beforeEach(async ({ request }) => {
-    if (!tokenA) {
-      const result = await apiLogin(request, TEST_USERS.userA);
-      tokenA = result.token;
-    }
-  });
+  const tokenA = storedA.token;
 
   test('GET /api/users/me returns user data (REST fallback works)', async ({ request }) => {
     const res = await request.get(`${API}/api/users/me`, {

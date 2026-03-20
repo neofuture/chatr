@@ -243,6 +243,19 @@ describe('Dashboard Routes', () => {
   describe('parsePlaywrightJson error handling', () => {
     const TEST_ROOT = path.resolve(__dirname, '../../..');
     const E2E_JSON_PATH = path.join(TEST_ROOT, 'e2e-results.json');
+    const RUN_STATE_PATH = path.join(TEST_ROOT, '.test-cache', 'run-state.json');
+
+    beforeEach(() => {
+      // Clear persisted e2e run state so the orphan-process check doesn't
+      // return "running" when a real Playwright suite is running concurrently.
+      try {
+        if (fs.existsSync(RUN_STATE_PATH)) {
+          const state = JSON.parse(fs.readFileSync(RUN_STATE_PATH, 'utf8'));
+          delete state.e2e;
+          fs.writeFileSync(RUN_STATE_PATH, JSON.stringify(state));
+        }
+      } catch { /* ignore */ }
+    });
 
     it('returns none when e2e-results.json contains invalid JSON', async () => {
       fs.writeFileSync(E2E_JSON_PATH, 'NOT VALID JSON!!!');
@@ -261,6 +274,19 @@ describe('Dashboard Routes', () => {
   describe('E2E test routes', () => {
     const TEST_ROOT = path.resolve(__dirname, '../../..');
     const E2E_JSON_PATH = path.join(TEST_ROOT, 'e2e-results.json');
+    const RUN_STATE_PATH = path.join(TEST_ROOT, '.test-cache', 'run-state.json');
+
+    beforeEach(() => {
+      // Clear persisted e2e run state so the orphan-process check doesn't
+      // return "running" when a real Playwright suite is running concurrently.
+      try {
+        if (fs.existsSync(RUN_STATE_PATH)) {
+          const state = JSON.parse(fs.readFileSync(RUN_STATE_PATH, 'utf8'));
+          delete state.e2e;
+          fs.writeFileSync(RUN_STATE_PATH, JSON.stringify(state));
+        }
+      } catch { /* ignore */ }
+    });
 
     function createMockChild() {
       return {
