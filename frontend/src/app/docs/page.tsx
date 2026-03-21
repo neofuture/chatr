@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, isValidElement } from 'react';
+import { flushSync } from 'react-dom';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import Pagination from '@/components/Pagination/Pagination';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -142,6 +144,9 @@ export default function DocsPage() {
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<DocFile[]>([]);
+  const [changelogPage, setChangelogPage] = useState(1);
+  const CHANGELOG_PER_PAGE = 10;
+  const contentRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const sidebarScrollTop = useRef(0);
   const pendingHash = useRef<string | null>(null);
@@ -341,6 +346,7 @@ export default function DocsPage() {
   // Load file content. When isHomeLoad is true, the home view with quick links is preserved.
   const loadFile = async (filePath: string, hash?: string, isHomeLoad = false) => {
     if (!isHomeLoad) setShowHome(false);
+    setChangelogPage(1);
     rememberSidebarScroll();
     pendingHash.current = hash || null;
     setLoading(true);
@@ -440,6 +446,37 @@ export default function DocsPage() {
 
     searchInStructure(struct);
     return results;
+  };
+
+  const goToPage = (page: number) => {
+    if (page === changelogPage) return;
+    const el = contentRef.current;
+    if (el) el.style.minHeight = `${el.offsetHeight}px`;
+    flushSync(() => setChangelogPage(page));
+    window.scrollTo({ top: 0 });
+    requestAnimationFrame(() => {
+      if (el) el.style.minHeight = '';
+    });
+  };
+
+  const paginateChangelog = (raw: string): { content: string; totalPages: number; totalEntries: number } => {
+    const headerEnd = raw.indexOf('\n## ');
+    if (headerEnd === -1) return { content: raw, totalPages: 1, totalEntries: 0 };
+
+    const header = raw.slice(0, headerEnd);
+    const rest = raw.slice(headerEnd + 1);
+
+    const entries = rest.split(/(?=^## )/m).filter(e => e.trim());
+    const totalEntries = entries.length;
+    const totalPages = Math.ceil(totalEntries / CHANGELOG_PER_PAGE);
+    const start = (changelogPage - 1) * CHANGELOG_PER_PAGE;
+    const pageEntries = entries.slice(start, start + CHANGELOG_PER_PAGE);
+
+    return {
+      content: header + '\n' + pageEntries.join(''),
+      totalPages,
+      totalEntries,
+    };
   };
 
   // Handle search input
@@ -997,7 +1034,22 @@ export default function DocsPage() {
                 </div>
               )}
 
-              {content && (
+              {content && (() => {
+                const isChangelog = selectedFile === 'VERSION.md';
+                const paginated = isChangelog ? paginateChangelog(content) : null;
+                const displayContent = paginated ? paginated.content : content;
+
+                return (
+                <div ref={isChangelog ? contentRef : undefined}>
+                  {isChangelog && paginated && paginated.totalPages > 1 && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <Pagination
+                        currentPage={changelogPage}
+                        totalPages={paginated.totalPages}
+                        onPageChange={goToPage}
+                      />
+                    </div>
+                  )}
                 <div className={docStyles['markdown-content']}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkUnwrapParagraphs]}
@@ -1110,10 +1162,21 @@ export default function DocsPage() {
                       },
                     }}
                   >
-                    {content}
+                    {displayContent}
                   </ReactMarkdown>
                 </div>
-              )}
+                  {isChangelog && paginated && paginated.totalPages > 1 && (
+                    <div style={{ marginTop: '2rem' }}>
+                      <Pagination
+                        currentPage={changelogPage}
+                        totalPages={paginated.totalPages}
+                        onPageChange={goToPage}
+                      />
+                    </div>
+                  )}
+                </div>
+                );
+              })()}
             </>
           )}
         </div>

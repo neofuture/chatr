@@ -4,6 +4,19 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.4 — 2026-03-21
+
+**Commit:** `ced84d0` — feat: extract reusable Pagination component with smooth carousel animation
+
+- Extract pagination into reusable component at components/Pagination
+- Render all page numbers in a continuous strip with CSS translateX sliding
+- Buttery smooth carousel animation using cubic-bezier(0.22, 1, 0.36, 1)
+- Edge fade masks driven by actual track scroll position, not page number
+- Remove left fade when first page is in view, right fade when last page is
+- Remove old inline pagination markup and CSS from docs page
+
+---
+
 ## v0.1.3 — 2026-03-21
 
 **Commit:** `3de5de0` — fix: backfill changelog from commit bodies and prefer them over Luna summaries

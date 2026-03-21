@@ -1,0 +1,139 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  font-size: 0.875rem;
+  color: var(--blue-300);
+}
+
+[data-theme='light'] .bar {
+  background: rgba(248, 250, 252, 0.8);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.label {
+  min-width: 8rem;
+}
+
+.controls {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+/* ── Base button ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  height: 2rem;
+  padding: 0 0.625rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--blue-200);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: var(--blue-100);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Icon-only buttons (<< >>) ── */
+.btnIcon {
+  composes: btn;
+  width: 2rem;
+  padding: 0;
+}
+
+/* ── Nav buttons (Prev / Next) ── */
+.btnNav {
+  composes: btn;
+  width: 4.25rem;
+}
+
+/* ── Sliding page track ── */
+.pageTrackClip {
+  overflow: hidden;
+  flex-shrink: 0;
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.pageTrackClip[data-fade='start'] {
+  mask-image: linear-gradient(to right, black 0%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 0%, black 92%, transparent 100%);
+}
+
+.pageTrackClip[data-fade='end'] {
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 100%);
+}
+
+.pageTrackClip[data-fade='none'] {
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+.pageTrack {
+  display: flex;
+  gap: 0.35rem;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* ── Page number buttons ── */
+.btnPage {
+  composes: btn;
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 0.375rem;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.btnPageActive {
+  composes: btnPage;
+  background: var(--orange-500) !important;
+  border-color: var(--orange-500) !important;
+  color: #fff !important;
+  font-weight: 700;
+  border-radius: 50% !important;
+}
+
+/* ── Light mode ── */
+[data-theme='light'] .btn {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: var(--text-secondary);
+}
+
+[data-theme='light'] .btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .btnPageActive {
+  background: var(--orange-500) !important;
+  border-color: var(--orange-500) !important;
+  color: #fff !important;
+}
