@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.0.155 — 2026-03-21
+
+**Commit:** `74e84c5` — chore: extend JWT token expiry from 7 days to 1 year
+
+---
+
 ## v0.0.154 — 2026-03-21
 
 **Commit:** `73fdd6a` — feat: add split-screen demo recorder, reliability improvements & teardown fixes

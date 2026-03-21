@@ -437,7 +437,7 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
         const token = jwt.sign(
           { userId: user.id, username: user.username },
           process.env.JWT_SECRET || 'your_secret_key_change_in_production',
-          { expiresIn: '7d' }
+          { expiresIn: '365d' }
         );
         return res.status(200).json({
           message: 'Login successful',
@@ -545,7 +545,7 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         process.env.JWT_SECRET || 'your_secret_key_change_in_production',
-        { expiresIn: '7d' }
+        { expiresIn: '365d' }
       );
 
       return res.status(200).json({
@@ -836,7 +836,7 @@ router.post('/2fa/verify', authenticateToken as any, async (req: Request, res: R
     const token = jwt.sign(
       { userId: user.id, username: user.username },
       process.env.JWT_SECRET || 'your_secret_key_change_in_production',
-      { expiresIn: '7d' }
+      { expiresIn: '365d' }
     );
 
     res.status(200).json({
@@ -868,7 +868,7 @@ router.post('/logout', authenticateToken, async (req: Request, res: Response) =>
 
     // Decode to get the expiry so we only blacklist until it naturally expires
     const decoded = jwt.decode(token) as { exp?: number } | null;
-    const expiresIn = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 7 * 24 * 60 * 60;
+    const expiresIn = decoded?.exp ? decoded.exp - Math.floor(Date.now() / 1000) : 365 * 24 * 60 * 60;
 
     if (expiresIn > 0) {
       await blacklistToken(tokenHash, expiresIn);
@@ -976,7 +976,7 @@ router.post('/verify-email', async (req: Request, res: Response) => {
       const token = jwt.sign(
         { userId: user.id, username: user.username },
         process.env.JWT_SECRET || 'your_secret_key_change_in_production',
-        { expiresIn: '7d' }
+        { expiresIn: '365d' }
       );
 
       return res.status(200).json({
@@ -1145,7 +1145,7 @@ router.post('/verify-phone', async (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: user.id, username: user.username },
       process.env.JWT_SECRET || 'your_secret_key_change_in_production',
-      { expiresIn: '7d' }
+      { expiresIn: '365d' }
     );
 
     res.status(200).json({
