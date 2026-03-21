@@ -251,7 +251,7 @@ export default function MessageInput({
 
       {/* File preview strip */}
       {selectedFiles.length > 0 && (
-        <div style={{
+        <div data-testid="file-preview-strip" style={{
           padding: '10px 16px',
           backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)',
           borderTop: '1px solid #3b82f6',
@@ -262,11 +262,27 @@ export default function MessageInput({
             paddingBottom: '8px', paddingTop: '10px',
             scrollbarWidth: 'thin',
           }}>
-            {selectedFiles.map((file, idx) => (
+            {selectedFiles.map((file, idx) => {
+              const previewReady = filePreviews[idx] !== undefined;
+              const isImage = file.type.startsWith('image/') && !file.type.startsWith('image/svg');
+              const isImageLoading = isImage && !previewReady;
+              return (
               <div key={`${file.name}-${idx}`} style={{
                 flexShrink: 0, position: 'relative', width: '72px', overflow: 'visible',
               }}>
-                {filePreviews[idx] ? (
+                {isImageLoading ? (
+                  <div style={{
+                    width: '72px', height: '72px', borderRadius: '8px',
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', gap: '4px',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                  }}>
+                    <i className="fas fa-image" style={{ fontSize: '18px', color: '#3b82f6', opacity: 0.6 }} />
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '10px', color: '#3b82f6', opacity: 0.6 }} />
+                  </div>
+                ) : filePreviews[idx] ? (
                   file.type.startsWith('video/') ? (
                     <video src={filePreviews[idx]! + '#t=0.1'} muted playsInline preload="metadata"
                       style={{ width: '72px', height: '72px', borderRadius: '8px', objectFit: 'cover', display: 'block' }} />
@@ -326,7 +342,8 @@ export default function MessageInput({
                   <i className="fas fa-times" />
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
             <span style={{ fontSize: '12px', opacity: 0.6 }}>

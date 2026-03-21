@@ -9,8 +9,9 @@ import { swaggerSpec } from './swagger';
 import path from 'path';
 import { createAdapter } from '@socket.io/redis-adapter';
 
-// Redis
-import { connectRedis, disconnectRedis, isRedisConnected, redisPub, redisSub } from './lib/redis';
+// Database & Cache
+import { prisma } from './lib/prisma';
+import { connectRedis, disconnectRedis, isRedisConnected, redis, redisPub, redisSub } from './lib/redis';
 
 // Import REST API routes
 import authRoutes from './routes/auth';
@@ -151,9 +152,18 @@ app.use('/widget', (_req, res, next) => {
 const PORT = process.env.PORT || 3001;
 
 async function start() {
-  // Connect Redis first
+  // Warm up Prisma connection pool before handling any requests
+  try {
+    await prisma.$connect();
+    console.log('🟢 Prisma connected');
+  } catch (err) {
+    console.error('⚠️  Prisma connection failed:', (err as Error).message);
+  }
+
+  // Connect Redis and verify with a ping
   try {
     await connectRedis();
+    await redis.ping();
     console.log('🔴 Redis ready');
   } catch (err) {
     console.error('⚠️  Redis connection failed — running without Redis:', (err as Error).message);
@@ -210,7 +220,13 @@ start().catch(err => {
 const gracefulShutdown = async () => {
   console.log('🛑 Shutting down gracefully...');
 
-  // Disconnect Redis
+  try {
+    await prisma.$disconnect();
+    console.log('🟢 Prisma disconnected');
+  } catch (e) {
+    console.error('⚠️  Error disconnecting Prisma:', e);
+  }
+
   try {
     await disconnectRedis();
     console.log('🔴 Redis disconnected');

@@ -166,6 +166,16 @@ export function pickProfileRestore(snapshot: Record<string, any>): Record<string
   return data;
 }
 
+/** Pick image fields for restore-images endpoint. */
+export function pickImageRestore(snapshot: Record<string, any>): { profileImage?: string | null; coverImage?: string | null } | null {
+  const has = 'profileImage' in snapshot || 'coverImage' in snapshot;
+  if (!has) return null;
+  return {
+    ...(snapshot.profileImage !== undefined ? { profileImage: snapshot.profileImage } : {}),
+    ...(snapshot.coverImage !== undefined ? { coverImage: snapshot.coverImage } : {}),
+  };
+}
+
 /**
  * Retry an async cleanup operation up to `retries` times.
  * Swallows the error only after all retries are exhausted.

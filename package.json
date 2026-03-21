@@ -17,7 +17,8 @@
     "widget:watch": "node widget-src/build.js --watch",
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
-    "test:e2e:headed": "npx playwright test --headed"
+    "test:e2e:headed": "npx playwright test --headed",
+    "demo:record": "tsx demo/record-demo.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

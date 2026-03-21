@@ -42,11 +42,19 @@ teardown('cleanup', async () => {
       await api.retryCleanup(() =>
         api.updateProfile(ctx, tokenA, api.pickProfileRestore(snapshotA))
       );
+      const imagesA = api.pickImageRestore(snapshotA);
+      if (imagesA) {
+        await api.retryCleanup(() => api.restoreImages(ctx, tokenA, imagesA));
+      }
     }
     if (snapshotB) {
       await api.retryCleanup(() =>
         api.updateProfile(ctx, tokenB, api.pickProfileRestore(snapshotB))
       );
+      const imagesB = api.pickImageRestore(snapshotB);
+      if (imagesB) {
+        await api.retryCleanup(() => api.restoreImages(ctx, tokenB, imagesB));
+      }
     }
 
     // ── Restore privacy settings from snapshots ────────────────────────────

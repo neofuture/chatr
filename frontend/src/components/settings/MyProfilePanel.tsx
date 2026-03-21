@@ -61,7 +61,7 @@ export default function MyProfilePanel() {
 
   useEffect(() => { loadProfile(); }, [loadProfile]);
 
-  const saveField = useCallback(async (updates: Record<string, any>) => {
+  const saveField = useCallback(async (updates: Record<string, any>): Promise<boolean> => {
     setSaveStatus('saving');
     try {
       const data = await updateMe(updates);
@@ -71,7 +71,6 @@ export default function MyProfilePanel() {
           const u = JSON.parse(localStorage.getItem('user') || '{}');
           localStorage.setItem('user', JSON.stringify({ ...u, ...data }));
         } catch {}
-        // Notify other components of profile change
         if (socket?.connected) {
           socket.emit('user:profileUpdate:self', data);
         }
@@ -79,9 +78,11 @@ export default function MyProfilePanel() {
       }
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 1500);
+      return true;
     } catch {
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 2000);
+      return false;
     }
   }, [socket]);
 
@@ -127,10 +128,7 @@ export default function MyProfilePanel() {
             <InlineField label="Display name" field="displayName" value={user.displayName || ''} placeholder="Add a display name" onSave={saveField} />
             <InlineField label="First name" field="firstName" value={user.firstName || ''} placeholder="Add your first name" onSave={saveField} />
             <InlineField label="Last name" field="lastName" value={user.lastName || ''} placeholder="Add your last name" onSave={saveField} />
-            <div className={styles.fieldRow} data-testid="field-gender">
-              <span className={styles.fieldLabel}>Gender</span>
-              <GenderSelect value={user.gender || ''} options={GENDER_OPTIONS} genderLabel={genderLabel} onSave={saveField} />
-            </div>
+            <GenderField label="Gender" value={user.gender || ''} options={GENDER_OPTIONS} genderLabel={genderLabel} onSave={saveField} />
           </div>
         </section>
 
@@ -167,13 +165,14 @@ export default function MyProfilePanel() {
   );
 }
 
-/* ── Self-contained inline text field ── */
+/* ── Self-contained inline text field with per-field save indicator ── */
 function InlineField({ label, field, value, placeholder, onSave }: {
   label: string; field: string; value: string; placeholder: string;
-  onSave: (updates: Record<string, any>) => Promise<void>;
+  onSave: (updates: Record<string, any>) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
+  const [fieldStatus, setFieldStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
   const saving = useRef(false);
 
@@ -185,12 +184,15 @@ function InlineField({ label, field, value, placeholder, onSave }: {
     saving.current = true;
     setEditing(false);
     if (text.trim() === value) { saving.current = false; return; }
-    await onSave({ [field]: text.trim() || null });
+    setFieldStatus('saving');
+    const ok = await onSave({ [field]: text.trim() || null });
+    setFieldStatus(ok ? 'saved' : 'error');
+    setTimeout(() => setFieldStatus('idle'), 2000);
     saving.current = false;
   };
 
   return (
-    <div className={styles.fieldRow} data-testid={`field-${field}`}>
+    <div className={styles.fieldRow} data-testid={`field-${field}`} data-save-status={fieldStatus}>
       <span className={styles.fieldLabel}>{label}</span>
       {editing ? (
         <div className={styles.fieldEdit}>
@@ -211,19 +213,34 @@ function InlineField({ label, field, value, placeholder, onSave }: {
           </span>
         </button>
       )}
+      <FieldStatusIcon status={fieldStatus} />
     </div>
   );
 }
 
-/* ── Self-contained gender select ── */
-function GenderSelect({ value, options, genderLabel, onSave }: {
+/* ── Inline save status icon ── */
+function FieldStatusIcon({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) {
+  if (status === 'idle') return null;
+  const iconMap = {
+    saving: { cls: 'fas fa-spinner fa-spin', color: '#94a3b8' },
+    saved:  { cls: 'fas fa-check', color: '#22c55e' },
+    error:  { cls: 'fas fa-times', color: '#ef4444' },
+  } as const;
+  const { cls, color } = iconMap[status];
+  return <i className={cls} style={{ color, fontSize: '12px', flexShrink: 0, marginLeft: '4px' }} />;
+}
+
+/* ── Self-contained gender field with per-field save indicator ── */
+function GenderField({ label, value, options, genderLabel, onSave }: {
+  label: string;
   value: string;
   options: { value: string; label: string }[];
   genderLabel: (v: string | null) => string;
-  onSave: (updates: Record<string, any>) => Promise<void>;
+  onSave: (updates: Record<string, any>) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState(value);
+  const [fieldStatus, setFieldStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const selectRef = useRef<HTMLSelectElement>(null);
   const savingRef = useRef(false);
 
@@ -237,31 +254,40 @@ function GenderSelect({ value, options, genderLabel, onSave }: {
     savingRef.current = true;
     setEditing(false);
     if (newVal !== value) {
-      await onSave({ gender: newVal || null });
+      setFieldStatus('saving');
+      const ok = await onSave({ gender: newVal || null });
+      setFieldStatus(ok ? 'saved' : 'error');
+      setTimeout(() => setFieldStatus('idle'), 2000);
     }
     savingRef.current = false;
   };
 
-  return editing ? (
-    <div className={styles.fieldEdit}>
-      <div className={styles.selectWrap}>
-        <select
-          ref={selectRef}
-          className={styles.fieldSelect}
-          value={selected}
-          onChange={handleChange}
-          onBlur={() => { if (!savingRef.current) setEditing(false); }}
-        >
-          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <i className={`fas fa-chevron-down ${styles.selectChevron}`} />
-      </div>
+  return (
+    <div className={styles.fieldRow} data-testid="field-gender" data-save-status={fieldStatus}>
+      <span className={styles.fieldLabel}>{label}</span>
+      {editing ? (
+        <div className={styles.fieldEdit}>
+          <div className={styles.selectWrap}>
+            <select
+              ref={selectRef}
+              className={styles.fieldSelect}
+              value={selected}
+              onChange={handleChange}
+              onBlur={() => { if (!savingRef.current) setEditing(false); }}
+            >
+              {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <i className={`fas fa-chevron-down ${styles.selectChevron}`} />
+          </div>
+        </div>
+      ) : (
+        <button className={styles.fieldValueBtn} onClick={() => setEditing(true)}>
+          <span className={value ? styles.fieldValue : styles.fieldPlaceholder}>
+            {genderLabel(value || null)}
+          </span>
+        </button>
+      )}
+      <FieldStatusIcon status={fieldStatus} />
     </div>
-  ) : (
-    <button className={styles.fieldValueBtn} onClick={() => setEditing(true)}>
-      <span className={value ? styles.fieldValue : styles.fieldPlaceholder}>
-        {genderLabel(value || null)}
-      </span>
-    </button>
   );
 }

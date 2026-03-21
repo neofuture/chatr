@@ -55,8 +55,9 @@ test.describe('Group Messaging', () => {
     await expect(msgInput).toBeVisible({ timeout: 10_000 });
 
     await userAPage.locator('input[type="file"]').setInputFiles(getAssetPath('test-image.png'));
+    await expect(userAPage.locator('[data-testid="file-preview-strip"]')).toBeVisible({ timeout: 10_000 });
     const sendFileBtn = userAPage.locator('button').filter({ hasText: /Send file/ }).first();
-    await expect(sendFileBtn).toBeVisible({ timeout: 10_000 });
+    await expect(sendFileBtn).toBeVisible({ timeout: 5_000 });
     await sendFileBtn.click();
     await expect(sendFileBtn).toBeHidden({ timeout: 15_000 });
   });
@@ -70,8 +71,9 @@ test.describe('Group Messaging', () => {
     await expect(msgInput).toBeVisible({ timeout: 10_000 });
 
     await userAPage.locator('input[type="file"]').setInputFiles(getAssetPath('test-audio.wav'));
+    await expect(userAPage.locator('[data-testid="file-preview-strip"]')).toBeVisible({ timeout: 10_000 });
     const sendFileBtn = userAPage.locator('button').filter({ hasText: /Send file/ }).first();
-    await expect(sendFileBtn).toBeVisible({ timeout: 10_000 });
+    await expect(sendFileBtn).toBeVisible({ timeout: 5_000 });
     await sendFileBtn.click();
     await expect(sendFileBtn).toBeHidden({ timeout: 15_000 });
   });
@@ -85,8 +87,9 @@ test.describe('Group Messaging', () => {
     await expect(msgInput).toBeVisible({ timeout: 10_000 });
 
     await userAPage.locator('input[type="file"]').setInputFiles(getAssetPath('test-file.txt'));
+    await expect(userAPage.locator('[data-testid="file-preview-strip"]')).toBeVisible({ timeout: 10_000 });
     const sendFileBtn = userAPage.locator('button').filter({ hasText: /Send file/ }).first();
-    await expect(sendFileBtn).toBeVisible({ timeout: 10_000 });
+    await expect(sendFileBtn).toBeVisible({ timeout: 5_000 });
     await sendFileBtn.click();
     await expect(sendFileBtn).toBeHidden({ timeout: 15_000 });
   });

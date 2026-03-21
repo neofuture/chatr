@@ -16,3 +16,19 @@ node frontend/scripts/update-changelog.js
 
 git add frontend/src/version.ts Documentation/VERSION.md
 SKIP_POST_COMMIT=1 git commit --amend --no-edit --no-verify
+
+# Record demo video in background (non-blocking)
+# Only runs if dev servers are up (frontend on :3000, backend on :3001)
+if curl -sf http://localhost:3000 > /dev/null 2>&1 && curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
+  DEMO_LOG="demo/demo-recording.log"
+  echo "🎬 Triggering demo video recording in background (log: $DEMO_LOG)..."
+  mkdir -p demo
+  TSX_BIN="./backend/node_modules/.bin/tsx"
+  if [ ! -x "$TSX_BIN" ]; then
+    TSX_BIN="$(npx which tsx 2>/dev/null || echo tsx)"
+  fi
+  nohup "$TSX_BIN" demo/record-demo.ts > "$DEMO_LOG" 2>&1 &
+  echo "🎬 Demo PID: $! — video will be saved to demo/demo.mp4"
+else
+  echo "⏭️  Skipping demo recording (dev servers not running)"
+fi

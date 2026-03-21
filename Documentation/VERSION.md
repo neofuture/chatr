@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.0.154 — 2026-03-21
+
+**Commit:** `73fdd6a` — feat: add split-screen demo recorder, reliability improvements & teardown fixes
+
+---
+
 ## v0.0.153 — 2026-03-20
 
 **Commit:** `2afbc39` — fix: resolve E2E test flakiness and recover 4 missing tests

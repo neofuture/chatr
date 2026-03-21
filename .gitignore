@@ -32,6 +32,14 @@ backend/uploads/**/*
 /jest-results.json
 /.test-cache/
 
+# Demo video (auto-generated on commit)
+demo/demo.mp4
+demo/demo.webm
+demo/.tmp-video/
+demo/.tmp-carl/
+demo/.tmp-simon/
+demo/demo-recording.log
+
 # Python venv
 .venv/
 
