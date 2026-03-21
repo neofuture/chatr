@@ -4,13 +4,34 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.3 — 2026-03-21
+
+**Commit:** `3de5de0` — fix: backfill changelog from commit bodies and prefer them over Luna summaries
+
+- Retrofix 23 VERSION.md entries with full bullet points from git commit bodies
+- Add missing v0.0.152 entry
+- update-changelog.js now uses commit body bullets directly when available
+- Luna AI fallback only used for sparse commit messages
+
+---
+
 ## v0.1.2 — 2026-03-21
 
 **Commit:** `c8837a0` — fix: persist test mode in Redis and harden E2E test reliability
 
-- Fixes persistence of test mode in Redis for improved reliability.
-- Enhances end-to-end tests to ensure consistent results.
-- Updates test mocks to use asynchronous behavior for better accuracy.
+- Persist test mode flag in Redis so it survives backend restarts
+  (tsx watch), preventing rate limiter from blocking auth mid-run
+- Restore test mode on backend startup via restoreTestMode()
+- Increase keepAliveTimeout/headersTimeout to prevent ECONNRESET
+- Wrap E2E API helpers with retry-on-transient-error logic
+- Fix stale React closure in InlineField save using latestText ref
+- Remove counterproductive 10s fetch timeout in profile updateMe
+- Add reload fallback for stale group list cache in E2E tests
+- Improve messaging test with click retry loop and longer WS timeout
+- Add API fallback for group promote test under heavy load
+- Increase profile save assertion timeouts from 10s to 20s
+- Add null guard for spawn in dashboard E2E runner
+- Update unit tests for async setTestMode and proper spawn mocking
 
 ---
 
@@ -24,17 +45,57 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `73fdd6a` — feat: add split-screen demo recorder, reliability improvements & teardown fixes
 
+- Add demo/record-demo.ts: Playwright script recording a side-by-side
+  video (Carl + Simon) showcasing all features with chapter title cards
+- Add post-commit hook to trigger demo recording in background when
+  dev servers are running (non-blocking, gitignored output)
+- Backend warmup: explicit Prisma $connect() + Redis ping at startup
+  to eliminate cold-start latency on first requests
+- Profile save indicators: inline Saving.../Saved/Error feedback on
+  MyProfilePanel fields with data-save-status attributes for E2E
+- File upload loading state: pulsing spinner in MessageInput while
+  FileReader processes image thumbnails
+- Fix teardown to restore profileImage/coverImage fields (were being
+  cleared without restoration after E2E profile image tests)
+- Update E2E profile + group-messaging tests to use deterministic
+  save-status attributes and file-preview-strip locators
+- Clean up stale files (upload, user, docx)
+
 ---
 
 ## v0.0.153 — 2026-03-20
 
 **Commit:** `2afbc39` — fix: resolve E2E test flakiness and recover 4 missing tests
 
+- Fix registration test OTP filling: click each input before typing to
+  handle unreliable auto-focus across browsers
+- Fix registration post-verification flow with Promise.race for variable
+  API response times between email and phone verification
+- Wait for username availability check icon instead of fragile timeouts
+- Fix group-profile upload tests: replace non-existent "Group info" button
+  with correct .auth-panel-title click to open group profile panel
+- Switch mobile project from WebKit to Chromium for reliable React input
+  handling in Playwright
+- Enable trace: 'retain-on-failure' for easier failure debugging
+- Add Chrome/Mobile project tags to dashboard test results UI
+- Improve dev.sh cleanup to kill all child processes on exit
+- Fix parsePlaywrightLine return type to include isTeardown property
+
 ---
 
 ## v0.0.152 — 2026-03-19
 
 **Commit:** `8d96ebc` — fix: E2E test reliability + dashboard live progress
+
+- Fix crash recovery to not kill orphaned Playwright processes
+- Add RunningBanner with live elapsed timer for E2E runs
+- Grace period prevents stale 'ready' responses from killing running state
+- Fix gender select: controlled component with save guard
+- Fix upload tests: data-testid on cropper Upload buttons
+- Fix auth/registration tests: hamburger menu fallback for mobile
+- Fix registration: remove phoneNumber to avoid phone verification blocker
+- Fix group-management: scoped confirmation dialog selector
+- Remove 50% guard from cache-reporter and saveTestReport
 
 ---
 
@@ -53,10 +114,15 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `6720fd4` — docs: add changelog, update docs for auth panel, profile, E2E, and socketFirst changes
 
-- Created comprehensive changelog with full version history from v0.0.1 to v0.0.149
-- Updated AuthPanel, Backend Routes, Authentication, Testing, Architecture, and Frontend documentation
-- Added auto-generated changelog entry via post-commit hook
-- Added Settings to bottom navigation menu
+- Create Documentation/Versions/CHANGELOG.md with full version history
+- Update main index with changelog link and recent additions
+- Update AuthPanel docs for panel-based auth flow (no dedicated routes)
+- Update Authentication docs for email-first verification and AuthPanel integration
+- Update Routes docs with test cleanup endpoints and contact route
+- Update Testing docs with comprehensive E2E test section and Playwright details
+- Update Architecture diagram with contact and test-cleanup routes
+- Update Frontend index to remove 2FA from settings description
+- Add socketRPC and messageCache docs to Frontend Lib index
 
 ---
 
@@ -64,10 +130,15 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `6720fd4` — docs: add changelog, update docs for auth panel, profile, E2E, and socketFirst changes
 
-- Created initial changelog with version history from v0.0.1 to v0.0.149
-- Updated documentation for AuthPanel, backend routes, authentication flow, and testing
-- Added auto-generated changelog entries via post-commit hook
-- Added Settings to bottom navigation menu
+- Create Documentation/Versions/CHANGELOG.md with full version history
+- Update main index with changelog link and recent additions
+- Update AuthPanel docs for panel-based auth flow (no dedicated routes)
+- Update Authentication docs for email-first verification and AuthPanel integration
+- Update Routes docs with test cleanup endpoints and contact route
+- Update Testing docs with comprehensive E2E test section and Playwright details
+- Update Architecture diagram with contact and test-cleanup routes
+- Update Frontend index to remove 2FA from settings description
+- Add socketRPC and messageCache docs to Frontend Lib index
 
 ---
 
@@ -75,53 +146,21 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `7f6c98c` — feat: auth panel, profile management, E2E tests, and socketFirst reliability
 
-### Authentication Overhaul
-
-- **Removed dedicated auth routes**: Deleted `/login`, `/register`, and `/setup-2fa` pages and their associated tests
-- **AuthPanel-based authentication**: All login and registration now happens through the `AuthPanel` slide-in panel, triggered from the `SiteNav` avatar dropdown or footer CTA
-- **Avatar dropdown menu**: When logged out, shows Login and Register options; when logged in, shows the user's avatar with Go to App and Logout options
-- **Custom event system**: Footer "Create Account" button dispatches `chatr:open-auth` custom event to open the AuthPanel from any page
-- **Auth state sync**: Added `chatr:auth-changed` custom event for cross-component auth state synchronisation without page reload
-- **Default verification method**: Changed from SMS to Email as the default login verification method
-- **Removed Demo2FA**: Deleted `Demo2FA` component, its Storybook stories, and all documentation references
-
-### Profile Management
-
-- **Direct HTTP fetch/save**: Profile panel (`MyProfilePanel`) now uses direct `fetch` API calls instead of `socketFirst` for reliability
-- **Save status indicators**: Added real-time visual feedback — "Saving...", "Saved", "Save failed" — for all inline profile field edits
-- **Fresh data on every view**: Profile page fetches data from the server on mount, supporting multi-device usage without stale `localStorage` data
-- **Login response simplified**: Auth login endpoint now returns only minimal fields; profile data is fetched separately when needed
-
-### socketFirst Reliability
-
-- **Connected state guards**: All contexts and hooks (`FriendsContext`, `UserSettingsContext`, `useGroupsList`, `useConversation`, `BottomNav`) now gate `socketFirst` calls on the WebSocket `connected` boolean, preventing premature HTTP fallbacks and timeout cascades
-- **Dashboard cache TTL**: Increased from 60 seconds to 5 minutes to reduce event loop blocking from synchronous `buildDashboard()` execution
-
-### Navigation
-
-- **Removed homepage auto-redirect**: Logged-in users are no longer auto-redirected from the marketing homepage to `/app`
-- **Back to Web**: Added a "Back to Web" link in the app burger menu to navigate from `/app` back to the marketing site
-
-### Image Configuration
-
-- **next.config.js**: Added `images.remotePatterns` for `localhost:3001` (local backend uploads) and `*.amazonaws.com` (S3 production uploads)
-- **SiteNav avatar**: Uses plain `<img>` tag instead of `next/image` to avoid hostname configuration issues with dynamic user-uploaded images
-
-### E2E Testing
-
-- **Registration tests** (`e2e/registration.spec.ts`): New test file covering API-based user registration with email verification, and browser UI panel registration flow
-- **Profile tests** (`e2e/profile.spec.ts`): Comprehensive rewrite covering display name, first/last name, gender, profile image upload, cover image upload, API round-trip verification, gender cycling, and data persistence after page reload
-- **Test cleanup endpoint**: Added `DELETE /api/test/user/:userId` for surgical E2E test user removal with cascading data cleanup
-- **API helpers**: Added `registerUser()`, `verifyEmail()`, and `deleteUser()` helpers in `e2e/helpers/api.ts`
-- **Global cleanup**: E2E global setup now calls `POST /api/test/cleanup-all` to ensure a clean slate before test execution
-
-### Unit Test Fixes
-
-- Updated `SiteNav.test.tsx` — added `useRouter`, `PanelContext`, and `ToastContext` mocks; fixed hamburger button selector for new DOM structure
-- Updated `dashboard.test.tsx` — added router and context mocks; wrapped renders in `act()` for async state updates
-- Updated `FriendsContext.test.tsx` — set `connected: true` in WebSocket mock to match new guard logic
-- Updated `useGroupsList.test.ts` — set mock socket and token before fetch tests
-- Updated `AuthPanel.test.tsx` — changed expected verification method from `'sms'` to `'email'`
+- Replace dedicated auth routes with slide-in AuthPanel from SiteNav avatar dropdown
+- Remove Demo2FA component and all references
+- Add avatar dropdown with auth and app navigation options
+- Add Back to Web link in app burger menu
+- Fix socketFirst timeout cascade by gating contexts and hooks on connected state
+- Profile panel uses direct HTTP for reliable fetch and save with status indicators
+- Profile fetches fresh data from server on every view for multi-device support
+- Increase dashboard cache TTL from 60s to 5min to reduce event loop blocking
+- Add E2E registration tests for API and browser UI panel flow
+- Rewrite profile E2E tests for display name, names, gender, avatar, cover image
+- Add test user deletion endpoint and API helpers for E2E cleanup
+- Configure next.config.js image remotePatterns for localhost and AWS
+- Remove homepage auto-redirect to app for logged-in users
+- Footer Create Account opens AuthPanel via custom event
+- Fix unit tests for new auth flow and connected state guards
 
 ---
 
@@ -129,9 +168,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `b367f7a` — feat: expand test coverage, harden dashboard test runner, add stale results nag
 
-- Expanded frontend and backend test coverage
-- Hardened the dashboard test runner with better error handling
-- Added stale results nag notification to the test dashboard
+- Massively expand backend + frontend test suites (~13.6k lines added)
+- Add null guards to dashboard child process callbacks to prevent crash on server restart
+- Prevent dashboard unit tests from overwriting real .test-cache files (backup/restore)
+- Add stale test results indicator (4h threshold) for unit and E2E sections
+- Fix minor bugs in groups, link-preview, messages routes found during testing
+- Add jest-results.json to gitignore
 
 ---
 
@@ -184,10 +226,15 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `b7b5337` — feat: marketing website, scrolling fix, SiteNav across all pages, GBP pricing
 
-- Full marketing website implementation
-- Fixed scrolling issues
-- SiteNav component now renders across all marketing pages
-- Pricing displayed in GBP
+- Build commercial marketing website with Home, Features, Widget, Pricing, Technology pages
+- Add shared SiteNav (with logo) and SiteFooter components across all public pages
+- Add SiteNav to product overview, documentation, and dashboard pages
+- Fix scroll-wheel/trackpad not working (overscroll-behavior-y: contain blocking scroll chaining)
+- Change all pricing from $ to £ across the site
+- Remove "Open App" button from nav (redirects to home when not logged in)
+- Add prominent logo to home page hero and nav bar
+- Add public screenshots directory for web-accessible images
+- Update screenshot script and DOCX generation with improved layout
 
 ---
 
@@ -195,9 +242,11 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `3dd59ac` — fix: build error, dependency vulnerabilities, and widget auth; add presentation assets
 
-- Fixed build errors and dependency vulnerabilities
-- Fixed widget authentication flow
-- Added presentation assets
+- Fix TypeScript build error in dashboard SuiteRow (unknown[] map type)
+- Fix FriendsContext firing API calls without auth token on public pages
+- Update file-type, flatted, undici to resolve 3 security advisories (0 vulns)
+- Add product overview .docx with embedded screenshots and generation scripts
+- Add Playwright screenshot capture script for automated visual assets
 
 ---
 
@@ -213,9 +262,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `5c6533d` — feat: E2E test suite, real-time dashboard streaming, and test mode infrastructure
 
-- E2E test framework with Playwright
-- Real-time dashboard streaming for test results
-- Test mode infrastructure with test data cleanup
+- Add full Playwright E2E test suite (auth, conversations, DMs, groups, profiles, settings, friends)
+- Dashboard: real-time test result streaming with live progress for both unit and E2E tests
+- Dashboard: grouped-by-file collapsible E2E results with chromium/mobile project badges
+- Dashboard: unified FE/BE unit test view with area labels, auto-load cached results on mount
+- Dashboard: retry/flaky detection with visual badges (amber for flaky, red for failed retries)
+- Dashboard: 4-wide stat card layout with consistent sizing
+- Add runtime test mode toggle to suppress SMS/email during E2E runs
+- Add test cleanup endpoints and prisma connection pooling
+- Add socket RPC handlers and frontend socketRPC client
+- Fix test setup to mock shared prisma module
+- AWS deployment docs, ecosystem PM2 config, docker-compose updates
 
 ---
 
@@ -234,9 +291,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `adcde1b` — feat: responsive image variants, typing indicators on chat list, and image loading fixes
 
-- Responsive image resizing for uploaded media
-- Typing indicators now visible on conversation list items
-- Fixed image loading and caching issues
+- Add responsive image pipeline: backend generates sm/md/full JPEG variants
+  on upload (sharp), frontend selects the right size per context (imageUrl helper)
+- Add migration script to post-process existing images to optimized JPEGs
+- Show typing indicator on chat list: animated dot bubble for DMs and groups
+  with first-name display ("Simon is typing")
+- Fix stale IndexedDB image URLs after migration by reconciling extensions
+- Add onError fallbacks and localStorage sync for profile/cover images
+- Improve GroupProfilePanel: initialGroup prop for instant render, socket-based
+  real-time sync, skeleton loaders for images
+- Fix GroupProfilePanel tests for retry logic and bottom-sheet member actions
 
 ---
 
@@ -244,8 +308,11 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `093063e` — feat: improve group member management and fix summary engine performance
 
-- Improved group member add/remove UI and reliability
-- Optimised AI conversation summary engine performance
+- Split group member list into separate Owner/Admin/Member sections sorted alphabetically
+- Add confirmation dialogs for promoting and demoting admins
+- Add stacked Add Members panel for inviting users to groups
+- Fix search list re-fetching on each user selection in NewGroupPanel and AddGroupMembersPanel
+- Queue summary regeneration tasks sequentially to prevent event loop saturation
 
 ---
 
@@ -262,8 +329,10 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `2d47b98` — fix: lazy-import music-metadata and reduce bcrypt cost in auth tests
 
-- Lazy-import `music-metadata` to reduce startup time
-- Reduced bcrypt rounds in test environment for faster test execution
+- Use dynamic import() for music-metadata to avoid ESM resolution
+  issues on server where npm 10 hoists packages differently
+- Reduce bcrypt hash rounds from 10 to 1 in auth tests to prevent
+  socket hang up from slow CPU-bound operations during test runs
 
 ---
 
@@ -287,9 +356,15 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `d15c5dd` — feat: offline message queuing, local cache hydration, and syncing UI
 
-- Offline message queue with Dexie/IndexedDB — messages sent while offline are queued and synced when reconnected
-- Local cache hydration for instant message display on app load
-- Syncing UI indicator for pending outbound messages
+- Queue DM and group text messages to IndexedDB when offline, flush on reconnect
+- Load cached conversations, groups, and friends from localStorage on startup
+- Add syncing banner while background fetch is in progress
+- Add AbortController to all frontend fetches to prevent "Load failed" errors
+- Fix Next.js 16 ssr:false error by using direct client component import
+- Guard localStorage reads for SSR safety
+- Show pending group members in GroupProfilePanel
+- Optimize backend conversation queries with DISTINCT ON and Promise.all
+- Add message composite indexes migration
 
 ---
 
@@ -323,9 +398,14 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `dad0896` — feat: add group profile page with cover/avatar images, name editing, and member management
 
-- Group profile page with cover image and group avatar uploads
-- Inline group name editing
-- Member list with role management (promote/demote/remove)
+- Add profileImage and coverImage fields to Group model with migration
+- Add backend routes for group image upload/delete (admin-only)
+- Create GroupProfilePanel with hero section matching user profile style
+- Support inline group name editing with zero layout shift
+- Show member list with roles (owner/admin/member) and admin actions
+- Make group and message avatars clickable to open user profiles
+- Add updatePanelMeta to PanelContext for real-time title updates
+- Ensure consistent 1px avatar borders across all panel title bars
 
 ---
 
@@ -333,9 +413,11 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `8748db8` — feat: add vulnerability details, JSDoc for all endpoints, and clean-state indicators
 
-- Dashboard vulnerability scanner with detailed CVE information
-- Added JSDoc documentation to all backend API endpoints
-- Clean-state indicators when no issues found
+- Show per-package vulnerability details in dependency security section
+- Add tooltips to all truncated text across dashboard
+- Document all dashboard route endpoints with JSDoc
+- Fix API doc scanner to handle long JSDoc blocks (up to 60 lines)
+- Add tick/empty-state messages for clean sections (deps, build, docs, migrations)
 
 ---
 
@@ -343,7 +425,10 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `247da61` — test: add comprehensive frontend and backend test coverage
 
-- Major test coverage expansion across frontend components and backend services
+- Add tests for all 12 hooks, 9 contexts, 2 utils, and 8 pages
+- Add backend tests for conversations, dashboard, email, friends, etc.
+- Include updated coverage reports
+- Remove obsolete images.test.ts, update test setup
 
 ---
 
@@ -351,9 +436,9 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `e3a44c5` — feat: add commit size graph, shell script support in language metrics, and UI polish
 
-- Commit size visualisation graph on dashboard
-- Shell scripts counted in language breakdown metrics
-- Various UI polish and consistency improvements
+- Add per-commit insertions/deletions data with log-scale SVG line graph (last 50, excluding version bumps)
+- Include .sh files in language breakdown, LOC by area, and file types
+- Match Activity by Hour and Activity by Day chart heights and widths
 
 ---
 
@@ -507,7 +592,14 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `7fcb860` — refactor: extract component CSS from globals.css into CSS modules
 
-- Extracted component styles from `globals.css` into co-located CSS modules
+- DatePicker.module.css (328 lines, scoped)
+- Hero.module.css (181 lines, scoped)
+- ToastContainer.module.css (147 lines, scoped)
+- Docs.module.css (145 lines, scoped)
+- BackgroundBlobs.module.css (51 lines, scoped)
+- ConfirmationDialog.module.css (18 lines, merged)
+- AuthPanel.module.css (66 lines, :global)
+- Logo.module.css (17 lines, :global)
 
 ---
 
@@ -580,7 +672,18 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `7119656` — docs: comprehensive update — widget, video, deployment, README
 
-- Major documentation refresh covering widget, video messaging, and deployment guides
+- Create Documentation/Widget/index.md covering embedding, config,
+  build pipeline, icon system, API routes, session lifecycle, testing
+- Add video message type across FILE_UPLOAD, MESSAGING, REST_API,
+  EVENTS, MessageBubble, and MessageInput docs
+- Document collapsible text ("Read more") feature
+- Update file upload limit from 10MB to 50MB everywhere
+- Update deployment docs for SSH-based local execution flow and 55M
+  Nginx client_max_body_size
+- Add useGroupMessageInput to hooks and architecture docs
+- Add widget test section to Testing docs
+- Rewrite README.md with correct links, test counts, and widget info
+- Fix "chatrr" typos in DEPLOY_AWS.md
 
 ---
 
@@ -588,9 +691,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `62c5384` — fix: load mermaid from CDN, add widget tests, resolve vulnerabilities
 
-- Mermaid diagrams now loaded from CDN
-- Added widget unit tests
-- Resolved npm audit vulnerabilities
+- Replace npm mermaid with CDN import to fix Turbopack bare specifier
+  error in Next.js 16, removing 124 packages from the dependency tree
+- Add 54 widget tests (pure functions + build pipeline) wired into
+  npm run test:widget and the root npm test command
+- Rebuild minified widget output with current REPLACE_MAP
+- 0 npm audit vulnerabilities across all workspaces
 
 ---
 
@@ -598,10 +704,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 **Commit:** `3bed90b` — feat: video messages, code blocks, read more, widget build pipeline
 
-- Video message support with inline playback
-- Code block rendering in messages with syntax highlighting
-- "Read more" truncation for long messages
-- Widget build and minification pipeline
+- Add video message support across app and widget (upload, preview, playback)
+- Fix code block rendering for single-line fenced blocks
+- Add collapsible "Read more" for long text messages with animated expand/collapse
+- Standardise message bubble padding and scroll-to-bottom behaviour
+- Move widget source to widget-src/, build minified widget/chatr.js via Terser
+- Add widget build watcher to dev.sh
+- Optimise widget output: CSS class/ID shortening, CSS var compression,
+  DOM method aliases, theme deduplication (44kB → 38kB, 50.5% reduction)
+- Widget: hide input scrollbar, disable send button when empty
+- Use dynamic API_URL in widget demo embed snippet
 
 ---
 

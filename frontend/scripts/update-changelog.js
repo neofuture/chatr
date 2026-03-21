@@ -111,6 +111,7 @@ async function main() {
 
     const hash = git('rev-parse --short HEAD');
     const message = git('log -1 --format=%s');
+    const fullMessage = git('log -1 --format=%B');
     const date = new Date().toISOString().slice(0, 10);
 
     if (message.startsWith('chore: bump version')) {
@@ -141,30 +142,41 @@ async function main() {
       process.exit(0);
     }
 
-    // Try to get Luna to generate a rich summary
+    // Extract body bullets from the full commit message (lines starting with "- ")
+    const bodyLines = fullMessage.split('\n').slice(1); // skip subject line
+    const bullets = bodyLines
+      .map(l => l.trimEnd())
+      .filter(l => /^- /.test(l) || /^  /.test(l)); // bullet points + continuation lines
+
     let description = null;
-    const apiKey = loadEnvKey('OPENAI_API_KEY');
 
-    if (apiKey) {
-      console.log('🤖 Asking Luna to summarise this commit...');
-
-      // Get a truncated diff — enough context for the AI without blowing up tokens
-      let diff = '';
-      try {
-        diff = git('diff HEAD~1 HEAD --stat');
-        const fullDiff = git('diff HEAD~1 HEAD -- "*.ts" "*.tsx" "*.js" "*.css" "*.md"');
-        // Truncate to ~4000 chars to stay within reasonable token limits
-        diff += '\n\n' + (fullDiff.length > 4000 ? fullDiff.slice(0, 4000) + '\n... (truncated)' : fullDiff);
-      } catch {
-        diff = '(diff unavailable — initial commit or merge)';
-      }
-
-      description = await callOpenAI(apiKey, message, diff);
-      if (description) {
-        console.log('✨ Luna generated changelog entry');
-      }
+    if (bullets.length >= 2) {
+      // Commit body already has detailed bullet points — use them directly
+      description = bullets.join('\n');
+      console.log(`📋 Using ${bullets.length} bullet points from commit body`);
     } else {
-      console.log('ℹ️  No OPENAI_API_KEY found — using commit message only');
+      // Sparse commit body — ask Luna to generate a summary
+      const apiKey = loadEnvKey('OPENAI_API_KEY');
+
+      if (apiKey) {
+        console.log('🤖 Asking Luna to summarise this commit...');
+
+        let diff = '';
+        try {
+          diff = git('diff HEAD~1 HEAD --stat');
+          const fullDiff = git('diff HEAD~1 HEAD -- "*.ts" "*.tsx" "*.js" "*.css" "*.md"');
+          diff += '\n\n' + (fullDiff.length > 4000 ? fullDiff.slice(0, 4000) + '\n... (truncated)' : fullDiff);
+        } catch {
+          diff = '(diff unavailable — initial commit or merge)';
+        }
+
+        description = await callOpenAI(apiKey, fullMessage, diff);
+        if (description) {
+          console.log('✨ Luna generated changelog entry');
+        }
+      } else {
+        console.log('ℹ️  No OPENAI_API_KEY found — using commit message only');
+      }
     }
 
     // Build the entry
