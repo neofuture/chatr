@@ -69,7 +69,7 @@ test.describe('User Profile', () => {
     await input.fill('E2E DisplayName');
     await input.blur();
 
-    await expect(fieldRow).toHaveAttribute('data-save-status', 'saved', { timeout: 10_000 });
+    await expect(fieldRow).toHaveAttribute('data-save-status', 'saved', { timeout: 20_000 });
 
     const after = await api.getMe(request, token);
     expect(after.displayName).toBe('E2E DisplayName');
@@ -94,7 +94,7 @@ test.describe('User Profile', () => {
     await input.fill('Alexander');
     await input.blur();
 
-    await expect(fieldRow).toHaveAttribute('data-save-status', 'saved', { timeout: 10_000 });
+    await expect(fieldRow).toHaveAttribute('data-save-status', 'saved', { timeout: 20_000 });
 
     const after = await api.getMe(request, token);
     expect(after.firstName).toBe('Alexander');
@@ -118,7 +118,7 @@ test.describe('User Profile', () => {
     await input.fill('Testington');
     await input.blur();
 
-    await expect(fieldRow).toHaveAttribute('data-save-status', 'saved', { timeout: 10_000 });
+    await expect(fieldRow).toHaveAttribute('data-save-status', 'saved', { timeout: 20_000 });
 
     const after = await api.getMe(request, token);
     expect(after.lastName).toBe('Testington');
@@ -146,7 +146,7 @@ test.describe('User Profile', () => {
     await expect(select).toBeVisible({ timeout: 3_000 });
     await select.selectOption(target);
 
-    await expect(fieldRow).toHaveAttribute('data-save-status', 'saved', { timeout: 10_000 });
+    await expect(fieldRow).toHaveAttribute('data-save-status', 'saved', { timeout: 20_000 });
 
     const after = await api.getMe(request, token);
     expect(after.gender).toBe(target);

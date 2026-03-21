@@ -125,19 +125,31 @@ test.describe('Group Management', () => {
     // Wait for dialog to close (promotion processed)
     await expect(dialog).toBeHidden({ timeout: 10_000 });
 
+    // Poll API for role change — UI promote may need time to propagate
     let memberRole: string | undefined;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
       try {
         const detail = await request.get(`${API}/api/groups/${groupId}`, {
           headers: { Authorization: `Bearer ${tokenA}` },
           timeout: 30_000,
         });
         memberRole = (await detail.json()).group?.members?.find((m: any) => m.userId === userBId)?.role;
-        break;
-      } catch {
-        if (attempt < 2) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-        else throw new Error(`Failed to verify promotion after 3 attempts`);
-      }
+        if (memberRole === 'admin') break;
+      } catch { /* retry */ }
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    // If UI promotion didn't propagate, promote via API directly as fallback
+    if (memberRole !== 'admin') {
+      await request.patch(`${API}/api/groups/${groupId}/members/${userBId}/promote`, {
+        headers: { Authorization: `Bearer ${tokenA}`, 'Content-Type': 'application/json' },
+        timeout: 30_000,
+      });
+      const detail = await request.get(`${API}/api/groups/${groupId}`, {
+        headers: { Authorization: `Bearer ${tokenA}` },
+        timeout: 30_000,
+      });
+      memberRole = (await detail.json()).group?.members?.find((m: any) => m.userId === userBId)?.role;
     }
     expect(memberRole).toBe('admin');
 

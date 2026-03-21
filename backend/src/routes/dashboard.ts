@@ -1341,7 +1341,7 @@ function loadFreshE2eReport(): TestReport | null {
 }
 
 /** POST /tests/e2e/run — Kick off an async E2E run with real-time result streaming */
-router.post('/tests/e2e/run', (_req: Request, res: Response) => {
+router.post('/tests/e2e/run', async (_req: Request, res: Response) => {
   if (requireTestPassword(_req, res)) return;
   if (liveRuns.e2e?.status === 'running') {
     return res.json({ status: 'running' });
@@ -1376,7 +1376,7 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
     ? (liveRuns.e2e?.finalReport || testCache.tests_e2e?.data || loadTestReport('e2e'))
     : null;
 
-  setTestMode(true);
+  await setTestMode(true);
 
   // Clear stale results from previous run so dashboard never shows old data
   delete testCache.tests_e2e;
@@ -1403,6 +1403,13 @@ router.post('/tests/e2e/run', (_req: Request, res: Response) => {
     liveRuns.e2e.error = `Failed to spawn Playwright: ${spawnErr.message}`;
     saveRunState('e2e', 'error');
     return res.json({ status: 'error', error: liveRuns.e2e.error });
+  }
+
+  if (!child) {
+    liveRuns.e2e!.status = 'error';
+    liveRuns.e2e!.error = 'Failed to spawn Playwright process';
+    saveRunState('e2e', 'error');
+    return res.json({ status: 'error', error: liveRuns.e2e!.error });
   }
 
   const childPid = child.pid;

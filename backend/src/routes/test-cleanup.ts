@@ -44,7 +44,7 @@ const E2E_FILE_NAMES = ['test-image.png', 'test-audio.wav', 'test-file.txt'];
  * Body: { enabled: boolean }
  * Toggles E2E test mode at runtime. No auth required (but blocked in production).
  */
-router.post('/mode', (req: Request, res: Response) => {
+router.post('/mode', async (req: Request, res: Response) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(404).json({ error: 'Not found' });
   }
@@ -52,7 +52,7 @@ router.post('/mode', (req: Request, res: Response) => {
   if (typeof enabled !== 'boolean') {
     return res.status(400).json({ error: 'enabled (boolean) required' });
   }
-  const ok = setTestMode(enabled);
+  const ok = await setTestMode(enabled);
   res.json({ ok, testMode: enabled });
 });
 

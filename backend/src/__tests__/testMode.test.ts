@@ -1,3 +1,7 @@
+jest.mock('../lib/redis', () => ({
+  redis: { set: jest.fn().mockResolvedValue('OK'), get: jest.fn().mockResolvedValue(null) },
+}));
+
 describe('testMode module', () => {
   let isTestMode: typeof import('../lib/testMode').isTestMode;
   let setTestMode: typeof import('../lib/testMode').setTestMode;
@@ -5,6 +9,9 @@ describe('testMode module', () => {
 
   beforeEach(() => {
     jest.resetModules();
+    jest.mock('../lib/redis', () => ({
+      redis: { set: jest.fn().mockResolvedValue('OK'), get: jest.fn().mockResolvedValue(null) },
+    }));
     process.env.NODE_ENV = 'test';
     const mod = require('../lib/testMode');
     isTestMode = mod.isTestMode;
@@ -17,13 +24,13 @@ describe('testMode module', () => {
       expect(isTestMode()).toBe(false);
     });
 
-    it('should return true after enabling', () => {
-      setTestMode(true);
+    it('should return true after enabling', async () => {
+      await setTestMode(true);
       expect(isTestMode()).toBe(true);
     });
 
-    it('should return false in production even if enabled', () => {
-      setTestMode(true);
+    it('should return false in production even if enabled', async () => {
+      await setTestMode(true);
       const origEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
       expect(isTestMode()).toBe(false);
@@ -32,29 +39,29 @@ describe('testMode module', () => {
   });
 
   describe('setTestMode', () => {
-    it('should return true when setting in non-production', () => {
-      expect(setTestMode(true)).toBe(true);
+    it('should return true when setting in non-production', async () => {
+      expect(await setTestMode(true)).toBe(true);
     });
 
-    it('should return false when setting in production', () => {
+    it('should return false when setting in production', async () => {
       const origEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
-      expect(setTestMode(true)).toBe(false);
+      expect(await setTestMode(true)).toBe(false);
       process.env.NODE_ENV = origEnv;
     });
 
-    it('should disable test mode', () => {
-      setTestMode(true);
+    it('should disable test mode', async () => {
+      await setTestMode(true);
       expect(isTestMode()).toBe(true);
-      setTestMode(false);
+      await setTestMode(false);
       expect(isTestMode()).toBe(false);
     });
 
-    it('should log enable/disable message', () => {
+    it('should log enable/disable message', async () => {
       const logSpy = jest.spyOn(console, 'log');
-      setTestMode(true);
+      await setTestMode(true);
       expect(logSpy).toHaveBeenCalled();
-      setTestMode(false);
+      await setTestMode(false);
       expect(logSpy).toHaveBeenCalled();
       logSpy.mockRestore();
     });
@@ -65,13 +72,13 @@ describe('testMode module', () => {
       expect(getTestBypassCode()).toBeNull();
     });
 
-    it('should return bypass code when test mode is on', () => {
-      setTestMode(true);
+    it('should return bypass code when test mode is on', async () => {
+      await setTestMode(true);
       expect(getTestBypassCode()).toBe('000000');
     });
 
-    it('should return null in production even if enabled', () => {
-      setTestMode(true);
+    it('should return null in production even if enabled', async () => {
+      await setTestMode(true);
       const origEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
       expect(getTestBypassCode()).toBeNull();

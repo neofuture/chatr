@@ -23,9 +23,17 @@ test.describe('Group Messaging', () => {
     }
   });
 
+  async function gotoGroup(page: import('@playwright/test').Page) {
+    await page.goto('/app/groups');
+    if (!await page.getByText(groupName).isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await page.reload();
+    }
+    await expect(page.getByText(groupName)).toBeVisible({ timeout: 15_000 });
+    await page.getByText(groupName).click();
+  }
+
   test('group appears in group list', async ({ userAPage }) => {
     await userAPage.goto('/app/groups');
-    // Reload once if group isn't visible (cache may be stale)
     if (!await userAPage.getByText(groupName).isVisible({ timeout: 5_000 }).catch(() => false)) {
       await userAPage.reload();
     }
@@ -35,9 +43,7 @@ test.describe('Group Messaging', () => {
   test('send a text message in group', async ({ userAPage }) => {
     const msg = `Group msg ${ts()}`;
 
-    await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
-    await userAPage.getByText(groupName).click();
+    await gotoGroup(userAPage);
 
     const input = userAPage.getByPlaceholder('Message group…').or(userAPage.getByPlaceholder('Message…'));
     await expect(input).toBeVisible({ timeout: 10_000 });
@@ -47,12 +53,7 @@ test.describe('Group Messaging', () => {
   });
 
   test('send an image in group', async ({ userAPage }) => {
-    await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
-    await userAPage.getByText(groupName).click();
-
-    const msgInput = userAPage.getByPlaceholder('Message group…').or(userAPage.getByPlaceholder('Message…'));
-    await expect(msgInput).toBeVisible({ timeout: 10_000 });
+    await gotoGroup(userAPage);
 
     await userAPage.locator('input[type="file"]').setInputFiles(getAssetPath('test-image.png'));
     await expect(userAPage.locator('[data-testid="file-preview-strip"]')).toBeVisible({ timeout: 10_000 });
@@ -63,12 +64,7 @@ test.describe('Group Messaging', () => {
   });
 
   test('send a voice file in group', async ({ userAPage }) => {
-    await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
-    await userAPage.getByText(groupName).click();
-
-    const msgInput = userAPage.getByPlaceholder('Message group…').or(userAPage.getByPlaceholder('Message…'));
-    await expect(msgInput).toBeVisible({ timeout: 10_000 });
+    await gotoGroup(userAPage);
 
     await userAPage.locator('input[type="file"]').setInputFiles(getAssetPath('test-audio.wav'));
     await expect(userAPage.locator('[data-testid="file-preview-strip"]')).toBeVisible({ timeout: 10_000 });
@@ -79,12 +75,7 @@ test.describe('Group Messaging', () => {
   });
 
   test('send a generic file in group', async ({ userAPage }) => {
-    await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
-    await userAPage.getByText(groupName).click();
-
-    const msgInput = userAPage.getByPlaceholder('Message group…').or(userAPage.getByPlaceholder('Message…'));
-    await expect(msgInput).toBeVisible({ timeout: 10_000 });
+    await gotoGroup(userAPage);
 
     await userAPage.locator('input[type="file"]').setInputFiles(getAssetPath('test-file.txt'));
     await expect(userAPage.locator('[data-testid="file-preview-strip"]')).toBeVisible({ timeout: 10_000 });
@@ -97,9 +88,7 @@ test.describe('Group Messaging', () => {
   test('send a link in group', async ({ userAPage }) => {
     const msg = `Check https://example.com ${ts()}`;
 
-    await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
-    await userAPage.getByText(groupName).click();
+    await gotoGroup(userAPage);
 
     const input = userAPage.getByPlaceholder('Message group…').or(userAPage.getByPlaceholder('Message…'));
     await expect(input).toBeVisible({ timeout: 10_000 });
@@ -115,9 +104,7 @@ test.describe('Group Messaging', () => {
 
     const msg = `Realtime group ${ts()}`;
 
-    await userAPage.goto('/app/groups');
-    await expect(userAPage.getByText(groupName)).toBeVisible({ timeout: 10_000 });
-    await userAPage.getByText(groupName).click();
+    await gotoGroup(userAPage);
 
     const input = userAPage.getByPlaceholder('Message group…').or(userAPage.getByPlaceholder('Message…'));
     await expect(input).toBeVisible({ timeout: 10_000 });

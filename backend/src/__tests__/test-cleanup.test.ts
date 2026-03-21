@@ -15,7 +15,7 @@ import { isTestMode, setTestMode } from '../lib/testMode';
 
 jest.mock('../lib/testMode', () => ({
   isTestMode: jest.fn(),
-  setTestMode: jest.fn(),
+  setTestMode: jest.fn().mockResolvedValue(true),
 }));
 
 const prisma = new PrismaClient();

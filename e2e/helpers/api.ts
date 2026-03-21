@@ -9,21 +9,40 @@ function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
+async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const transient = /ECONNRESET|ECONNREFUSED|EPIPE|socket hang up/i.test(err?.message ?? '');
+      if (!transient || i === retries) throw err;
+      await new Promise(r => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+  throw new Error('withRetry: unreachable');
+}
+
 export async function getMe(request: APIRequestContext, token: string) {
-  const res = await request.get(`${API}/api/users/me`, { headers: headers(token) });
-  return res.json();
+  return withRetry(async () => {
+    const res = await request.get(`${API}/api/users/me`, { headers: headers(token) });
+    return res.json();
+  });
 }
 
 export async function searchUsers(request: APIRequestContext, token: string, q: string) {
-  const res = await request.get(`${API}/api/users/search?q=${encodeURIComponent(q)}`, { headers: headers(token) });
-  const data = await res.json();
-  return data.users ?? [];
+  return withRetry(async () => {
+    const res = await request.get(`${API}/api/users/search?q=${encodeURIComponent(q)}`, { headers: headers(token) });
+    const data = await res.json();
+    return data.users ?? [];
+  });
 }
 
 export async function getFriends(request: APIRequestContext, token: string) {
-  const res = await request.get(`${API}/api/friends`, { headers: headers(token) });
-  const data = await res.json();
-  return data.friends ?? [];
+  return withRetry(async () => {
+    const res = await request.get(`${API}/api/friends`, { headers: headers(token) });
+    const data = await res.json();
+    return data.friends ?? [];
+  });
 }
 
 export async function sendFriendRequest(request: APIRequestContext, token: string, addresseeId: string) {
@@ -51,9 +70,11 @@ export async function unblockUser(request: APIRequestContext, token: string, tar
 }
 
 export async function getConversations(request: APIRequestContext, token: string) {
-  const res = await request.get(`${API}/api/users/conversations`, { headers: headers(token) });
-  const data = await res.json();
-  return data.conversations ?? [];
+  return withRetry(async () => {
+    const res = await request.get(`${API}/api/users/conversations`, { headers: headers(token) });
+    const data = await res.json();
+    return data.conversations ?? [];
+  });
 }
 
 export async function nukeConversation(request: APIRequestContext, token: string, conversationId: string) {
@@ -65,17 +86,21 @@ export async function nukeByUser(request: APIRequestContext, token: string, reci
 }
 
 export async function getGroups(request: APIRequestContext, token: string) {
-  const res = await request.get(`${API}/api/groups`, { headers: headers(token) });
-  const data = await res.json();
-  return data.groups ?? [];
+  return withRetry(async () => {
+    const res = await request.get(`${API}/api/groups`, { headers: headers(token) });
+    const data = await res.json();
+    return data.groups ?? [];
+  });
 }
 
 export async function createGroup(request: APIRequestContext, token: string, name: string, memberIds: string[] = []) {
-  const res = await request.post(`${API}/api/groups`, {
-    headers: headers(token),
-    data: { name, memberIds },
+  return withRetry(async () => {
+    const res = await request.post(`${API}/api/groups`, {
+      headers: headers(token),
+      data: { name, memberIds },
+    });
+    return res.json();
   });
-  return res.json();
 }
 
 export async function deleteGroup(request: APIRequestContext, token: string, groupId: string) {
@@ -87,12 +112,16 @@ export async function leaveGroup(request: APIRequestContext, token: string, grou
 }
 
 export async function updateProfile(request: APIRequestContext, token: string, data: Record<string, any>) {
-  const res = await request.put(`${API}/api/users/me`, { headers: headers(token), data });
-  return res.json();
+  return withRetry(async () => {
+    const res = await request.put(`${API}/api/users/me`, { headers: headers(token), data });
+    return res.json();
+  });
 }
 
 export async function updateSettings(request: APIRequestContext, token: string, data: Record<string, any>) {
-  await request.put(`${API}/api/users/me/settings`, { headers: headers(token), data });
+  await withRetry(async () => {
+    await request.put(`${API}/api/users/me/settings`, { headers: headers(token), data });
+  });
 }
 
 /** Surgically remove only E2E-pattern test data between the caller and recipientId */
@@ -108,22 +137,26 @@ export async function registerUser(request: APIRequestContext, data: {
   firstName: string; lastName: string; phoneNumber: string;
   gender?: string;
 }) {
-  const res = await request.post(`${API}/api/auth/register`, {
-    headers: { 'Content-Type': 'application/json' },
-    data,
+  return withRetry(async () => {
+    const res = await request.post(`${API}/api/auth/register`, {
+      headers: { 'Content-Type': 'application/json' },
+      data,
+    });
+    return res.json();
   });
-  return res.json();
 }
 
 /**
  * Verify a user's email using the test bypass OTP code.
  */
 export async function verifyEmail(request: APIRequestContext, userId: string, code = '000000') {
-  const res = await request.post(`${API}/api/auth/verify-email`, {
-    headers: { 'Content-Type': 'application/json' },
-    data: { userId, code },
+  return withRetry(async () => {
+    const res = await request.post(`${API}/api/auth/verify-email`, {
+      headers: { 'Content-Type': 'application/json' },
+      data: { userId, code },
+    });
+    return res.json();
   });
-  return res.json();
 }
 
 /**
@@ -142,7 +175,9 @@ export async function deleteCoverImage(request: APIRequestContext, token: string
 }
 
 export async function restoreImages(request: APIRequestContext, token: string, data: { profileImage?: string | null; coverImage?: string | null }) {
-  await request.post(`${API}/api/test/restore-images`, { headers: headers(token), data });
+  await withRetry(async () => {
+    await request.post(`${API}/api/test/restore-images`, { headers: headers(token), data });
+  });
 }
 
 /**

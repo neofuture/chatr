@@ -9,7 +9,7 @@ jest.mock('child_process', () => {
 });
 
 jest.mock('../lib/testMode', () => ({
-  setTestMode: jest.fn(),
+  setTestMode: jest.fn().mockResolvedValue(true),
 }));
 
 import dashboardRouter from '../routes/dashboard';
@@ -679,8 +679,19 @@ describe('Dashboard with test password required', () => {
     jest.isolateModules(() => {
       jest.doMock('child_process', () => {
         const actual = jest.requireActual('child_process');
-        return { ...actual, spawn: jest.fn() };
+        return {
+          ...actual,
+          spawn: jest.fn().mockReturnValue({
+            pid: 99999,
+            stdout: { on: jest.fn() },
+            stderr: { on: jest.fn() },
+            on: jest.fn(),
+          }),
+        };
       });
+      jest.doMock('../lib/testMode', () => ({
+        setTestMode: jest.fn().mockResolvedValue(true),
+      }));
 
       const express = require('express');
       const router = require('../routes/dashboard').default;

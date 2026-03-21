@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.2 — 2026-03-21
+
+**Commit:** `c8837a0` — fix: persist test mode in Redis and harden E2E test reliability
+
+- Fixes persistence of test mode in Redis for improved reliability.
+- Enhances end-to-end tests to ensure consistent results.
+- Updates test mocks to use asynchronous behavior for better accuracy.
+
+---
+
 ## v0.0.155 — 2026-03-21
 
 **Commit:** `74e84c5` — chore: extend JWT token expiry from 7 days to 1 year

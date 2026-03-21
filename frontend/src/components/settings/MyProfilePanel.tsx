@@ -175,17 +175,26 @@ function InlineField({ label, field, value, placeholder, onSave }: {
   const [fieldStatus, setFieldStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
   const saving = useRef(false);
+  const latestText = useRef(value);
 
-  useEffect(() => { setText(value); }, [value]);
+  useEffect(() => { setText(value); latestText.current = value; }, [value]);
   useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setText(v);
+    latestText.current = v;
+  };
 
   const save = async () => {
     if (saving.current) return;
     saving.current = true;
+    const currentText = latestText.current;
     setEditing(false);
-    if (text.trim() === value) { saving.current = false; return; }
+    if (currentText.trim() === value) { saving.current = false; return; }
+    setText(currentText);
     setFieldStatus('saving');
-    const ok = await onSave({ [field]: text.trim() || null });
+    const ok = await onSave({ [field]: currentText.trim() || null });
     setFieldStatus(ok ? 'saved' : 'error');
     setTimeout(() => setFieldStatus('idle'), 2000);
     saving.current = false;
@@ -200,9 +209,9 @@ function InlineField({ label, field, value, placeholder, onSave }: {
             ref={inputRef}
             className={styles.fieldInput}
             value={text}
-            onChange={e => setText(e.target.value)}
+            onChange={handleChange}
             onBlur={save}
-            onKeyDown={e => { if (e.key === 'Enter') inputRef.current?.blur(); if (e.key === 'Escape') { setText(value); setEditing(false); saving.current = false; } }}
+            onKeyDown={e => { if (e.key === 'Enter') inputRef.current?.blur(); if (e.key === 'Escape') { setText(value); latestText.current = value; setEditing(false); saving.current = false; } }}
             placeholder={placeholder}
           />
         </div>

@@ -12,6 +12,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 // Database & Cache
 import { prisma } from './lib/prisma';
 import { connectRedis, disconnectRedis, isRedisConnected, redis, redisPub, redisSub } from './lib/redis';
+import { restoreTestMode } from './lib/testMode';
 
 // Import REST API routes
 import authRoutes from './routes/auth';
@@ -165,6 +166,7 @@ async function start() {
     await connectRedis();
     await redis.ping();
     console.log('🔴 Redis ready');
+    await restoreTestMode();
   } catch (err) {
     console.error('⚠️  Redis connection failed — running without Redis:', (err as Error).message);
   }
@@ -203,6 +205,9 @@ async function start() {
       }
     } catch (e) { console.warn('Owner role migration skipped:', e); }
   })();
+
+  httpServer.keepAliveTimeout = 30_000;
+  httpServer.headersTimeout = 35_000;
 
   httpServer.listen(PORT, () => {
     console.log(`🚀 Server: http://localhost:${PORT}`);

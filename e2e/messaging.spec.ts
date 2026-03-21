@@ -50,23 +50,22 @@ test.describe('Real-time messaging', () => {
       await userAPage.waitForLoadState('networkidle');
     }
     await expect(convRow).toBeVisible({ timeout: 15_000 });
-    await convRow.click();
 
-    // Wait for the panel to open — look for any textarea or input that appears
-    const msgInput = userAPage.locator('textarea, input[type="text"]').last();
-    const panelOpened = await msgInput.isVisible({ timeout: 5_000 }).catch(() => false);
-
-    if (!panelOpened) {
-      // Panel didn't open — try clicking the conversation row again
+    // Click conversation row and retry up to 3 times — under load the first click
+    // sometimes doesn't open the panel (React re-render race)
+    const anyInput = userAPage.getByPlaceholder(/Message…|Offline|caption/i);
+    for (let clickAttempt = 0; clickAttempt < 3; clickAttempt++) {
       await convRow.click();
+      if (await anyInput.isVisible({ timeout: 5_000 }).catch(() => false)) break;
     }
 
-    await expect(
-      userAPage.getByPlaceholder(/Message…|Offline|caption/i)
-    ).toBeVisible({ timeout: 20_000 });
-    await expect(userAPage.getByPlaceholder('Message…')).toBeVisible({ timeout: 30_000 });
+    await expect(anyInput).toBeVisible({ timeout: 15_000 });
+    await expect(userAPage.getByPlaceholder('Message…')).toBeVisible({ timeout: 45_000 });
     await userAPage.getByPlaceholder('Message…').fill(msg);
-    await userAPage.locator('button[title="Send message"]').click();
+
+    const sendBtn = userAPage.locator('button[title="Send message"]');
+    await expect(sendBtn).toBeEnabled({ timeout: 5_000 });
+    await sendBtn.click();
 
     await expect(userAPage.getByText(msg)).toBeVisible({ timeout: 15_000 });
 

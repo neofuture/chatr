@@ -5,12 +5,27 @@ import * as api from './helpers/api';
 const API = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
 const storedA = readStoredAuth('a');
 
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+async function retryGet(request: any, url: string, opts: any, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await request.get(url, opts);
+    } catch (err: any) {
+      if (!/ECONNRESET|ECONNREFUSED|EPIPE|socket hang up/i.test(err?.message ?? '') || i === retries) throw err;
+      await new Promise(r => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+}
+
 test.describe('Socket RPC endpoints (API-level)', () => {
   const tokenA = storedA.token;
 
   test('GET /api/users/me returns user data (REST fallback works)', async ({ request }) => {
-    const res = await request.get(`${API}/api/users/me`, {
-      headers: { Authorization: `Bearer ${tokenA}` },
+    const res = await retryGet(request, `${API}/api/users/me`, {
+      headers: authHeaders(tokenA),
     });
     expect(res.ok()).toBeTruthy();
     const data = await res.json();
