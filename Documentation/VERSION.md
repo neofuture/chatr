@@ -4,7 +4,27 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.5 — 2026-03-21
+
+**Commit:** `1aedc42` — fix: correct version numbering from v0.1.0 onwards
+
+- Add missing v0.1.0 changelog entry for the minor version bump
+- Renumber v0.1.2→v0.1.1, v0.1.3→v0.1.2, v0.1.4→v0.1.3
+- Sync version.ts and package.json files to 0.1.3
+
+---
+
 ## v0.1.4 — 2026-03-21
+
+**Commit:** `014eca2` — fix: correct version numbering from v0.1.0 onwards
+
+- Add missing v0.1.0 changelog entry for the minor version bump
+- Renumber v0.1.2→v0.1.1, v0.1.3→v0.1.2, v0.1.4→v0.1.3
+- Sync version.ts and package.json files to 0.1.3
+
+---
+
+## v0.1.3 — 2026-03-21
 
 **Commit:** `ced84d0` — feat: extract reusable Pagination component with smooth carousel animation
 
@@ -17,7 +37,7 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
-## v0.1.3 — 2026-03-21
+## v0.1.2 — 2026-03-21
 
 **Commit:** `3de5de0` — fix: backfill changelog from commit bodies and prefer them over Luna summaries
 
@@ -28,7 +48,7 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
-## v0.1.2 — 2026-03-21
+## v0.1.1 — 2026-03-21
 
 **Commit:** `c8837a0` — fix: persist test mode in Redis and harden E2E test reliability
 
@@ -45,6 +65,14 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 - Increase profile save assertion timeouts from 10s to 20s
 - Add null guard for spawn in dashboard E2E runner
 - Update unit tests for async setTestMode and proper spawn mocking
+
+---
+
+## v0.1.0 — 2026-03-21
+
+**Commit:** `cacefc8` — chore: bump version to 0.1.0
+
+- First minor version bump marking stable E2E test suite (168/168 passing)
 
 ---
 

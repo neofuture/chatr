@@ -1,6 +1,6 @@
 {
   "name": "chatr-backend",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "description": "Chatr backend API server",
   "main": "dist/index.js",
   "scripts": {
