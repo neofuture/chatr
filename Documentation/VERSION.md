@@ -6,17 +6,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ## v0.1.5 — 2026-03-21
 
-**Commit:** `1aedc42` — fix: correct version numbering from v0.1.0 onwards
-
-- Add missing v0.1.0 changelog entry for the minor version bump
-- Renumber v0.1.2→v0.1.1, v0.1.3→v0.1.2, v0.1.4→v0.1.3
-- Sync version.ts and package.json files to 0.1.3
+**Commit:** `0d6e02e` — fix: deduplicate changelog entry and add the joke we earned
 
 ---
 
 ## v0.1.4 — 2026-03-21
 
-**Commit:** `014eca2` — fix: correct version numbering from v0.1.0 onwards
+**Commit:** `743e820` — fix: correct version numbering from v0.1.0 onwards
+
+> Who needs semantic versioning when you can have chaotic versioning?
+> We went from 0.0.155 straight to 0.1.2 like a lift that skips floors.
+> This commit restores order to the multiverse.
 
 - Add missing v0.1.0 changelog entry for the minor version bump
 - Renumber v0.1.2→v0.1.1, v0.1.3→v0.1.2, v0.1.4→v0.1.3
