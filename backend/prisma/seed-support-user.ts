@@ -5,7 +5,7 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.SUPPORT_AGENT_EMAIL || 'carlfearby@me.com';
+  const email = process.env.SUPPORT_AGENT_EMAIL || 'support@localhost';
 
   const rows = await prisma.$queryRaw<{ id: string; displayName: string | null; username: string }[]>`
     SELECT id, "displayName", username FROM "User" WHERE email = ${email} LIMIT 1

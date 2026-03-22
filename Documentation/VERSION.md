@@ -4,6 +4,18 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.12 — 2026-03-22
+
+**Commit:** `644922c` — fix: remove hardcoded secrets from deploy scripts and production code
+
+- Remove personal email defaults from deployAWS.sh and seed scripts
+- Add Mailtrap/SMS env vars to deploy pipeline so production emails work
+- Update .env.deploy.example with all available configuration options
+- Add comprehensive "Deploying to AWS" section to GETTING_STARTED.md
+- Fix Nginx config: www→non-www redirect, Nginx-level CORS for API
+
+---
+
 ## v0.1.11 — 2026-03-22
 
 **Commit:** `111b606` — feat: add paid support packages at £15/hr with tiered monthly plans

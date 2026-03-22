@@ -96,6 +96,11 @@ AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
 AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
 OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 DASHBOARD_TEST_PASSWORD="${DASHBOARD_TEST_PASSWORD:-}"
+MAILTRAP_API_KEY="${MAILTRAP_API_KEY:-}"
+MAIL_FROM_ADDRESS="${MAIL_FROM_ADDRESS:-}"
+MAIL_FROM_NAME="${MAIL_FROM_NAME:-Chatr}"
+CONTACT_EMAIL="${CONTACT_EMAIL:-}"
+SMS_WORKS_JWT="${SMS_WORKS_JWT:-}"
 SUPPORT_AGENT_EMAIL="${SUPPORT_AGENT_EMAIL:-}"
 
 # ── Derived URLs ──────────────────────────────────────────────────────────────
@@ -260,8 +265,13 @@ AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 S3_BUCKET=${S3_BUCKET}
 PRODUCT_NAME=Chatr
 OPENAI_API_KEY=${OPENAI_API_KEY:-}
-SUPPORT_AGENT_EMAIL=${SUPPORT_AGENT_EMAIL:-carlfearby@me.com}
+SUPPORT_AGENT_EMAIL=${SUPPORT_AGENT_EMAIL:-}
 DASHBOARD_TEST_PASSWORD=${DASHBOARD_TEST_PASSWORD}
+MAILTRAP_API_KEY=${MAILTRAP_API_KEY:-}
+MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-}
+MAIL_FROM_NAME=${MAIL_FROM_NAME:-Chatr}
+CONTACT_EMAIL=${CONTACT_EMAIL:-}
+SMS_WORKS_JWT=${SMS_WORKS_JWT:-}
 EOF
   success ".env written"
   detail "DB Host   : $DB_HOST"
@@ -285,7 +295,7 @@ EOF
   success "Migrations applied"
 
   info "Marking support agent in database..."
-  SUPPORT_AGENT_EMAIL="${SUPPORT_AGENT_EMAIL:-carlfearby@me.com}" \
+  SUPPORT_AGENT_EMAIL="${SUPPORT_AGENT_EMAIL}" \
     npx ts-node --project tsconfig.seed.json prisma/seed-support-user.ts 2>&1 \
     && success "Support agent configured" \
     || warn "Support agent seed failed (may not exist yet — run manually after first login)"
@@ -386,34 +396,66 @@ step6_nginx() {
 
   info "Writing Nginx site config..."
   cat > /tmp/chatr-nginx.conf <<ENDOFNGINX
+# Redirect www → non-www so there is only one origin for CORS
 server {
     listen 80;
-    server_name ${DOMAIN} www.${DOMAIN};
+    server_name www.${DOMAIN};
+    return 301 https://${DOMAIN}\$request_uri;
+}
+
+# Frontend
+server {
+    listen 80;
+    server_name ${DOMAIN};
     client_max_body_size 55M;
 
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_cache_bypass \$http_upgrade;
     }
 }
 
+# API backend
 server {
     listen 80;
     server_name api.${DOMAIN};
     client_max_body_size 55M;
 
+    # CORS headers at the Nginx level so they are present even on 502/504
+    set \$cors_origin "";
+    if (\$http_origin ~* "^https://(${DOMAIN}|www\\.${DOMAIN})$") {
+        set \$cors_origin \$http_origin;
+    }
+
+    add_header Access-Control-Allow-Origin \$cors_origin always;
+    add_header Access-Control-Allow-Credentials true always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
+
+    # Preflight requests
+    if (\$request_method = OPTIONS) {
+        return 204;
+    }
+
     location / {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection upgrade;
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_read_timeout 86400;
+        proxy_connect_timeout 10;
+        proxy_send_timeout 60;
     }
 }
 ENDOFNGINX
