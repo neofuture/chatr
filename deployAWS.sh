@@ -89,6 +89,7 @@ DB_NAME="${DB_NAME:-chatr}"
 DB_USER="${DB_USER:-chatr_user}"
 DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD not set in .env.deploy}"
 REDIS_HOST="${REDIS_HOST:?REDIS_HOST not set in .env.deploy}"
+REDIS_TLS="${REDIS_TLS:-false}"
 JWT_SECRET="${JWT_SECRET:?JWT_SECRET not set in .env.deploy}"
 S3_BUCKET="${S3_BUCKET:-}"
 AWS_REGION="${AWS_REGION:-eu-west-2}"
@@ -255,7 +256,7 @@ step3_backend() {
 PORT=3001
 NODE_ENV=production
 DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
-REDIS_URL=redis://${REDIS_HOST}:6379
+REDIS_URL=$( [ "$REDIS_TLS" = "true" ] && echo "rediss" || echo "redis" )://${REDIS_HOST}:6379
 FRONTEND_URL=${FRONTEND_URL}
 BACKEND_URL=${BACKEND_URL}
 JWT_SECRET=${JWT_SECRET}

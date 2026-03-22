@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.13 — 2026-03-22
+
+**Commit:** `dc906fc` — fix: use TLS (rediss://) for ElastiCache Redis connection
+
+---
+
 ## v0.1.12 — 2026-03-22
 
 **Commit:** `644922c` — fix: remove hardcoded secrets from deploy scripts and production code
