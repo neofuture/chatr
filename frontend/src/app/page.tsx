@@ -261,17 +261,17 @@ export default function HomePage() {
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.sectionCenter} style={{ maxWidth: 640, margin: '0 auto' }}>
-            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Free &amp; open source — forever</h2>
+            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Free code. Expert support from £15/hr.</h2>
             <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
-              Chatr is MIT-licensed. Clone the repo, deploy on your own infrastructure,
-              and customise every line. No per-seat fees, no vendor lock-in, no strings attached.
+              Chatr is MIT-licensed — clone, deploy, and customise for free. Need a hand with setup,
+              deployment, or customisation? Our paid support starts at just £15/hour.
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
               <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
                 <i className="fab fa-github" /> Star on GitHub
               </a>
               <Link href="/pricing" className={s.btnSecondary}>
-                <i className="fas fa-tag" /> Compare Options
+                <i className="fas fa-headset" /> Support Plans
               </Link>
             </div>
           </div>
@@ -643,17 +643,18 @@ export default function HomePage() {
           <div className={s.sectionCenter}>
             <h2 className={s.sectionH2}>Ready to get started?</h2>
             <p className={`${s.sectionP} ${s.sectionPCenter}`}>
-              50+ features, 2,700+ tests, MIT-licensed. Clone the repo and deploy your own instance in minutes.
+              50+ features, 2,700+ tests, MIT-licensed. Clone the repo and deploy for free — or get
+              expert help from £15/hour.
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.5rem' }}>
               <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
                 <i className="fab fa-github" /> Get the Source
               </a>
+              <Link href="/pricing" className={s.btnSecondary}>
+                <i className="fas fa-headset" /> Support Plans
+              </Link>
               <Link href="/product" className={s.btnSecondary}>
                 <i className="fas fa-file-alt" /> Full Product Overview
-              </Link>
-              <Link href="/pricing" className={s.btnSecondary}>
-                <i className="fas fa-tag" /> Compare Options
               </Link>
               <Link href="/docs" className={s.btnSecondary}>
                 <i className="fas fa-book" /> Documentation

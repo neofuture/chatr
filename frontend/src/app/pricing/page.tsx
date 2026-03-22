@@ -53,14 +53,14 @@ export default function PricingPage() {
       <section className={s.heroSection}>
         <div className={s.heroGradient} />
         <div className={s.heroInner}>
-          <span className={s.heroTag}>Pricing</span>
+          <span className={s.heroTag}>Pricing &amp; Support</span>
           <h1 className={s.heroH1}>
-            Open source. <span className={s.accent}>Full ownership.</span>
+            Free code. <span className={s.accent}>Expert support from £15/hr.</span>
           </h1>
           <p className={s.heroP}>
-            Stop paying per-seat fees for chat software you don&rsquo;t own. Chatr is MIT-licensed
-            and replaces expensive SaaS subscriptions with a production-ready platform you clone,
-            deploy, and own forever.
+            Chatr is MIT-licensed — clone, deploy, and own it forever at zero cost.
+            Need a hand getting set up? Our paid support starts at just £15/hour,
+            with monthly plans that save you even more.
           </p>
         </div>
       </section>
@@ -118,6 +118,105 @@ export default function PricingPage() {
                 <li key={i}><i className={item.icon} /> {item.text}</li>
               ))}
             </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Support Packages */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={`${s.sectionTag} ${s.sectionCenter}`}>Support</div>
+          <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>The code is free. Expert support isn&rsquo;t.</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+            Chatr is MIT-licensed and always will be. But if you need help with setup, deployment,
+            customisation, or troubleshooting — we&rsquo;re here at £15/hour.
+          </p>
+
+          <div className={s.grid4} style={{ marginTop: '2.5rem' }}>
+            {/* Community */}
+            <div className={s.pricingCard}>
+              <div className={s.pricingName}>Community</div>
+              <div className={s.pricingPrice}>£0</div>
+              <div className={s.pricingPeriod}>forever</div>
+              <div className={s.pricingDesc}>Self-service with docs, guides, and the open source community.</div>
+              <ul className={s.pricingFeatures}>
+                <li><i className="fas fa-check" /> Full source code (MIT)</li>
+                <li><i className="fas fa-check" /> Getting Started guide</li>
+                <li><i className="fas fa-check" /> Documentation &amp; API reference</li>
+                <li><i className="fas fa-check" /> GitHub Issues</li>
+                <li><i className="fas fa-check" /> Community discussions</li>
+              </ul>
+              <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnSecondary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
+                <i className="fab fa-github" /> Get Started
+              </a>
+            </div>
+
+            {/* Pay As You Go */}
+            <div className={s.pricingCard}>
+              <div className={s.pricingName}>Pay As You Go</div>
+              <div className={s.pricingPrice}>£15</div>
+              <div className={s.pricingPeriod}>per hour</div>
+              <div className={s.pricingDesc}>Book expert time whenever you need it. No commitment, no minimum.</div>
+              <ul className={s.pricingFeatures}>
+                <li><i className="fas fa-check" /> Everything in Community</li>
+                <li><i className="fas fa-check" /> 1-on-1 expert support</li>
+                <li><i className="fas fa-check" /> Setup &amp; deployment help</li>
+                <li><i className="fas fa-check" /> Troubleshooting &amp; debugging</li>
+                <li><i className="fas fa-check" /> 48-hour response time</li>
+              </ul>
+              <Link href="/contact" className={s.btnSecondary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
+                <i className="fas fa-envelope" /> Book Hours
+              </Link>
+            </div>
+
+            {/* Starter */}
+            <div className={`${s.pricingCard} ${s.pricingFeatured}`}>
+              <span className={s.pricingBadge}>Most Popular</span>
+              <div className={s.pricingName}>Starter</div>
+              <div className={s.pricingPrice}>£99</div>
+              <div className={s.pricingPeriod}>per month — 8 hours included</div>
+              <div className={s.pricingDesc}>Perfect for getting set up and keeping things running smoothly.</div>
+              <ul className={s.pricingFeatures}>
+                <li><i className="fas fa-check" /> Everything in Pay As You Go</li>
+                <li><i className="fas fa-check" /> 8 hours/month (£12.38/hr)</li>
+                <li><i className="fas fa-check" /> Additional hours at £12/hr</li>
+                <li><i className="fas fa-check" /> 24-hour response time</li>
+                <li><i className="fas fa-check" /> Email &amp; video call support</li>
+                <li><i className="fas fa-check" /> AWS deployment assistance</li>
+              </ul>
+              <Link href="/contact" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
+                <i className="fas fa-rocket" /> Get Started
+              </Link>
+            </div>
+
+            {/* Professional */}
+            <div className={s.pricingCard}>
+              <div className={s.pricingName}>Professional</div>
+              <div className={s.pricingPrice}>£249</div>
+              <div className={s.pricingPeriod}>per month — 20 hours included</div>
+              <div className={s.pricingDesc}>For teams that need ongoing support, customisation, and priority response.</div>
+              <ul className={s.pricingFeatures}>
+                <li><i className="fas fa-check" /> Everything in Starter</li>
+                <li><i className="fas fa-check" /> 20 hours/month (£12.45/hr)</li>
+                <li><i className="fas fa-check" /> Additional hours at £10/hr</li>
+                <li><i className="fas fa-check" /> Same-day response</li>
+                <li><i className="fas fa-check" /> Custom feature development</li>
+                <li><i className="fas fa-check" /> Priority bug fixes</li>
+                <li><i className="fas fa-check" /> Architecture &amp; scaling advice</li>
+              </ul>
+              <Link href="/contact" className={s.btnSecondary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
+                <i className="fas fa-envelope" /> Contact Us
+              </Link>
+            </div>
+          </div>
+
+          <div className={s.highlight}>
+            <p>
+              <strong>What&rsquo;s included in support:</strong> Setup and installation, AWS/cloud deployment, environment
+              configuration, database migrations, Nginx &amp; SSL setup, widget integration, custom branding, feature
+              customisation, performance tuning, troubleshooting, and architecture guidance. Anything you need to get
+              Chatr working for your business.
+            </p>
           </div>
         </div>
       </div>
@@ -397,12 +496,15 @@ export default function PricingPage() {
         <div className={`${s.section} ${s.sectionCenter}`}>
           <h2 className={s.sectionH2}>Ready to get started?</h2>
           <p className={`${s.sectionP} ${s.sectionPCenter}`}>
-            Clone the repo, deploy today — zero cost, full ownership, MIT-licensed.
+            Clone the repo for free — or book expert support to get running fast.
           </p>
           <div className={s.heroCtas}>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
               <i className="fab fa-github" /> View on GitHub
             </a>
+            <Link href="/contact" className={s.btnPrimary}>
+              <i className="fas fa-headset" /> Book Support
+            </Link>
             <Link href="/product" className={s.btnSecondary}>
               Full Product Overview <i className="fas fa-book-open" />
             </Link>

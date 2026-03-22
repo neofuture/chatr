@@ -22,7 +22,7 @@ describe('SiteFooter', () => {
     expect(screen.getByText('Product')).toBeInTheDocument();
     expect(screen.getByText('Features')).toBeInTheDocument();
     expect(screen.getByText('Support Widget')).toBeInTheDocument();
-    expect(screen.getByText('Pricing')).toBeInTheDocument();
+    expect(screen.getByText('Pricing & Support')).toBeInTheDocument();
     expect(screen.getByText('Full Overview')).toBeInTheDocument();
   });
 

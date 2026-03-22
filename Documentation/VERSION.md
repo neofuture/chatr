@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.11 — 2026-03-22
+
+**Commit:** `111b606` — feat: add paid support packages at £15/hr with tiered monthly plans
+
+---
+
 ## v0.1.10 — 2026-03-22
 
 **Commit:** `fc92a82` — feat: expand site with commercial, developer, and acquisition content

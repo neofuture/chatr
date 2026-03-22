@@ -12,7 +12,7 @@ const LINKS = [
   { href: '/', label: 'Home' },
   { href: '/features', label: 'Features' },
   { href: '/widget', label: 'Widget' },
-  { href: '/pricing', label: 'Pricing' },
+  { href: '/pricing', label: 'Pricing & Support' },
   { href: '/technology', label: 'Technology' },
   { href: '/product', label: 'Full Overview' },
   { href: '/contact', label: 'Contact' },

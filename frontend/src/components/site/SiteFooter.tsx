@@ -20,7 +20,7 @@ export default function SiteFooter() {
           <div className={s.colTitle}>Product</div>
           <Link href="/features">Features</Link>
           <Link href="/widget">Support Widget</Link>
-          <Link href="/pricing">Pricing</Link>
+          <Link href="/pricing">Pricing &amp; Support</Link>
           <Link href="/product">Full Overview</Link>
         </div>
 
@@ -35,6 +35,7 @@ export default function SiteFooter() {
         <div className={s.col}>
           <div className={s.colTitle}>Get Started</div>
           <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer"><i className="fab fa-github" style={{ marginRight: 6 }} />GitHub</a>
+          <Link href="/contact">Paid Support</Link>
           <Link href="/contact">Contact</Link>
           <Link href="/app">Open App</Link>
           <button onClick={openRegister} className={s.footerBtn}>Create Account</button>

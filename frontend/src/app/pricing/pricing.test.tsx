@@ -15,7 +15,7 @@ describe('PricingPage', () => {
 
   it('displays the hero heading', () => {
     render(<PricingPage />);
-    expect(screen.getByText('Pricing')).toBeInTheDocument();
+    expect(screen.getByText('Pricing & Support')).toBeInTheDocument();
   });
 
   it('displays the three pricing options', () => {

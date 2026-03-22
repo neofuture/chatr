@@ -55,8 +55,8 @@ export default function ContactPage() {
             Let&rsquo;s talk <span className={s.accent}>business</span>
           </h1>
           <p className={s.heroP}>
-            Interested in acquiring Chatr, licensing the technology, or integrating it into your product?
-            We&rsquo;d love to hear from you. For technical questions, open an issue on{' '}
+            Need expert support at £15/hour, interested in acquiring the platform, or want to discuss
+            a partnership? We&rsquo;d love to hear from you. For community support, open an issue on{' '}
             <a href="https://github.com/neofuture/chatr/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-blue-400)' }}>GitHub</a>.
           </p>
         </div>
@@ -174,6 +174,17 @@ export default function ContactPage() {
           {/* Info sidebar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconGreen}`}>
+                <i className="fas fa-headset" />
+              </div>
+              <div className={s.cardTitle}>Paid Support — £15/hour</div>
+              <div className={s.cardText}>
+                Need help with setup, deployment, or customisation? Book expert time at £15/hour
+                pay-as-you-go, or save with a{' '}
+                <Link href="/pricing" style={{ color: 'var(--color-blue-400)' }}>monthly support plan</Link>.
+              </div>
+            </div>
+            <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconBlue}`}>
                 <i className="fas fa-handshake" />
               </div>
@@ -187,20 +198,10 @@ export default function ContactPage() {
               <div className={`${s.cardIcon} ${s.iconPurple}`}>
                 <i className="fas fa-cogs" />
               </div>
-              <div className={s.cardTitle}>Integration &amp; Customisation</div>
+              <div className={s.cardTitle}>Custom Development</div>
               <div className={s.cardText}>
-                Need Chatr integrated into your existing product? Custom features, branding,
-                or deployment assistance? We can scope it.
-              </div>
-            </div>
-            <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconGreen}`}>
-                <i className="fas fa-chart-line" />
-              </div>
-              <div className={s.cardTitle}>White-Label Reselling</div>
-              <div className={s.cardText}>
-                Deploy Chatr as a managed service for your clients. Per-client instances,
-                custom branding, your pricing, zero per-seat overhead.
+                Need bespoke features, integrations, or a white-label deployment?
+                We build it, you own it. Scoped and quoted per project.
               </div>
             </div>
             <div className={s.card}>
@@ -209,8 +210,8 @@ export default function ContactPage() {
               </div>
               <div className={s.cardTitle}>Quick Response</div>
               <div className={s.cardText}>
-                We respond within 24 hours. For time-sensitive enquiries,
-                mention &ldquo;urgent&rdquo; in your message.
+                We respond within 24 hours. Starter plan clients get 24-hour response;
+                Professional plan clients get same-day response.
               </div>
             </div>
           </div>

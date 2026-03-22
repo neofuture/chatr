@@ -3,22 +3,22 @@ import type { Metadata } from 'next';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://chatr.emberlyn.co.uk';
 
 export const metadata: Metadata = {
-  title: 'Pricing — Zero Cost, Full Ownership',
+  title: 'Pricing & Support — Free Code, Expert Help from £15/hr',
   description:
-    'Stop paying per-seat fees for chat software. Chatr replaces expensive SaaS subscriptions like Intercom (£39-99/seat/month) with a production-ready platform you deploy once and keep forever.',
+    'Chatr is free and open source (MIT). Need help with setup, deployment, or customisation? Paid support starts at £15/hour with monthly plans from £99. Replaces Intercom at a fraction of the cost.',
   openGraph: {
     type: 'website',
-    title: 'Pricing — Zero Cost, Full Ownership',
+    title: 'Pricing & Support — Free Code, Expert Help from £15/hr',
     description:
-      'Stop paying per-seat fees for chat software. Chatr replaces expensive SaaS subscriptions like Intercom (£39-99/seat/month) with a production-ready platform you deploy once and keep forever.',
+      'Chatr is free and open source (MIT). Need help with setup, deployment, or customisation? Paid support starts at £15/hour with monthly plans from £99. Replaces Intercom at a fraction of the cost.',
     url: SITE_URL + '/pricing',
     images: [{ url: SITE_URL + '/screenshots/10-dashboard-top.png', width: 1440, height: 900, alt: 'Chatr Pricing — Zero Cost, Full Ownership' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Pricing — Zero Cost, Full Ownership',
+    title: 'Pricing & Support — Free Code, Expert Help from £15/hr',
     description:
-      'Stop paying per-seat fees for chat software. Chatr replaces expensive SaaS subscriptions like Intercom (£39-99/seat/month) with a production-ready platform you deploy once and keep forever.',
+      'Chatr is free and open source (MIT). Need help with setup, deployment, or customisation? Paid support starts at £15/hour with monthly plans from £99. Replaces Intercom at a fraction of the cost.',
     images: [SITE_URL + '/screenshots/10-dashboard-top.png'],
   },
   alternates: { canonical: SITE_URL + '/pricing' },
@@ -52,6 +52,11 @@ const faqJsonLd = {
       '@type': 'Question',
       name: 'How long does it take to deploy?',
       acceptedAnswer: { '@type': 'Answer', text: 'Chatr can be deployed in under an hour. The platform comes with automated deployment scripts, Docker support, and comprehensive documentation.' },
+    },
+    {
+      '@type': 'Question',
+      name: 'Do you offer paid support?',
+      acceptedAnswer: { '@type': 'Answer', text: 'Yes. The code is free and always will be. Expert support for setup, deployment, customisation, and troubleshooting is available from £15/hour pay-as-you-go, or from £99/month with a Starter plan that includes 8 hours of support.' },
     },
   ],
 };

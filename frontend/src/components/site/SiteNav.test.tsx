@@ -53,7 +53,7 @@ describe('SiteNav', () => {
     expect(screen.getAllByText('Home').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Features').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Widget').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Pricing').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Pricing & Support').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Technology').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Full Overview').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Contact').length).toBeGreaterThanOrEqual(1);
