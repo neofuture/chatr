@@ -346,13 +346,12 @@ The full deploy takes 5–10 minutes and performs these steps:
 8. Configures Nginx with SSL (via Let's Encrypt)
 9. Runs health checks
 
-### Step 3 — Auto-deploy on commit
+### Step 3 — Deploy after pushing
 
-The project includes a Husky `post-commit` hook that auto-deploys if `.env.deploy` exists:
+After pushing your changes, trigger a deploy manually:
 
 ```bash
-# Auto-deploy triggers automatically after every successful commit
-# To disable, remove or rename .env.deploy
+bash aws.sh
 ```
 
 ### Useful server commands

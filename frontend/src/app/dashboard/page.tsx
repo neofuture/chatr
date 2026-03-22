@@ -2096,6 +2096,16 @@ export default function DashboardPage() {
         );
         break;
       case 'e2e':
+        if (!isLocalhost) {
+          content = (
+            <div style={{ textAlign: 'center', padding: '3rem 2rem', color: 'var(--text-secondary)' }}>
+              <i className="fad fa-browser" style={{ fontSize: '2rem', display: 'block', marginBottom: 12, opacity: 0.4 }} />
+              <p style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 4 }}>E2E tests are only available in local development</p>
+              <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Playwright requires a browser runtime that is not installed on the production server.</p>
+            </div>
+          );
+          break;
+        }
         content = (
           <>
           {/* ── E2E Test Results ────────────────────────────────────── */}
@@ -2598,7 +2608,7 @@ export default function DashboardPage() {
             {/* ─ Testing ─ */}
             <TestStatCard label="Test Results — Frontend" icon="fad fa-flask" color="#10b981" panel="tests" onOpen={openPanel} report={feReport} running={feRunning} coverage={feReport?.coverage} />
             <TestStatCard label="Test Results — Backend" icon="fad fa-vial" color="#3b82f6" panel="tests" onOpen={openPanel} report={beReport} running={beRunning} coverage={beReport?.coverage} />
-            <TestStatCard label="E2E Tests (Playwright)" icon="fad fa-browser" color="#a855f7" panel="e2e" onOpen={openPanel} report={e2eReport} running={e2eRunning} />
+            {isLocalhost && <TestStatCard label="E2E Tests (Playwright)" icon="fad fa-browser" color="#a855f7" panel="e2e" onOpen={openPanel} report={e2eReport} running={e2eRunning} />}
 
             {/* ─ Code Health ─ */}
             <SummaryCard label="Code Health" value={`${data.health.avgFileSize} avg loc`} icon="fad fa-heartbeat" color="#f43f5e" panel="health" onOpen={openPanel}
