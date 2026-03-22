@@ -13,7 +13,6 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import SiteNav from '@/components/site/SiteNav';
-import SiteFooter from '@/components/site/SiteFooter';
 import docStyles from './Docs.module.css';
 
 // Mermaid is browser-only — load with ssr:false so webpack never bundles it for the server
@@ -276,7 +275,9 @@ export default function DocsPage() {
           });
         } else {
           setShowHome(true);
-          loadFile('VERSION.md', undefined, true);
+          setContent('');
+          setSelectedFile(null);
+          setLoading(false);
         }
       })
       .catch(err => {
@@ -293,7 +294,8 @@ export default function DocsPage() {
         loadFile(fileParam);
       } else {
         setShowHome(true);
-        loadFile('VERSION.md', undefined, true);
+        setContent('');
+        setSelectedFile(null);
       }
     };
 
@@ -528,6 +530,7 @@ export default function DocsPage() {
       localStorage.setItem('docsSidebarWidth', sidebarWidth.toString());
     }
   }, [sidebarWidth, mounted]);
+
 
   // Handle sidebar resize dragging
   useEffect(() => {
@@ -1186,7 +1189,24 @@ export default function DocsPage() {
       </>
       )}
       </div>
-      <SiteFooter />
+      <footer style={{
+        borderTop: '1px solid var(--border-primary)',
+        padding: '1.25rem 2rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        fontSize: '0.78rem',
+        color: 'var(--text-tertiary)',
+      }}>
+        <span>&copy; {new Date().getFullYear()} Chatr. MIT License.</span>
+        <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <a href="/" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Home</a>
+          <a href="/features" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Features</a>
+          <a href="/pricing" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Pricing</a>
+          <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>GitHub</a>
+          <a href="/contact" style={{ color: 'var(--text-tertiary)', textDecoration: 'none' }}>Contact</a>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import * as versionModule from '@/version';
 import ClientProviders from '@/components/ClientProviders';
+import BackToTop from '@/components/BackToTop/BackToTop';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -134,6 +135,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ClientProviders>
           {children}
+          <BackToTop />
         </ClientProviders>
       </body>
     </html>

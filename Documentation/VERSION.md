@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.16 — 2026-03-22
+
+**Commit:** `d57f005` — fix: docs footer overlap, remove version from docs home, add back-to-top button
+
+- Replace full SiteFooter with minimal inline footer on docs page
+- Remove VERSION.md auto-load on docs home screen (quick links only)
+- Add global BackToTop floating button on all pages (appears after 400px scroll)
+
+---
+
 ## v0.1.15 — 2026-03-22
 
 **Commit:** `47d1f81` — fix: hide E2E panel on production, remove auto-deploy from post-commit
