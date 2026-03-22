@@ -122,6 +122,9 @@ export default function SiteNav() {
           </div>
 
           <div className={s.rightSection}>
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.githubLink} aria-label="GitHub">
+              <i className="fab fa-github" />
+            </a>
             <div className={s.themeBtn}><ThemeToggle compact showLabel={false} /></div>
 
             <div className={s.avatarWrapper} ref={dropdownRef}>

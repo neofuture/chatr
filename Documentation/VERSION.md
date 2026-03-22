@@ -4,6 +4,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.7 — 2026-03-22
+
+**Commit:** `80dfe7e` — feat: rebrand as open source with MIT license and GitHub CTAs
+
+- Add MIT LICENSE file to indicate open source status.
+- Replace commercial CTAs with GitHub links across all site pages.
+- Update site content to reflect open source nature and community support.
+- Enhance SEO metadata and JSON-LD schema for better visibility.
+
+---
+
 ## v0.1.6 — 2026-03-22
 
 **Commit:** `11495b5` — feat: redesign dashboard with summary cards, test stat cards & mini bar charts

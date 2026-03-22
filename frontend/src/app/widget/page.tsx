@@ -30,11 +30,11 @@ export default function WidgetPage() {
             required for visitors. Full ownership of your data.
           </p>
           <div className={s.heroCtas}>
-            <Link href="/contact" className={s.btnPrimary}>
-              <i className="fas fa-envelope" /> Contact Us
-            </Link>
-            <Link href="/pricing" className={s.btnSecondary}>
-              <i className="fas fa-tag" /> View Pricing
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+              <i className="fab fa-github" /> View on GitHub
+            </a>
+            <Link href="/widget-demo" className={s.btnSecondary}>
+              <i className="fas fa-play-circle" /> Live Demo
             </Link>
           </div>
         </div>
@@ -199,9 +199,9 @@ export default function WidgetPage() {
               <li><i className="fas fa-check" /> White-label branding</li>
               <li><i className="fas fa-check" /> Full data ownership</li>
             </ul>
-            <Link href="/contact" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.75rem' }}>
-              <i className="fas fa-envelope" /> Get Started — Contact Us
-            </Link>
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.75rem' }}>
+              <i className="fab fa-github" /> Get Started on GitHub
+            </a>
           </div>
         </div>
       </div>
@@ -352,9 +352,9 @@ export default function WidgetPage() {
               <Link href="/widget-demo" className={s.btnPrimary}>
                 <i className="fas fa-play-circle" /> Live Widget Demo
               </Link>
-              <Link href="/contact" className={s.btnPrimary}>
-                <i className="fas fa-envelope" /> Contact Us
-              </Link>
+              <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+                <i className="fab fa-github" /> View on GitHub
+              </a>
               <Link href="/product" className={s.btnSecondary}>
                 <i className="fas fa-book-open" /> Full Product Overview
               </Link>

@@ -38,7 +38,8 @@ describe('SiteFooter', () => {
   it('renders get started column links', () => {
     render(<SiteFooter />);
     expect(screen.getByText('Get Started')).toBeInTheDocument();
-    expect(screen.getByText('Contact Sales')).toBeInTheDocument();
+    expect(screen.getByText('GitHub')).toBeInTheDocument();
+    expect(screen.getByText('Contact')).toBeInTheDocument();
     expect(screen.getByText('Open App')).toBeInTheDocument();
     expect(screen.getByText('Create Account')).toBeInTheDocument();
   });
@@ -60,7 +61,7 @@ describe('SiteFooter', () => {
     render(<SiteFooter />);
     expect(screen.getByText('Features').closest('a')).toHaveAttribute('href', '/features');
     expect(screen.getByText('Architecture').closest('a')).toHaveAttribute('href', '/technology');
-    expect(screen.getByText('Contact Sales').closest('a')).toHaveAttribute('href', '/contact');
+    expect(screen.getByText('GitHub').closest('a')).toHaveAttribute('href', 'https://github.com/neofuture/chatr');
     expect(screen.getByText('Open App').closest('a')).toHaveAttribute('href', '/app');
   });
 

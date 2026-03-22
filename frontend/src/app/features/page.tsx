@@ -30,11 +30,11 @@ export default function FeaturesPage() {
             WhatsApp, Slack, and iMessage in a single platform.
           </p>
           <div className={s.heroCtas}>
-            <Link href="/contact" className={s.btnPrimary}>
-              <i className="fas fa-envelope" /> Contact Us
-            </Link>
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+              <i className="fab fa-github" /> View on GitHub
+            </a>
             <Link href="/pricing" className={s.btnSecondary}>
-              <i className="fas fa-tag" /> View Pricing
+              <i className="fas fa-tag" /> Compare Options
             </Link>
           </div>
         </div>
@@ -303,17 +303,17 @@ export default function FeaturesPage() {
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.sectionCenter} style={{ maxWidth: 640, margin: '0 auto' }}>
-            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Want these features in your product?</h2>
+            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>All of this — free &amp; open source</h2>
             <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
-              Chatr delivers all of this out of the box — no per-seat fees, no vendor lock-in,
-              full source code ownership. Let&rsquo;s talk about your requirements.
+              Chatr delivers all of this out of the box — MIT-licensed, no per-seat fees, no vendor lock-in.
+              Clone the repo and deploy on your own infrastructure.
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
-              <Link href="/contact" className={s.btnPrimary}>
-                <i className="fas fa-envelope" /> Contact Us
-              </Link>
-              <Link href="/pricing" className={s.btnSecondary}>
-                <i className="fas fa-tag" /> View Pricing
+              <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+                <i className="fab fa-github" /> Get the Source
+              </a>
+              <Link href="/docs" className={s.btnSecondary}>
+                <i className="fas fa-book" /> Documentation
               </Link>
             </div>
           </div>
@@ -391,9 +391,9 @@ export default function FeaturesPage() {
               <Link href="/widget" className={s.btnPrimary}>
                 <i className="fas fa-puzzle-piece" /> Explore the Widget
               </Link>
-              <Link href="/contact" className={s.btnPrimary}>
-                <i className="fas fa-envelope" /> Contact Us
-              </Link>
+              <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+                <i className="fab fa-github" /> View on GitHub
+              </a>
               <Link href="/product" className={s.btnSecondary}>
                 <i className="fas fa-book-open" /> Full Product Overview
               </Link>

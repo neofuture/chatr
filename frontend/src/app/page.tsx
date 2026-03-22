@@ -30,23 +30,23 @@ export default function HomePage() {
               priority
             />
           </div>
-          <div className={s.heroTag} style={{ marginTop: '1.5rem' }}>Real-Time Messaging Platform</div>
+          <div className={s.heroTag} style={{ marginTop: '1.5rem' }}>Open Source Real-Time Messaging Platform</div>
           <h1 className={s.heroH1}>
             Connect. Chat. <span className={s.accent}>Collaborate.</span>
           </h1>
           <p className={s.heroP}>
-            A complete messaging platform with voice notes, video, file sharing, AI assistant,
-            typing indicators, read receipts, and an embeddable support widget — ready to deploy today.
+            A free, open source messaging platform with voice notes, video, file sharing, AI assistant,
+            typing indicators, read receipts, and an embeddable support widget — clone, deploy, and make it yours.
           </p>
           <div className={s.heroCtas}>
-            <Link href="/contact" className={s.btnPrimary}>
-              <i className="fas fa-envelope" /> Contact Us
-            </Link>
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+              <i className="fab fa-github" /> View on GitHub
+            </a>
             <Link href="/features" className={s.btnSecondary}>
               <i className="fas fa-th-large" /> Explore Features
             </Link>
-            <Link href="/pricing" className={s.btnSecondary}>
-              <i className="fas fa-tag" /> View Pricing
+            <Link href="/docs" className={s.btnSecondary}>
+              <i className="fas fa-book" /> Documentation
             </Link>
           </div>
         </div>
@@ -65,7 +65,7 @@ export default function HomePage() {
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.statsRow}>
-            {[['50+', 'Features'], ['1,300+', 'Automated Tests'], ['80,000+', 'Lines of Code'], ['22', 'Days to Ship']].map(([v, l]) => (
+            {[['100%', 'Open Source'], ['50+', 'Features'], ['1,300+', 'Automated Tests'], ['80,000+', 'Lines of Code']].map(([v, l]) => (
               <div key={l} className={s.statBox}>
                 <div className={s.statVal}>{v}</div>
                 <div className={s.statLbl}>{l}</div>
@@ -106,21 +106,21 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Contact banner ─────────────────────────────── */}
+      {/* ── Open Source banner ────────────────────────────── */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.sectionCenter} style={{ maxWidth: 640, margin: '0 auto' }}>
-            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Interested in Chatr for your business?</h2>
+            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Free &amp; open source — forever</h2>
             <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
-              Whether you need enterprise licensing, custom development, or a tailored deployment —
-              get in touch and we&rsquo;ll discuss how Chatr can work for you.
+              Chatr is MIT-licensed. Clone the repo, deploy on your own infrastructure,
+              and customise every line. No per-seat fees, no vendor lock-in, no strings attached.
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
-              <Link href="/contact" className={s.btnPrimary}>
-                <i className="fas fa-envelope" /> Contact Us
-              </Link>
+              <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+                <i className="fab fa-github" /> Star on GitHub
+              </a>
               <Link href="/pricing" className={s.btnSecondary}>
-                <i className="fas fa-tag" /> View Pricing
+                <i className="fas fa-tag" /> Compare Options
               </Link>
             </div>
           </div>
@@ -132,7 +132,7 @@ export default function HomePage() {
         <div className={s.section}>
           <div className={s.grid2}>
             <div>
-              <div className={s.sectionTag}>Revenue Generator</div>
+              <div className={s.sectionTag}>Embeddable Widget</div>
               <h2 className={s.sectionH2}>Add live support to any website</h2>
               <p className={s.sectionP}>
                 Paste one line of JavaScript and your customers can chat with you in real time.
@@ -189,8 +189,8 @@ export default function HomePage() {
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.sectionCenter}>
-            <div className={s.sectionTag}>Production Ready</div>
-            <h2 className={s.sectionH2}>Built on the stack trusted by Slack, Shopify & Netflix</h2>
+            <div className={s.sectionTag}>Production Ready &amp; Open Source</div>
+            <h2 className={s.sectionH2}>Built on the stack trusted by Slack, Shopify &amp; Netflix</h2>
           </div>
           <div className={s.techGrid}>
             {[
@@ -242,12 +242,12 @@ export default function HomePage() {
           <div className={s.sectionCenter}>
             <h2 className={s.sectionH2}>Ready to get started?</h2>
             <p className={`${s.sectionP} ${s.sectionPCenter}`}>
-              50+ features, 1,300+ tests, zero cost. Create your account and start messaging in seconds.
+              50+ features, 1,300+ tests, MIT-licensed. Clone the repo and deploy your own instance in minutes.
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.5rem' }}>
-              <Link href="/contact" className={s.btnPrimary}>
-                <i className="fas fa-envelope" /> Contact Us
-              </Link>
+              <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+                <i className="fab fa-github" /> Get the Source
+              </a>
               <Link href="/product" className={s.btnSecondary}>
                 <i className="fas fa-file-alt" /> Full Product Overview
               </Link>

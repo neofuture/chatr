@@ -9,14 +9,14 @@ import s from '@/components/site/Site.module.css';
 const INTERCOM_ITEMS = [
   { icon: 'fas fa-pound-sign', text: '£39–99 per seat, per month' },
   { icon: 'fas fa-ban', text: 'Usage caps and overage charges' },
-  { icon: 'fas fa-lock', text: 'Vendor lock-in — no source access' },
+  { icon: 'fas fa-lock', text: 'Vendor lock-in — closed source' },
   { icon: 'fas fa-paint-brush', text: 'Limited customisation options' },
   { icon: 'fas fa-server', text: 'Your data on their servers' },
   { icon: 'fas fa-credit-card', text: 'Monthly bills that never stop' },
 ];
 
 const CHATR_ITEMS = [
-  { icon: 'fas fa-code', text: 'Full source code — yours forever' },
+  { icon: 'fas fa-code', text: 'Open source (MIT) — yours forever' },
   { icon: 'fas fa-users', text: 'Unlimited seats, zero per-user fees' },
   { icon: 'fas fa-palette', text: 'Complete white-label customisation' },
   { icon: 'fas fa-database', text: 'Runs on your own servers' },
@@ -55,12 +55,12 @@ export default function PricingPage() {
         <div className={s.heroInner}>
           <span className={s.heroTag}>Pricing</span>
           <h1 className={s.heroH1}>
-            Zero cost. <span className={s.accent}>Full ownership.</span>
+            Open source. <span className={s.accent}>Full ownership.</span>
           </h1>
           <p className={s.heroP}>
-            Stop paying per-seat fees for chat software you don&rsquo;t own. Chatr replaces
-            expensive SaaS subscriptions with a production-ready platform you deploy once
-            and keep forever.
+            Stop paying per-seat fees for chat software you don&rsquo;t own. Chatr is MIT-licensed
+            and replaces expensive SaaS subscriptions with a production-ready platform you clone,
+            deploy, and own forever.
           </p>
         </div>
       </section>
@@ -95,15 +95,15 @@ export default function PricingPage() {
             <div className={s.pricingPrice}>
               £0 <span className={s.pricingPeriod}>/forever</span>
             </div>
-            <div className={s.pricingDesc}>Full-featured, production-ready platform. Deploy once, own it forever.</div>
+            <div className={s.pricingDesc}>Full-featured, open source, MIT-licensed. Clone, deploy, own it forever.</div>
             <ul className={s.pricingFeatures}>
               {CHATR_ITEMS.map((item, i) => (
                 <li key={i}><i className={item.icon} /> {item.text}</li>
               ))}
             </ul>
-            <Link href="/contact" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-              <i className="fas fa-envelope" /> Get Started — Contact Us
-            </Link>
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
+              <i className="fab fa-github" /> Get Started on GitHub
+            </a>
           </div>
 
           {/* Build from Scratch */}
@@ -178,12 +178,12 @@ export default function PricingPage() {
         <div className={`${s.section} ${s.sectionCenter}`}>
           <h2 className={s.sectionH2}>Ready to get started?</h2>
           <p className={`${s.sectionP} ${s.sectionPCenter}`}>
-            Deploy Chatr today — zero cost, full ownership, no strings attached.
+            Clone the repo, deploy today — zero cost, full ownership, MIT-licensed.
           </p>
           <div className={s.heroCtas}>
-            <Link href="/contact" className={s.btnPrimary}>
-              <i className="fas fa-envelope" /> Contact Us
-            </Link>
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+              <i className="fab fa-github" /> View on GitHub
+            </a>
             <Link href="/product" className={s.btnSecondary}>
               Full Product Overview <i className="fas fa-book-open" />
             </Link>

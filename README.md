@@ -1,8 +1,8 @@
 # Chatr - Real-time Messaging Platform
 
-**Status**: Active Development
+**Status**: Active Development | **License**: MIT
 
-A modern real-time messaging platform built with Next.js, Express, and PostgreSQL, featuring an embeddable support chat widget.
+A free, open source real-time messaging platform built with Next.js, Express, and PostgreSQL, featuring an embeddable support chat widget.
 
 ## Quick Start
 
@@ -120,4 +120,4 @@ Disable: `git commit --no-verify`
 
 ## License
 
-Private project
+MIT — see [LICENSE](./LICENSE) for details.

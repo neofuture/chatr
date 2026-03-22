@@ -89,6 +89,28 @@
   gap: 0.5rem;
 }
 
+.githubLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.githubLink:hover {
+  color: var(--text-primary);
+  background: var(--overlay-white-06);
+}
+
+[data-theme='light'] .githubLink:hover {
+  background: var(--overlay-black-05);
+}
+
 .themeBtn {
   display: flex;
   align-items: center;

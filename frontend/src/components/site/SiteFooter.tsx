@@ -13,7 +13,7 @@ export default function SiteFooter() {
       <div className={s.inner}>
         <div className={s.brand}>
           <h3>Chatr</h3>
-          <p>A complete real-time messaging platform with 50+ features, 1,300+ tests, and an embeddable support widget — built by a single developer in 22 days.</p>
+          <p>A free, open source real-time messaging platform with 50+ features, 1,300+ tests, and an embeddable support widget. MIT-licensed.</p>
         </div>
 
         <div className={s.col}>
@@ -34,7 +34,8 @@ export default function SiteFooter() {
 
         <div className={s.col}>
           <div className={s.colTitle}>Get Started</div>
-          <Link href="/contact">Contact Sales</Link>
+          <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer"><i className="fab fa-github" style={{ marginRight: 6 }} />GitHub</a>
+          <Link href="/contact">Contact</Link>
           <Link href="/app">Open App</Link>
           <button onClick={openRegister} className={s.footerBtn}>Create Account</button>
         </div>

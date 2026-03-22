@@ -22,6 +22,6 @@ describe('HomePage', () => {
 
   it('displays call-to-action links', () => {
     render(<HomePage />);
-    expect(screen.getAllByText(/contact us/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/view on github/i).length).toBeGreaterThan(0);
   });
 });

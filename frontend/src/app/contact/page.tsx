@@ -55,8 +55,9 @@ export default function ContactPage() {
             Let&rsquo;s talk about <span className={s.accent}>your project</span>
           </h1>
           <p className={s.heroP}>
-            Interested in deploying Chatr for your organisation? Have questions about
-            the platform, licensing, or customisation? We&rsquo;d love to hear from you.
+            Have questions about Chatr, need help with setup, or want to discuss contributions?
+            We&rsquo;d love to hear from you. You can also open an issue on{' '}
+            <a href="https://github.com/neofuture/chatr/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-blue-400)' }}>GitHub</a>.
           </p>
         </div>
       </section>
@@ -135,7 +136,7 @@ export default function ContactPage() {
                     rows={6}
                     value={form.message}
                     onChange={set('message')}
-                    placeholder="Tell us about your project, requirements, or questions..."
+                    placeholder="Describe your question, how you're using Chatr, or a contribution idea..."
                     className="form-input"
                     style={{ resize: 'vertical', minHeight: 120 }}
                   />
@@ -176,9 +177,9 @@ export default function ContactPage() {
               <div className={`${s.cardIcon} ${s.iconBlue}`}>
                 <i className="fas fa-building" />
               </div>
-              <div className={s.cardTitle}>Enterprise Licensing</div>
+              <div className={s.cardTitle}>Open Source (MIT)</div>
               <div className={s.cardText}>
-                Full source code, white-label rights, and unlimited seats.
+                Full source code, free to use, modify, and distribute.
                 Deploy on your infrastructure with complete ownership.
               </div>
             </div>
@@ -186,20 +187,20 @@ export default function ContactPage() {
               <div className={`${s.cardIcon} ${s.iconPurple}`}>
                 <i className="fas fa-cogs" />
               </div>
-              <div className={s.cardTitle}>Custom Development</div>
+              <div className={s.cardTitle}>Community &amp; Contributions</div>
               <div className={s.cardText}>
-                Need bespoke features, integrations, or a tailored deployment?
-                We can build exactly what you need.
+                Report bugs, propose features, or submit pull requests.
+                Contributions are welcome on GitHub.
               </div>
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconGreen}`}>
                 <i className="fas fa-headset" />
               </div>
-              <div className={s.cardTitle}>Support &amp; Training</div>
+              <div className={s.cardTitle}>Documentation &amp; Setup</div>
               <div className={s.cardText}>
-                Onboarding, training, and ongoing support packages available
-                to ensure a smooth deployment.
+                Comprehensive docs, quick-start guide, and architecture overview
+                to get you up and running fast.
               </div>
             </div>
             <div className={s.card}>

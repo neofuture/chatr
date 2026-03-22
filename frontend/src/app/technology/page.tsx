@@ -58,9 +58,9 @@ export default function TechnologyPage() {
             Slack, Netflix, and Uber. Any JavaScript developer can be productive on day one.
           </p>
           <div className={s.heroCtas}>
-            <Link href="/contact" className={s.btnPrimary}>
-              <i className="fas fa-envelope" /> Contact Us
-            </Link>
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+              <i className="fab fa-github" /> View on GitHub
+            </a>
             <Link href="/features" className={s.btnSecondary}>
               <i className="fas fa-list" /> View Features
             </Link>
@@ -164,17 +164,17 @@ export default function TechnologyPage() {
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.sectionCenter} style={{ maxWidth: 640, margin: '0 auto' }}>
-            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Built for production. Ready for your stack.</h2>
+            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Built for production. Open source.</h2>
             <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
-              Deploy on your own infrastructure with full source code access and zero recurring fees.
-              Get in touch to discuss your requirements.
+              Deploy on your own infrastructure with full source code access. MIT-licensed,
+              zero recurring fees, open to contributions.
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
-              <Link href="/contact" className={s.btnPrimary}>
-                <i className="fas fa-envelope" /> Contact Us
-              </Link>
-              <Link href="/pricing" className={s.btnSecondary}>
-                <i className="fas fa-tag" /> View Pricing
+              <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+                <i className="fab fa-github" /> Star on GitHub
+              </a>
+              <Link href="/docs" className={s.btnSecondary}>
+                <i className="fas fa-book" /> Documentation
               </Link>
             </div>
           </div>
@@ -261,9 +261,9 @@ export default function TechnologyPage() {
             <Link href="/docs" className={s.btnPrimary}>
               <i className="fas fa-book" /> Documentation
             </Link>
-            <Link href="/contact" className={s.btnPrimary}>
-              <i className="fas fa-envelope" /> Contact Us
-            </Link>
+            <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
+              <i className="fab fa-github" /> View on GitHub
+            </a>
             <Link href="/dashboard" className={s.btnSecondary}>
               <i className="fas fa-chart-line" /> Dashboard
             </Link>
