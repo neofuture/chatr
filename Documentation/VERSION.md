@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.10 — 2026-03-22
+
+**Commit:** `fc92a82` — feat: expand site with commercial, developer, and acquisition content
+
+---
+
 ## v0.1.9 — 2026-03-22
 
 **Commit:** `bd16bd3` — chore: update site stats to reflect current project metrics

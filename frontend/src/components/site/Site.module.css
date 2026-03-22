@@ -407,6 +407,305 @@
   line-height: 1.5;
 }
 
+/* ── Code snippet block ──────────────────────────── */
+.codeBlock {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  overflow-x: auto;
+  position: relative;
+}
+
+.codeBlock pre {
+  margin: 0;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre;
+}
+
+.codeBlock code {
+  font-family: inherit;
+}
+
+.codeBlockLabel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--color-blue-500);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0 12px 0 8px;
+}
+
+/* ── Highlight / callout box ─────────────────────── */
+.highlight {
+  background: var(--overlay-blue-06);
+  border: 1px solid var(--overlay-blue-20);
+  border-left: 4px solid var(--color-blue-500);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-top: 2rem;
+}
+
+.highlight p {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.highlight strong {
+  color: var(--color-blue-400);
+}
+
+/* ── Grid variants ───────────────────────────────── */
+.grid4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+}
+
+/* ── Value proposition / ROI cards ────────────────── */
+.valueCard {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 14px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.valueCard:hover {
+  border-color: var(--overlay-blue-30);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px var(--overlay-blue-08);
+}
+
+.valueIcon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  color: var(--color-blue-500);
+}
+
+.valueTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.valueText {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.valueStat {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--color-green-500);
+  margin-bottom: 0.25rem;
+}
+
+/* ── Checklist items ─────────────────────────────── */
+.checkList {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.checkList li {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  line-height: 1.5;
+}
+
+.checkList li i {
+  color: var(--color-green-500);
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+/* ── Comparison table ────────────────────────────── */
+.comparisonTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 2.5rem;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-primary);
+  font-size: 0.88rem;
+}
+
+.comparisonTable thead th {
+  background: var(--bg-tertiary);
+  padding: 1rem 1.25rem;
+  font-weight: 700;
+  text-align: left;
+  border-bottom: 2px solid var(--border-primary);
+  white-space: nowrap;
+}
+
+.comparisonTable thead th:first-child {
+  width: 30%;
+}
+
+.comparisonTable thead th.featuredCol {
+  background: var(--overlay-blue-10);
+  color: var(--color-blue-400);
+}
+
+.comparisonTable tbody td {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.comparisonTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.comparisonTable tbody td:first-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.comparisonTable tbody td.featuredCol {
+  background: var(--overlay-blue-04);
+}
+
+.comparisonTable .cellYes {
+  color: var(--color-green-500);
+  font-weight: 600;
+}
+
+.comparisonTable .cellNo {
+  color: var(--color-red-500);
+  opacity: 0.6;
+}
+
+.comparisonTable .cellPartial {
+  color: var(--color-orange-500);
+}
+
+/* ── Metric strip (horizontal badges) ────────────── */
+.metricStrip {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2.5rem;
+}
+
+.metricBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+}
+
+.metricBadge i {
+  font-size: 1.5rem;
+  color: var(--color-blue-500);
+}
+
+.metricBadgeText {
+  display: flex;
+  flex-direction: column;
+}
+
+.metricBadgeVal {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.metricBadgeLbl {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Big quote / testimonial ─────────────────────── */
+.bigQuote {
+  max-width: 700px;
+  margin: 2.5rem auto 0;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--text-primary);
+  font-style: italic;
+  position: relative;
+  padding: 0 2rem;
+}
+
+.bigQuote::before {
+  content: '\201C';
+  position: absolute;
+  top: -0.5rem;
+  left: 0;
+  font-size: 4rem;
+  color: var(--color-blue-500);
+  opacity: 0.3;
+  font-style: normal;
+  line-height: 1;
+}
+
+.bigQuoteAttr {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  font-style: normal;
+  color: var(--text-tertiary);
+}
+
+/* ── Feature checklist (compact columns) ─────────── */
+.featureCheckGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem 2rem;
+  margin-top: 2rem;
+  list-style: none;
+  padding: 0;
+}
+
+.featureCheckGrid li {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  line-height: 1.4;
+}
+
+.featureCheckGrid li i {
+  color: var(--color-green-500);
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
 /* ── Contact form layout ─────────────────────────── */
 .contactGrid {
   display: grid;
@@ -420,9 +719,15 @@
 @media (max-width: 900px) {
   .heroH1 { font-size: 2.2rem; }
   .sectionH2 { font-size: 1.5rem; }
-  .grid3, .techGrid, .pricingGrid { grid-template-columns: 1fr; }
+  .grid3, .grid4, .techGrid, .pricingGrid { grid-template-columns: 1fr; }
   .grid2 { grid-template-columns: 1fr; }
   .statsRow { grid-template-columns: repeat(2, 1fr); }
+  .checkList { grid-template-columns: 1fr; }
+  .featureCheckGrid { grid-template-columns: 1fr 1fr; }
+  .comparisonTable { font-size: 0.78rem; }
+  .comparisonTable thead th, .comparisonTable tbody td { padding: 0.6rem 0.75rem; }
+  .metricStrip { gap: 1rem; }
+  .metricBadge { padding: 0.75rem 1rem; }
   .screenshotMobile { width: 160px; }
   .contactGrid { grid-template-columns: 1fr; }
 }

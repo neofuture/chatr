@@ -355,6 +355,85 @@ export default function FeaturesPage() {
         </div>
       </div>
 
+      {/* ── AI Assistant ──────────────────────────────────── */}
+      <div className={s.section}>
+        <div className={s.sectionCenter}>
+          <p className={s.sectionTag}>Artificial Intelligence</p>
+          <h2 className={s.sectionH2}>AI Chatbot &amp; Smart Summaries</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+            Luna is an AI assistant powered by GPT-4o-mini that appears as a regular contact.
+            No special interface, no learning curve — just send a message and get an intelligent response.
+          </p>
+        </div>
+
+        <div className={s.grid2}>
+          <div>
+            <div className={s.grid3} style={{ gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
+              <div className={s.card}>
+                <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-robot" /></div>
+                <div className={s.cardTitle}>Luna AI Chatbot</div>
+                <div className={s.cardText}>Ask questions, get code help, brainstorm ideas, or just chat. Luna maintains conversation context and responds with typing indicators like a real contact.</div>
+              </div>
+              <div className={s.card}>
+                <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-stream" /></div>
+                <div className={s.cardTitle}>Streaming Responses</div>
+                <div className={s.cardText}>Responses stream token-by-token in real time. You see Luna &ldquo;typing&rdquo; and then watch the response build, exactly like iMessage or ChatGPT.</div>
+              </div>
+              <div className={s.card}>
+                <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-brain" /></div>
+                <div className={s.cardTitle}>Conversation Summaries</div>
+                <div className={s.cardText}>AI-generated one-line summaries replace the last message on the conversation list. Scan every thread at a glance without opening them.</div>
+              </div>
+            </div>
+          </div>
+          <div className={s.screenshotRow} style={{ marginTop: 0 }}>
+            <Image src={`${SS}/20-luna-chat.png`} alt="Luna AI chatbot" width={220} height={440}
+              className={s.screenshotMobile} style={{ width: 220, height: 'auto' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Profile & Settings ─────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <p className={s.sectionTag}>Personalisation</p>
+            <h2 className={s.sectionH2}>Profile, Settings &amp; Privacy</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              Every user gets a full profile system, granular privacy controls, and customisable
+              notification preferences. No &ldquo;one size fits all&rdquo;.
+            </p>
+          </div>
+
+          <div className={s.grid3}>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-id-card" /></div>
+              <div className={s.cardTitle}>Rich Profiles</div>
+              <div className={s.cardText}>Display name, bio, avatar, and cover image. Profile cards show friend status, online indicator, and mutual groups.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-user-lock" /></div>
+              <div className={s.cardTitle}>Granular Privacy</div>
+              <div className={s.cardText}>Control visibility of online status, last seen, profile photo, read receipts, and typing indicators — each on a per-field toggle.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-bell" /></div>
+              <div className={s.cardTitle}>Notification Preferences</div>
+              <div className={s.cardText}>Per-conversation muting, sound toggles, and notification grouping. Desktop push notifications for mentions and DMs.</div>
+            </div>
+          </div>
+
+          <div className={s.screenshotRow}>
+            <Image src={`${SS}/08-profile.png`} alt="Profile" width={200} height={400}
+              className={s.screenshotMobile} style={{ width: 200, height: 'auto' }} />
+            <Image src={`${SS}/07-settings.png`} alt="Settings" width={200} height={400}
+              className={s.screenshotMobile} style={{ width: 200, height: 'auto' }} />
+            <Image src={`${SS}/24-privacy-settings.png`} alt="Privacy settings" width={200} height={400}
+              className={s.screenshotMobile} style={{ width: 200, height: 'auto' }} />
+          </div>
+        </div>
+      </div>
+
       {/* ── Design & Themes ───────────────────────────────── */}
       <div className={s.section}>
         <div className={s.sectionCenter}>
@@ -375,6 +454,148 @@ export default function FeaturesPage() {
             className={s.screenshotMobile} style={{ width: 200, height: 'auto' }} />
           <Image src={`${SS}/36-light-theme-chat.png`} alt="Light theme chat" width={200} height={400}
             className={s.screenshotMobile} style={{ width: 200, height: 'auto' }} />
+        </div>
+      </div>
+
+      {/* ── Security & Auth ──────────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <p className={s.sectionTag}>Security</p>
+            <h2 className={s.sectionH2}>Enterprise-Grade Authentication</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              Four authentication methods, per-field privacy controls, and server-side enforcement
+              at every layer. Built for compliance-sensitive environments.
+            </p>
+          </div>
+
+          <div className={s.grid3}>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-envelope" /></div>
+              <div className={s.cardTitle}>Email Verification</div>
+              <div className={s.cardText}>Transactional emails via Mailtrap with branded HTML templates for verification, password reset, and welcome flows.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-mobile-alt" /></div>
+              <div className={s.cardTitle}>SMS Verification</div>
+              <div className={s.cardText}>SMS code delivery via The SMS Works API. 6-digit codes with expiry, rate limiting, and retry protection.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-key" /></div>
+              <div className={s.cardTitle}>TOTP Two-Factor Auth</div>
+              <div className={s.cardText}>Time-based one-time passwords with QR code setup, backup codes, and authenticator app support (Google Authenticator, Authy).</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-shield-alt" /></div>
+              <div className={s.cardTitle}>Password Recovery</div>
+              <div className={s.cardText}>Secure token-based reset flow with email delivery, expiry, and single-use enforcement.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconRed}`}><i className="fas fa-tachometer-alt" /></div>
+              <div className={s.cardTitle}>Rate Limiting</div>
+              <div className={s.cardText}>Redis-backed rate limiting on login, registration, and API endpoints. Prevents brute-force and abuse.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconSlate}`}><i className="fas fa-user-lock" /></div>
+              <div className={s.cardTitle}>Privacy Controls</div>
+              <div className={s.cardText}>Per-field visibility (online status, last seen, profile, read receipts). Users control exactly what others can see.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Developer Friendly ─────────────────────────── */}
+      <div className={s.section}>
+        <div className={s.sectionCenter}>
+          <p className={s.sectionTag}>For Developers</p>
+          <h2 className={s.sectionH2}>Built to extend, not just use</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+            Clean architecture, strict TypeScript, comprehensive tests, and documented APIs.
+            Whether you&rsquo;re integrating, customising, or learning — the codebase is designed to be readable.
+          </p>
+        </div>
+
+        <div className={s.grid3}>
+          <div className={s.card}>
+            <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-plug" /></div>
+            <div className={s.cardTitle}>85+ REST Endpoints</div>
+            <div className={s.cardText}>Full API with Swagger documentation. Authentication, messaging, groups, files, contacts, settings — all via standard REST.</div>
+          </div>
+          <div className={s.card}>
+            <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-bolt" /></div>
+            <div className={s.cardTitle}>100+ WebSocket Events</div>
+            <div className={s.cardText}>Real-time event system for messages, typing, presence, reactions, and more. Redis adapter for horizontal scaling.</div>
+          </div>
+          <div className={s.card}>
+            <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-database" /></div>
+            <div className={s.cardTitle}>Prisma ORM</div>
+            <div className={s.cardText}>Type-safe database access with auto-generated types, migrations, and 9 well-defined models. No raw SQL.</div>
+          </div>
+        </div>
+
+        <div className={s.highlight}>
+          <p>
+            <strong>Full-stack TypeScript:</strong> Frontend (Next.js 16 + React 19), backend (Node.js + Express),
+            widget (vanilla JS), and all tooling — every file is strict TypeScript with zero implicit any.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Dashboard & Analytics ─────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <p className={s.sectionTag}>Observability</p>
+            <h2 className={s.sectionH2}>Real-Time Analytics Dashboard</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              A custom-built project intelligence dashboard with live metrics, code health gauges,
+              commit analysis, security audit, and an embedded test runner. Not a third-party tool —
+              built into Chatr and auto-refreshing every 30 seconds.
+            </p>
+          </div>
+
+          <div className={s.grid3}>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-heartbeat" /></div>
+              <div className={s.cardTitle}>Code Health Gauges</div>
+              <div className={s.cardText}>Live dials showing test coverage, linter health, dependency freshness, and build stability. Green/amber/red at a glance.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-code-branch" /></div>
+              <div className={s.cardTitle}>Commit Intelligence</div>
+              <div className={s.cardText}>Every commit tracked with type breakdown (feat/fix/chore), velocity charts, and auto-generated changelogs.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-vial" /></div>
+              <div className={s.cardTitle}>Embedded Test Runner</div>
+              <div className={s.cardText}>Run all 2,700+ tests directly from the dashboard. Live streaming results with pass/fail counts and timing.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-shield-alt" /></div>
+              <div className={s.cardTitle}>Security Audit Panel</div>
+              <div className={s.cardText}>Dependency vulnerability scanning, audit results, and security posture overview — all visible in one panel.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconRed}`}><i className="fas fa-chart-bar" /></div>
+              <div className={s.cardTitle}>17+ Live Metrics</div>
+              <div className={s.cardText}>Lines of code, file counts, test counts, endpoint counts, socket events, components, dependencies, and more.</div>
+            </div>
+            <div className={s.card}>
+              <div className={`${s.cardIcon} ${s.iconSlate}`}><i className="fas fa-file-alt" /></div>
+              <div className={s.cardTitle}>Documentation Viewer</div>
+              <div className={s.cardText}>Built-in Markdown documentation with Mermaid diagrams, syntax highlighting, and searchable API reference.</div>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+            <Image src={`${SS}/10-dashboard-top.png`} alt="Dashboard" width={900} height={500}
+              className={s.screenshotWide} style={{ width: '100%', maxWidth: 900, height: 'auto' }} />
+          </div>
+          <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+            <Link href="/dashboard" className={s.btnSecondary}>
+              <i className="fas fa-chart-line" /> View Live Dashboard
+            </Link>
+          </div>
         </div>
       </div>
 

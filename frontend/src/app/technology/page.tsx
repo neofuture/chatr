@@ -160,24 +160,160 @@ export default function TechnologyPage() {
         </div>
       </div>
 
-      {/* Contact CTA */}
+      {/* Developer Experience */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
-          <div className={s.sectionCenter} style={{ maxWidth: 640, margin: '0 auto' }}>
-            <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Built for production. Open source.</h2>
-            <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
-              Deploy on your own infrastructure with full source code access. MIT-licensed,
-              zero recurring fees, open to contributions.
-            </p>
-            <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
-              <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-                <i className="fab fa-github" /> Star on GitHub
-              </a>
-              <Link href="/docs" className={s.btnSecondary}>
-                <i className="fas fa-book" /> Documentation
-              </Link>
-            </div>
+          <div className={`${s.sectionTag} ${s.sectionCenter}`}>Developer Experience</div>
+          <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Built for developers, by a developer</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+            Every tooling decision was made to maximise developer productivity. One command to start,
+            strict types everywhere, and tests that run in seconds.
+          </p>
+
+          <div className={s.grid3}>
+            {[
+              { icon: 'fa-terminal', color: s.iconBlue, title: 'One Command Setup', text: 'Run bash dev.sh — Docker spins up PostgreSQL and Redis, migrations run, all five servers start with hot reload. Ready in under 60 seconds.' },
+              { icon: 'fa-shield-alt', color: s.iconPurple, title: 'TypeScript Strict Mode', text: 'Every file — frontend, backend, and widget — is strict TypeScript. No implicit any, full type inference, and Prisma-generated types for the database.' },
+              { icon: 'fa-vial', color: s.iconGreen, title: 'Three-Tier Testing', text: '2,700+ tests across Jest (unit/integration) and Playwright (E2E). 99% frontend coverage. Tests run in parallel and complete in under 30 seconds.' },
+              { icon: 'fa-sync', color: s.iconOrange, title: 'Hot Reload Everything', text: 'Frontend (Next.js Fast Refresh), backend (nodemon), and widget (esbuild watcher) — all live-reload on save. No manual restarts.' },
+              { icon: 'fa-code-branch', color: s.iconRed, title: 'Git Hooks & CI', text: 'Husky pre-commit runs all tests, auto-increments version, updates changelog, and triggers AWS deploy. Every commit is validated.' },
+              { icon: 'fa-tachometer-alt', color: s.iconSlate, title: 'Live Dashboard', text: 'Custom-built analytics dashboard with code health gauges, test runner, security audit, and commit intelligence. All auto-refreshing.' },
+            ].map(f => (
+              <div key={f.title} className={s.card}>
+                <div className={`${s.cardIcon} ${f.color}`}>
+                  <i className={`fas ${f.icon}`} />
+                </div>
+                <div className={s.cardTitle}>{f.title}</div>
+                <div className={s.cardText}>{f.text}</div>
+              </div>
+            ))}
           </div>
+
+          <div className={s.codeBlock} style={{ maxWidth: 600, margin: '2rem auto 0' }}>
+            <div className={s.codeBlockLabel}>Terminal</div>
+            <pre><code>{`git clone https://github.com/neofuture/chatr.git
+cd chatr
+cp .env.example .env
+bash dev.sh
+
+# ✅ PostgreSQL + Redis running (Docker)
+# ✅ Migrations applied
+# ✅ Frontend on localhost:3000
+# ✅ Backend on localhost:3001
+# ✅ Widget dev server on localhost:3003
+# ✅ All watchers active`}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      {/* API Examples */}
+      <div className={s.section}>
+        <div className={`${s.sectionTag} ${s.sectionCenter}`}>REST API</div>
+        <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>85+ Endpoints, Fully Documented</h2>
+        <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+          Every endpoint is documented in Swagger UI. Authentication, messaging, groups, files, AI — all
+          accessible via standard REST with JWT auth.
+        </p>
+
+        <div className={s.grid2}>
+          <div className={s.codeBlock}>
+            <div className={s.codeBlockLabel}>Send a Message</div>
+            <pre><code>{`POST /api/messages
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "conversationId": "abc-123",
+  "content": "Hello from the API!",
+  "type": "text"
+}
+
+// → 201 Created
+// Real-time delivery via WebSocket`}</code></pre>
+          </div>
+          <div className={s.codeBlock}>
+            <div className={s.codeBlockLabel}>WebSocket Events</div>
+            <pre><code>{`import { io } from "socket.io-client";
+
+const socket = io("https://your-server.com", {
+  auth: { token: "Bearer <jwt>" }
+});
+
+socket.on("message:new", (msg) => {
+  console.log("New message:", msg);
+});
+
+socket.on("user:typing", ({ userId }) => {
+  showTypingIndicator(userId);
+});`}</code></pre>
+          </div>
+        </div>
+
+        <div className={s.highlight}>
+          <p>
+            <strong>Interactive API docs:</strong> Full Swagger UI is available at <code>/api-docs</code> on
+            any running instance. Explore, test, and integrate directly from your browser.
+          </p>
+        </div>
+      </div>
+
+      {/* Scalability & Infrastructure */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={`${s.sectionTag} ${s.sectionCenter}`}>Infrastructure</div>
+          <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Scales without rewriting</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+            Designed for production from day one. Horizontal scaling, managed databases, and battle-tested
+            infrastructure patterns used by teams at every scale.
+          </p>
+
+          <div className={s.grid3}>
+            {[
+              { icon: 'fa-server', color: s.iconBlue, title: 'PM2 Cluster Mode', text: 'Backend runs in cluster mode across all CPU cores. Add instances behind a load balancer for horizontal scaling — no code changes.' },
+              { icon: 'fa-database', color: s.iconPurple, title: 'Managed PostgreSQL (RDS)', text: 'Automated backups, point-in-time recovery, read replicas for scaling reads. Prisma handles connection pooling.' },
+              { icon: 'fa-bolt', color: s.iconGreen, title: 'Redis Adapter (ElastiCache)', text: 'Socket.IO Redis adapter enables WebSocket events across multiple backend instances. Managed Redis with failover.' },
+              { icon: 'fa-cloud', color: s.iconOrange, title: 'S3 Media Storage', text: 'All uploaded files stored in S3 with server-side processing (Sharp for images). CDN-ready URLs, unlimited storage.' },
+              { icon: 'fa-shield-alt', color: s.iconRed, title: 'Nginx Reverse Proxy', text: 'SSL termination, WebSocket proxying, gzip compression, and static asset caching. Let\'s Encrypt auto-renewal.' },
+              { icon: 'fa-sync-alt', color: s.iconSlate, title: 'Zero-Downtime Deploy', text: 'PM2 handles rolling restarts. Deploy new code while existing connections stay active. No maintenance windows.' },
+            ].map(f => (
+              <div key={f.title} className={s.card}>
+                <div className={`${s.cardIcon} ${f.color}`}>
+                  <i className={`fas ${f.icon}`} />
+                </div>
+                <div className={s.cardTitle}>{f.title}</div>
+                <div className={s.cardText}>{f.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Security */}
+      <div className={s.section}>
+        <div className={`${s.sectionTag} ${s.sectionCenter}`}>Security</div>
+        <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Enterprise-grade security at every layer</h2>
+        <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+          Not bolted on as an afterthought. Authentication, authorisation, and data protection are built
+          into the architecture from the ground up.
+        </p>
+
+        <div className={s.grid3}>
+          {[
+            { icon: 'fa-key', color: s.iconBlue, title: 'JWT + Refresh Tokens', text: 'Short-lived access tokens with secure HTTP-only refresh tokens. Automatic rotation, server-side blacklisting on logout.' },
+            { icon: 'fa-mobile-alt', color: s.iconPurple, title: 'Multi-Factor Auth', text: 'Email verification, SMS codes (The SMS Works), and TOTP authenticator apps. Users choose their security level.' },
+            { icon: 'fa-tachometer-alt', color: s.iconGreen, title: 'Redis Rate Limiting', text: 'Per-endpoint, per-user rate limits enforced via Redis. Prevents brute-force, spam, and API abuse.' },
+            { icon: 'fa-user-shield', color: s.iconOrange, title: 'Server-Side Enforcement', text: 'Every permission check happens server-side. The frontend is a UI layer — all business logic is authoritative on the backend.' },
+            { icon: 'fa-lock', color: s.iconRed, title: 'Input Validation & Sanitisation', text: 'All user input validated and sanitised server-side. SQL injection, XSS, and CSRF protections throughout.' },
+            { icon: 'fa-eye-slash', color: s.iconSlate, title: 'Granular Privacy Controls', text: 'Users control visibility of online status, last seen, profile info, and read receipts on a per-field basis.' },
+          ].map(f => (
+            <div key={f.title} className={s.card}>
+              <div className={`${s.cardIcon} ${f.color}`}>
+                <i className={`fas ${f.icon}`} />
+              </div>
+              <div className={s.cardTitle}>{f.title}</div>
+              <div className={s.cardText}>{f.text}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -247,6 +383,93 @@ export default function TechnologyPage() {
             style={{ width: '100%', maxWidth: '900px', height: 'auto' }}
           />
           <div className={s.screenshotCaption}>Full analytics dashboard — test runner, security audit, build health</div>
+        </div>
+      </div>
+
+      {/* Deployment Options */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={`${s.sectionTag} ${s.sectionCenter}`}>Deployment</div>
+          <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Deploy anywhere</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+            Run locally with Docker, deploy to AWS with one command, or host on any cloud provider.
+            The stack is standard — no proprietary lock-in.
+          </p>
+
+          <div className={s.grid3}>
+            <div className={s.card} style={{ textAlign: 'center' }}>
+              <div className={`${s.cardIcon} ${s.iconBlue}`} style={{ margin: '0 auto 1rem' }}><i className="fab fa-docker" /></div>
+              <div className={s.cardTitle}>Local (Docker)</div>
+              <div className={s.cardText}>
+                <code style={{ fontSize: '0.82rem' }}>bash dev.sh</code> — Docker Compose spins up PostgreSQL and Redis.
+                All servers start with hot reload. Development ready in under 60 seconds.
+              </div>
+            </div>
+            <div className={s.card} style={{ textAlign: 'center' }}>
+              <div className={`${s.cardIcon} ${s.iconOrange}`} style={{ margin: '0 auto 1rem' }}><i className="fab fa-aws" /></div>
+              <div className={s.cardTitle}>AWS (Production)</div>
+              <div className={s.cardText}>
+                <code style={{ fontSize: '0.82rem' }}>bash aws.sh</code> — Deploys to EC2 with RDS, ElastiCache, S3, Nginx,
+                SSL, and PM2 cluster mode. Auto-deploys on every commit.
+              </div>
+            </div>
+            <div className={s.card} style={{ textAlign: 'center' }}>
+              <div className={`${s.cardIcon} ${s.iconPurple}`} style={{ margin: '0 auto 1rem' }}><i className="fas fa-cloud" /></div>
+              <div className={s.cardTitle}>Any Cloud</div>
+              <div className={s.cardText}>
+                Standard Node.js + PostgreSQL + Redis. Works on DigitalOcean, Hetzner, Railway, Render,
+                Azure, GCP — anywhere that runs Docker or Node.js.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Project Structure */}
+      <div className={s.section}>
+        <div className={`${s.sectionTag} ${s.sectionCenter}`}>Codebase</div>
+        <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Clean, modular project structure</h2>
+        <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+          Three workspaces, strict TypeScript, and clear separation of concerns. Any developer
+          can navigate the codebase in minutes.
+        </p>
+
+        <div className={s.grid3}>
+          <div className={s.codeBlock}>
+            <div className={s.codeBlockLabel}>Frontend</div>
+            <pre><code>{`frontend/
+├── src/app/          # Next.js pages
+├── src/components/   # 186 React components
+├── src/contexts/     # 9 React contexts
+├── src/hooks/        # 15+ custom hooks
+├── src/lib/          # Utilities & helpers
+├── src/services/     # API & socket clients
+└── 134 test files    # 99% coverage`}</code></pre>
+          </div>
+          <div className={s.codeBlock}>
+            <div className={s.codeBlockLabel}>Backend</div>
+            <pre><code>{`backend/
+├── src/routes/       # 85+ REST endpoints
+├── src/sockets/      # 100+ event handlers
+├── src/services/     # Business logic
+├── src/middleware/    # Auth, rate limiting
+├── src/utils/        # Helpers & validators
+├── prisma/           # 9 models, migrations
+└── 27 test files     # 73% coverage`}</code></pre>
+          </div>
+          <div className={s.codeBlock}>
+            <div className={s.codeBlockLabel}>Widget & Tooling</div>
+            <pre><code>{`widget/
+├── src/chatr.ts      # Standalone JS widget
+├── src/styles/       # Scoped CSS
+└── tests/            # 54 tests
+
+e2e/
+├── 14 spec files     # Playwright E2E
+├── Desktop Chrome    # + iPhone 14
+Documentation/        # Markdown guides
+scripts/              # Dev & deploy tools`}</code></pre>
+          </div>
         </div>
       </div>
 

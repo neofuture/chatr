@@ -106,6 +106,157 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ── 3 steps to deploy ────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <div className={s.sectionTag}>Quick Start</div>
+            <h2 className={s.sectionH2}>Running in under 60 seconds</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              Three commands. That&rsquo;s it. Docker handles the databases, the dev script handles the rest.
+            </p>
+          </div>
+
+          <div className={s.grid3} style={{ marginTop: '2rem' }}>
+            <div className={s.card} style={{ textAlign: 'center' }}>
+              <div className={`${s.cardIcon} ${s.iconBlue}`} style={{ margin: '0 auto 1rem' }}>
+                <i className="fas fa-clone" />
+              </div>
+              <div className={s.cardTitle}>1. Clone</div>
+              <div className={s.cardText}>
+                <code style={{ fontSize: '0.82rem', background: 'var(--bg-tertiary)', padding: '0.2rem 0.5rem', borderRadius: 6 }}>
+                  git clone github.com/neofuture/chatr
+                </code>
+              </div>
+            </div>
+            <div className={s.card} style={{ textAlign: 'center' }}>
+              <div className={`${s.cardIcon} ${s.iconPurple}`} style={{ margin: '0 auto 1rem' }}>
+                <i className="fas fa-cog" />
+              </div>
+              <div className={s.cardTitle}>2. Configure</div>
+              <div className={s.cardText}>
+                <code style={{ fontSize: '0.82rem', background: 'var(--bg-tertiary)', padding: '0.2rem 0.5rem', borderRadius: 6 }}>
+                  cp .env.example .env
+                </code>
+              </div>
+            </div>
+            <div className={s.card} style={{ textAlign: 'center' }}>
+              <div className={`${s.cardIcon} ${s.iconGreen}`} style={{ margin: '0 auto 1rem' }}>
+                <i className="fas fa-play" />
+              </div>
+              <div className={s.cardTitle}>3. Launch</div>
+              <div className={s.cardText}>
+                <code style={{ fontSize: '0.82rem', background: 'var(--bg-tertiary)', padding: '0.2rem 0.5rem', borderRadius: 6 }}>
+                  bash dev.sh
+                </code>
+              </div>
+            </div>
+          </div>
+
+          <div className={s.highlight}>
+            <p>
+              <strong>What dev.sh does:</strong> Starts Docker (PostgreSQL + Redis), runs database migrations,
+              launches 5 development servers (frontend, backend, widget, CSS watcher, cache invalidator), and
+              opens the app — all with hot reload. One command replaces 15 minutes of manual setup.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── AI Showcase ──────────────────────────────── */}
+      <div className={s.section}>
+        <div className={s.grid2}>
+          <div>
+            <div className={s.sectionTag}>Artificial Intelligence</div>
+            <h2 className={s.sectionH2}>Meet Luna — your AI assistant</h2>
+            <p className={s.sectionP}>
+              Luna is an AI chatbot powered by GPT-4o-mini that appears as a regular contact in your
+              conversation list. No special UI, no learning curve — just message her like anyone else.
+            </p>
+            <ul className={s.checkList}>
+              <li><i className="fas fa-check" /> Streaming token-by-token responses</li>
+              <li><i className="fas fa-check" /> Typing indicators while &ldquo;thinking&rdquo;</li>
+              <li><i className="fas fa-check" /> Full conversation history &amp; context</li>
+              <li><i className="fas fa-check" /> AI-generated conversation summaries</li>
+              <li><i className="fas fa-check" /> Code help, brainstorming, Q&amp;A</li>
+              <li><i className="fas fa-check" /> Swap model via environment variable</li>
+            </ul>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <Image src={`${SS}/20-luna-chat.png`} alt="Luna AI chatbot" width={240} height={480}
+              className={s.screenshotMobile} style={{ width: 240, height: 'auto' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Who is Chatr for ───────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <div className={s.sectionTag}>Use Cases</div>
+            <h2 className={s.sectionH2}>Who is Chatr for?</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              Whether you&rsquo;re a startup, agency, or enterprise — Chatr gives you a complete messaging platform
+              you own, customise, and deploy on your terms.
+            </p>
+          </div>
+
+          <div className={s.grid3}>
+            {[
+              { icon: 'fa-rocket', color: s.iconBlue, title: 'SaaS Companies', text: 'Embed the support widget on your product. Replace Intercom at £0/seat and own every line of code. White-label it to match your brand.' },
+              { icon: 'fa-building', color: s.iconPurple, title: 'Internal Teams', text: 'Deploy a private messaging platform behind your firewall. Full control over data residency, compliance, and access. No third-party dependencies.' },
+              { icon: 'fa-seedling', color: s.iconGreen, title: 'Startups & MVPs', text: 'Skip 6 months of development. Clone the repo, customise, and launch with 50+ features on day one. Focus your team on what makes you unique.' },
+              { icon: 'fa-palette', color: s.iconOrange, title: 'Agencies & Freelancers', text: 'Offer live chat as a white-label service to your clients. Deploy unique instances per client with custom branding and domains.' },
+              { icon: 'fa-graduation-cap', color: s.iconRed, title: 'Education & Learning', text: 'A complete full-stack reference implementation. TypeScript, React 19, Node.js, PostgreSQL, Redis, WebSockets, AI — all production-grade.' },
+              { icon: 'fa-briefcase', color: s.iconSlate, title: 'Acquirers & Investors', text: 'A tested, documented, deployed product with 82,000+ lines of code and 2,700+ tests. Ready to integrate, resell, or build upon.' },
+            ].map(f => (
+              <div key={f.title} className={s.card}>
+                <div className={`${s.cardIcon} ${f.color}`}>
+                  <i className={`fas ${f.icon}`} />
+                </div>
+                <div className={s.cardTitle}>{f.title}</div>
+                <div className={s.cardText}>{f.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Embed code snippet ──────────────────────────── */}
+      <div className={s.section}>
+        <div className={s.grid2}>
+          <div>
+            <div className={s.sectionTag}>One Line of Code</div>
+            <h2 className={s.sectionH2}>Add live chat in 30 seconds</h2>
+            <p className={s.sectionP}>
+              Paste a single &lt;script&gt; tag into any website. A floating chat bubble appears
+              instantly. Visitors type a message; agents reply from the Chatr dashboard.
+              No sign-up, no email capture — zero friction.
+            </p>
+            <ul className={s.checkList}>
+              <li><i className="fas fa-check" /> Works on any website</li>
+              <li><i className="fas fa-check" /> No visitor sign-up needed</li>
+              <li><i className="fas fa-check" /> White-label branding</li>
+              <li><i className="fas fa-check" /> Voice, files &amp; link previews</li>
+              <li><i className="fas fa-check" /> 24h persistent sessions</li>
+              <li><i className="fas fa-check" /> Replaces Intercom at £0</li>
+            </ul>
+          </div>
+          <div className={s.codeBlock}>
+            <div className={s.codeBlockLabel}>HTML</div>
+            <pre><code>{`<!-- Add to any page -->
+<script
+  src="https://your-server.com/chatr.js"
+  data-server="https://your-server.com"
+  data-position="bottom-right"
+  data-theme="dark"
+  data-primary-color="#3b82f6"
+  data-greeting="How can we help?"
+></script>`}</code></pre>
+          </div>
+        </div>
+      </div>
+
       {/* ── Open Source banner ────────────────────────────── */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
@@ -185,6 +336,48 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ── Screenshot gallery ─────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <div className={s.sectionTag}>The Full Experience</div>
+            <h2 className={s.sectionH2}>Every screen, polished</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              Registration, conversations, groups, friends, profiles, settings, emoji picker, reactions,
+              replies, code blocks, and more — every screen is designed and tested.
+            </p>
+          </div>
+          <div className={s.screenshotRow} style={{ marginTop: '2rem' }}>
+            <Image src={`${SS}/02-login.png`} alt="Login" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/30-register-form.png`} alt="Register" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/03-conversations.png`} alt="Conversations" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/05-friends.png`} alt="Friends" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/06-groups.png`} alt="Groups" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/08-profile.png`} alt="Profile" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+          </div>
+          <div className={s.screenshotRow} style={{ marginTop: '1rem' }}>
+            <Image src={`${SS}/23-group-chat.png`} alt="Group chat" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/42-reactions.png`} alt="Reactions" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/43-reply-thread.png`} alt="Replies" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/22-emoji-picker.png`} alt="Emoji picker" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/41-code-block.png`} alt="Code blocks" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+            <Image src={`${SS}/32-image-lightbox.png`} alt="Image lightbox" width={160} height={320}
+              className={s.screenshotMobile} style={{ width: 160, height: 'auto' }} />
+          </div>
+        </div>
+      </div>
+
       {/* ── Tech stack ────────────────────────────────── */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
@@ -236,6 +429,214 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ── Competitor comparison ─────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <div className={s.sectionTag}>Head to Head</div>
+            <h2 className={s.sectionH2}>How Chatr stacks up</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              Feature-for-feature comparison with the biggest names in messaging and live chat.
+            </p>
+          </div>
+
+          <table className={s.comparisonTable}>
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th className={s.featuredCol}>Chatr</th>
+                <th>Intercom</th>
+                <th>Zendesk</th>
+                <th>Drift</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['Real-time messaging', true, true, true, true],
+                ['Voice messages', true, false, false, false],
+                ['Video sharing', true, false, false, false],
+                ['File sharing (50 MB)', true, true, true, true],
+                ['Code blocks with syntax highlighting', true, false, false, false],
+                ['Link previews (Open Graph)', true, true, false, false],
+                ['Typing indicators', true, true, true, true],
+                ['Ghost typing (live keystrokes)', true, false, false, false],
+                ['Read receipts (3-state)', true, true, 'partial', false],
+                ['AI chatbot (GPT-4o)', true, 'paid', 'paid', 'paid'],
+                ['Conversation summaries (AI)', true, 'paid', false, false],
+                ['Group chats with roles', true, false, false, false],
+                ['Friend system & blocking', true, false, false, false],
+                ['Embeddable support widget', true, true, true, true],
+                ['White-label widget branding', true, 'paid', 'partial', 'partial'],
+                ['TOTP 2FA', true, true, true, false],
+                ['SMS verification', true, false, false, false],
+                ['Per-field privacy controls', true, false, false, false],
+                ['Dark & light themes', true, false, 'partial', false],
+                ['Offline message queue', true, false, false, false],
+                ['Self-hosted / on-premise', true, false, false, false],
+                ['Full source code access', true, false, false, false],
+                ['No per-seat pricing', true, false, false, false],
+                ['MIT license', true, false, false, false],
+              ].map(([feature, chatr, intercom, zendesk, drift]) => (
+                <tr key={feature as string}>
+                  <td>{feature as string}</td>
+                  {[chatr, intercom, zendesk, drift].map((val, i) => (
+                    <td key={i} className={i === 0 ? s.featuredCol : undefined}>
+                      {val === true ? <span className={s.cellYes}><i className="fas fa-check" /></span> :
+                       val === false ? <span className={s.cellNo}><i className="fas fa-times" /></span> :
+                       <span className={s.cellPartial}>{val}</span>}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Everything included ─────────────────────────── */}
+      <div className={s.section}>
+        <div className={s.sectionCenter}>
+          <div className={s.sectionTag}>Complete Platform</div>
+          <h2 className={s.sectionH2}>50+ features. All included. Day one.</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+            No feature gating, no premium tiers, no &ldquo;contact sales&rdquo;. Every feature ships with the repo.
+          </p>
+        </div>
+
+        <ul className={s.featureCheckGrid}>
+          {[
+            'Text messaging', 'Voice messages with waveforms', 'Image sharing with lightbox',
+            'Video sharing with player', 'File attachments (50 MB)', 'Code blocks (40+ languages)',
+            'Link previews (Open Graph)', 'Emoji reactions', 'Message replies (quoted)',
+            'Edit messages', 'Unsend / delete for everyone', 'Full emoji picker with search',
+            'Typing indicators', 'Ghost typing (live keystrokes)', 'Online presence dots',
+            'Read receipts (3-state)', 'Recording indicator', 'AI conversation summaries',
+            'Group chats', 'Group roles (Owner/Admin/Member)', 'Group invitations',
+            'Group avatars & covers', 'Friend requests & search', 'User blocking',
+            'AI chatbot (Luna / GPT-4o)', 'Streaming AI responses', 'Embeddable support widget',
+            'Widget palette designer', 'Guest sessions (24h TTL)', 'White-label branding',
+            'Dark theme (deep navy)', 'Light theme', 'One-tap theme toggle',
+            'Email verification', 'SMS verification', 'TOTP two-factor auth',
+            'Password recovery flow', 'JWT + refresh token auth', 'Token blacklisting',
+            'Redis rate limiting', 'Per-field privacy controls', 'Profile system (avatar, bio, cover)',
+            'Settings panel', 'Notification preferences', 'Date separators & grouping',
+            'Offline message queue', 'IndexedDB cache', 'Responsive mobile-first UI',
+            'Real-time dashboard', 'Code health gauges', 'Security audit panel',
+            'Embedded test runner', 'Commit intelligence', 'Swagger API docs',
+          ].map(f => (
+            <li key={f}><i className="fas fa-check-circle" /> {f}</li>
+          ))}
+        </ul>
+      </div>
+
+      {/* ── Built by one developer ──────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <div className={s.sectionTag}>The Story</div>
+            <h2 className={s.sectionH2}>Built by one developer. In 30 days.</h2>
+          </div>
+
+          <div className={s.bigQuote}>
+            A complete, production-deployed messaging platform — with real-time WebSockets, AI integration,
+            enterprise auth, an embeddable widget, and 2,700+ automated tests — designed, built, tested,
+            documented, and deployed by a single developer in 30 days.
+            <div className={s.bigQuoteAttr}>— The kind of output that demonstrates what focused, senior-level engineering looks like.</div>
+          </div>
+
+          <div className={s.metricStrip}>
+            <div className={s.metricBadge}>
+              <i className="fas fa-code" />
+              <div className={s.metricBadgeText}>
+                <span className={s.metricBadgeVal}>82,000+</span>
+                <span className={s.metricBadgeLbl}>Lines of Code</span>
+              </div>
+            </div>
+            <div className={s.metricBadge}>
+              <i className="fas fa-vial" />
+              <div className={s.metricBadgeText}>
+                <span className={s.metricBadgeVal}>2,700+</span>
+                <span className={s.metricBadgeLbl}>Automated Tests</span>
+              </div>
+            </div>
+            <div className={s.metricBadge}>
+              <i className="fas fa-code-branch" />
+              <div className={s.metricBadgeText}>
+                <span className={s.metricBadgeVal}>243</span>
+                <span className={s.metricBadgeLbl}>Commits</span>
+              </div>
+            </div>
+            <div className={s.metricBadge}>
+              <i className="fas fa-file-code" />
+              <div className={s.metricBadgeText}>
+                <span className={s.metricBadgeVal}>432</span>
+                <span className={s.metricBadgeLbl}>Source Files</span>
+              </div>
+            </div>
+            <div className={s.metricBadge}>
+              <i className="fas fa-plug" />
+              <div className={s.metricBadgeText}>
+                <span className={s.metricBadgeVal}>85+</span>
+                <span className={s.metricBadgeLbl}>API Endpoints</span>
+              </div>
+            </div>
+            <div className={s.metricBadge}>
+              <i className="fas fa-bolt" />
+              <div className={s.metricBadgeText}>
+                <span className={s.metricBadgeVal}>100+</span>
+                <span className={s.metricBadgeLbl}>Socket Events</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Commercial Value ───────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <div className={s.sectionTag}>Commercial Opportunity</div>
+            <h2 className={s.sectionH2}>What would this cost to build?</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              A messaging platform of this scope — real-time, AI-integrated, fully tested, and deployed — would
+              typically require a funded team and 6–12 months of development.
+            </p>
+          </div>
+
+          <div className={s.grid4}>
+            <div className={s.valueCard}>
+              <div className={s.valueStat}>£150k+</div>
+              <div className={s.valueTitle}>Build Cost</div>
+              <div className={s.valueText}>Estimated agency or team cost to build equivalent features from scratch.</div>
+            </div>
+            <div className={s.valueCard}>
+              <div className={s.valueStat}>£4,700</div>
+              <div className={s.valueTitle}>Annual Savings</div>
+              <div className={s.valueText}>vs. Intercom for a 10-person team at £39/seat/month. Scales linearly.</div>
+            </div>
+            <div className={s.valueCard}>
+              <div className={s.valueStat}>30 days</div>
+              <div className={s.valueTitle}>Time to Build</div>
+              <div className={s.valueText}>Entire platform built, tested, and deployed by a single developer.</div>
+            </div>
+            <div className={s.valueCard}>
+              <div className={s.valueStat}>£0</div>
+              <div className={s.valueTitle}>Recurring Cost</div>
+              <div className={s.valueText}>MIT-licensed. No per-seat fees, no usage caps, no vendor lock-in.</div>
+            </div>
+          </div>
+
+          <div className={s.highlight}>
+            <p>
+              <strong>For acquirers:</strong> Chatr represents production-ready IP with immediate commercial
+              value. The embeddable widget alone competes with Intercom (£39–99/seat/month), and the full platform
+              includes AI integration, enterprise authentication, and a three-tier test suite — all documented,
+              deployed, and ready to integrate or resell.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ── CTA ───────────────────────────────────────── */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
@@ -251,8 +652,14 @@ export default function HomePage() {
               <Link href="/product" className={s.btnSecondary}>
                 <i className="fas fa-file-alt" /> Full Product Overview
               </Link>
+              <Link href="/pricing" className={s.btnSecondary}>
+                <i className="fas fa-tag" /> Compare Options
+              </Link>
               <Link href="/docs" className={s.btnSecondary}>
                 <i className="fas fa-book" /> Documentation
+              </Link>
+              <Link href="/contact" className={s.btnSecondary}>
+                <i className="fas fa-envelope" /> Discuss Acquisition
               </Link>
             </div>
           </div>

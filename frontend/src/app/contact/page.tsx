@@ -52,11 +52,11 @@ export default function ContactPage() {
         <div className={s.heroInner}>
           <span className={s.heroTag}>Get in Touch</span>
           <h1 className={s.heroH1}>
-            Let&rsquo;s talk about <span className={s.accent}>your project</span>
+            Let&rsquo;s talk <span className={s.accent}>business</span>
           </h1>
           <p className={s.heroP}>
-            Have questions about Chatr, need help with setup, or want to discuss contributions?
-            We&rsquo;d love to hear from you. You can also open an issue on{' '}
+            Interested in acquiring Chatr, licensing the technology, or integrating it into your product?
+            We&rsquo;d love to hear from you. For technical questions, open an issue on{' '}
             <a href="https://github.com/neofuture/chatr/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-blue-400)' }}>GitHub</a>.
           </p>
         </div>
@@ -136,7 +136,7 @@ export default function ContactPage() {
                     rows={6}
                     value={form.message}
                     onChange={set('message')}
-                    placeholder="Describe your question, how you're using Chatr, or a contribution idea..."
+                    placeholder="I'm interested in acquiring/licensing Chatr, integrating the widget into our product, or discussing a commercial partnership..."
                     className="form-input"
                     style={{ resize: 'vertical', minHeight: 120 }}
                   />
@@ -175,42 +175,42 @@ export default function ContactPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconBlue}`}>
-                <i className="fas fa-building" />
+                <i className="fas fa-handshake" />
               </div>
-              <div className={s.cardTitle}>Open Source (MIT)</div>
+              <div className={s.cardTitle}>Acquisition &amp; Licensing</div>
               <div className={s.cardText}>
-                Full source code, free to use, modify, and distribute.
-                Deploy on your infrastructure with complete ownership.
+                Interested in acquiring the IP, licensing the platform, or a commercial partnership?
+                Let&rsquo;s talk numbers. Production-ready code, 2,700+ tests, full documentation.
               </div>
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconPurple}`}>
                 <i className="fas fa-cogs" />
               </div>
-              <div className={s.cardTitle}>Community &amp; Contributions</div>
+              <div className={s.cardTitle}>Integration &amp; Customisation</div>
               <div className={s.cardText}>
-                Report bugs, propose features, or submit pull requests.
-                Contributions are welcome on GitHub.
+                Need Chatr integrated into your existing product? Custom features, branding,
+                or deployment assistance? We can scope it.
               </div>
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconGreen}`}>
-                <i className="fas fa-headset" />
+                <i className="fas fa-chart-line" />
               </div>
-              <div className={s.cardTitle}>Documentation &amp; Setup</div>
+              <div className={s.cardTitle}>White-Label Reselling</div>
               <div className={s.cardText}>
-                Comprehensive docs, quick-start guide, and architecture overview
-                to get you up and running fast.
+                Deploy Chatr as a managed service for your clients. Per-client instances,
+                custom branding, your pricing, zero per-seat overhead.
               </div>
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconOrange}`}>
                 <i className="fas fa-clock" />
               </div>
-              <div className={s.cardTitle}>Response Time</div>
+              <div className={s.cardTitle}>Quick Response</div>
               <div className={s.cardText}>
-                We typically respond within 24 hours. For urgent enquiries,
-                please mention it in your message.
+                We respond within 24 hours. For time-sensitive enquiries,
+                mention &ldquo;urgent&rdquo; in your message.
               </div>
             </div>
           </div>

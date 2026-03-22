@@ -113,6 +113,44 @@ export default function WidgetPage() {
         </div>
       </div>
 
+      {/* ── Embed Code ──────────────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.grid2}>
+            <div>
+              <div className={s.sectionTag}>Integration</div>
+              <h2 className={s.sectionH2}>Copy. Paste. Done.</h2>
+              <p className={s.sectionP}>
+                Add the widget to any website with a single script tag. Configure colours, position,
+                greeting text, and theme via data attributes. No build step, no npm install, no framework required.
+              </p>
+              <ul className={s.checkList}>
+                <li><i className="fas fa-check" /> Works with React, Vue, Angular, WordPress, Shopify, plain HTML</li>
+                <li><i className="fas fa-check" /> No dependencies — standalone JavaScript</li>
+                <li><i className="fas fa-check" /> Configure via data attributes or JavaScript API</li>
+                <li><i className="fas fa-check" /> CSS is scoped — no style conflicts with your site</li>
+              </ul>
+            </div>
+            <div className={s.codeBlock}>
+              <div className={s.codeBlockLabel}>Embed Code</div>
+              <pre><code>{`<!-- Paste before </body> -->
+<script
+  src="https://your-server.com/chatr.js"
+  data-server="https://your-server.com"
+  data-position="bottom-right"
+  data-theme="dark"
+  data-primary-color="#3b82f6"
+  data-header-color="#1e293b"
+  data-greeting="How can we help?"
+  data-company="Your Company"
+></script>
+
+<!-- That's it. Chat bubble appears. -->`}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── White-Label Customisation ─────────────────────── */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
@@ -335,6 +373,132 @@ export default function WidgetPage() {
               Widget styles are scoped. No CSS leaks, no conflicts with the host page&rsquo;s
               stylesheets.
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Platform Compatibility ──────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <p className={s.sectionTag}>Compatibility</p>
+            <h2 className={s.sectionH2}>Works everywhere your customers are</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              The widget is a single JavaScript file with zero dependencies. It works on any
+              platform that supports a &lt;script&gt; tag.
+            </p>
+          </div>
+
+          <div className={s.grid3} style={{ marginTop: '2rem' }}>
+            {[
+              { icon: 'fab fa-react', title: 'React / Next.js', text: 'Add to _app.tsx or layout.tsx. Works with SSR and client-side rendering.' },
+              { icon: 'fab fa-vuejs', title: 'Vue / Nuxt', text: 'Drop into your main template or Nuxt plugin. Reactive and non-blocking.' },
+              { icon: 'fab fa-angular', title: 'Angular', text: 'Add to index.html or load dynamically in a component. Zone-safe.' },
+              { icon: 'fab fa-wordpress', title: 'WordPress', text: 'Paste into your theme footer.php or use a custom HTML widget. No plugin needed.' },
+              { icon: 'fab fa-shopify', title: 'Shopify', text: 'Add to theme.liquid before the closing body tag. Works with all Shopify themes.' },
+              { icon: 'fas fa-code', title: 'Plain HTML', text: 'Any static or dynamic site. Paste the script tag and you\'re done. No build step.' },
+            ].map(f => (
+              <div key={f.title} className={s.card} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', color: 'var(--color-blue-500)', marginBottom: '0.75rem' }}>
+                  <i className={f.icon} />
+                </div>
+                <div className={s.cardTitle}>{f.title}</div>
+                <div className={s.cardText}>{f.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── JavaScript API ───────────────────────────── */}
+      <div className={s.section}>
+        <div className={s.sectionCenter}>
+          <p className={s.sectionTag}>Advanced</p>
+          <h2 className={s.sectionH2}>Programmatic Control</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+            Need more control? The widget exposes a JavaScript API for programmatic
+            open/close, theme switching, and event hooks.
+          </p>
+        </div>
+
+        <div className={s.grid2}>
+          <div className={s.codeBlock}>
+            <div className={s.codeBlockLabel}>JavaScript API</div>
+            <pre><code>{`// Open the widget programmatically
+window.ChatrWidget.open();
+
+// Close it
+window.ChatrWidget.close();
+
+// Toggle visibility
+window.ChatrWidget.toggle();
+
+// Update theme at runtime
+window.ChatrWidget.setTheme('light');
+
+// Set custom greeting
+window.ChatrWidget.setGreeting(
+  'Welcome back! How can we help?'
+);`}</code></pre>
+          </div>
+          <div>
+            <ul className={s.checkList} style={{ marginTop: 0 }}>
+              <li><i className="fas fa-check" /> Open widget on button click</li>
+              <li><i className="fas fa-check" /> Trigger from onboarding flows</li>
+              <li><i className="fas fa-check" /> Match your app&rsquo;s theme dynamically</li>
+              <li><i className="fas fa-check" /> Customise greeting per page</li>
+              <li><i className="fas fa-check" /> Hide on specific routes</li>
+              <li><i className="fas fa-check" /> No DOM conflicts — scoped styles</li>
+            </ul>
+
+            <div className={s.highlight} style={{ marginTop: '1.5rem' }}>
+              <p>
+                <strong>Zero framework lock-in:</strong> The widget is vanilla JavaScript. It doesn&rsquo;t
+                import React, Vue, or any framework. It injects its own DOM and manages its own state —
+                no conflicts with your application.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── The Business Case ──────────────────────────── */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={s.sectionCenter}>
+            <p className={s.sectionTag}>Business Case</p>
+            <h2 className={s.sectionH2}>The widget alone pays for the project</h2>
+            <p className={`${s.sectionP} ${s.sectionPCenter}`}>
+              Live chat is a growing market. Companies pay £39–99 per seat per month for tools like
+              Intercom, Drift, and Zendesk. The Chatr widget delivers equivalent functionality at
+              zero recurring cost.
+            </p>
+          </div>
+
+          <div className={s.grid3}>
+            <div className={s.valueCard}>
+              <div className={s.valueIcon}><i className="fas fa-chart-line" /></div>
+              <div className={s.valueTitle}>Resell as SaaS</div>
+              <div className={s.valueText}>Deploy per-client instances and charge a monthly fee. Your cost: one server per client (~£15/month). Their alternative: £39–99/seat/month on Intercom.</div>
+            </div>
+            <div className={s.valueCard}>
+              <div className={s.valueIcon}><i className="fas fa-box-open" /></div>
+              <div className={s.valueTitle}>Bundle with Your Product</div>
+              <div className={s.valueText}>Add live customer support to your existing SaaS product. Increase retention, reduce churn, and differentiate from competitors — all with code you own.</div>
+            </div>
+            <div className={s.valueCard}>
+              <div className={s.valueIcon}><i className="fas fa-handshake" /></div>
+              <div className={s.valueTitle}>Agency White-Label</div>
+              <div className={s.valueText}>Offer live chat as a managed service to your clients. Custom branding per client with the palette designer. Scale without per-seat overhead.</div>
+            </div>
+          </div>
+
+          <div className={s.highlight}>
+            <p>
+              <strong>Market context:</strong> The live chat software market is projected to reach $1.7 billion by 2030.
+              Intercom alone is valued at over $1 billion. Chatr gives you a production-ready entry point into
+              this market — tested, deployed, and ready to customise.
+            </p>
           </div>
         </div>
       </div>
