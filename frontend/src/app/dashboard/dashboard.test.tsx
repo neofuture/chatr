@@ -7,7 +7,7 @@ jest.mock('next/navigation', () => ({
 }));
 jest.mock('@/version', () => ({ version: '1.0.0-test' }));
 jest.mock('@/contexts/PanelContext', () => ({
-  usePanels: () => ({ openPanel: jest.fn() }),
+  usePanels: () => ({ openPanel: jest.fn(), panels: [] }),
 }));
 jest.mock('@/contexts/ToastContext', () => ({
   useToast: () => ({ showToast: jest.fn(), toasts: [], removeToast: jest.fn() }),

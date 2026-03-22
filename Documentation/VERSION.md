@@ -4,6 +4,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.6 — 2026-03-22
+
+**Commit:** `11495b5` — feat: redesign dashboard with summary cards, test stat cards & mini bar charts
+
+- Redesign dashboard to include SummaryCard, TestStatCard, and MiniBar components.  
+- Enhance metrics display with click-to-drill-down functionality for better user interaction.  
+- Improve overall dashboard layout and usability through a major overhaul.  
+- Update tests to accommodate new dashboard components and functionality.
+
+---
+
 ## v0.1.5 — 2026-03-21
 
 **Commit:** `0d6e02e` — fix: deduplicate changelog entry and add the joke we earned
