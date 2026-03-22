@@ -56,8 +56,9 @@ chatr/
 
 ## Documentation
 
+- **[Getting Started](./Documentation/GETTING_STARTED.md)** — Full setup guide with Mailtrap, SMS, OpenAI, and AWS configuration
 - [Documentation Index](./Documentation/index.md)
-- [Getting Started](./Documentation/Getting-Started/LOCAL_SETUP.md)
+- [Local Setup (quick)](./Documentation/Getting-Started/LOCAL_SETUP.md)
 - [Architecture](./Documentation/Architecture/index.md)
 - [Testing](./Documentation/Testing/index.md)
 - [API Reference](./Documentation/API/REST_API.md)

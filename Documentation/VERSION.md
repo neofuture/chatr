@@ -4,6 +4,22 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.8 — 2026-03-22
+
+**Commit:** `b81532c` — feat: open source deployment pipeline and getting started guide
+
+- Add GETTING_STARTED.md with full setup guide (Mailtrap, SMS Works,
+  OpenAI, AWS S3) and deployment instructions
+- Extract all secrets from aws.sh and deployAWS.sh into .env.deploy
+  (gitignored) so deploy scripts are safe to ship in the repo
+- Add .env.deploy.example documenting every deployment variable
+- Expand backend/.env.example with all optional service keys
+- Add SiteFooter to docs page
+- Add auto-deploy to AWS on commit via post-commit hook
+- Un-gitignore aws.sh and deployAWS.sh for open source users
+
+---
+
 ## v0.1.7 — 2026-03-22
 
 **Commit:** `80dfe7e` — feat: rebrand as open source with MIT license and GitHub CTAs

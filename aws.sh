@@ -16,10 +16,19 @@ success() { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Load config from .env.deploy ──────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-KEY="$SCRIPT_DIR/Chatr-key.pem"
-SERVER="ubuntu@ec2-16-60-35-172.eu-west-2.compute.amazonaws.com"
+ENV_FILE="$SCRIPT_DIR/.env.deploy"
+
+if [ ! -f "$ENV_FILE" ]; then
+  error ".env.deploy not found. Copy .env.deploy.example to .env.deploy and fill in your values."
+fi
+
+set -a; source "$ENV_FILE"; set +a
+
+KEY="${DEPLOY_KEY:-./Chatr-key.pem}"
+[[ "$KEY" != /* ]] && KEY="$SCRIPT_DIR/$KEY"
+SERVER="${DEPLOY_SERVER:?DEPLOY_SERVER not set in .env.deploy}"
 SCRIPT="./deployAWS.sh"
 
 # ── Parse target argument ─────────────────────────────────────────────────────
@@ -78,17 +87,19 @@ if [ "$TARGET" = "docs" ]; then
   exit 0
 fi
 
-# ── Copy deploy script ────────────────────────────────────────────────────────
-info "Copying deployAWS.sh to server..."
+# ── Copy deploy script + secrets to server ────────────────────────────────────
+info "Copying deployAWS.sh + .env.deploy to server..."
 scp $SSH_OPTS "$SCRIPT" "$SERVER:~/deployAWS.sh" \
   || error "SCP failed — check your key and server IP"
-success "Script copied"
+scp $SSH_OPTS "$ENV_FILE" "$SERVER:/tmp/_chatr_deploy.env" \
+  || error "SCP of .env.deploy failed"
+success "Script + config copied"
 
 # ── Run on server, passing target as argument ─────────────────────────────────
 info "Running deploy on server (streaming output)..."
 echo ""
 ssh $SSH_OPTS -tt "$SERVER" \
-  "bash ~/deployAWS.sh ${TARGET}" \
+  "bash ~/deployAWS.sh ${TARGET} ; rm -f /tmp/_chatr_deploy.env" \
   || error "Deploy script exited with an error — check output above"
 
 echo ""

@@ -1,5 +1,7 @@
-/deployAWS.sh
-/aws.sh
+deploy.log
+
+# Deploy secrets (keep .env.deploy.example, gitignore the real one)
+.env.deploy
 
 # SSH keys / secrets
 *.pem

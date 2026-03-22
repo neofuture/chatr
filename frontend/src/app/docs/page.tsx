@@ -13,6 +13,7 @@ import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import SiteNav from '@/components/site/SiteNav';
+import SiteFooter from '@/components/site/SiteFooter';
 import docStyles from './Docs.module.css';
 
 // Mermaid is browser-only — load with ssr:false so webpack never bundles it for the server
@@ -991,9 +992,10 @@ export default function DocsPage() {
                     }}>
                       {[
                         { label: 'Version History', file: 'VERSION.md', icon: 'fa-clock-rotate-left' },
+                        { label: 'Getting Started', file: 'GETTING_STARTED.md', icon: 'fa-rocket' },
                         { label: 'Project Overview', file: 'index.md', icon: 'fa-home' },
                         { label: 'Architecture', file: 'Architecture/index.md', icon: 'fa-sitemap' },
-                        { label: 'Getting Started', file: 'Getting-Started/LOCAL_SETUP.md', icon: 'fa-rocket' },
+                        { label: 'Local Setup', file: 'Getting-Started/LOCAL_SETUP.md', icon: 'fa-terminal' },
                         { label: 'REST API Reference', file: 'API/REST_API.md', icon: 'fa-plug' },
                         { label: 'WebSocket Events', file: 'WebSocket/EVENTS.md', icon: 'fa-bolt' },
                         { label: 'Database Schema', file: 'Database/SCHEMA.md', icon: 'fa-database' },
@@ -1184,6 +1186,7 @@ export default function DocsPage() {
       </>
       )}
       </div>
+      <SiteFooter />
     </div>
   );
 }

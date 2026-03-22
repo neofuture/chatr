@@ -32,3 +32,17 @@ if curl -sf http://localhost:3000 > /dev/null 2>&1 && curl -sf http://localhost:
 else
   echo "⏭️  Skipping demo recording (dev servers not running)"
 fi
+
+# Deploy to AWS in background (non-blocking)
+# Only runs if .env.deploy exists (contains server address and secrets)
+ROOT="$(git rev-parse --show-toplevel)"
+AWS_SCRIPT="$ROOT/aws.sh"
+DEPLOY_ENV="$ROOT/.env.deploy"
+DEPLOY_LOG="$ROOT/deploy.log"
+if [ -f "$DEPLOY_ENV" ] && [ -f "$AWS_SCRIPT" ]; then
+  echo "🚀 Deploying to AWS in background (log: deploy.log)..."
+  nohup bash "$AWS_SCRIPT" > "$DEPLOY_LOG" 2>&1 &
+  echo "🚀 Deploy PID: $! — streaming to deploy.log"
+else
+  echo "⏭️  Skipping AWS deploy (.env.deploy not found)"
+fi
