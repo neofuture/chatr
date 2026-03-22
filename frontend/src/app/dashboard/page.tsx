@@ -2700,7 +2700,7 @@ export default function DashboardPage() {
       </div>
 
       {showPasswordPrompt && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20000 }}
           onClick={() => { setShowPasswordPrompt(false); setPendingAction(null); }}>
           <div style={{ background: 'var(--bg, #1e293b)', border: '1px solid var(--border, #334155)', borderRadius: 12, padding: '1.5rem', width: 360, maxWidth: '90vw' }}
             onClick={e => e.stopPropagation()}>

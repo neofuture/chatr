@@ -429,22 +429,6 @@ server {
     server_name api.${DOMAIN};
     client_max_body_size 55M;
 
-    # CORS headers at the Nginx level so they are present even on 502/504
-    set \$cors_origin "";
-    if (\$http_origin ~* "^https://(${DOMAIN}|www\\.${DOMAIN})$") {
-        set \$cors_origin \$http_origin;
-    }
-
-    add_header Access-Control-Allow-Origin \$cors_origin always;
-    add_header Access-Control-Allow-Credentials true always;
-    add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" always;
-
-    # Preflight requests
-    if (\$request_method = OPTIONS) {
-        return 204;
-    }
-
     location / {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;

@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.14 — 2026-03-22
+
+**Commit:** `9818cbc` — fix: password dialog z-index above panel overlay on dashboard
+
+---
+
 ## v0.1.13 — 2026-03-22
 
 **Commit:** `dc906fc` — fix: use TLS (rediss://) for ElastiCache Redis connection
