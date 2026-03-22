@@ -2,7 +2,7 @@
 
 ## The Pitch
 
-Chatr is a **full-stack, production-grade real-time messaging platform** — built from the ground up as a single-developer effort. It covers direct messaging, group chat, friend management, voice messaging, file sharing, embeddable support widgets, AI-powered features, and a developer analytics dashboard — all wrapped in a mobile-first, accessible UI with 1,300+ automated tests.
+Chatr is a **full-stack, production-grade real-time messaging platform** — built from the ground up as a single-developer effort. It covers direct messaging, group chat, friend management, voice messaging, file sharing, embeddable support widgets, AI-powered features, and a developer analytics dashboard — all wrapped in a mobile-first, accessible UI with 2,700+ automated tests.
 
 This isn't a tutorial project. This is a **deployable product** with the architecture, testing rigour, and operational tooling that enterprise teams ship.
 
@@ -267,17 +267,17 @@ PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis ada
 
 | Category | Tests | Suites |
 |----------|-------|--------|
-| Frontend unit tests | **855** | 91 files |
-| Backend unit tests | **~305** | 18 files |
-| Widget unit tests | Dedicated suite | 1 file |
-| E2E tests (Playwright) | **~156** | 13 spec files × 2 browsers |
-| **Total** | **1,300+** | — |
+| Frontend unit tests | **1,475** | 134 files |
+| Backend unit tests | **1,133** | 27 files |
+| Widget unit tests | **54** | 1 file |
+| E2E tests (Playwright) | **85** | 14 spec files × 2 browsers |
+| **Total** | **2,700+** | — |
 
 ### What's Tested
 
-**Frontend (855 tests):** Every form control, every dialog, every panel, every messaging component, every context provider, every custom hook, every page — with full ARIA/accessibility assertions.
+**Frontend (1,475 tests):** Every form control, every dialog, every panel, every messaging component, every context provider, every custom hook, every page — with full ARIA/accessibility assertions.
 
-**Backend (~305 tests):** Auth flows, all CRUD operations, socket event handlers, email/SMS services, Redis operations, AI integration, file uploads, the dashboard API, and the summary engine.
+**Backend (1,133 tests):** Auth flows, all CRUD operations, socket event handlers, email/SMS services, Redis operations, AI integration, file uploads, the dashboard API, and the summary engine.
 
 **E2E (13 spec files × Desktop Chrome + iPhone 14):**
 
@@ -385,7 +385,7 @@ Chatr version, Git SHA, Node.js version, npm version, Git version, Next.js versi
 
 1. **Solo-built, production-grade** — One developer built the entire stack: frontend, backend, real-time, AI, widget, deployment, testing, and tooling.
 
-2. **1,300+ automated tests** — Not just unit tests. Full E2E flows across desktop and mobile browsers with proper setup/teardown, test isolation, and result caching.
+2. **2,700+ automated tests** — Not just unit tests. Full E2E flows across desktop and mobile browsers with proper setup/teardown, test isolation, and result caching.
 
 3. **Real-time everything** — WebSockets with Redis adapter for multi-instance support. Presence, typing, ghost typing, reactions, read receipts — all live.
 
@@ -409,10 +409,10 @@ Chatr version, Git SHA, Node.js version, npm version, Git version, Next.js versi
 
 | Metric | Value |
 |--------|-------|
-| Total automated tests | **1,300+** |
+| Total automated tests | **2,700+** |
 | E2E browser coverage | Desktop Chrome + iPhone 14 |
-| REST API endpoints | **70+** |
-| Socket.IO events | **40+** |
+| REST API endpoints | **85+** |
+| Socket.IO events | **100+** |
 | Frontend components | **60+** |
 | Custom hooks | **15+** |
 | React contexts | **9** |

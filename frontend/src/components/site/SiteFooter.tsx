@@ -13,7 +13,7 @@ export default function SiteFooter() {
       <div className={s.inner}>
         <div className={s.brand}>
           <h3>Chatr</h3>
-          <p>A free, open source real-time messaging platform with 50+ features, 1,300+ tests, and an embeddable support widget. MIT-licensed.</p>
+          <p>A free, open source real-time messaging platform with 50+ features, 2,700+ tests, and an embeddable support widget. MIT-licensed.</p>
         </div>
 
         <div className={s.col}>
@@ -44,9 +44,9 @@ export default function SiteFooter() {
       <div className={s.bottom}>
         <span>&copy; {new Date().getFullYear()} Chatr. Built with React 19, Next.js 16, Node.js, PostgreSQL, Redis &amp; AWS.</span>
         <div className={s.stats}>
-          <span className={s.stat}><span>80,000+</span> lines of code</span>
-          <span className={s.stat}><span>1,300+</span> tests</span>
-          <span className={s.stat}><span>22</span> days</span>
+          <span className={s.stat}><span>82,000+</span> lines of code</span>
+          <span className={s.stat}><span>2,700+</span> tests</span>
+          <span className={s.stat}><span>30</span> days</span>
         </div>
       </div>
     </footer>

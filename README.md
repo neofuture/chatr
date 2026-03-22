@@ -114,10 +114,11 @@ Disable: `git commit --no-verify`
 
 ## Testing
 
-- **Frontend**: 735 tests (React Testing Library)
-- **Backend**: 87 tests (Supertest)
+- **Frontend**: 1,475 tests (React Testing Library)
+- **Backend**: 1,133 tests (Supertest)
 - **Widget**: 54 tests (Node.js, build pipeline)
-- **Total**: 876 tests
+- **E2E**: 85 tests (Playwright)
+- **Total**: 2,747 tests
 
 ## License
 

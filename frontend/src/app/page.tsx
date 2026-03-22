@@ -65,7 +65,7 @@ export default function HomePage() {
       <div className={s.sectionAlt}>
         <div className={s.section}>
           <div className={s.statsRow}>
-            {[['100%', 'Open Source'], ['50+', 'Features'], ['1,300+', 'Automated Tests'], ['80,000+', 'Lines of Code']].map(([v, l]) => (
+            {[['100%', 'Open Source'], ['50+', 'Features'], ['2,700+', 'Automated Tests'], ['82,000+', 'Lines of Code']].map(([v, l]) => (
               <div key={l} className={s.statBox}>
                 <div className={s.statVal}>{v}</div>
                 <div className={s.statLbl}>{l}</div>
@@ -195,7 +195,7 @@ export default function HomePage() {
           <div className={s.techGrid}>
             {[
               { label: 'Frontend', name: 'Next.js 16 + React 19', desc: 'TypeScript strict mode, Framer Motion, Socket.IO' },
-              { label: 'Backend', name: 'Node.js + Express', desc: '70+ REST endpoints, 40+ WebSocket events' },
+              { label: 'Backend', name: 'Node.js + Express', desc: '85+ REST endpoints, 100+ WebSocket events' },
               { label: 'Database', name: 'PostgreSQL 16', desc: 'Prisma ORM, 9 models, automatic migrations' },
               { label: 'Caching', name: 'Redis 7', desc: 'Presence, rate limiting, pub/sub, token blacklisting' },
               { label: 'AI', name: 'OpenAI GPT-4o-mini', desc: 'Chatbot (Luna) + conversation summaries' },
@@ -242,7 +242,7 @@ export default function HomePage() {
           <div className={s.sectionCenter}>
             <h2 className={s.sectionH2}>Ready to get started?</h2>
             <p className={`${s.sectionP} ${s.sectionPCenter}`}>
-              50+ features, 1,300+ tests, MIT-licensed. Clone the repo and deploy your own instance in minutes.
+              50+ features, 2,700+ tests, MIT-licensed. Clone the repo and deploy your own instance in minutes.
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.5rem' }}>
               <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>

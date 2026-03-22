@@ -237,7 +237,7 @@ export default function ProductPage() {
         </div>
 
         <div className={s.statsBar}>
-          {[['50+', 'Features'], ['1,300+', 'Tests'], ['80,000+', 'Lines of Code'], ['22', 'Days']].map(([v, l]) => (
+          {[['50+', 'Features'], ['2,700+', 'Tests'], ['82,000+', 'Lines of Code'], ['30', 'Days']].map(([v, l]) => (
             <div key={l} className={s.statCard}>
               <div className={s.statValue}>{v}</div>
               <div className={s.statLabel}>{l}</div>
@@ -248,7 +248,7 @@ export default function ProductPage() {
         {/* ─── 1. Executive Summary ─────────────────────────── */}
         <Sec id="executive-summary">
           <H1>1. Executive Summary</H1>
-          <P bold>Chatr is a fully functional, production-deployed, real-time messaging platform that demonstrates the breadth of a funded engineering team — delivered by a single developer in 22 days. It is not a prototype or proof of concept. It is a working product with 50+ user-facing features, 1,300+ automated tests, and a deployment running on AWS infrastructure.</P>
+          <P bold>Chatr is a fully functional, production-deployed, real-time messaging platform that demonstrates the breadth of a funded engineering team — delivered by a single developer in 30 days. It is not a prototype or proof of concept. It is a working product with 50+ user-facing features, 2,700+ automated tests, and a deployment running on AWS infrastructure.</P>
           <P>For a commercial audience, Chatr shows what a complete product looks like when messaging, AI, and customer support converge into a single platform. Its embeddable chat widget allows any business to add real-time customer support to their website with a single line of code — competing directly with tools like Intercom (£39–£99/seat/month) at zero recurring cost.</P>
           <P>For a technical audience, Chatr demonstrates mastery across frontend development (React 19, Next.js 16), backend engineering (Node.js, Express, Socket.IO), database design (PostgreSQL, Prisma), caching infrastructure (Redis), AI integration (OpenAI GPT-4o-mini), cloud deployment (AWS), and automated testing (Jest, Playwright). Every layer is production-grade, documented, and covered by automated tests.</P>
           <Callout>This page serves as both a commercial presentation and a technical reference. Each section explains what a feature does, why it matters commercially, and how it is implemented technically.</Callout>
@@ -590,7 +590,7 @@ export default function ProductPage() {
           <P bold>Frontend — Next.js 16, React 19, TypeScript.</P>
           <P>App Router, strict TypeScript, React Context (no Redux), Framer Motion animations, Socket.IO for real-time, IndexedDB for offline cache.</P>
           <P bold>Backend — Node.js, Express, TypeScript.</P>
-          <P>70+ REST endpoints, 40+ Socket.IO event types. Authentication, message routing, file uploads, AI integration, email/SMS delivery.</P>
+          <P>85+ REST endpoints, 100+ Socket.IO event types. Authentication, message routing, file uploads, AI integration, email/SMS delivery.</P>
           <P bold>Database — PostgreSQL 16, Prisma ORM.</P>
           <P>9 models with type-safe queries and automatic migrations.</P>
           <P bold>Caching & Pub/Sub — Redis 7.</P>
@@ -656,9 +656,9 @@ export default function ProductPage() {
         {/* ─── 12. Quality Assurance ───────────────────────── */}
         <Sec id="quality">
           <H1>12. Quality Assurance</H1>
-          <P>Over 1,300 automated tests across three tiers.</P>
+          <P>Over 2,700 automated tests across three tiers.</P>
           <div className={s.statsBar}>
-            {[['1,300+', 'Total Tests'], ['855', 'Frontend'], ['305', 'Backend'], ['156', 'End-to-End']].map(([v, l]) => (
+            {[['2,700+', 'Total Tests'], ['1,475', 'Frontend'], ['1,133', 'Backend'], ['85', 'End-to-End']].map(([v, l]) => (
               <div key={l} className={s.statCard}>
                 <div className={s.statValue}>{v}</div>
                 <div className={s.statLabel}>{l}</div>
@@ -666,13 +666,13 @@ export default function ProductPage() {
             ))}
           </div>
 
-          <H2>Frontend (855 tests)</H2>
+          <H2>Frontend (1,475 tests)</H2>
           <P>Every React component, hook, context, form, and page tested. 99% coverage. Runs in under 30 seconds.</P>
 
-          <H2>Backend (305 tests)</H2>
+          <H2>Backend (1,133 tests)</H2>
           <P>Every API endpoint, auth flow, Socket.IO handler, email/SMS service, and AI integration tested. 73% coverage.</P>
 
-          <H2>End-to-End (156 tests)</H2>
+          <H2>End-to-End (85 tests)</H2>
           <P>Playwright drives Desktop Chrome and iPhone 14. Two simultaneous test users verify real-time delivery, typing indicators, and presence.</P>
           <Tech>E2E results cached to .test-cache/ and displayed in the developer dashboard. Custom Playwright reporter.</Tech>
         </Sec>
@@ -703,7 +703,7 @@ export default function ProductPage() {
           <Bullets items={[
             { prefix: 'Docs —', text: 'Searchable documentation with architecture diagrams, API reference, and setup guides.' },
             { prefix: 'Email Templates —', text: 'Visual previews of every transactional email.' },
-            { prefix: 'API Docs —', text: 'Interactive Swagger UI for all 70+ REST endpoints.' },
+            { prefix: 'API Docs —', text: 'Interactive Swagger UI for all 85+ REST endpoints.' },
             { prefix: 'Component Demos —', text: 'Living style guide for every UI component.' },
             { prefix: 'Log Viewer —', text: 'In-app logs with filtering, search, and severity levels.' },
             { prefix: 'Docker Compose —', text: 'git clone to running app in under 2 minutes.' },
@@ -716,12 +716,12 @@ export default function ProductPage() {
           <div className={s.statLines}>
             {[
               ['User-facing features', '50+'],
-              ['Automated tests', '1,300+'],
-              ['Lines of code', '80,000+'],
-              ['Source files', '369'],
-              ['REST API endpoints', '70+'],
-              ['WebSocket event types', '40+'],
-              ['UI components', '176 (60+ custom)'],
+              ['Automated tests', '2,700+'],
+              ['Lines of code', '82,000+'],
+              ['Source files', '432'],
+              ['REST API endpoints', '85+'],
+              ['WebSocket event types', '100+'],
+              ['UI components', '186 (60+ custom)'],
               ['Database models', '9'],
               ['Auth methods', '4'],
               ['Message types', '7'],
@@ -731,8 +731,8 @@ export default function ProductPage() {
               ['E2E browsers', 'Chrome + iPhone 14'],
               ['Deployment', 'AWS'],
               ['Offline support', 'IndexedDB + queue'],
-              ['Development time', '22 days'],
-              ['Total commits', '219'],
+              ['Development time', '30 days'],
+              ['Total commits', '243'],
             ].map(([l, v]) => <StatLine key={l} label={l} value={v} />)}
           </div>
         </Sec>
@@ -748,7 +748,7 @@ export default function ProductPage() {
           <P>The widget competes directly with Intercom (£39–£99/seat/month), Drift, and Zendesk Chat — at zero recurring cost. A 10-person team saves £4,700–£11,900/year.</P>
 
           <H2>It Is Tested Like Enterprise Software</H2>
-          <P>1,300+ tests across three tiers. 99% frontend and 73% backend coverage. Custom dashboard visualises test results, code health, and security in real time.</P>
+          <P>2,700+ tests across three tiers. 99% frontend and 73% backend coverage. Custom dashboard visualises test results, code health, and security in real time.</P>
 
           <H2>It Is Built on Proven Technology</H2>
           <P>React 19, Next.js 16, Node.js, PostgreSQL, Redis, AWS — the same stack trusted by Slack, Shopify, Netflix, and Uber. Any JavaScript developer can be productive on day one.</P>
@@ -757,7 +757,7 @@ export default function ProductPage() {
           <P>PM2 cluster mode, Socket.IO Redis adapter, managed PostgreSQL, S3. Scaling means adding servers, not rewriting architecture.</P>
 
           <H2>It Demonstrates Exceptional Engineering Range</H2>
-          <P bold>Frontend. Backend. Real-time WebSocket infrastructure. AI integration. Cloud deployment. Database design. Security. Accessibility. Three-tier testing. Developer tooling. Analytics dashboard. Email/SMS services. Embeddable widget. All designed, built, tested, documented, and deployed by a single developer in 22 days.</P>
+          <P bold>Frontend. Backend. Real-time WebSocket infrastructure. AI integration. Cloud deployment. Database design. Security. Accessibility. Three-tier testing. Developer tooling. Analytics dashboard. Email/SMS services. Embeddable widget. All designed, built, tested, documented, and deployed by a single developer in 30 days.</P>
         </Sec>
       </main>
     </div>

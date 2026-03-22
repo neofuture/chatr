@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.9 — 2026-03-22
+
+**Commit:** `bd16bd3` — chore: update site stats to reflect current project metrics
+
+---
+
 ## v0.1.8 — 2026-03-22
 
 **Commit:** `b81532c` — feat: open source deployment pipeline and getting started guide

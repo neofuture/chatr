@@ -11,7 +11,7 @@ const SS = '/screenshots';
 
 const STACK = [
   { label: 'Frontend', name: 'Next.js 16 + React 19', desc: 'TypeScript, App Router, Framer Motion animations, Socket.IO client, IndexedDB offline cache.' },
-  { label: 'Backend', name: 'Node.js + Express', desc: 'TypeScript, 70+ REST endpoints, 40+ Socket.IO event types, file uploads, email & SMS services.' },
+  { label: 'Backend', name: 'Node.js + Express', desc: 'TypeScript, 85+ REST endpoints, 100+ Socket.IO event types, file uploads, email & SMS services.' },
   { label: 'Database', name: 'PostgreSQL 16', desc: 'Prisma ORM with 9 models, type-safe queries, automatic migrations, indexed for fast lookups.' },
   { label: 'Caching', name: 'Redis 7', desc: 'Presence tracking, rate limiting, pub/sub across instances, token blacklisting, session management.' },
   { label: 'AI', name: 'OpenAI GPT-4o-mini', desc: 'Luna chatbot assistant, automatic conversation summaries, streaming token-by-token responses.' },
@@ -187,24 +187,24 @@ export default function TechnologyPage() {
           <div className={`${s.sectionTag} ${s.sectionCenter}`}>Testing</div>
           <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Quality Assurance</h2>
           <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
-            Over 1,300 automated tests across three tiers — every component, endpoint, and user flow is covered.
+            Over 2,700 automated tests across three tiers — every component, endpoint, and user flow is covered.
           </p>
 
           <div className={s.statsRow}>
             <div className={s.statBox}>
-              <div className={s.statVal}>1,300+</div>
+              <div className={s.statVal}>2,700+</div>
               <div className={s.statLbl}>Total Tests</div>
             </div>
             <div className={s.statBox}>
-              <div className={s.statVal}>855</div>
+              <div className={s.statVal}>1,475</div>
               <div className={s.statLbl}>Frontend</div>
             </div>
             <div className={s.statBox}>
-              <div className={s.statVal}>305</div>
+              <div className={s.statVal}>1,133</div>
               <div className={s.statLbl}>Backend</div>
             </div>
             <div className={s.statBox}>
-              <div className={s.statVal}>156</div>
+              <div className={s.statVal}>85</div>
               <div className={s.statLbl}>End-to-End</div>
             </div>
           </div>

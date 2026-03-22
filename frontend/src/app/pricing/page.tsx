@@ -36,7 +36,7 @@ const BUILD_ITEMS = [
 
 const INCLUDES = [
   { icon: 'fas fa-comments', color: s.iconBlue, title: '50+ Features', text: 'Real-time messaging, voice notes, video, file sharing, reactions, replies, typing indicators, and more.' },
-  { icon: 'fas fa-vial', color: s.iconGreen, title: '1,300+ Tests', text: 'Three-tier automated testing — 855 frontend, 305 backend, 156 end-to-end with Playwright.' },
+  { icon: 'fas fa-vial', color: s.iconGreen, title: '2,700+ Tests', text: 'Three-tier automated testing — 1,475 frontend, 1,133 backend, 85 end-to-end with Playwright.' },
   { icon: 'fas fa-plug', color: s.iconPurple, title: 'Embeddable Widget', text: 'One line of code adds live customer support to any website. Replaces Intercom.' },
   { icon: 'fas fa-robot', color: s.iconOrange, title: 'AI Chatbot', text: 'Built-in GPT-4o-mini assistant and automatic conversation summaries.' },
   { icon: 'fas fa-fingerprint', color: s.iconRed, title: 'Enterprise Auth', text: 'Email, SMS, TOTP 2FA, password recovery, rate limiting, and token blacklisting.' },
@@ -163,11 +163,11 @@ export default function PricingPage() {
             <div className={s.statLbl}>Features</div>
           </div>
           <div className={s.statBox}>
-            <div className={s.statVal}>22</div>
+            <div className={s.statVal}>30</div>
             <div className={s.statLbl}>Days Built</div>
           </div>
           <div className={s.statBox}>
-            <div className={s.statVal}>1,300+</div>
+            <div className={s.statVal}>2,700+</div>
             <div className={s.statLbl}>Tests</div>
           </div>
         </div>
