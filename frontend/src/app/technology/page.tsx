@@ -11,7 +11,7 @@ const SS = '/screenshots';
 
 const STACK = [
   { label: 'Frontend', name: 'Next.js 16 + React 19', desc: 'TypeScript, App Router, Framer Motion animations, Socket.IO client, IndexedDB offline cache.' },
-  { label: 'Backend', name: 'Node.js + Express', desc: 'TypeScript, 85+ REST endpoints, 100+ Socket.IO event types, file uploads, email & SMS services.' },
+  { label: 'Backend', name: 'Node.js + Express', desc: 'TypeScript, 88 REST endpoints, 85+ Socket.IO event types, file uploads, email & SMS services.' },
   { label: 'Database', name: 'PostgreSQL 16', desc: 'Prisma ORM with 9 models, type-safe queries, automatic migrations, indexed for fast lookups.' },
   { label: 'Caching', name: 'Redis 7', desc: 'Presence tracking, rate limiting, pub/sub across instances, token blacklisting, session management.' },
   { label: 'AI', name: 'OpenAI GPT-4o-mini', desc: 'Luna chatbot assistant, automatic conversation summaries, streaming token-by-token responses.' },
@@ -44,10 +44,11 @@ export default function TechnologyPage() {
   return (
     <div className={s.page}>
       <SiteNav />
+      <main id="main-content">
 
       {/* Hero */}
       <section className={s.heroSection}>
-        <div className={s.heroGradient} />
+        <div className={s.heroGradient} aria-hidden="true" />
         <div className={s.heroInner}>
           <span className={s.heroTag}>Architecture</span>
           <h1 className={s.heroH1}>
@@ -59,10 +60,10 @@ export default function TechnologyPage() {
           </p>
           <div className={s.heroCtas}>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-              <i className="fab fa-github" /> View on GitHub
+              <i className="fab fa-github" aria-hidden="true" /> View on GitHub
             </a>
             <Link href="/features" className={s.btnSecondary}>
-              <i className="fas fa-list" /> View Features
+              <i className="fas fa-list" aria-hidden="true" /> View Features
             </Link>
           </div>
         </div>
@@ -151,7 +152,7 @@ export default function TechnologyPage() {
           {MODELS.map((model, i) => (
             <div className={s.card} key={i}>
               <div className={`${s.cardIcon} ${i < 3 ? s.iconBlue : i < 6 ? s.iconPurple : s.iconSlate}`}>
-                <i className={model.icon} />
+                <i className={model.icon} aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>{model.name}</div>
               <div className={s.cardText}>{model.desc}</div>
@@ -174,14 +175,14 @@ export default function TechnologyPage() {
             {[
               { icon: 'fa-terminal', color: s.iconBlue, title: 'One Command Setup', text: 'Run bash dev.sh — Docker spins up PostgreSQL and Redis, migrations run, all five servers start with hot reload. Ready in under 60 seconds.' },
               { icon: 'fa-shield-alt', color: s.iconPurple, title: 'TypeScript Strict Mode', text: 'Every file — frontend, backend, and widget — is strict TypeScript. No implicit any, full type inference, and Prisma-generated types for the database.' },
-              { icon: 'fa-vial', color: s.iconGreen, title: 'Three-Tier Testing', text: '2,700+ tests across Jest (unit/integration) and Playwright (E2E). 99% frontend coverage. Tests run in parallel and complete in under 30 seconds.' },
+              { icon: 'fa-vial', color: s.iconGreen, title: 'Three-Tier Testing', text: '2,800+ tests across Jest (unit/integration) and Playwright (E2E). 99% frontend coverage. Tests run in parallel and complete in under 30 seconds.' },
               { icon: 'fa-sync', color: s.iconOrange, title: 'Hot Reload Everything', text: 'Frontend (Next.js Fast Refresh), backend (nodemon), and widget (esbuild watcher) — all live-reload on save. No manual restarts.' },
-              { icon: 'fa-code-branch', color: s.iconRed, title: 'Git Hooks & CI', text: 'Husky pre-commit runs all tests, auto-increments version, updates changelog, and triggers AWS deploy. Every commit is validated.' },
-              { icon: 'fa-tachometer-alt', color: s.iconSlate, title: 'Live Dashboard', text: 'Custom-built analytics dashboard with code health gauges, test runner, security audit, and commit intelligence. All auto-refreshing.' },
+              { icon: 'fa-code-branch', color: s.iconRed, title: 'Git Hooks & CI', text: 'Husky pre-commit runs all tests. Post-commit auto-increments version and updates the changelog. Every commit is validated before it lands.' },
+              { icon: 'fa-book-open', color: s.iconSlate, title: 'Storybook', text: '69 component stories with dark and light theme variants. Visual documentation for every UI component, tested in isolation.' },
             ].map(f => (
               <div key={f.title} className={s.card}>
                 <div className={`${s.cardIcon} ${f.color}`}>
-                  <i className={`fas ${f.icon}`} />
+                  <i className={`fas ${f.icon}`} aria-hidden="true" />
                 </div>
                 <div className={s.cardTitle}>{f.title}</div>
                 <div className={s.cardText}>{f.text}</div>
@@ -209,7 +210,7 @@ bash dev.sh
       {/* API Examples */}
       <div className={s.section}>
         <div className={`${s.sectionTag} ${s.sectionCenter}`}>REST API</div>
-        <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>85+ Endpoints, Fully Documented</h2>
+        <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>88 Endpoints, Fully Documented</h2>
         <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
           Every endpoint is documented in Swagger UI. Authentication, messaging, groups, files, AI — all
           accessible via standard REST with JWT auth.
@@ -278,7 +279,7 @@ socket.on("user:typing", ({ userId }) => {
             ].map(f => (
               <div key={f.title} className={s.card}>
                 <div className={`${s.cardIcon} ${f.color}`}>
-                  <i className={`fas ${f.icon}`} />
+                  <i className={`fas ${f.icon}`} aria-hidden="true" />
                 </div>
                 <div className={s.cardTitle}>{f.title}</div>
                 <div className={s.cardText}>{f.text}</div>
@@ -308,12 +309,12 @@ socket.on("user:typing", ({ userId }) => {
           ].map(f => (
             <div key={f.title} className={s.card}>
               <div className={`${s.cardIcon} ${f.color}`}>
-                <i className={`fas ${f.icon}`} />
+                  <i className={`fas ${f.icon}`} aria-hidden="true" />
+                </div>
+                <div className={s.cardTitle}>{f.title}</div>
+                <div className={s.cardText}>{f.text}</div>
               </div>
-              <div className={s.cardTitle}>{f.title}</div>
-              <div className={s.cardText}>{f.text}</div>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
 
@@ -323,12 +324,12 @@ socket.on("user:typing", ({ userId }) => {
           <div className={`${s.sectionTag} ${s.sectionCenter}`}>Testing</div>
           <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Quality Assurance</h2>
           <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
-            Over 2,700 automated tests across three tiers — every component, endpoint, and user flow is covered.
+            Over 2,800 automated tests across three tiers — every component, endpoint, and user flow is covered.
           </p>
 
           <div className={s.statsRow}>
             <div className={s.statBox}>
-              <div className={s.statVal}>2,700+</div>
+              <div className={s.statVal}>2,800+</div>
               <div className={s.statLbl}>Total Tests</div>
             </div>
             <div className={s.statBox}>
@@ -340,7 +341,7 @@ socket.on("user:typing", ({ userId }) => {
               <div className={s.statLbl}>Backend</div>
             </div>
             <div className={s.statBox}>
-              <div className={s.statVal}>85</div>
+              <div className={s.statVal}>168</div>
               <div className={s.statLbl}>End-to-End</div>
             </div>
           </div>
@@ -386,6 +387,40 @@ socket.on("user:typing", ({ userId }) => {
         </div>
       </div>
 
+      {/* Storybook */}
+      <div className={s.sectionAlt}>
+        <div className={s.section}>
+          <div className={`${s.sectionTag} ${s.sectionCenter}`}>Component Library</div>
+          <h2 className={`${s.sectionH2} ${s.sectionCenter}`}>Storybook — 69 component stories</h2>
+          <p className={`${s.sectionP} ${s.sectionPCenter} ${s.sectionCenter}`}>
+            Every UI component is documented in Storybook with interactive stories, dark and light theme
+            variants, and accessibility checks. Browse, test, and inspect components in complete isolation.
+          </p>
+
+          <div className={s.grid3}>
+            {[
+              { icon: 'fa-palette', color: s.iconBlue, title: '69 Stories', text: 'Every major component — messaging, profiles, settings, navigation, image croppers, panels — has dedicated Storybook stories.' },
+              { icon: 'fa-adjust', color: s.iconPurple, title: 'Dark & Light Variants', text: 'Each story renders in both dark and light themes. Visual consistency verified across every component.' },
+              { icon: 'fa-universal-access', color: s.iconGreen, title: 'Accessibility Checks', text: 'The a11y addon audits every story for WCAG violations — ARIA roles, contrast ratios, keyboard navigation.' },
+            ].map(f => (
+              <div key={f.title} className={s.card}>
+                <div className={`${s.cardIcon} ${f.color}`}>
+                  <i className={`fas ${f.icon}`} aria-hidden="true" />
+                </div>
+                <div className={s.cardTitle}>{f.title}</div>
+                <div className={s.cardText}>{f.text}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+            <a href="/storybook" target="_blank" rel="noopener noreferrer" className={s.btnSecondary}>
+              <i className="fas fa-book-open" aria-hidden="true" /> Open Storybook
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Deployment Options */}
       <div className={s.sectionAlt}>
         <div className={s.section}>
@@ -398,7 +433,7 @@ socket.on("user:typing", ({ userId }) => {
 
           <div className={s.grid3}>
             <div className={s.card} style={{ textAlign: 'center' }}>
-              <div className={`${s.cardIcon} ${s.iconBlue}`} style={{ margin: '0 auto 1rem' }}><i className="fab fa-docker" /></div>
+              <div className={`${s.cardIcon} ${s.iconBlue}`} style={{ margin: '0 auto 1rem' }}><i className="fab fa-docker" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Local (Docker)</div>
               <div className={s.cardText}>
                 <code style={{ fontSize: '0.82rem' }}>bash dev.sh</code> — Docker Compose spins up PostgreSQL and Redis.
@@ -406,7 +441,7 @@ socket.on("user:typing", ({ userId }) => {
               </div>
             </div>
             <div className={s.card} style={{ textAlign: 'center' }}>
-              <div className={`${s.cardIcon} ${s.iconOrange}`} style={{ margin: '0 auto 1rem' }}><i className="fab fa-aws" /></div>
+              <div className={`${s.cardIcon} ${s.iconOrange}`} style={{ margin: '0 auto 1rem' }}><i className="fab fa-aws" aria-hidden="true" /></div>
               <div className={s.cardTitle}>AWS (Production)</div>
               <div className={s.cardText}>
                 <code style={{ fontSize: '0.82rem' }}>bash aws.sh</code> — Deploys to EC2 with RDS, ElastiCache, S3, Nginx,
@@ -414,7 +449,7 @@ socket.on("user:typing", ({ userId }) => {
               </div>
             </div>
             <div className={s.card} style={{ textAlign: 'center' }}>
-              <div className={`${s.cardIcon} ${s.iconPurple}`} style={{ margin: '0 auto 1rem' }}><i className="fas fa-cloud" /></div>
+              <div className={`${s.cardIcon} ${s.iconPurple}`} style={{ margin: '0 auto 1rem' }}><i className="fas fa-cloud" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Any Cloud</div>
               <div className={s.cardText}>
                 Standard Node.js + PostgreSQL + Redis. Works on DigitalOcean, Hetzner, Railway, Render,
@@ -449,8 +484,8 @@ socket.on("user:typing", ({ userId }) => {
           <div className={s.codeBlock}>
             <div className={s.codeBlockLabel}>Backend</div>
             <pre><code>{`backend/
-├── src/routes/       # 85+ REST endpoints
-├── src/sockets/      # 100+ event handlers
+├── src/routes/       # 88 REST endpoints
+├── src/socket/       # 85+ event handlers
 ├── src/services/     # Business logic
 ├── src/middleware/    # Auth, rate limiting
 ├── src/utils/        # Helpers & validators
@@ -482,21 +517,22 @@ scripts/              # Dev & deploy tools`}</code></pre>
           </p>
           <div className={s.heroCtas}>
             <Link href="/docs" className={s.btnPrimary}>
-              <i className="fas fa-book" /> Documentation
+              <i className="fas fa-book" aria-hidden="true" /> Documentation
             </Link>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-              <i className="fab fa-github" /> View on GitHub
+              <i className="fab fa-github" aria-hidden="true" /> View on GitHub
             </a>
-            <Link href="/dashboard" className={s.btnSecondary}>
-              <i className="fas fa-chart-line" /> Dashboard
-            </Link>
+            <a href="/dashboard" target="_blank" rel="noopener noreferrer" className={s.btnSecondary}>
+              <i className="fas fa-chart-line" aria-hidden="true" /> Dashboard
+            </a>
             <Link href="/product" className={s.btnSecondary}>
-              <i className="fas fa-rocket" /> Product Overview
+              <i className="fas fa-rocket" aria-hidden="true" /> Product Overview
             </Link>
           </div>
         </div>
       </div>
 
+      </main>
       <SiteFooter />
     </div>
   );

@@ -324,6 +324,11 @@ EOF
   npm run build
   success "Frontend built"
   detail "Build output: $(du -sh .next 2>/dev/null | cut -f1) in .next/"
+
+  info "Building Storybook static site..."
+  npm run build-storybook 2>&1 | tail -5
+  success "Storybook built"
+  detail "Storybook output: $(du -sh storybook-static 2>/dev/null | cut -f1) in storybook-static/"
 }
 
 # =============================================================================
@@ -409,6 +414,13 @@ server {
     listen 80;
     server_name ${DOMAIN};
     client_max_body_size 55M;
+
+    location /storybook/ {
+        alias /home/ubuntu/chatr/frontend/storybook-static/;
+        try_files \$uri \$uri/ /storybook/index.html;
+        expires 1d;
+        add_header Cache-Control "public, immutable";
+    }
 
     location / {
         proxy_pass http://localhost:3000;

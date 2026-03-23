@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     default: `${PRODUCT_NAME} — Real-Time Messaging Platform`,
     template: `%s | ${PRODUCT_NAME}`,
   },
-  description: 'A free, open source real-time messaging platform with voice notes, video, file sharing, AI assistant, typing indicators, read receipts, and an embeddable support widget. 50+ features, 2,700+ tests, MIT-licensed.',
+  description: 'A free, open source real-time messaging platform with voice notes, video, file sharing, AI assistant, typing indicators, read receipts, and an embeddable support widget. 50+ features, 2,800+ tests, MIT-licensed.',
   keywords: [
     'real-time chat', 'messaging platform', 'live chat widget', 'customer support chat',
     'embeddable chat', 'WebSocket messaging', 'AI chatbot', 'typing indicators',
@@ -60,8 +60,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
   viewportFit: 'cover',
   themeColor: '#0f172a',
 };
@@ -79,7 +78,6 @@ const jsonLd = [
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP', availability: 'https://schema.org/InStock' },
     featureList: 'Real-time messaging, Voice notes, Video sharing, File sharing, AI chatbot, Embeddable widget, Typing indicators, Read receipts, Group chats, Dark/Light themes',
     screenshot: `${SITE_URL}/screenshots/01-landing-page.png`,
-    aggregateRating: { '@type': 'AggregateRating', ratingValue: '5', bestRating: '5', ratingCount: '1' },
   },
   {
     '@context': 'https://schema.org',
@@ -95,7 +93,7 @@ const jsonLd = [
     '@type': 'WebSite',
     name: PRODUCT_NAME,
     url: SITE_URL,
-    description: 'A free, open source real-time messaging platform with 50+ features, 2,700+ automated tests. MIT-licensed.',
+    description: 'A free, open source real-time messaging platform with 50+ features, 2,800+ automated tests. MIT-licensed.',
     publisher: { '@type': 'Organization', name: PRODUCT_NAME, logo: { '@type': 'ImageObject', url: `${SITE_URL}/images/logo-horizontal.png` } },
   },
 ];
@@ -133,6 +131,11 @@ export default function RootLayout({
         <link rel="manifest" href="/favicon/site.webmanifest" />
       </head>
       <body className={inter.className}>
+        <noscript>
+          <div style={{ padding: '2rem', textAlign: 'center', background: '#1e293b', color: '#f1f5f9' }}>
+            Chatr requires JavaScript to run. Please enable JavaScript in your browser settings.
+          </div>
+        </noscript>
         <ClientProviders>
           {children}
           <BackToTop />

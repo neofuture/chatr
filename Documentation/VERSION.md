@@ -4,6 +4,37 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.19 — 2026-03-23
+
+**Commit:** `bdfbbea` — feat: comprehensive accessibility (WCAG 2.1 AA) and SEO audit fixes
+
+- Remove viewport zoom restriction (userScalable, maximumScale)
+- Add skip-to-content link with sr-only/focus-visible pattern
+- Associate contact form labels with inputs (htmlFor/id/autoComplete)
+- Convert product sidebar <a> tags to keyboard-focusable <button> elements
+- Add <main id="main-content"> landmark to all 8 public pages
+- Add aria-labels to hamburger, sidebar toggle, and back-to-top buttons
+- Add table captions (sr-only) and scope="col" to comparison/pricing tables
+- Add role="alert" and role="status" to contact form feedback states
+- Add focus-visible outline styles for all interactive elements
+- Add aria-hidden="true" to 150+ decorative Font Awesome icons
+- Add aria-expanded to dropdown, hamburger, and sidebar toggles
+- Add aria-current="page" to active nav links
+- Add Escape key handler to close dropdown, mobile menu, and product sidebar
+- Add sr-only Yes/No text for comparison table check/cross icons
+- Define --text-tertiary globally for WCAG-compliant contrast
+- Increase mobile nav touch targets to 44px minimum
+- Add aria-hidden to decorative heroGradient divs
+- Add role="menu" and role="menuitem" to dropdown menus
+- Diversify OG images per page (was all using same screenshot)
+- Use static lastModified dates in sitemap instead of new Date()
+- Remove self-rated aggregateRating from JSON-LD (manual action risk)
+- Add JSON-LD WebPage structured data to features and product pages
+- Add <noscript> fallback message to root layout
+- Fix footer heading hierarchy (h3 → h2)
+
+---
+
 ## v0.1.18 — 2026-03-23
 
 **Commit:** `67150e9` — docs: replace infrastructure ASCII art with Mermaid graph, fix auto-deploy references

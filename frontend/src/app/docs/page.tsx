@@ -686,7 +686,7 @@ export default function DocsPage() {
       color: 'var(--text-primary)'
     }}>
       <SiteNav />
-      <div style={{ display: 'flex', flex: 1, paddingTop: 64 }}>
+      <main id="main-content" style={{ display: 'flex', flex: 1, paddingTop: 64 }}>
       {/* Show loading screen until mounted and width is loaded */}
       {!mounted ? (
         <div style={{
@@ -1188,7 +1188,7 @@ export default function DocsPage() {
       </div>
       </>
       )}
-      </div>
+      </main>
       <footer style={{
         borderTop: '1px solid var(--border-primary)',
         padding: '1.25rem 2rem',

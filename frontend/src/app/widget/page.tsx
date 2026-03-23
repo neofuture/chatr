@@ -14,10 +14,11 @@ export default function WidgetPage() {
   return (
     <div className={s.page}>
       <SiteNav />
+      <main id="main-content">
 
       {/* ── Hero ──────────────────────────────────────────── */}
       <section className={s.heroSection}>
-        <div className={s.heroGradient} />
+        <div className={s.heroGradient} aria-hidden="true" />
         <div className={s.heroInner}>
           <span className={s.heroTag}>Embeddable Widget</span>
           <h1 className={s.heroH1}>
@@ -31,10 +32,10 @@ export default function WidgetPage() {
           </p>
           <div className={s.heroCtas}>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-              <i className="fab fa-github" /> View on GitHub
+              <i className="fab fa-github" aria-hidden="true" /> View on GitHub
             </a>
             <Link href="/widget-demo" className={s.btnSecondary}>
-              <i className="fas fa-play-circle" /> Live Demo
+              <i className="fas fa-play-circle" aria-hidden="true" /> Live Demo
             </Link>
           </div>
         </div>
@@ -61,7 +62,7 @@ export default function WidgetPage() {
         >
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconBlue}`}>
-              <i className="fas fa-code" />
+              <i className="fas fa-code" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>1. Paste Embed Code</div>
             <div className={s.cardText}>
@@ -71,7 +72,7 @@ export default function WidgetPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconPurple}`}>
-              <i className="fas fa-comment-dots" />
+              <i className="fas fa-comment-dots" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>2. Visitor Asks a Question</div>
             <div className={s.cardText}>
@@ -81,7 +82,7 @@ export default function WidgetPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconGreen}`}>
-              <i className="fas fa-inbox" />
+              <i className="fas fa-inbox" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>3. Agent Gets It in Chatr</div>
             <div className={s.cardText}>
@@ -91,7 +92,7 @@ export default function WidgetPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconOrange}`}>
-              <i className="fas fa-comments" />
+              <i className="fas fa-comments" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>4. Real-Time Conversation</div>
             <div className={s.cardText}>
@@ -125,10 +126,10 @@ export default function WidgetPage() {
                 greeting text, and theme via data attributes. No build step, no npm install, no framework required.
               </p>
               <ul className={s.checkList}>
-                <li><i className="fas fa-check" /> Works with React, Vue, Angular, WordPress, Shopify, plain HTML</li>
-                <li><i className="fas fa-check" /> No dependencies — standalone JavaScript</li>
-                <li><i className="fas fa-check" /> Configure via data attributes or JavaScript API</li>
-                <li><i className="fas fa-check" /> CSS is scoped — no style conflicts with your site</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Works with React, Vue, Angular, WordPress, Shopify, plain HTML</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> No dependencies — standalone JavaScript</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Configure via data attributes or JavaScript API</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> CSS is scoped — no style conflicts with your site</li>
               </ul>
             </div>
             <div className={s.codeBlock}>
@@ -195,9 +196,9 @@ export default function WidgetPage() {
             <div className={s.pricingPeriod}>per seat / month</div>
             <div className={s.pricingDesc}>Feature gating, usage caps, vendor lock-in.</div>
             <ul className={s.pricingFeatures}>
-              <li><i className="fas fa-check" /> Live chat</li>
-              <li><i className="fas fa-check" /> Inbox</li>
-              <li><i className="fas fa-times" style={{ color: 'var(--color-red-500)' }} /> Full data ownership</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Live chat</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Inbox</li>
+              <li><i className="fas fa-times" aria-hidden="true" style={{ color: 'var(--color-red-500)' }} /> Full data ownership</li>
             </ul>
           </div>
 
@@ -207,9 +208,9 @@ export default function WidgetPage() {
             <div className={s.pricingPeriod}>per seat / month</div>
             <div className={s.pricingDesc}>Sales-focused automation with high price tag.</div>
             <ul className={s.pricingFeatures}>
-              <li><i className="fas fa-check" /> Live chat</li>
-              <li><i className="fas fa-check" /> Playbooks</li>
-              <li><i className="fas fa-times" style={{ color: 'var(--color-red-500)' }} /> Full data ownership</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Live chat</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Playbooks</li>
+              <li><i className="fas fa-times" aria-hidden="true" style={{ color: 'var(--color-red-500)' }} /> Full data ownership</li>
             </ul>
           </div>
 
@@ -219,9 +220,9 @@ export default function WidgetPage() {
             <div className={s.pricingPeriod}>per seat / month</div>
             <div className={s.pricingDesc}>Bundled with ticketing overhead and complexity.</div>
             <ul className={s.pricingFeatures}>
-              <li><i className="fas fa-check" /> Live chat</li>
-              <li><i className="fas fa-check" /> Triggers</li>
-              <li><i className="fas fa-times" style={{ color: 'var(--color-red-500)' }} /> Full data ownership</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Live chat</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Triggers</li>
+              <li><i className="fas fa-times" aria-hidden="true" style={{ color: 'var(--color-red-500)' }} /> Full data ownership</li>
             </ul>
           </div>
 
@@ -232,13 +233,13 @@ export default function WidgetPage() {
             <div className={s.pricingPeriod}>forever — you own the code</div>
             <div className={s.pricingDesc}>Full feature set, zero recurring cost, complete ownership.</div>
             <ul className={s.pricingFeatures}>
-              <li><i className="fas fa-check" /> Live chat</li>
-              <li><i className="fas fa-check" /> Voice, files, links</li>
-              <li><i className="fas fa-check" /> White-label branding</li>
-              <li><i className="fas fa-check" /> Full data ownership</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Live chat</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Voice, files, links</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> White-label branding</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Full data ownership</li>
             </ul>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.75rem' }}>
-              <i className="fab fa-github" /> Get Started on GitHub
+              <i className="fab fa-github" aria-hidden="true" /> Get Started on GitHub
             </a>
           </div>
         </div>
@@ -259,7 +260,7 @@ export default function WidgetPage() {
           <div className={s.grid3}>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconBlue}`}>
-                <i className="fas fa-comment" />
+                <i className="fas fa-comment" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Text Messages</div>
               <div className={s.cardText}>
@@ -268,7 +269,7 @@ export default function WidgetPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconPurple}`}>
-                <i className="fas fa-microphone" />
+                <i className="fas fa-microphone" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Voice Notes</div>
               <div className={s.cardText}>
@@ -277,7 +278,7 @@ export default function WidgetPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconGreen}`}>
-                <i className="fas fa-file-upload" />
+                <i className="fas fa-file-upload" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>File Sharing</div>
               <div className={s.cardText}>
@@ -286,7 +287,7 @@ export default function WidgetPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconOrange}`}>
-                <i className="fas fa-ellipsis-h" />
+                <i className="fas fa-ellipsis-h" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Typing Indicators</div>
               <div className={s.cardText}>
@@ -295,7 +296,7 @@ export default function WidgetPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconRed}`}>
-                <i className="fas fa-check-double" />
+                <i className="fas fa-check-double" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Read Receipts</div>
               <div className={s.cardText}>
@@ -304,7 +305,7 @@ export default function WidgetPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconSlate}`}>
-                <i className="fas fa-link" />
+                <i className="fas fa-link" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Link Previews</div>
               <div className={s.cardText}>
@@ -400,7 +401,7 @@ export default function WidgetPage() {
             ].map(f => (
               <div key={f.title} className={s.card} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '2rem', color: 'var(--color-blue-500)', marginBottom: '0.75rem' }}>
-                  <i className={f.icon} />
+                  <i className={f.icon} aria-hidden="true" />
                 </div>
                 <div className={s.cardTitle}>{f.title}</div>
                 <div className={s.cardText}>{f.text}</div>
@@ -443,12 +444,12 @@ window.ChatrWidget.setGreeting(
           </div>
           <div>
             <ul className={s.checkList} style={{ marginTop: 0 }}>
-              <li><i className="fas fa-check" /> Open widget on button click</li>
-              <li><i className="fas fa-check" /> Trigger from onboarding flows</li>
-              <li><i className="fas fa-check" /> Match your app&rsquo;s theme dynamically</li>
-              <li><i className="fas fa-check" /> Customise greeting per page</li>
-              <li><i className="fas fa-check" /> Hide on specific routes</li>
-              <li><i className="fas fa-check" /> No DOM conflicts — scoped styles</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Open widget on button click</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Trigger from onboarding flows</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Match your app&rsquo;s theme dynamically</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Customise greeting per page</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> Hide on specific routes</li>
+              <li><i className="fas fa-check" aria-hidden="true" /> No DOM conflicts — scoped styles</li>
             </ul>
 
             <div className={s.highlight} style={{ marginTop: '1.5rem' }}>
@@ -477,17 +478,17 @@ window.ChatrWidget.setGreeting(
 
           <div className={s.grid3}>
             <div className={s.valueCard}>
-              <div className={s.valueIcon}><i className="fas fa-chart-line" /></div>
+              <div className={s.valueIcon}><i className="fas fa-chart-line" aria-hidden="true" /></div>
               <div className={s.valueTitle}>Resell as SaaS</div>
               <div className={s.valueText}>Deploy per-client instances and charge a monthly fee. Your cost: one server per client (~£15/month). Their alternative: £39–99/seat/month on Intercom.</div>
             </div>
             <div className={s.valueCard}>
-              <div className={s.valueIcon}><i className="fas fa-box-open" /></div>
+              <div className={s.valueIcon}><i className="fas fa-box-open" aria-hidden="true" /></div>
               <div className={s.valueTitle}>Bundle with Your Product</div>
               <div className={s.valueText}>Add live customer support to your existing SaaS product. Increase retention, reduce churn, and differentiate from competitors — all with code you own.</div>
             </div>
             <div className={s.valueCard}>
-              <div className={s.valueIcon}><i className="fas fa-handshake" /></div>
+              <div className={s.valueIcon}><i className="fas fa-handshake" aria-hidden="true" /></div>
               <div className={s.valueTitle}>Agency White-Label</div>
               <div className={s.valueText}>Offer live chat as a managed service to your clients. Custom branding per client with the palette designer. Scale without per-seat overhead.</div>
             </div>
@@ -514,19 +515,20 @@ window.ChatrWidget.setGreeting(
             </p>
             <div className={s.heroCtas}>
               <Link href="/widget-demo" className={s.btnPrimary}>
-                <i className="fas fa-play-circle" /> Live Widget Demo
+                <i className="fas fa-play-circle" aria-hidden="true" /> Live Widget Demo
               </Link>
               <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-                <i className="fab fa-github" /> View on GitHub
+                <i className="fab fa-github" aria-hidden="true" /> View on GitHub
               </a>
               <Link href="/product" className={s.btnSecondary}>
-                <i className="fas fa-book-open" /> Full Product Overview
+                <i className="fas fa-book-open" aria-hidden="true" /> Full Product Overview
               </Link>
             </div>
           </div>
         </div>
       </div>
 
+      </main>
       <SiteFooter />
     </div>
   );

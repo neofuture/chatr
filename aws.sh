@@ -1,13 +1,14 @@
 #!/bin/bash
 # =============================================================================
 # Chatr — Deploy to AWS
-# Run this locally: bash aws.sh [backend|frontend|docs]
+# Run this locally: bash aws.sh [backend|frontend|docs|storybook]
 #
 # Examples:
 #   bash aws.sh               — full deploy (all steps)
 #   bash aws.sh backend       — rebuild & restart backend only
 #   bash aws.sh frontend      — rebuild & restart frontend only
 #   bash aws.sh docs          — sync Documentation folder only
+#   bash aws.sh storybook     — build & sync Storybook only
 # =============================================================================
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
@@ -35,14 +36,15 @@ SCRIPT="./deployAWS.sh"
 TARGET="${1:-}"
 
 case "$TARGET" in
-  backend|frontend|docs|"")
+  backend|frontend|docs|storybook|"")
     ;;  # valid
   *)
-    printf "${BOLD}Usage:${NC} bash aws.sh [backend|frontend|docs]\n\n"
+    printf "${BOLD}Usage:${NC} bash aws.sh [backend|frontend|docs|storybook]\n\n"
     echo "  (no arg)   Full deploy — all steps"
     echo "  backend    Rebuild & restart backend only"
     echo "  frontend   Rebuild & restart frontend only"
     echo "  docs       Sync Documentation folder only"
+    echo "  storybook  Build & sync Storybook only"
     exit 1
     ;;
 esac
@@ -84,6 +86,25 @@ if [ "$TARGET" = "docs" ]; then
   success "Documentation synced"
   echo ""
   success "Docs deploy complete!"
+  exit 0
+fi
+
+# ── For storybook, build locally and rsync static output ──────────────────────
+if [ "$TARGET" = "storybook" ]; then
+  info "Building Storybook locally..."
+  (cd frontend && npm run build-storybook) \
+    || error "Storybook build failed"
+  success "Storybook built"
+
+  info "Syncing storybook-static/ to server..."
+  rsync -az --delete --progress \
+    -e "ssh $SSH_OPTS" \
+    ./frontend/storybook-static/ \
+    "$SERVER:/home/ubuntu/chatr/frontend/storybook-static/" \
+    || error "rsync failed"
+  success "Storybook synced"
+  echo ""
+  success "Storybook deploy complete! Available at /storybook"
   exit 0
 fi
 

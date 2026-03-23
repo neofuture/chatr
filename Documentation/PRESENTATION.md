@@ -200,7 +200,7 @@ chatr/
 
 ### API Surface
 
-The backend exposes **85+ REST endpoints** across 13 route modules:
+The backend exposes **88 REST endpoints** across 13 route modules:
 
 | Module | Endpoints | Covers |
 |--------|-----------|--------|

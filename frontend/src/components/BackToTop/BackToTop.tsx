@@ -41,7 +41,7 @@ export default function BackToTop() {
       onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
       onMouseLeave={e => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = ''; }}
     >
-      <i className="fas fa-arrow-up" />
+      <i className="fas fa-arrow-up" aria-hidden="true" />
     </button>
   );
 }

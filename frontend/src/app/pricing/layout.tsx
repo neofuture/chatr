@@ -12,14 +12,14 @@ export const metadata: Metadata = {
     description:
       'Chatr is free and open source (MIT). Need help with setup, deployment, or customisation? Paid support starts at £15/hour with monthly plans from £99. Replaces Intercom at a fraction of the cost.',
     url: SITE_URL + '/pricing',
-    images: [{ url: SITE_URL + '/screenshots/10-dashboard-top.png', width: 1440, height: 900, alt: 'Chatr Pricing — Zero Cost, Full Ownership' }],
+    images: [{ url: SITE_URL + '/screenshots/03-conversations.png', width: 1440, height: 900, alt: 'Chatr Pricing — Zero Cost, Full Ownership' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Pricing & Support — Free Code, Expert Help from £15/hr',
     description:
       'Chatr is free and open source (MIT). Need help with setup, deployment, or customisation? Paid support starts at £15/hour with monthly plans from £99. Replaces Intercom at a fraction of the cost.',
-    images: [SITE_URL + '/screenshots/10-dashboard-top.png'],
+    images: [SITE_URL + '/screenshots/03-conversations.png'],
   },
   alternates: { canonical: SITE_URL + '/pricing' },
 };

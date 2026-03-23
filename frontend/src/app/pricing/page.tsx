@@ -36,7 +36,7 @@ const BUILD_ITEMS = [
 
 const INCLUDES = [
   { icon: 'fas fa-comments', color: s.iconBlue, title: '50+ Features', text: 'Real-time messaging, voice notes, video, file sharing, reactions, replies, typing indicators, and more.' },
-  { icon: 'fas fa-vial', color: s.iconGreen, title: '2,700+ Tests', text: 'Three-tier automated testing — 1,475 frontend, 1,133 backend, 85 end-to-end with Playwright.' },
+  { icon: 'fas fa-vial', color: s.iconGreen, title: '2,800+ Tests', text: 'Three-tier automated testing — 1,475 frontend, 1,133 backend, 168 end-to-end with Playwright.' },
   { icon: 'fas fa-plug', color: s.iconPurple, title: 'Embeddable Widget', text: 'One line of code adds live customer support to any website. Replaces Intercom.' },
   { icon: 'fas fa-robot', color: s.iconOrange, title: 'AI Chatbot', text: 'Built-in GPT-4o-mini assistant and automatic conversation summaries.' },
   { icon: 'fas fa-fingerprint', color: s.iconRed, title: 'Enterprise Auth', text: 'Email, SMS, TOTP 2FA, password recovery, rate limiting, and token blacklisting.' },
@@ -48,10 +48,11 @@ export default function PricingPage() {
   return (
     <div className={s.page}>
       <SiteNav />
+      <main id="main-content">
 
       {/* Hero */}
       <section className={s.heroSection}>
-        <div className={s.heroGradient} />
+        <div className={s.heroGradient} aria-hidden="true" />
         <div className={s.heroInner}>
           <span className={s.heroTag}>Pricing &amp; Support</span>
           <h1 className={s.heroH1}>
@@ -83,7 +84,7 @@ export default function PricingPage() {
             <div className={s.pricingDesc}>Industry-standard SaaS — powerful, but expensive and locked down.</div>
             <ul className={s.pricingFeatures}>
               {INTERCOM_ITEMS.map((item, i) => (
-                <li key={i}><i className={item.icon} /> {item.text}</li>
+                <li key={i}><i className={item.icon} aria-hidden="true" /> {item.text}</li>
               ))}
             </ul>
           </div>
@@ -98,11 +99,11 @@ export default function PricingPage() {
             <div className={s.pricingDesc}>Full-featured, open source, MIT-licensed. Clone, deploy, own it forever.</div>
             <ul className={s.pricingFeatures}>
               {CHATR_ITEMS.map((item, i) => (
-                <li key={i}><i className={item.icon} /> {item.text}</li>
+                <li key={i}><i className={item.icon} aria-hidden="true" /> {item.text}</li>
               ))}
             </ul>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-              <i className="fab fa-github" /> Get Started on GitHub
+              <i className="fab fa-github" aria-hidden="true" /> Get Started on GitHub
             </a>
           </div>
 
@@ -115,7 +116,7 @@ export default function PricingPage() {
             <div className={s.pricingDesc}>Full control — but months of engineering before a single feature ships.</div>
             <ul className={s.pricingFeatures}>
               {BUILD_ITEMS.map((item, i) => (
-                <li key={i}><i className={item.icon} /> {item.text}</li>
+                <li key={i}><i className={item.icon} aria-hidden="true" /> {item.text}</li>
               ))}
             </ul>
           </div>
@@ -140,14 +141,14 @@ export default function PricingPage() {
               <div className={s.pricingPeriod}>forever</div>
               <div className={s.pricingDesc}>Self-service with docs, guides, and the open source community.</div>
               <ul className={s.pricingFeatures}>
-                <li><i className="fas fa-check" /> Full source code (MIT)</li>
-                <li><i className="fas fa-check" /> Getting Started guide</li>
-                <li><i className="fas fa-check" /> Documentation &amp; API reference</li>
-                <li><i className="fas fa-check" /> GitHub Issues</li>
-                <li><i className="fas fa-check" /> Community discussions</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Full source code (MIT)</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Getting Started guide</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Documentation &amp; API reference</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> GitHub Issues</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Community discussions</li>
               </ul>
               <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnSecondary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-                <i className="fab fa-github" /> Get Started
+                <i className="fab fa-github" aria-hidden="true" /> Get Started
               </a>
             </div>
 
@@ -158,14 +159,14 @@ export default function PricingPage() {
               <div className={s.pricingPeriod}>per hour</div>
               <div className={s.pricingDesc}>Book expert time whenever you need it. No commitment, no minimum.</div>
               <ul className={s.pricingFeatures}>
-                <li><i className="fas fa-check" /> Everything in Community</li>
-                <li><i className="fas fa-check" /> 1-on-1 expert support</li>
-                <li><i className="fas fa-check" /> Setup &amp; deployment help</li>
-                <li><i className="fas fa-check" /> Troubleshooting &amp; debugging</li>
-                <li><i className="fas fa-check" /> 48-hour response time</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Everything in Community</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> 1-on-1 expert support</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Setup &amp; deployment help</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Troubleshooting &amp; debugging</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> 48-hour response time</li>
               </ul>
               <Link href="/contact" className={s.btnSecondary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-                <i className="fas fa-envelope" /> Book Hours
+                <i className="fas fa-envelope" aria-hidden="true" /> Book Hours
               </Link>
             </div>
 
@@ -177,15 +178,15 @@ export default function PricingPage() {
               <div className={s.pricingPeriod}>per month — 8 hours included</div>
               <div className={s.pricingDesc}>Perfect for getting set up and keeping things running smoothly.</div>
               <ul className={s.pricingFeatures}>
-                <li><i className="fas fa-check" /> Everything in Pay As You Go</li>
-                <li><i className="fas fa-check" /> 8 hours/month (£12.38/hr)</li>
-                <li><i className="fas fa-check" /> Additional hours at £12/hr</li>
-                <li><i className="fas fa-check" /> 24-hour response time</li>
-                <li><i className="fas fa-check" /> Email &amp; video call support</li>
-                <li><i className="fas fa-check" /> AWS deployment assistance</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Everything in Pay As You Go</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> 8 hours/month (£12.38/hr)</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Additional hours at £12/hr</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> 24-hour response time</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Email &amp; video call support</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> AWS deployment assistance</li>
               </ul>
               <Link href="/contact" className={s.btnPrimary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-                <i className="fas fa-rocket" /> Get Started
+                <i className="fas fa-rocket" aria-hidden="true" /> Get Started
               </Link>
             </div>
 
@@ -196,16 +197,16 @@ export default function PricingPage() {
               <div className={s.pricingPeriod}>per month — 20 hours included</div>
               <div className={s.pricingDesc}>For teams that need ongoing support, customisation, and priority response.</div>
               <ul className={s.pricingFeatures}>
-                <li><i className="fas fa-check" /> Everything in Starter</li>
-                <li><i className="fas fa-check" /> 20 hours/month (£12.45/hr)</li>
-                <li><i className="fas fa-check" /> Additional hours at £10/hr</li>
-                <li><i className="fas fa-check" /> Same-day response</li>
-                <li><i className="fas fa-check" /> Custom feature development</li>
-                <li><i className="fas fa-check" /> Priority bug fixes</li>
-                <li><i className="fas fa-check" /> Architecture &amp; scaling advice</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Everything in Starter</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> 20 hours/month (£12.45/hr)</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Additional hours at £10/hr</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Same-day response</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Custom feature development</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Priority bug fixes</li>
+                <li><i className="fas fa-check" aria-hidden="true" /> Architecture &amp; scaling advice</li>
               </ul>
               <Link href="/contact" className={s.btnSecondary} style={{ width: '100%', justifyContent: 'center', marginTop: '0.5rem' }}>
-                <i className="fas fa-envelope" /> Contact Us
+                <i className="fas fa-envelope" aria-hidden="true" /> Contact Us
               </Link>
             </div>
           </div>
@@ -229,13 +230,14 @@ export default function PricingPage() {
         </div>
 
         <table className={s.comparisonTable}>
+          <caption className={s.srOnly}>Cost comparison: Intercom vs Chatr by team size</caption>
           <thead>
             <tr>
-              <th>Team Size</th>
-              <th>Intercom /year</th>
-              <th className={s.featuredCol}>Chatr /year</th>
-              <th>You Save</th>
-              <th>5-Year Savings</th>
+              <th scope="col">Team Size</th>
+              <th scope="col">Intercom /year</th>
+              <th scope="col" className={s.featuredCol}>Chatr /year</th>
+              <th scope="col">You Save</th>
+              <th scope="col">5-Year Savings</th>
             </tr>
           </thead>
           <tbody>
@@ -279,7 +281,7 @@ export default function PricingPage() {
             {INCLUDES.map((item, i) => (
               <div className={s.card} key={i}>
                 <div className={`${s.cardIcon} ${item.color}`}>
-                  <i className={item.icon} />
+                  <i className={item.icon} aria-hidden="true" />
                 </div>
                 <div className={s.cardTitle}>{item.title}</div>
                 <div className={s.cardText}>{item.text}</div>
@@ -311,7 +313,7 @@ export default function PricingPage() {
             <div className={s.statLbl}>Days Built</div>
           </div>
           <div className={s.statBox}>
-            <div className={s.statVal}>2,700+</div>
+            <div className={s.statVal}>2,800+</div>
             <div className={s.statLbl}>Tests</div>
           </div>
         </div>
@@ -328,19 +330,19 @@ export default function PricingPage() {
 
           <div className={s.grid3} style={{ marginTop: '2rem' }}>
             <div className={s.valueCard}>
-              <div className={s.valueIcon}><i className="fas fa-user-friends" /></div>
+              <div className={s.valueIcon}><i className="fas fa-user-friends" aria-hidden="true" /></div>
               <div className={s.valueTitle}>10-Person Team</div>
               <div className={s.valueStat}>£4,700/yr</div>
               <div className={s.valueText}>saved vs. Intercom at £39/seat/month. That&rsquo;s £23,500 over 5 years.</div>
             </div>
             <div className={s.valueCard}>
-              <div className={s.valueIcon}><i className="fas fa-building" /></div>
+              <div className={s.valueIcon}><i className="fas fa-building" aria-hidden="true" /></div>
               <div className={s.valueTitle}>50-Person Team</div>
               <div className={s.valueStat}>£23,400/yr</div>
               <div className={s.valueText}>saved vs. Intercom. Over 5 years, that&rsquo;s £117,000 back in your budget.</div>
             </div>
             <div className={s.valueCard}>
-              <div className={s.valueIcon}><i className="fas fa-globe" /></div>
+              <div className={s.valueIcon}><i className="fas fa-globe" aria-hidden="true" /></div>
               <div className={s.valueTitle}>White-Label Reseller</div>
               <div className={s.valueStat}>Unlimited</div>
               <div className={s.valueText}>Deploy per-client instances. Charge clients a flat fee while your cost stays at £0/seat.</div>
@@ -369,11 +371,12 @@ export default function PricingPage() {
         </div>
 
         <table className={s.comparisonTable}>
+          <caption className={s.srOnly}>Estimated cost to build equivalent from scratch</caption>
           <thead>
             <tr>
-              <th>Role / Resource</th>
-              <th>Duration</th>
-              <th>Est. Cost (UK)</th>
+              <th scope="col">Role / Resource</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Est. Cost (UK)</th>
             </tr>
           </thead>
           <tbody>
@@ -421,7 +424,7 @@ export default function PricingPage() {
 
           <div className={s.grid2} style={{ marginTop: '2rem' }}>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-cloud" /></div>
+              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-cloud" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Managed SaaS</div>
               <div className={s.cardText}>
                 Host Chatr as a multi-tenant service. Charge £10–50/month per workspace.
@@ -429,7 +432,7 @@ export default function PricingPage() {
               </div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-store" /></div>
+              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-store" aria-hidden="true" /></div>
               <div className={s.cardTitle}>White-Label Reselling</div>
               <div className={s.cardText}>
                 Deploy branded instances for agency clients. Custom domains, logos, and colour
@@ -437,7 +440,7 @@ export default function PricingPage() {
               </div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-puzzle-piece" /></div>
+              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-puzzle-piece" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Product Integration</div>
               <div className={s.cardText}>
                 Embed the widget or full messaging into your existing SaaS product.
@@ -445,7 +448,7 @@ export default function PricingPage() {
               </div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-file-contract" /></div>
+              <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-file-contract" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Enterprise Licensing</div>
               <div className={s.cardText}>
                 Sell on-premise licenses to compliance-sensitive organisations (healthcare, finance, government).
@@ -469,13 +472,13 @@ export default function PricingPage() {
 
         <div className={s.grid3}>
           {[
-            { icon: 'fa-box-open', color: s.iconBlue, title: 'Ship-Ready IP', text: '82,000+ lines of TypeScript across frontend, backend, widget, and tooling. 2,700+ automated tests. Deployed on AWS with CI/CD.' },
+            { icon: 'fa-box-open', color: s.iconBlue, title: 'Ship-Ready IP', text: '82,000+ lines of TypeScript across frontend, backend, widget, and tooling. 2,800+ automated tests. Deployed on AWS.' },
             { icon: 'fa-pound-sign', color: s.iconGreen, title: 'Revenue Potential', text: 'The embeddable widget competes directly with Intercom (£39–99/seat/month). Offer it as SaaS, sell per-instance licenses, or bundle with your product.' },
-            { icon: 'fa-cogs', color: s.iconPurple, title: 'Integration Ready', text: 'REST API with 85+ endpoints, 100+ WebSocket events, Prisma ORM, and modular architecture. Integrate into existing products or operate standalone.' },
+            { icon: 'fa-cogs', color: s.iconPurple, title: 'Integration Ready', text: 'REST API with 88 endpoints, 85+ WebSocket events, Prisma ORM, and modular architecture. Integrate into existing products or operate standalone.' },
           ].map(f => (
             <div key={f.title} className={s.card}>
               <div className={`${s.cardIcon} ${f.color}`}>
-                <i className={`fas ${f.icon}`} />
+                <i className={`fas ${f.icon}`} aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>{f.title}</div>
               <div className={s.cardText}>{f.text}</div>
@@ -500,18 +503,19 @@ export default function PricingPage() {
           </p>
           <div className={s.heroCtas}>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-              <i className="fab fa-github" /> View on GitHub
+              <i className="fab fa-github" aria-hidden="true" /> View on GitHub
             </a>
             <Link href="/contact" className={s.btnPrimary}>
-              <i className="fas fa-headset" /> Book Support
+              <i className="fas fa-headset" aria-hidden="true" /> Book Support
             </Link>
             <Link href="/product" className={s.btnSecondary}>
-              Full Product Overview <i className="fas fa-book-open" />
+              Full Product Overview <i className="fas fa-book-open" aria-hidden="true" />
             </Link>
           </div>
         </div>
       </div>
 
+      </main>
       <SiteFooter />
     </div>
   );

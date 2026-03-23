@@ -221,6 +221,7 @@
   --blue-300:      var(--color-blue-300);
   --text-primary:  var(--color-slate-100);
   --text-secondary: var(--color-slate-300);
+  --text-tertiary: #94a3b8;
   --border-color:  var(--overlay-blue-20);
   --shadow-orange: var(--overlay-orange-30);
 
@@ -252,6 +253,7 @@
   --blue-300:      var(--color-slate-600);
   --text-primary:  var(--color-slate-900);
   --text-secondary: var(--color-slate-600);
+  --text-tertiary: #64748b;
   --border-color:  var(--overlay-blue-30);
   --shadow-orange: var(--overlay-orange-20);
 

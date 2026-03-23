@@ -146,6 +146,14 @@ export default function ProductPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && sidebarOpen) setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [sidebarOpen]);
+
   const navClick = (id: string) => {
     setSidebarOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -156,14 +164,15 @@ export default function ProductPage() {
       <SiteNav />
 
       {/* Mobile hamburger */}
-      <button className={s.mobileToggle} onClick={() => setSidebarOpen(!sidebarOpen)}>
-        <i className={`fas fa-${sidebarOpen ? 'times' : 'bars'}`} />
+      <button className={s.mobileToggle} onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar navigation" aria-expanded={sidebarOpen}>
+        <i className={`fas fa-${sidebarOpen ? 'times' : 'bars'}`} aria-hidden="true" />
       </button>
 
       {/* Overlay */}
       <div
         className={`${s.sidebarOverlay} ${sidebarOpen ? s.sidebarOverlayVisible : ''}`}
         onClick={() => setSidebarOpen(false)}
+        role="presentation"
       />
 
       {/* Sidebar */}
@@ -174,23 +183,25 @@ export default function ProductPage() {
           </Link>
           <div className={s.sidebarSubtitle}>Overview &bull; Architecture &bull; Commercial Case</div>
         </div>
-        <div className={s.navSection}>
+        <div className={s.navSection} role="navigation" aria-label="Page sections">
           {NAV.map(item => (
             <div key={item.id}>
-              <a
+              <button
                 className={`${s.navLink} ${activeId === item.id ? s.navLinkActive : ''}`}
                 onClick={() => navClick(item.id)}
+                aria-current={activeId === item.id ? 'true' : undefined}
               >
                 {item.label}
-              </a>
+              </button>
               {item.sub?.map(sub => (
-                <a
+                <button
                   key={sub.id}
                   className={`${s.navLink} ${s.navSub} ${activeId === sub.id ? s.navLinkActive : ''}`}
                   onClick={() => navClick(sub.id)}
+                  aria-current={activeId === sub.id ? 'true' : undefined}
                 >
                   {sub.label}
-                </a>
+                </button>
               ))}
             </div>
           ))}
@@ -204,12 +215,13 @@ export default function ProductPage() {
       <button
         className={`${s.backToTop} ${showTop ? s.backToTopVisible : ''}`}
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Back to top"
       >
-        <i className="fas fa-chevron-up" />
+        <i className="fas fa-chevron-up" aria-hidden="true" />
       </button>
 
       {/* Main content */}
-      <main className={s.main}>
+      <main id="main-content" className={s.main}>
         {/* Hero */}
         <div className={s.hero}>
           <h1 className={s.heroTitle}>
@@ -225,19 +237,19 @@ export default function ProductPage() {
           </div>
           <div className={s.ctaRow}>
             <Link href="/app" className={`${s.ctaLink} ${s.ctaPrimary}`}>
-              <i className="fas fa-comments" /> Open App
+              <i className="fas fa-comments" aria-hidden="true" /> Open App
             </Link>
             <Link href="/docs" className={`${s.ctaLink} ${s.ctaSecondary}`}>
-              <i className="fas fa-book" /> Documentation
+              <i className="fas fa-book" aria-hidden="true" /> Documentation
             </Link>
-            <Link href="/dashboard" className={`${s.ctaLink} ${s.ctaSecondary}`}>
-              <i className="fas fa-chart-line" /> Dashboard
-            </Link>
+            <a href="/dashboard" target="_blank" rel="noopener noreferrer" className={`${s.ctaLink} ${s.ctaSecondary}`}>
+              <i className="fas fa-chart-line" aria-hidden="true" /> Dashboard
+            </a>
           </div>
         </div>
 
         <div className={s.statsBar}>
-          {[['50+', 'Features'], ['2,700+', 'Tests'], ['82,000+', 'Lines of Code'], ['30', 'Days']].map(([v, l]) => (
+          {[['50+', 'Features'], ['2,800+', 'Tests'], ['82,000+', 'Lines of Code'], ['30', 'Days']].map(([v, l]) => (
             <div key={l} className={s.statCard}>
               <div className={s.statValue}>{v}</div>
               <div className={s.statLabel}>{l}</div>
@@ -248,7 +260,7 @@ export default function ProductPage() {
         {/* ─── 1. Executive Summary ─────────────────────────── */}
         <Sec id="executive-summary">
           <H1>1. Executive Summary</H1>
-          <P bold>Chatr is a fully functional, production-deployed, real-time messaging platform that demonstrates the breadth of a funded engineering team — delivered by a single developer in 30 days. It is not a prototype or proof of concept. It is a working product with 50+ user-facing features, 2,700+ automated tests, and a deployment running on AWS infrastructure.</P>
+          <P bold>Chatr is a fully functional, production-deployed, real-time messaging platform that demonstrates the breadth of a funded engineering team — delivered by a single developer in 30 days. It is not a prototype or proof of concept. It is a working product with 50+ user-facing features, 2,800+ automated tests, and a deployment running on AWS infrastructure.</P>
           <P>For a commercial audience, Chatr shows what a complete product looks like when messaging, AI, and customer support converge into a single platform. Its embeddable chat widget allows any business to add real-time customer support to their website with a single line of code — competing directly with tools like Intercom (£39–£99/seat/month) at zero recurring cost.</P>
           <P>For a technical audience, Chatr demonstrates mastery across frontend development (React 19, Next.js 16), backend engineering (Node.js, Express, Socket.IO), database design (PostgreSQL, Prisma), caching infrastructure (Redis), AI integration (OpenAI GPT-4o-mini), cloud deployment (AWS), and automated testing (Jest, Playwright). Every layer is production-grade, documented, and covered by automated tests.</P>
           <Callout>This page serves as both a commercial presentation and a technical reference. Each section explains what a feature does, why it matters commercially, and how it is implemented technically.</Callout>
@@ -590,7 +602,7 @@ export default function ProductPage() {
           <P bold>Frontend — Next.js 16, React 19, TypeScript.</P>
           <P>App Router, strict TypeScript, React Context (no Redux), Framer Motion animations, Socket.IO for real-time, IndexedDB for offline cache.</P>
           <P bold>Backend — Node.js, Express, TypeScript.</P>
-          <P>85+ REST endpoints, 100+ Socket.IO event types. Authentication, message routing, file uploads, AI integration, email/SMS delivery.</P>
+          <P>88 REST endpoints, 85+ Socket.IO event types. Authentication, message routing, file uploads, AI integration, email/SMS delivery.</P>
           <P bold>Database — PostgreSQL 16, Prisma ORM.</P>
           <P>9 models with type-safe queries and automatic migrations.</P>
           <P bold>Caching & Pub/Sub — Redis 7.</P>
@@ -656,9 +668,9 @@ export default function ProductPage() {
         {/* ─── 12. Quality Assurance ───────────────────────── */}
         <Sec id="quality">
           <H1>12. Quality Assurance</H1>
-          <P>Over 2,700 automated tests across three tiers.</P>
+          <P>Over 2,800 automated tests across three tiers.</P>
           <div className={s.statsBar}>
-            {[['2,700+', 'Total Tests'], ['1,475', 'Frontend'], ['1,133', 'Backend'], ['85', 'End-to-End']].map(([v, l]) => (
+            {[['2,800+', 'Total Tests'], ['1,475', 'Frontend'], ['1,133', 'Backend'], ['168', 'End-to-End']].map(([v, l]) => (
               <div key={l} className={s.statCard}>
                 <div className={s.statValue}>{v}</div>
                 <div className={s.statLabel}>{l}</div>
@@ -672,7 +684,7 @@ export default function ProductPage() {
           <H2>Backend (1,133 tests)</H2>
           <P>Every API endpoint, auth flow, Socket.IO handler, email/SMS service, and AI integration tested. 73% coverage.</P>
 
-          <H2>End-to-End (85 tests)</H2>
+          <H2>End-to-End (168 tests)</H2>
           <P>Playwright drives Desktop Chrome and iPhone 14. Two simultaneous test users verify real-time delivery, typing indicators, and presence.</P>
           <Tech>E2E results cached to .test-cache/ and displayed in the developer dashboard. Custom Playwright reporter.</Tech>
         </Sec>
@@ -703,8 +715,8 @@ export default function ProductPage() {
           <Bullets items={[
             { prefix: 'Docs —', text: 'Searchable documentation with architecture diagrams, API reference, and setup guides.' },
             { prefix: 'Email Templates —', text: 'Visual previews of every transactional email.' },
-            { prefix: 'API Docs —', text: 'Interactive Swagger UI for all 85+ REST endpoints.' },
-            { prefix: 'Component Demos —', text: 'Living style guide for every UI component.' },
+            { prefix: 'API Docs —', text: 'Interactive Swagger UI for all 88 REST endpoints.' },
+            { prefix: 'Storybook —', text: '69 component stories with dark and light theme variants. Visual documentation for every UI component.' },
             { prefix: 'Log Viewer —', text: 'In-app logs with filtering, search, and severity levels.' },
             { prefix: 'Docker Compose —', text: 'git clone to running app in under 2 minutes.' },
           ]} />
@@ -716,11 +728,11 @@ export default function ProductPage() {
           <div className={s.statLines}>
             {[
               ['User-facing features', '50+'],
-              ['Automated tests', '2,700+'],
+              ['Automated tests', '2,800+'],
               ['Lines of code', '82,000+'],
               ['Source files', '432'],
-              ['REST API endpoints', '85+'],
-              ['WebSocket event types', '100+'],
+              ['REST API endpoints', '88'],
+              ['WebSocket event types', '85+'],
               ['UI components', '186 (60+ custom)'],
               ['Database models', '9'],
               ['Auth methods', '4'],
@@ -748,7 +760,7 @@ export default function ProductPage() {
           <P>The widget competes directly with Intercom (£39–£99/seat/month), Drift, and Zendesk Chat — at zero recurring cost. A 10-person team saves £4,700–£11,900/year.</P>
 
           <H2>It Is Tested Like Enterprise Software</H2>
-          <P>2,700+ tests across three tiers. 99% frontend and 73% backend coverage. Custom dashboard visualises test results, code health, and security in real time.</P>
+          <P>2,800+ tests across three tiers. 99% frontend and 73% backend coverage. Custom dashboard visualises test results, code health, and security in real time.</P>
 
           <H2>It Is Built on Proven Technology</H2>
           <P>React 19, Next.js 16, Node.js, PostgreSQL, Redis, AWS — the same stack trusted by Slack, Shopify, Netflix, and Uber. Any JavaScript developer can be productive on day one.</P>

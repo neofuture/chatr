@@ -46,9 +46,10 @@ export default function ContactPage() {
   return (
     <div className={s.page}>
       <SiteNav />
+      <main id="main-content">
 
       <section className={s.heroSection}>
-        <div className={s.heroGradient} />
+        <div className={s.heroGradient} aria-hidden="true" />
         <div className={s.heroInner}>
           <span className={s.heroTag}>Get in Touch</span>
           <h1 className={s.heroH1}>
@@ -67,14 +68,14 @@ export default function ContactPage() {
           {/* Form */}
           <div>
             {status === 'sent' ? (
-              <div style={{
+              <div role="status" style={{
                 background: 'var(--overlay-green-20)',
                 border: '1px solid var(--overlay-green-50)',
                 borderRadius: 12,
                 padding: '2.5rem',
                 textAlign: 'center',
               }}>
-                <i className="fas fa-check-circle" style={{ fontSize: '2.5rem', color: 'var(--color-green-500)', marginBottom: '1rem', display: 'block' }} />
+                <i className="fas fa-check-circle" aria-hidden="true" style={{ fontSize: '2.5rem', color: 'var(--color-green-500)', marginBottom: '1rem', display: 'block' }} />
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Message Sent</h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                   Thanks for reaching out. We&rsquo;ll get back to you shortly.
@@ -90,48 +91,55 @@ export default function ContactPage() {
             ) : (
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
+                  <label htmlFor="contact-name" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
                     Name <span style={{ color: 'var(--color-red-400)' }}>*</span>
                   </label>
                   <input
+                    id="contact-name"
                     type="text"
                     required
                     value={form.name}
                     onChange={set('name')}
                     placeholder="Your full name"
                     className="form-input"
+                    autoComplete="name"
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
+                  <label htmlFor="contact-email" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
                     Email <span style={{ color: 'var(--color-red-400)' }}>*</span>
                   </label>
                   <input
+                    id="contact-email"
                     type="email"
                     required
                     value={form.email}
                     onChange={set('email')}
                     placeholder="you@company.com"
                     className="form-input"
+                    autoComplete="email"
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
+                  <label htmlFor="contact-company" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
                     Company
                   </label>
                   <input
+                    id="contact-company"
                     type="text"
                     value={form.company}
                     onChange={set('company')}
                     placeholder="Your company (optional)"
                     className="form-input"
+                    autoComplete="organization"
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
+                  <label htmlFor="contact-message" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-secondary)' }}>
                     Message <span style={{ color: 'var(--color-red-400)' }}>*</span>
                   </label>
                   <textarea
+                    id="contact-message"
                     required
                     rows={6}
                     value={form.message}
@@ -143,7 +151,7 @@ export default function ContactPage() {
                 </div>
 
                 {status === 'error' && (
-                  <div style={{
+                  <div role="alert" style={{
                     background: 'var(--overlay-red-20)',
                     border: '1px solid var(--overlay-red-50)',
                     borderRadius: 8,
@@ -162,9 +170,9 @@ export default function ContactPage() {
                   style={{ width: '100%', justifyContent: 'center', marginTop: '0.25rem' }}
                 >
                   {status === 'sending' ? (
-                    <><i className="fas fa-spinner fa-spin" /> Sending...</>
+                    <><i className="fas fa-spinner fa-spin" aria-hidden="true" /> Sending...</>
                   ) : (
-                    <><i className="fas fa-paper-plane" /> Send Message</>
+                    <><i className="fas fa-paper-plane" aria-hidden="true" /> Send Message</>
                   )}
                 </button>
               </form>
@@ -175,7 +183,7 @@ export default function ContactPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconGreen}`}>
-                <i className="fas fa-headset" />
+                <i className="fas fa-headset" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Paid Support — £15/hour</div>
               <div className={s.cardText}>
@@ -186,17 +194,17 @@ export default function ContactPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconBlue}`}>
-                <i className="fas fa-handshake" />
+                <i className="fas fa-handshake" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Acquisition &amp; Licensing</div>
               <div className={s.cardText}>
                 Interested in acquiring the IP, licensing the platform, or a commercial partnership?
-                Let&rsquo;s talk numbers. Production-ready code, 2,700+ tests, full documentation.
+                Let&rsquo;s talk numbers. Production-ready code, 2,800+ tests, full documentation.
               </div>
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconPurple}`}>
-                <i className="fas fa-cogs" />
+                <i className="fas fa-cogs" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Custom Development</div>
               <div className={s.cardText}>
@@ -206,7 +214,7 @@ export default function ContactPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconOrange}`}>
-                <i className="fas fa-clock" />
+                <i className="fas fa-clock" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Quick Response</div>
               <div className={s.cardText}>
@@ -227,15 +235,16 @@ export default function ContactPage() {
           </p>
           <div className={s.heroCtas}>
             <Link href="/features" className={s.btnSecondary}>
-              <i className="fas fa-th-large" /> Explore Features
+              <i className="fas fa-th-large" aria-hidden="true" /> Explore Features
             </Link>
             <Link href="/product" className={s.btnSecondary}>
-              <i className="fas fa-book-open" /> Full Overview
+              <i className="fas fa-book-open" aria-hidden="true" /> Full Overview
             </Link>
           </div>
         </div>
       </div>
 
+      </main>
       <SiteFooter />
     </div>
   );

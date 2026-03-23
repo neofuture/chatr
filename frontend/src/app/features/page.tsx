@@ -14,10 +14,11 @@ export default function FeaturesPage() {
   return (
     <div className={s.page}>
       <SiteNav />
+      <main id="main-content">
 
       {/* ── Hero ──────────────────────────────────────────── */}
       <section className={s.heroSection}>
-        <div className={s.heroGradient} />
+        <div className={s.heroGradient} aria-hidden="true" />
         <div className={s.heroInner}>
           <span className={s.heroTag}>50+ Features</span>
           <h1 className={s.heroH1}>
@@ -31,10 +32,10 @@ export default function FeaturesPage() {
           </p>
           <div className={s.heroCtas}>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-              <i className="fab fa-github" /> View on GitHub
+              <i className="fab fa-github" aria-hidden="true" /> View on GitHub
             </a>
             <Link href="/pricing" className={s.btnSecondary}>
-              <i className="fas fa-tag" /> Compare Options
+              <i className="fas fa-tag" aria-hidden="true" /> Compare Options
             </Link>
           </div>
         </div>
@@ -54,7 +55,7 @@ export default function FeaturesPage() {
         <div className={s.grid3}>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconBlue}`}>
-              <i className="fas fa-comment-dots" />
+              <i className="fas fa-comment-dots" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Text Messages</div>
             <div className={s.cardText}>
@@ -64,7 +65,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconPurple}`}>
-              <i className="fas fa-microphone" />
+              <i className="fas fa-microphone" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Voice Messages</div>
             <div className={s.cardText}>
@@ -74,7 +75,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconGreen}`}>
-              <i className="fas fa-image" />
+              <i className="fas fa-image" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Image Sharing</div>
             <div className={s.cardText}>
@@ -84,7 +85,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconRed}`}>
-              <i className="fas fa-video" />
+              <i className="fas fa-video" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Video Sharing</div>
             <div className={s.cardText}>
@@ -93,7 +94,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconOrange}`}>
-              <i className="fas fa-paperclip" />
+              <i className="fas fa-paperclip" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>File Attachments</div>
             <div className={s.cardText}>
@@ -103,7 +104,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconSlate}`}>
-              <i className="fas fa-link" />
+              <i className="fas fa-link" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Link Previews</div>
             <div className={s.cardText}>
@@ -113,7 +114,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconPurple}`}>
-              <i className="fas fa-code" />
+              <i className="fas fa-code" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Code Blocks</div>
             <div className={s.cardText}>
@@ -147,7 +148,7 @@ export default function FeaturesPage() {
           <div className={s.grid3}>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconBlue}`}>
-                <i className="fas fa-ellipsis-h" />
+                <i className="fas fa-ellipsis-h" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Typing Indicators</div>
               <div className={s.cardText}>
@@ -157,7 +158,7 @@ export default function FeaturesPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconPurple}`}>
-                <i className="fas fa-ghost" />
+                <i className="fas fa-ghost" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Ghost Typing</div>
               <div className={s.cardText}>
@@ -167,7 +168,7 @@ export default function FeaturesPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconGreen}`}>
-                <i className="fas fa-check-double" />
+                <i className="fas fa-check-double" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Read Receipts</div>
               <div className={s.cardText}>
@@ -177,7 +178,7 @@ export default function FeaturesPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconOrange}`}>
-                <i className="fas fa-circle" />
+                <i className="fas fa-circle" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Online Presence</div>
               <div className={s.cardText}>
@@ -187,7 +188,7 @@ export default function FeaturesPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconRed}`}>
-                <i className="fas fa-record-vinyl" />
+                <i className="fas fa-record-vinyl" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Recording Indicator</div>
               <div className={s.cardText}>
@@ -197,7 +198,7 @@ export default function FeaturesPage() {
             </div>
             <div className={s.card}>
               <div className={`${s.cardIcon} ${s.iconSlate}`}>
-                <i className="fas fa-brain" />
+                <i className="fas fa-brain" aria-hidden="true" />
               </div>
               <div className={s.cardTitle}>Smart Summaries</div>
               <div className={s.cardText}>
@@ -230,7 +231,7 @@ export default function FeaturesPage() {
         <div className={s.grid3}>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconOrange}`}>
-              <i className="fas fa-smile" />
+              <i className="fas fa-smile" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Reactions</div>
             <div className={s.cardText}>
@@ -240,7 +241,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconBlue}`}>
-              <i className="fas fa-reply" />
+              <i className="fas fa-reply" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Replies</div>
             <div className={s.cardText}>
@@ -250,7 +251,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconGreen}`}>
-              <i className="fas fa-pen" />
+              <i className="fas fa-pen" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Edit Messages</div>
             <div className={s.cardText}>
@@ -260,7 +261,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconRed}`}>
-              <i className="fas fa-trash-alt" />
+              <i className="fas fa-trash-alt" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Unsend Messages</div>
             <div className={s.cardText}>
@@ -270,7 +271,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconPurple}`}>
-              <i className="fas fa-grin-beam" />
+              <i className="fas fa-grin-beam" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Emoji Picker</div>
             <div className={s.cardText}>
@@ -279,7 +280,7 @@ export default function FeaturesPage() {
           </div>
           <div className={s.card}>
             <div className={`${s.cardIcon} ${s.iconSlate}`}>
-              <i className="fas fa-wifi" />
+              <i className="fas fa-wifi" aria-hidden="true" />
             </div>
             <div className={s.cardTitle}>Offline Support</div>
             <div className={s.cardText}>
@@ -310,10 +311,10 @@ export default function FeaturesPage() {
             </p>
             <div className={s.heroCtas} style={{ marginTop: '1.25rem' }}>
               <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-                <i className="fab fa-github" /> Get the Source
+                <i className="fab fa-github" aria-hidden="true" /> Get the Source
               </a>
               <Link href="/docs" className={s.btnSecondary}>
-                <i className="fas fa-book" /> Documentation
+                <i className="fas fa-book" aria-hidden="true" /> Documentation
               </Link>
             </div>
           </div>
@@ -370,17 +371,17 @@ export default function FeaturesPage() {
           <div>
             <div className={s.grid3} style={{ gridTemplateColumns: '1fr', gap: '1rem', marginTop: '1rem' }}>
               <div className={s.card}>
-                <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-robot" /></div>
+                <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-robot" aria-hidden="true" /></div>
                 <div className={s.cardTitle}>Luna AI Chatbot</div>
                 <div className={s.cardText}>Ask questions, get code help, brainstorm ideas, or just chat. Luna maintains conversation context and responds with typing indicators like a real contact.</div>
               </div>
               <div className={s.card}>
-                <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-stream" /></div>
+                <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-stream" aria-hidden="true" /></div>
                 <div className={s.cardTitle}>Streaming Responses</div>
                 <div className={s.cardText}>Responses stream token-by-token in real time. You see Luna &ldquo;typing&rdquo; and then watch the response build, exactly like iMessage or ChatGPT.</div>
               </div>
               <div className={s.card}>
-                <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-brain" /></div>
+                <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-brain" aria-hidden="true" /></div>
                 <div className={s.cardTitle}>Conversation Summaries</div>
                 <div className={s.cardText}>AI-generated one-line summaries replace the last message on the conversation list. Scan every thread at a glance without opening them.</div>
               </div>
@@ -407,17 +408,17 @@ export default function FeaturesPage() {
 
           <div className={s.grid3}>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-id-card" /></div>
+              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-id-card" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Rich Profiles</div>
               <div className={s.cardText}>Display name, bio, avatar, and cover image. Profile cards show friend status, online indicator, and mutual groups.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-user-lock" /></div>
+              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-user-lock" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Granular Privacy</div>
               <div className={s.cardText}>Control visibility of online status, last seen, profile photo, read receipts, and typing indicators — each on a per-field toggle.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-bell" /></div>
+              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-bell" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Notification Preferences</div>
               <div className={s.cardText}>Per-conversation muting, sound toggles, and notification grouping. Desktop push notifications for mentions and DMs.</div>
             </div>
@@ -471,32 +472,32 @@ export default function FeaturesPage() {
 
           <div className={s.grid3}>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-envelope" /></div>
+              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-envelope" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Email Verification</div>
               <div className={s.cardText}>Transactional emails via Mailtrap with branded HTML templates for verification, password reset, and welcome flows.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-mobile-alt" /></div>
+              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-mobile-alt" aria-hidden="true" /></div>
               <div className={s.cardTitle}>SMS Verification</div>
               <div className={s.cardText}>SMS code delivery via The SMS Works API. 6-digit codes with expiry, rate limiting, and retry protection.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-key" /></div>
+              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-key" aria-hidden="true" /></div>
               <div className={s.cardTitle}>TOTP Two-Factor Auth</div>
               <div className={s.cardText}>Time-based one-time passwords with QR code setup, backup codes, and authenticator app support (Google Authenticator, Authy).</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-shield-alt" /></div>
+              <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-shield-alt" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Password Recovery</div>
               <div className={s.cardText}>Secure token-based reset flow with email delivery, expiry, and single-use enforcement.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconRed}`}><i className="fas fa-tachometer-alt" /></div>
+              <div className={`${s.cardIcon} ${s.iconRed}`}><i className="fas fa-tachometer-alt" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Rate Limiting</div>
               <div className={s.cardText}>Redis-backed rate limiting on login, registration, and API endpoints. Prevents brute-force and abuse.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconSlate}`}><i className="fas fa-user-lock" /></div>
+              <div className={`${s.cardIcon} ${s.iconSlate}`}><i className="fas fa-user-lock" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Privacy Controls</div>
               <div className={s.cardText}>Per-field visibility (online status, last seen, profile, read receipts). Users control exactly what others can see.</div>
             </div>
@@ -517,17 +518,17 @@ export default function FeaturesPage() {
 
         <div className={s.grid3}>
           <div className={s.card}>
-            <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-plug" /></div>
-            <div className={s.cardTitle}>85+ REST Endpoints</div>
+            <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-plug" aria-hidden="true" /></div>
+            <div className={s.cardTitle}>88 REST Endpoints</div>
             <div className={s.cardText}>Full API with Swagger documentation. Authentication, messaging, groups, files, contacts, settings — all via standard REST.</div>
           </div>
           <div className={s.card}>
-            <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-bolt" /></div>
-            <div className={s.cardTitle}>100+ WebSocket Events</div>
+            <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-bolt" aria-hidden="true" /></div>
+            <div className={s.cardTitle}>85+ WebSocket Events</div>
             <div className={s.cardText}>Real-time event system for messages, typing, presence, reactions, and more. Redis adapter for horizontal scaling.</div>
           </div>
           <div className={s.card}>
-            <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-database" /></div>
+            <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-database" aria-hidden="true" /></div>
             <div className={s.cardTitle}>Prisma ORM</div>
             <div className={s.cardText}>Type-safe database access with auto-generated types, migrations, and 9 well-defined models. No raw SQL.</div>
           </div>
@@ -556,32 +557,32 @@ export default function FeaturesPage() {
 
           <div className={s.grid3}>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-heartbeat" /></div>
+              <div className={`${s.cardIcon} ${s.iconBlue}`}><i className="fas fa-heartbeat" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Code Health Gauges</div>
               <div className={s.cardText}>Live dials showing test coverage, linter health, dependency freshness, and build stability. Green/amber/red at a glance.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-code-branch" /></div>
+              <div className={`${s.cardIcon} ${s.iconPurple}`}><i className="fas fa-code-branch" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Commit Intelligence</div>
               <div className={s.cardText}>Every commit tracked with type breakdown (feat/fix/chore), velocity charts, and auto-generated changelogs.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-vial" /></div>
+              <div className={`${s.cardIcon} ${s.iconGreen}`}><i className="fas fa-vial" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Embedded Test Runner</div>
-              <div className={s.cardText}>Run all 2,700+ tests directly from the dashboard. Live streaming results with pass/fail counts and timing.</div>
+              <div className={s.cardText}>Run all 2,800+ tests directly from the dashboard. Live streaming results with pass/fail counts and timing.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-shield-alt" /></div>
+              <div className={`${s.cardIcon} ${s.iconOrange}`}><i className="fas fa-shield-alt" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Security Audit Panel</div>
               <div className={s.cardText}>Dependency vulnerability scanning, audit results, and security posture overview — all visible in one panel.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconRed}`}><i className="fas fa-chart-bar" /></div>
+              <div className={`${s.cardIcon} ${s.iconRed}`}><i className="fas fa-chart-bar" aria-hidden="true" /></div>
               <div className={s.cardTitle}>17+ Live Metrics</div>
               <div className={s.cardText}>Lines of code, file counts, test counts, endpoint counts, socket events, components, dependencies, and more.</div>
             </div>
             <div className={s.card}>
-              <div className={`${s.cardIcon} ${s.iconSlate}`}><i className="fas fa-file-alt" /></div>
+              <div className={`${s.cardIcon} ${s.iconSlate}`}><i className="fas fa-file-alt" aria-hidden="true" /></div>
               <div className={s.cardTitle}>Documentation Viewer</div>
               <div className={s.cardText}>Built-in Markdown documentation with Mermaid diagrams, syntax highlighting, and searchable API reference.</div>
             </div>
@@ -592,9 +593,9 @@ export default function FeaturesPage() {
               className={s.screenshotWide} style={{ width: '100%', maxWidth: 900, height: 'auto' }} />
           </div>
           <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-            <Link href="/dashboard" className={s.btnSecondary}>
-              <i className="fas fa-chart-line" /> View Live Dashboard
-            </Link>
+            <a href="/dashboard" target="_blank" rel="noopener noreferrer" className={s.btnSecondary}>
+              <i className="fas fa-chart-line" aria-hidden="true" /> View Live Dashboard
+            </a>
           </div>
         </div>
       </div>
@@ -610,19 +611,20 @@ export default function FeaturesPage() {
             </p>
             <div className={s.heroCtas}>
               <Link href="/widget" className={s.btnPrimary}>
-                <i className="fas fa-puzzle-piece" /> Explore the Widget
+                <i className="fas fa-puzzle-piece" aria-hidden="true" /> Explore the Widget
               </Link>
               <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.btnPrimary}>
-                <i className="fab fa-github" /> View on GitHub
+                <i className="fab fa-github" aria-hidden="true" /> View on GitHub
               </a>
               <Link href="/product" className={s.btnSecondary}>
-                <i className="fas fa-book-open" /> Full Product Overview
+                <i className="fas fa-book-open" aria-hidden="true" /> Full Product Overview
               </Link>
             </div>
           </div>
         </div>
       </div>
 
+      </main>
       <SiteFooter />
     </div>
   );

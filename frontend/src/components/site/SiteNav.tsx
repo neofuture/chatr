@@ -8,6 +8,8 @@ import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 import AuthPanel from '@/components/panels/AuthPanel/AuthPanel';
 import s from './SiteNav.module.css';
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 const LINKS = [
   { href: '/', label: 'Home' },
   { href: '/features', label: 'Features' },
@@ -93,10 +95,23 @@ export default function SiteNav() {
   };
 
   const hasProfileImage = !!user?.profileImage;
+  const avatarSrc = user?.profileImage?.startsWith('http') ? user.profileImage : `${API}${user?.profileImage}`;
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (dropdownOpen) setDropdownOpen(false);
+        if (open) setOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [dropdownOpen, open]);
 
   return (
     <>
-      <nav className={s.nav}>
+      <a href="#main-content" className={s.skipLink}>Skip to content</a>
+      <nav className={s.nav} aria-label="Main navigation">
         <div className={s.inner}>
           <Link href="/" className={s.logo}>
             <Image
@@ -115,6 +130,7 @@ export default function SiteNav() {
                 key={l.href}
                 href={l.href}
                 className={`${s.link} ${pathname === l.href ? s.linkActive : ''}`}
+                aria-current={pathname === l.href ? 'page' : undefined}
               >
                 {l.label}
               </Link>
@@ -123,7 +139,7 @@ export default function SiteNav() {
 
           <div className={s.rightSection}>
             <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer" className={s.githubLink} aria-label="GitHub">
-              <i className="fab fa-github" />
+              <i className="fab fa-github" aria-hidden="true" />
             </a>
             <div className={s.themeBtn}><ThemeToggle compact showLabel={false} /></div>
 
@@ -132,41 +148,42 @@ export default function SiteNav() {
                 className={s.avatarBtn}
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 aria-label="User menu"
+                aria-expanded={dropdownOpen}
               >
                 {hasProfileImage ? (
                   <img
-                    src={user.profileImage!}
+                    src={avatarSrc}
                     alt={user?.displayName || user?.username || 'User'}
                     className={s.avatar}
                   />
                 ) : (
                   <div className={s.avatarFallback}>
-                    <i className="fas fa-user" />
+                    <i className="fas fa-user" aria-hidden="true" />
                   </div>
                 )}
               </button>
 
               {dropdownOpen && (
-                <div className={s.dropdown}>
+                <div className={s.dropdown} role="menu">
                   {user ? (
                     <>
                       <div className={s.dropdownHeader}>
                         <span className={s.dropdownName}>{user.displayName || user.username}</span>
                       </div>
-                      <Link href="/app" className={s.dropdownItem} onClick={() => setDropdownOpen(false)}>
-                        <i className="fas fa-rocket" /> Go to App
+                      <Link href="/app" className={s.dropdownItem} role="menuitem" onClick={() => setDropdownOpen(false)}>
+                        <i className="fas fa-rocket" aria-hidden="true" /> Go to App
                       </Link>
-                      <button className={s.dropdownItem} onClick={handleLogout}>
-                        <i className="fas fa-sign-out-alt" /> Logout
+                      <button className={s.dropdownItem} role="menuitem" onClick={handleLogout}>
+                        <i className="fas fa-sign-out-alt" aria-hidden="true" /> Logout
                       </button>
                     </>
                   ) : (
                     <>
-                      <button className={s.dropdownItem} onClick={() => openAuthPanel('login')}>
-                        <i className="fas fa-sign-in-alt" /> Login
+                      <button className={s.dropdownItem} role="menuitem" onClick={() => openAuthPanel('login')}>
+                        <i className="fas fa-sign-in-alt" aria-hidden="true" /> Login
                       </button>
-                      <button className={s.dropdownItem} onClick={() => openAuthPanel('register')}>
-                        <i className="fas fa-user-plus" /> Register
+                      <button className={s.dropdownItem} role="menuitem" onClick={() => openAuthPanel('register')}>
+                        <i className="fas fa-user-plus" aria-hidden="true" /> Register
                       </button>
                     </>
                   )}
@@ -175,8 +192,8 @@ export default function SiteNav() {
             </div>
           </div>
 
-          <button className={s.hamburger} onClick={() => setOpen(!open)}>
-            <i className={`fas fa-${open ? 'times' : 'bars'}`} />
+          <button className={s.hamburger} onClick={() => setOpen(!open)} aria-label="Toggle navigation menu" aria-expanded={open}>
+            <i className={`fas fa-${open ? 'times' : 'bars'}`} aria-hidden="true" />
           </button>
         </div>
       </nav>
@@ -188,6 +205,7 @@ export default function SiteNav() {
               key={l.href}
               href={l.href}
               className={`${s.link} ${pathname === l.href ? s.linkActive : ''}`}
+              aria-current={pathname === l.href ? 'page' : undefined}
               onClick={() => setOpen(false)}
             >
               {l.label}
@@ -197,19 +215,19 @@ export default function SiteNav() {
             {user ? (
               <>
                 <Link href="/app" className={s.mobileCta} onClick={() => setOpen(false)}>
-                  <i className="fas fa-rocket" /> Go to App
+                  <i className="fas fa-rocket" aria-hidden="true" /> Go to App
                 </Link>
                 <button className={s.mobileLogout} onClick={() => { handleLogout(); setOpen(false); }}>
-                  <i className="fas fa-sign-out-alt" /> Logout
+                  <i className="fas fa-sign-out-alt" aria-hidden="true" /> Logout
                 </button>
               </>
             ) : (
               <>
                 <button className={s.mobileCta} onClick={() => openAuthPanel('login')}>
-                  <i className="fas fa-sign-in-alt" /> Login
+                  <i className="fas fa-sign-in-alt" aria-hidden="true" /> Login
                 </button>
                 <button className={s.mobileRegister} onClick={() => openAuthPanel('register')}>
-                  <i className="fas fa-user-plus" /> Register
+                  <i className="fas fa-user-plus" aria-hidden="true" /> Register
                 </button>
               </>
             )}

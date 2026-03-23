@@ -12,8 +12,8 @@ export default function SiteFooter() {
     <footer className={s.footer}>
       <div className={s.inner}>
         <div className={s.brand}>
-          <h3>Chatr</h3>
-          <p>A free, open source real-time messaging platform with 50+ features, 2,700+ tests, and an embeddable support widget. MIT-licensed.</p>
+          <h2>Chatr</h2>
+          <p>A free, open source real-time messaging platform with 50+ features, 2,800+ tests, and an embeddable support widget. MIT-licensed.</p>
         </div>
 
         <div className={s.col}>
@@ -28,13 +28,14 @@ export default function SiteFooter() {
           <div className={s.colTitle}>Technical</div>
           <Link href="/technology">Architecture</Link>
           <Link href="/docs">Documentation</Link>
-          <Link href="/dashboard">Dashboard</Link>
-          <Link href="/demo">Component Demos</Link>
+          <a href="/dashboard" target="_blank" rel="noopener noreferrer">Dashboard</a>
+          <a href="/storybook" target="_blank" rel="noopener noreferrer">Storybook</a>
+          <a href="/demo" target="_blank" rel="noopener noreferrer">Component Demos</a>
         </div>
 
         <div className={s.col}>
           <div className={s.colTitle}>Get Started</div>
-          <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer"><i className="fab fa-github" style={{ marginRight: 6 }} />GitHub</a>
+          <a href="https://github.com/neofuture/chatr" target="_blank" rel="noopener noreferrer"><i className="fab fa-github" aria-hidden="true" style={{ marginRight: 6 }} />GitHub</a>
           <Link href="/contact">Paid Support</Link>
           <Link href="/contact">Contact</Link>
           <Link href="/app">Open App</Link>
@@ -46,7 +47,7 @@ export default function SiteFooter() {
         <span>&copy; {new Date().getFullYear()} Chatr. Built with React 19, Next.js 16, Node.js, PostgreSQL, Redis &amp; AWS.</span>
         <div className={s.stats}>
           <span className={s.stat}><span>82,000+</span> lines of code</span>
-          <span className={s.stat}><span>2,700+</span> tests</span>
+          <span className={s.stat}><span>2,800+</span> tests</span>
           <span className={s.stat}><span>30</span> days</span>
         </div>
       </div>

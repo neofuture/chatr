@@ -12,14 +12,14 @@ export const metadata: Metadata = {
     description:
       'Interested in acquiring Chatr, licensing the technology, or integrating it into your product? Let\'s talk business.',
     url: SITE_URL + '/contact',
-    images: [{ url: SITE_URL + '/screenshots/10-dashboard-top.png', width: 1440, height: 900, alt: 'Contact Chatr' }],
+    images: [{ url: SITE_URL + '/screenshots/01-landing-page.png', width: 1440, height: 900, alt: 'Contact Chatr' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Contact — Acquisition, Licensing & Partnerships',
     description:
       'Interested in acquiring Chatr, licensing the technology, or integrating it into your product? Let\'s talk business.',
-    images: [SITE_URL + '/screenshots/10-dashboard-top.png'],
+    images: [SITE_URL + '/screenshots/01-landing-page.png'],
   },
   alternates: { canonical: SITE_URL + '/contact' },
 };
