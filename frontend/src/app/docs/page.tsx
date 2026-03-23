@@ -1012,6 +1012,7 @@ export default function DocsPage() {
                         { label: 'Widget', file: 'Widget/index.md', icon: 'fa-puzzle-piece' },
                         { label: 'Testing', file: 'Testing/index.md', icon: 'fa-flask' },
                         { label: 'Deployment', file: 'Getting-Started/DEPLOYMENT.md', icon: 'fa-cloud-upload' },
+                        { label: 'Glossary', file: 'GLOSSARY.md', icon: 'fa-book' },
                       ].map(link => (
                         <li key={link.file}>
                           <a

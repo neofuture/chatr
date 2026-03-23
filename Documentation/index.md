@@ -33,6 +33,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | [Testing](./Testing/index.md) | Test suite, Jest config, coverage |
 | [Presentation](./PRESENTATION.md) | Product narrative, architecture overview, and feature showcase |
 | [Version History](./VERSION.md) | Version history and release notes |
+| [Glossary](./GLOSSARY.md) | Definitions of technical terms used throughout the docs |
 
 ## Quick Reference
 

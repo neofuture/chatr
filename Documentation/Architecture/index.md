@@ -165,46 +165,51 @@ sequenceDiagram
 
 ## Directory Structure
 
-```mermaid
-graph TD
-    chatr --> frontend
-    chatr --> backend
-    chatr --> prisma
-    chatr --> widgetsrc["widget-src/<br/>Widget source code (chatr.js)<br/>and build script (build.js).<br/>Not served publicly."]
-    chatr --> widgetout["widget/<br/>Minified widget output (chatr.js)<br/>and SVG icon assets (icons/).<br/>Served at /widget/."]
-
-    frontend --> fapp["app/<br/>pages + layouts"]
-    frontend --> fcomponents["components/<br/>UI library"]
-    frontend --> fcontexts["contexts/<br/>WS · Theme · Toast · Panel<br/>Presence · Confirmation · Log · UserSettings"]
-    frontend --> fhooks["hooks/<br/>useAuth · useOfflineSync · useConversationList<br/>useConversationView · useMessageInput · useGroupMessageInput<br/>useFriends · useMessageToast · useTTS"]
-    frontend --> flib["lib/<br/>api · auth · db · offline<br/>imageServices · messageCache"]
-    frontend --> ftypes["types/<br/>User · Message · Conversation · Group"]
-    frontend --> futils["utils/<br/>extractWaveform · audio"]
-
-    fapp --> apppages["demo · docs · dashboard · email-preview"]
-    fapp --> appauth["app/ authenticated<br/>chat · friends · settings · groups · updates · test"]
-
-    fcomponents --> messaging["messaging/<br/>ConversationsList · ConversationView<br/>ChatView · MessageInput · NewChatPanel<br/>MessageBubble · MessageAudioPlayer<br/>VoiceRecorder · EmojiPicker"]
-    fcomponents --> friendscomp["friends/<br/>FriendsPanel"]
-    fcomponents --> commoncomp["common/<br/>PaneSearchBox"]
-    fcomponents --> formcontrols["form-controls/<br/>Button · Input · Select · Textarea<br/>Checkbox · Radio · DatePicker · Calendar<br/>RangeSlider · DualRangeSlider"]
-    fcomponents --> dialogs["dialogs/<br/>BottomSheet · ConfirmationDialog · Lightbox"]
-    fcomponents --> imagemanip["image-manip/<br/>ProfileImage · CoverImage<br/>Uploader + Cropper"]
-    fcomponents --> formcomps["forms/<br/>LoginForm · LoginVerification<br/>EmailVerification · ForgotPassword"]
-    fcomponents --> panels["panels/<br/>PanelContainer · AuthPanel · DemoPanels"]
-    fcomponents --> layout["layout/<br/>AppLayout · MobileLayout<br/>BottomNav · PanelFooter · BackgroundBlobs"]
-    fcomponents --> utility["utility/<br/>Logo · ThemeToggle · ToastContainer<br/>PresenceAvatar · PresenceLabel<br/>FlipText · LogViewerPanel · MermaidDiagram<br/>BurgerMenu · RoutePreloader"]
-
-    backend --> bsrc["src/"]
-    bsrc --> bindexts["index.ts<br/>Express + Socket.io entry"]
-    bsrc --> bmiddleware["middleware/<br/>auth.ts — JWT"]
-    bsrc --> broutes["routes/<br/>auth · users · messages<br/>friends · conversations<br/>groups · file-upload · email-templates<br/>dashboard · contact · test-cleanup"]
-    bsrc --> bsocket["socket/<br/>handlers.ts — events + presence"]
-    bsrc --> blib["lib/<br/>redis.ts · conversation.ts"]
-    bsrc --> bservices["services/<br/>email · sms · waveform"]
-
-    prisma --> schema["schema.prisma"]
-    prisma --> migrations["migrations/"]
+```
+chatr/
+├── frontend/
+│   ├── src/
+│   │   ├── app/                  # Pages + layouts (Next.js App Router)
+│   │   │   ├── app/              # Authenticated routes: chat, friends, settings, groups
+│   │   │   ├── demo/             # Component demos
+│   │   │   ├── docs/             # Documentation viewer
+│   │   │   ├── dashboard/        # Admin dashboard
+│   │   │   └── email-preview/    # Email template preview
+│   │   ├── components/
+│   │   │   ├── messaging/        # ConversationsList, ChatView, MessageInput, MessageBubble, EmojiPicker
+│   │   │   ├── CallOverlay/      # Full-screen voice call UI
+│   │   │   ├── form-controls/    # Button, Input, Select, Checkbox, Radio, DatePicker, RangeSlider
+│   │   │   ├── forms/            # LoginForm, LoginVerification, EmailVerification, ForgotPassword
+│   │   │   ├── panels/           # PanelContainer, AuthPanel, DemoPanels
+│   │   │   ├── layout/           # AppLayout, MobileLayout, BottomNav, BackgroundBlobs
+│   │   │   ├── image-manip/      # ProfileImage/CoverImage Uploader + Cropper
+│   │   │   ├── dialogs/          # BottomSheet, ConfirmationDialog, Lightbox
+│   │   │   └── utility/          # Logo, ThemeToggle, ToastContainer, PresenceAvatar
+│   │   ├── contexts/             # WebSocket, Call, Theme, Toast, Panel, Presence, UserSettings
+│   │   ├── hooks/                # useAuth, useConversationList, useFriends, useMessageInput
+│   │   ├── lib/                  # api, auth, db, offline, imageServices, messageCache
+│   │   ├── types/                # User, Message, Conversation, Group
+│   │   └── utils/                # extractWaveform, audio helpers
+│   └── public/                   # Static assets
+│
+├── backend/
+│   └── src/
+│       ├── index.ts              # Express + Socket.io entry point
+│       ├── middleware/            # auth.ts (JWT verification)
+│       ├── routes/               # auth, users, messages, friends, conversations, groups,
+│       │                         # file-upload, email-templates, dashboard, contact
+│       ├── socket/               # handlers.ts (messaging, presence, call signaling)
+│       ├── lib/                  # redis, conversation helpers, prisma, imageResize
+│       └── services/             # email (Mailtrap), sms (SMS Works), waveform
+│
+├── prisma/
+│   ├── schema.prisma             # Database schema
+│   └── migrations/               # Migration history
+│
+├── widget-src/                   # Widget source + build script (not served)
+├── widget/                       # Minified widget output (chatr.js + icons)
+├── certs/                        # mkcert TLS certificates (dev only)
+└── Documentation/                # Technical docs (this site)
 ```
 
 ## Context Provider Tree

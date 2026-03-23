@@ -4,6 +4,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.26 — 2026-03-23
+
+**Commit:** `9aa2c2d` — docs: add ICE/STUN/TURN layman explanations, glossary, and fix mermaid errors
+
+- Plain-English explanations of ICE, STUN, and TURN with apartment building analogy
+- New GLOSSARY.md with categorised definitions across all technical domains
+- Fix invalid Mermaid `<-->` arrow syntax in voice calls sequence diagram
+- Replace oversized directory structure Mermaid graph with compact text tree
+
+---
+
 ## v0.1.25 — 2026-03-23
 
 **Commit:** `6c3a2a0` — fix: add missing getApiBase() calls in image service functions
