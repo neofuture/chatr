@@ -109,12 +109,14 @@ if [ "$TARGET" = "storybook" ]; then
 fi
 
 # ── Copy deploy script + secrets to server ────────────────────────────────────
-info "Copying deployAWS.sh + .env.deploy to server..."
+info "Copying deployAWS.sh + .env.deploy + maintenance.html to server..."
 scp $SSH_OPTS "$SCRIPT" "$SERVER:~/deployAWS.sh" \
   || error "SCP failed — check your key and server IP"
 scp $SSH_OPTS "$ENV_FILE" "$SERVER:/tmp/_chatr_deploy.env" \
   || error "SCP of .env.deploy failed"
-success "Script + config copied"
+scp $SSH_OPTS "$SCRIPT_DIR/maintenance.html" "$SERVER:/tmp/_chatr_maintenance.html" \
+  || error "SCP of maintenance.html failed"
+success "Script + config + maintenance page copied"
 
 # ── Run on server, passing target as argument ─────────────────────────────────
 info "Running deploy on server (streaming output)..."

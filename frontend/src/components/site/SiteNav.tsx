@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 import AuthPanel from '@/components/panels/AuthPanel/AuthPanel';
+import BackgroundBlobs from '@/components/BackgroundBlobs/BackgroundBlobs';
 import s from './SiteNav.module.css';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -110,6 +111,7 @@ export default function SiteNav() {
 
   return (
     <>
+      <BackgroundBlobs />
       <a href="#main-content" className={s.skipLink}>Skip to content</a>
       <nav className={s.nav} aria-label="Main navigation">
         <div className={s.inner}>

@@ -4,6 +4,20 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.20 — 2026-03-23
+
+**Commit:** `b9f4c79` — feat: add maintenance page for deploys and background blobs to site pages
+
+- Add self-contained maintenance.html with inline base64 logo/favicon,
+  animated progress bar, and auto-refresh when site comes back
+- Wire maintenance mode into aws.sh and deployAWS.sh — Nginx swaps to
+  the maintenance page before build, restores real config after deploy
+- Add animated BackgroundBlobs to all public site pages via SiteNav
+- Skip-to-content link fix: use clip-rect sr-only pattern instead of
+  top offset to prevent flash of visibility
+
+---
+
 ## v0.1.19 — 2026-03-23
 
 **Commit:** `bdfbbea` — feat: comprehensive accessibility (WCAG 2.1 AA) and SEO audit fixes

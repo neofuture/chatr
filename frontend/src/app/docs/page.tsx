@@ -679,11 +679,13 @@ export default function DocsPage() {
 
   return (
     <div style={{
+      position: 'relative',
       display: 'flex',
       flexDirection: 'column',
       minHeight: '100vh',
       background: 'var(--bg-primary)',
-      color: 'var(--text-primary)'
+      color: 'var(--text-primary)',
+      overflow: 'hidden',
     }}>
       <SiteNav />
       <main id="main-content" style={{ display: 'flex', flex: 1, paddingTop: 64 }}>

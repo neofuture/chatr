@@ -74,6 +74,57 @@ error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 step()    { echo -e "\n${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"; echo -e "${BOLD}${CYAN}  $1${NC}"; echo -e "${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"; }
 detail()  { echo -e "  ${CYAN}›${NC} $1"; }
 
+# ── Maintenance mode helpers ──────────────────────────────────────────────
+maintenance_on() {
+  info "Enabling maintenance mode..."
+  sudo mkdir -p /var/www/maintenance
+  if [ -f /tmp/_chatr_maintenance.html ]; then
+    sudo cp /tmp/_chatr_maintenance.html /var/www/maintenance/index.html
+  fi
+  # Write a temporary Nginx config that serves the maintenance page
+  sudo tee /etc/nginx/sites-available/chatr-maintenance > /dev/null <<'MAINT'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name _;
+    root /var/www/maintenance;
+    index index.html;
+
+    # Reuse existing SSL certs if present, otherwise use self-signed fallback
+    ssl_certificate /etc/nginx/ssl-fallback.crt;
+    ssl_certificate_key /etc/nginx/ssl-fallback.key;
+
+    location / {
+        try_files $uri /index.html =503;
+    }
+
+    error_page 503 /index.html;
+}
+MAINT
+  # Generate a self-signed fallback cert if no real one exists
+  if [ ! -f /etc/nginx/ssl-fallback.crt ]; then
+    sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+      -keyout /etc/nginx/ssl-fallback.key \
+      -out /etc/nginx/ssl-fallback.crt \
+      -subj "/CN=maintenance" 2>/dev/null
+  fi
+  sudo ln -sf /etc/nginx/sites-available/chatr-maintenance /etc/nginx/sites-enabled/chatr-maintenance
+  sudo rm -f /etc/nginx/sites-enabled/chatr 2>/dev/null || true
+  sudo nginx -t 2>/dev/null && sudo systemctl reload nginx
+  success "Maintenance mode ON — site showing deploy page"
+}
+
+maintenance_off() {
+  info "Disabling maintenance mode..."
+  sudo rm -f /etc/nginx/sites-enabled/chatr-maintenance
+  sudo ln -sf /etc/nginx/sites-available/chatr /etc/nginx/sites-enabled/chatr
+  sudo nginx -t 2>/dev/null && sudo systemctl reload nginx
+  sudo rm -rf /var/www/maintenance
+  success "Maintenance mode OFF — live site restored"
+}
+
 # ── Load config from .env.deploy (uploaded by local machine) ──────────────────
 if [ -f /tmp/_chatr_deploy.env ]; then
   set -a; source /tmp/_chatr_deploy.env; set +a
@@ -570,6 +621,7 @@ case "$TARGET" in
   # ── Backend only ────────────────────────────────────────────────────────────
   backend)
     echo -e "\n${BOLD}${CYAN}  Mode: BACKEND only${NC}\n"
+    maintenance_on
     step0_swap
     cd "$APP_DIR"
     git checkout -- . 2>/dev/null || true
@@ -588,11 +640,13 @@ case "$TARGET" in
     curl -sf "http://localhost:3001/api/health" > /dev/null \
       && success "Backend UP — http://localhost:3001" \
       || warn    "Backend not responding — check: pm2 logs chatr-backend"
+    maintenance_off
     ;;
 
   # ── Frontend only ───────────────────────────────────────────────────────────
   frontend)
     echo -e "\n${BOLD}${CYAN}  Mode: FRONTEND only${NC}\n"
+    maintenance_on
     step0_swap
     cd "$APP_DIR"
     git checkout -- . 2>/dev/null || true
@@ -611,11 +665,13 @@ case "$TARGET" in
     curl -sf "http://localhost:3000" > /dev/null \
       && success "Frontend UP — http://localhost:3000" \
       || warn    "Frontend not responding — check: pm2 logs chatr-frontend"
+    maintenance_off
     ;;
 
   # ── Full deploy (no arg) ────────────────────────────────────────────────────
   "")
     echo -e "\n${BOLD}${CYAN}  Mode: FULL DEPLOY${NC}\n"
+    maintenance_on
     step0_swap
     step1_system
     step2_code
@@ -624,6 +680,9 @@ case "$TARGET" in
     step5_pm2
     step6_nginx
     step7_check
+    # step6_nginx restores the real config; just clean up maintenance files
+    sudo rm -rf /var/www/maintenance 2>/dev/null || true
+    sudo rm -f /etc/nginx/sites-available/chatr-maintenance 2>/dev/null || true
     ;;
 
   # ── Unknown target ──────────────────────────────────────────────────────────
