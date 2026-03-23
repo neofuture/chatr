@@ -81,8 +81,33 @@ maintenance_on() {
   if [ -f /tmp/_chatr_maintenance.html ]; then
     sudo cp /tmp/_chatr_maintenance.html /var/www/maintenance/index.html
   fi
-  # Write a temporary Nginx config that serves the maintenance page
-  sudo tee /etc/nginx/sites-available/chatr-maintenance > /dev/null <<'MAINT'
+
+  # Detect existing SSL certs (Let's Encrypt) — keep using them during maintenance
+  SSL_CERT=""; SSL_KEY=""
+  for d in /etc/letsencrypt/live/*/; do
+    if [ -f "${d}fullchain.pem" ] && [ -f "${d}privkey.pem" ]; then
+      SSL_CERT="${d}fullchain.pem"
+      SSL_KEY="${d}privkey.pem"
+      break
+    fi
+  done
+
+  # Only generate self-signed as a last resort if no real certs exist
+  if [ -z "$SSL_CERT" ]; then
+    if [ ! -f /etc/nginx/ssl-fallback.crt ]; then
+      sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout /etc/nginx/ssl-fallback.key \
+        -out /etc/nginx/ssl-fallback.crt \
+        -subj "/CN=maintenance" 2>/dev/null
+    fi
+    SSL_CERT="/etc/nginx/ssl-fallback.crt"
+    SSL_KEY="/etc/nginx/ssl-fallback.key"
+    detail "No Let's Encrypt certs found — using self-signed fallback"
+  else
+    detail "Reusing existing SSL cert: $SSL_CERT"
+  fi
+
+  sudo tee /etc/nginx/sites-available/chatr-maintenance > /dev/null <<MAINT
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -92,24 +117,16 @@ server {
     root /var/www/maintenance;
     index index.html;
 
-    # Reuse existing SSL certs if present, otherwise use self-signed fallback
-    ssl_certificate /etc/nginx/ssl-fallback.crt;
-    ssl_certificate_key /etc/nginx/ssl-fallback.key;
+    ssl_certificate ${SSL_CERT};
+    ssl_certificate_key ${SSL_KEY};
 
     location / {
-        try_files $uri /index.html =503;
+        try_files \$uri /index.html =503;
     }
 
     error_page 503 /index.html;
 }
 MAINT
-  # Generate a self-signed fallback cert if no real one exists
-  if [ ! -f /etc/nginx/ssl-fallback.crt ]; then
-    sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-      -keyout /etc/nginx/ssl-fallback.key \
-      -out /etc/nginx/ssl-fallback.crt \
-      -subj "/CN=maintenance" 2>/dev/null
-  fi
   sudo ln -sf /etc/nginx/sites-available/chatr-maintenance /etc/nginx/sites-enabled/chatr-maintenance
   sudo rm -f /etc/nginx/sites-enabled/chatr 2>/dev/null || true
   sudo nginx -t 2>/dev/null && sudo systemctl reload nginx
@@ -468,7 +485,8 @@ server {
 
     location /storybook/ {
         alias /home/ubuntu/chatr/frontend/storybook-static/;
-        try_files \$uri \$uri/ /storybook/index.html;
+        index index.html;
+        try_files \$uri \$uri/ =404;
         expires 1d;
         add_header Cache-Control "public, immutable";
     }

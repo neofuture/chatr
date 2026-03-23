@@ -4,6 +4,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.21 — 2026-03-23
+
+**Commit:** `ca83a5a` — fix: preserve SSL certs during maintenance mode, fix Storybook 500
+
+- Maintenance Nginx config now detects and reuses existing Let's Encrypt
+  certs instead of always using a self-signed fallback
+- Fix Storybook Nginx location: replace broken try_files fallback with
+  explicit index directive and =404 (alias + try_files gotcha)
+
+---
+
 ## v0.1.20 — 2026-03-23
 
 **Commit:** `b9f4c79` — feat: add maintenance page for deploys and background blobs to site pages
