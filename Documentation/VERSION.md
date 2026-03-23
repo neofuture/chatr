@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.23 — 2026-03-23
+
+**Commit:** `6d6d32d` — fix: disable runtime image optimization in production to prevent broken screenshots
+
+---
+
 ## v0.1.22 — 2026-03-23
 
 **Commit:** `49488b9` — fix: use sudo for SSL cert detection during maintenance mode
