@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.25 — 2026-03-23
+
+**Commit:** `6c3a2a0` — fix: add missing getApiBase() calls in image service functions
+
+---
+
 ## v0.1.24 — 2026-03-23
 
 **Commit:** `a360001` — feat: add WebRTC P2P voice calling with HTTPS dev setup

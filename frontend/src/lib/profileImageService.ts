@@ -88,6 +88,7 @@ export async function uploadProfileImageToServer(
   userId: string,
   token: string
 ): Promise<string> {
+  const API = getApiBase();
   const profileImage = await db.profileImages.get(userId);
 
   if (!profileImage) {
@@ -137,6 +138,7 @@ export async function deleteProfileImage(
   userId: string,
   token: string
 ): Promise<void> {
+  const API = getApiBase();
   // 1. Delete from local storage first
   await removeProfileImageLocally(userId);
 

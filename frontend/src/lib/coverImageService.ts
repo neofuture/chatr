@@ -80,6 +80,7 @@ export async function uploadCoverImageToServer(
   userId: string,
   token: string
 ): Promise<string> {
+  const API = getApiBase();
   const coverImage = await db.coverImages.get(userId);
 
   if (!coverImage) {
@@ -140,6 +141,7 @@ export async function deleteCoverImage(
   userId: string,
   token: string
 ): Promise<void> {
+  const API = getApiBase();
   // 1. Delete from local storage first
   await deleteCoverImageLocally(userId);
 

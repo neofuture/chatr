@@ -4,6 +4,10 @@ const mockDelete = jest.fn();
 const mockUpdate = jest.fn();
 const mockToArray = jest.fn();
 
+jest.mock('../../lib/api', () => ({
+  getApiBase: () => 'http://localhost:3001',
+}));
+
 jest.mock('../../lib/db', () => ({
   db: {
     coverImages: {
@@ -42,7 +46,6 @@ global.URL.createObjectURL = mockCreateObjectURL;
 const OriginalImage = global.Image;
 beforeAll(() => {
   process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3001';
-  (globalThis as any).API = 'http://localhost:3001';
 
   (global as any).Image = class MockImage {
     width = 800;
@@ -76,7 +79,6 @@ beforeAll(() => {
 afterAll(() => {
   global.Image = OriginalImage;
   (document.createElement as jest.Mock).mockRestore?.();
-  delete (globalThis as any).API;
 });
 
 beforeEach(() => {
