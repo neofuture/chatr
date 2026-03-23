@@ -7,8 +7,10 @@ import { usePanels } from '@/contexts/PanelContext';
 import { useToast } from '@/contexts/ToastContext';
 import { EmailVerificationContent } from '@/components/forms/EmailVerification/EmailVerification';
 import { ForgotPasswordContent } from '@/components/forms/ForgotPassword/ForgotPassword';
-import api from '@/lib/api';
+import api, { getApiBase } from '@/lib/api';
 import styles from './AuthPanel.module.css';
+
+const API = getApiBase();
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -166,7 +168,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
       setUsernameSuggestions([]); // Clear previous suggestions
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/users/check-username?username=${encodeURIComponent(username)}`
+          `${API}/api/users/check-username?username=${encodeURIComponent(username)}`
         );
         const data = await response.json();
         setUsernameAvailable(data.available);
@@ -174,7 +176,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
         // If username is taken, fetch suggestions
         if (!data.available) {
           const suggestResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/users/suggest-username?username=${encodeURIComponent(username)}`
+            `${API}/api/users/suggest-username?username=${encodeURIComponent(username)}`
           );
           const suggestData = await suggestResponse.json();
           if (suggestData.suggestions) {
@@ -494,7 +496,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
+      const response = await fetch(`${API}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

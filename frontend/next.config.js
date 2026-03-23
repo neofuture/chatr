@@ -1,18 +1,26 @@
 /** @type {import('next').NextConfig} */
 const path = require('path');
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Server-side proxy always uses plain HTTP to avoid TLS cert issues
+const BACKEND_PROXY_URL = 'http://localhost:3001';
 
 const nextConfig = {
   reactStrictMode: false,
   outputFileTracingRoot: path.join(__dirname, '../'),
   devIndicators: false,
+  allowedDevOrigins: ['nh07vqf32f-vmo2.local'],
   images: {
     remotePatterns: [
       {
         protocol: 'http',
         hostname: 'localhost',
         port: '3001',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+        port: '3002',
         pathname: '/uploads/**',
       },
       {
@@ -36,10 +44,13 @@ const nextConfig = {
   },
   async rewrites() {
     return [
-      // Proxy the widget JS from the backend so localhost:3000/widget/chatr.js works
       {
         source: '/widget/chatr.js',
-        destination: `${BACKEND_URL}/widget/chatr.js`,
+        destination: `${BACKEND_PROXY_URL}/widget/chatr.js`,
+      },
+      {
+        source: '/uploads/:path*',
+        destination: `${BACKEND_PROXY_URL}/uploads/:path*`,
       },
     ];
   },

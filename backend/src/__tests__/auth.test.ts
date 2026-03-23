@@ -315,7 +315,7 @@ describe('Auth Routes', () => {
       const hashedPassword = await bcrypt.hash(loginCredentials.password, 1);
 
       // Mock user exists
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1',
         email: loginCredentials.email,
         username: '@testuser',
@@ -365,7 +365,7 @@ describe('Auth Routes', () => {
     });
 
     it('should reject login with non-existent user', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
 
       const response = await request(app)
         .post('/api/auth/login')
@@ -378,7 +378,7 @@ describe('Auth Routes', () => {
     it('should reject login with incorrect password', async () => {
       const hashedPassword = await bcrypt.hash('DifferentPassword123!', 1);
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1',
         email: loginCredentials.email,
         password: hashedPassword,
@@ -399,7 +399,7 @@ describe('Auth Routes', () => {
       const futureDate = new Date(Date.now() + 15 * 60 * 1000);
 
       // Mock user with verification code
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1',
         email: loginCredentials.email,
         username: '@testuser',
@@ -434,7 +434,7 @@ describe('Auth Routes', () => {
       const pastDate = new Date(Date.now() - 1000); // Expired
 
       // Mock user with expired code
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1',
         email: loginCredentials.email,
         password: hashedPassword,
@@ -462,7 +462,7 @@ describe('Auth Routes', () => {
       const futureDate = new Date(Date.now() + 15 * 60 * 1000);
 
       // Mock user with different code
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1',
         email: loginCredentials.email,
         password: hashedPassword,
@@ -1273,7 +1273,7 @@ describe('Auth Routes', () => {
   describe('POST /api/auth/login (additional)', () => {
     it('should require email verification when email not verified', async () => {
       const hashedPassword = await bcrypt.hash('Test123!@#', 1);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1', email: 'test@example.com', username: '@testuser',
         password: hashedPassword, emailVerified: false,
       });
@@ -1290,7 +1290,7 @@ describe('Auth Routes', () => {
 
     it('should require phone verification when phone not verified', async () => {
       const hashedPassword = await bcrypt.hash('Test123!@#', 1);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1', email: 'test@example.com', username: '@testuser',
         password: hashedPassword, phoneNumber: '+1234567890',
         emailVerified: true, phoneVerified: false,
@@ -1307,7 +1307,7 @@ describe('Auth Routes', () => {
 
     it('should login via username', async () => {
       const hashedPassword = await bcrypt.hash('Test123!@#', 1);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1', email: 'test@example.com', username: '@testuser',
         password: hashedPassword, phoneNumber: '+1234567890',
         emailVerified: true, phoneVerified: true,
@@ -1324,7 +1324,7 @@ describe('Auth Routes', () => {
     it('should verify login code via Redis', async () => {
       const hashedPassword = await bcrypt.hash('Test123!@#', 1);
       (redisModule.getVerificationCode as jest.Mock).mockResolvedValue({ code: '123456' });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1', email: 'test@example.com', username: '@testuser',
         password: hashedPassword, emailVerified: true, phoneVerified: true,
       });
@@ -1341,7 +1341,7 @@ describe('Auth Routes', () => {
     it('should return 400 when no verification code found in DB', async () => {
       const hashedPassword = await bcrypt.hash('Test123!@#', 1);
       (redisModule.getVerificationCode as jest.Mock).mockResolvedValue(null);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1', email: 'test@example.com', username: '@testuser',
         password: hashedPassword, emailVerified: true, phoneVerified: true,
         loginVerificationCode: null, loginVerificationExpiry: null,
@@ -1356,7 +1356,7 @@ describe('Auth Routes', () => {
 
     it('should return 400 when SMS chosen but no phone', async () => {
       const hashedPassword = await bcrypt.hash('Test123!@#', 1);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1', email: 'test@example.com', username: '@testuser',
         password: hashedPassword, phoneNumber: null,
         emailVerified: true, phoneVerified: true,
@@ -1372,7 +1372,7 @@ describe('Auth Routes', () => {
 
     it('should send verification via email when method is email', async () => {
       const hashedPassword = await bcrypt.hash('Test123!@#', 1);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1', email: 'test@example.com', username: '@testuser',
         password: hashedPassword, phoneNumber: '+1234567890',
         emailVerified: true, phoneVerified: true,
@@ -1391,7 +1391,7 @@ describe('Auth Routes', () => {
     it('should accept test bypass code for login verification', async () => {
       (testModeModule.getTestBypassCode as jest.Mock).mockReturnValue('000000');
       const hashedPassword = await bcrypt.hash('Test123!@#', 1);
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({
         id: '1', email: 'test@example.com', username: '@testuser',
         password: hashedPassword, emailVerified: true, phoneVerified: true,
       });
@@ -1562,7 +1562,7 @@ describe('Auth Routes', () => {
 
   describe('error handling (catch blocks)', () => {
     it('login: should return 500 on internal error', async () => {
-      (prisma.user.findUnique as jest.Mock).mockRejectedValue(new Error('DB'));
+      (prisma.user.findFirst as jest.Mock).mockRejectedValue(new Error('DB'));
       const response = await request(app)
         .post('/api/auth/login')
         .send({ email: 'a@b.com', password: 'Test123!@#' })

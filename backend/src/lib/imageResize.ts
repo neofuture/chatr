@@ -65,8 +65,7 @@ export async function processImageVariants(
       const dir = path.join(__dirname, '../../uploads', subfolder);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, filename), resized);
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-      const url = `${backendUrl}/uploads/${subfolder}/${filename}`;
+      const url = `/uploads/${subfolder}/${filename}`;
       if (variant.suffix === '') fullUrl = url;
     }
   }

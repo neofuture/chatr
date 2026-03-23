@@ -128,7 +128,7 @@ describe('imageResize', () => {
     it('should return the base URL (full-size variant)', async () => {
       const url = await processImageVariants(buffer, 'avatar.png', 'profiles', variants);
 
-      expect(url).toBe('http://localhost:3001/uploads/profiles/avatar.jpg');
+      expect(url).toBe('/uploads/profiles/avatar.jpg');
     });
 
     it('should write to local filesystem in dev mode', async () => {
@@ -161,7 +161,7 @@ describe('imageResize', () => {
       const singleVariant: ImageVariant[] = [{ suffix: '', width: 100, height: 100 }];
       const url = await processImageVariants(buffer, 'test.png', 'dir', singleVariant);
 
-      expect(url).toBe('http://localhost:3001/uploads/dir/test.jpg');
+      expect(url).toBe('/uploads/dir/test.jpg');
       const sharp = require('sharp');
       expect(sharp).toHaveBeenCalledTimes(1);
     });

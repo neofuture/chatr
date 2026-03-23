@@ -1008,6 +1008,7 @@ export default function DocsPage() {
                         { label: 'Backend', file: 'Backend/index.md', icon: 'fa-server' },
                         { label: 'Authentication', file: 'Backend/AUTHENTICATION.md', icon: 'fa-lock' },
                         { label: 'Messaging Features', file: 'Features/MESSAGING.md', icon: 'fa-comments' },
+                        { label: 'Voice Calls', file: 'Features/VOICE_CALLS.md', icon: 'fa-phone' },
                         { label: 'Widget', file: 'Widget/index.md', icon: 'fa-puzzle-piece' },
                         { label: 'Testing', file: 'Testing/index.md', icon: 'fa-flask' },
                         { label: 'Deployment', file: 'Getting-Started/DEPLOYMENT.md', icon: 'fa-cloud-upload' },

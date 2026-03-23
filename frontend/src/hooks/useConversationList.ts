@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useLog } from '@/contexts/LogContext';
 import { clearCachedConversation } from '@/lib/messageCache';
+import { getApiBase } from '@/lib/api';
 
 export interface ConversationUser {
   id: string;
@@ -38,10 +39,6 @@ export interface ConversationUser {
   isOnline?: boolean;
   // set by search results
   friendship?: { id: string; status: string; iRequested: boolean } | null;
-}
-
-function getApiBase() {
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 }
 
 function getToken() {

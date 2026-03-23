@@ -9,8 +9,9 @@ import { type Message, type MessageReaction } from '@/components/MessageBubble';
 import { extractWaveformFromFile } from '@/utils/extractWaveform';
 import type { AvailableUser, PresenceStatus, PresenceInfo, ConversationSummary } from '@/types/types.ts';
 import { loadCachedMessages, cacheMessages, cacheMessage, updateCachedMessage, replaceCachedMessageId } from '@/lib/messageCache';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 export function useConversation() {
   const { socket, connected, connecting, disconnect, reconnect } = useWebSocket();
   const { showToast } = useToast();

@@ -14,6 +14,8 @@ import {
 import ProfileImageCropper from '@/components/image-manip/ProfileImageCropper/ProfileImageCropper';
 import BottomSheet from '@/components/dialogs/BottomSheet/BottomSheet';
 import styles from './ProfileImageUploader.module.css';
+import { getApiBase } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/imageUrl';
 
 interface ProfileImageUploaderProps {
   userId: string;
@@ -38,7 +40,7 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
 
   const loadProfileImage = async () => {
     if (!userId || userId === 'N/A' || userId === 'Invalid data') return;
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const API = getApiBase();
     console.log('[ProfileImg] Loading for', userId, 'API=', API);
 
     try {
@@ -56,7 +58,7 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         console.log('[ProfileImg] localStorage profileImage:', user.profileImage || 'NOT SET');
         if (user.profileImage) {
-          const src = user.profileImage.startsWith('/') ? `${API}${user.profileImage}` : user.profileImage;
+          const src = resolveAssetUrl(user.profileImage) || user.profileImage;
           console.log('[ProfileImg] Using localStorage URL:', src);
           setImageLoaded(false);
           setImageUrl(src);
@@ -69,7 +71,7 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
       const { socketFirst } = await import('@/lib/socketRPC');
       const data = await socketFirst(socket, 'users:me', {}, 'GET', '/api/users/me') as any;
       if (data?.profileImage) {
-        const src = data.profileImage.startsWith('/') ? `${API}${data.profileImage}` : data.profileImage;
+        const src = resolveAssetUrl(data.profileImage) || data.profileImage;
         setImageLoaded(false);
         setImageUrl(src);
       }

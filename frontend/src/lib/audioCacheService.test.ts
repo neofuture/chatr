@@ -61,7 +61,7 @@ describe('audioCacheService', () => {
 
       const result = await cacheAudio('msg1', '/uploads/audio.webm', 5);
 
-      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/uploads/audio.webm');
+      expect(mockFetch).toHaveBeenCalledWith('/uploads/audio.webm');
       expect(mockPut).toHaveBeenCalledWith(expect.objectContaining({
         messageId: 'msg1',
         audioData: blob,
@@ -130,7 +130,7 @@ describe('audioCacheService', () => {
       const result = await getOrCacheAudio('msg1', '/uploads/a.webm', 3);
 
       expect(result).toEqual({
-        url: 'http://localhost:3001/uploads/a.webm',
+        url: '/uploads/a.webm',
         fromCache: false,
       });
     });

@@ -1686,7 +1686,7 @@ router.post('/tests/e2e/clear', (_req: Request, res: Response) => {
  * /api/dashboard/tests/{area}:
  *   get:
  *     summary: Get test results for a given area
- *     description: Returns cached test results, live progress while running, or `{ status: 'none' }` if no results exist.
+ *     description: "Returns cached test results, live progress while running, or `{ status: 'none' }` if no results exist."
  *     tags: [Dashboard]
  *     security: []
  *     parameters:

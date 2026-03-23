@@ -1383,8 +1383,7 @@ router.post('/:id/upload', authenticateToken as any, upload.single('file') as an
       fileUrl = await uploadToS3(req.file.buffer, s3Key, req.file.mimetype);
     } else {
       localFilePath = req.file.path;
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-      fileUrl = `${backendUrl}/uploads/${subfolder}/${req.file.filename}`;
+      fileUrl = `/uploads/${subfolder}/${req.file.filename}`;
     }
 
     let waveformData: number[] | undefined;

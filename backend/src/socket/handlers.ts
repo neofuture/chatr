@@ -1223,10 +1223,200 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
+    // ==================== VOICE CALLS (WebRTC signaling) ====================
+
+    socket.on('call:initiate', async (data: { receiverId: string }, ack?: (res: any) => void) => {
+      try {
+        if (!data.receiverId) { ack?.({ error: 'receiverId is required' }); return; }
+
+        // Block check
+        const blockInfo = await getBlockBetween(userId, data.receiverId);
+        if (blockInfo.blocked) { ack?.({ error: 'Cannot call this user' }); return; }
+
+        // Check if receiver is online
+        const receiverRoom = io.sockets.adapter.rooms.get(`user:${data.receiverId}`);
+        if (!receiverRoom || receiverRoom.size === 0) {
+          ack?.({ error: 'User is offline' });
+          return;
+        }
+
+        // Check if either party is already in a call
+        const activeCall = await prisma.call.findFirst({
+          where: {
+            status: { in: ['ringing', 'active'] },
+            OR: [
+              { callerId: userId },
+              { receiverId: userId },
+              { callerId: data.receiverId },
+              { receiverId: data.receiverId },
+            ],
+          },
+        });
+        if (activeCall) {
+          ack?.({ error: activeCall.callerId === data.receiverId || activeCall.receiverId === data.receiverId ? 'User is on another call' : 'You are already in a call' });
+          return;
+        }
+
+        const call = await prisma.call.create({
+          data: { callerId: userId, receiverId: data.receiverId, status: 'ringing' },
+        });
+
+        const callerUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, username: true, displayName: true, profileImage: true },
+        });
+
+        io.to(`user:${data.receiverId}`).emit('call:incoming', {
+          callId: call.id,
+          caller: callerUser,
+        });
+
+        ack?.({ callId: call.id });
+        console.log(`📞 ${username} is calling ${data.receiverId} (call ${call.id})`);
+
+        // Auto-miss after 30s if not answered
+        setTimeout(async () => {
+          try {
+            const c = await prisma.call.findUnique({ where: { id: call.id } });
+            if (c && c.status === 'ringing') {
+              await prisma.call.update({ where: { id: call.id }, data: { status: 'missed', endedAt: new Date() } });
+              io.to(`user:${userId}`).emit('call:ended', { callId: call.id, reason: 'no_answer' });
+              io.to(`user:${data.receiverId}`).emit('call:ended', { callId: call.id, reason: 'missed' });
+              console.log(`📞 Call ${call.id} missed (timeout)`);
+            }
+          } catch (e) {
+            console.error('❌ call:timeout error:', e);
+          }
+        }, 30_000);
+      } catch (error) {
+        console.error('❌ call:initiate error:', error);
+        ack?.({ error: 'Failed to initiate call' });
+      }
+    });
+
+    socket.on('call:accept', async (data: { callId: string }) => {
+      try {
+        const call = await prisma.call.findUnique({ where: { id: data.callId } });
+        if (!call || call.receiverId !== userId || call.status !== 'ringing') return;
+
+        await prisma.call.update({
+          where: { id: data.callId },
+          data: { status: 'active', startedAt: new Date() },
+        });
+
+        io.to(`user:${call.callerId}`).emit('call:accepted', { callId: data.callId });
+        console.log(`📞 Call ${data.callId} accepted by ${username}`);
+      } catch (error) {
+        console.error('❌ call:accept error:', error);
+      }
+    });
+
+    socket.on('call:reject', async (data: { callId: string }) => {
+      try {
+        const call = await prisma.call.findUnique({ where: { id: data.callId } });
+        if (!call || call.receiverId !== userId) return;
+        if (call.status !== 'ringing') return;
+
+        await prisma.call.update({
+          where: { id: data.callId },
+          data: { status: 'rejected', endedAt: new Date() },
+        });
+
+        io.to(`user:${call.callerId}`).emit('call:ended', { callId: data.callId, reason: 'rejected' });
+        console.log(`📞 Call ${data.callId} rejected by ${username}`);
+      } catch (error) {
+        console.error('❌ call:reject error:', error);
+      }
+    });
+
+    socket.on('call:hangup', async (data: { callId: string }) => {
+      try {
+        const call = await prisma.call.findUnique({ where: { id: data.callId } });
+        if (!call) return;
+        if (call.callerId !== userId && call.receiverId !== userId) return;
+
+        const duration = call.startedAt
+          ? Math.round((Date.now() - call.startedAt.getTime()) / 1000)
+          : null;
+
+        await prisma.call.update({
+          where: { id: data.callId },
+          data: {
+            status: 'ended',
+            endedAt: new Date(),
+            duration,
+          },
+        });
+
+        const otherUserId = call.callerId === userId ? call.receiverId : call.callerId;
+        io.to(`user:${otherUserId}`).emit('call:ended', { callId: data.callId, reason: 'hangup', duration });
+        io.to(`user:${userId}`).emit('call:ended', { callId: data.callId, reason: 'hangup', duration });
+        console.log(`📞 Call ${data.callId} ended by ${username} (${duration ?? 0}s)`);
+      } catch (error) {
+        console.error('❌ call:hangup error:', error);
+      }
+    });
+
+    // WebRTC signaling — relay SDP offers/answers and ICE candidates
+    socket.on('call:offer', (data: { callId: string; targetUserId: string; sdp: any }) => {
+      io.to(`user:${data.targetUserId}`).emit('call:offer', {
+        callId: data.callId,
+        fromUserId: userId,
+        sdp: data.sdp,
+      });
+    });
+
+    socket.on('call:answer', (data: { callId: string; targetUserId: string; sdp: any }) => {
+      io.to(`user:${data.targetUserId}`).emit('call:answer', {
+        callId: data.callId,
+        fromUserId: userId,
+        sdp: data.sdp,
+      });
+    });
+
+    socket.on('call:ice-candidate', (data: { callId: string; targetUserId: string; candidate: any }) => {
+      io.to(`user:${data.targetUserId}`).emit('call:ice-candidate', {
+        callId: data.callId,
+        fromUserId: userId,
+        candidate: data.candidate,
+      });
+    });
+
     // ==================== DISCONNECT ====================
 
     socket.on('disconnect', async () => {
       console.log(`🔌 User disconnected: ${username} (${socket.id})`);
+
+      // End any active/ringing calls for this user
+      try {
+        const activeCalls = await prisma.call.findMany({
+          where: {
+            status: { in: ['ringing', 'active'] },
+            OR: [{ callerId: userId }, { receiverId: userId }],
+          },
+        });
+        for (const call of activeCalls) {
+          const duration = call.startedAt
+            ? Math.round((Date.now() - call.startedAt.getTime()) / 1000)
+            : null;
+          await prisma.call.update({
+            where: { id: call.id },
+            data: {
+              status: call.status === 'ringing' ? 'missed' : 'ended',
+              endedAt: new Date(),
+              duration,
+            },
+          });
+          const otherUserId = call.callerId === userId ? call.receiverId : call.callerId;
+          io.to(`user:${otherUserId}`).emit('call:ended', {
+            callId: call.id,
+            reason: 'disconnect',
+            duration,
+          });
+        }
+      } catch (e) {
+        console.error('❌ Error ending calls on disconnect:', e);
+      }
 
       const presence = await getPresence(userId);
 

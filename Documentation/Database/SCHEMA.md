@@ -349,6 +349,27 @@ Join table between User and Group.
 
 ---
 
+## Call
+
+Stores voice call records — created on initiation, updated on accept/reject/hangup/disconnect. See [Voice Calls](../Features/VOICE_CALLS.md).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | String (UUID) | PK | — |
+| callerId | String | FK → User | User who initiated the call |
+| receiverId | String | FK → User | User who was called |
+| status | String | Default `"ringing"` | `ringing` \| `active` \| `ended` \| `missed` \| `rejected` \| `busy` |
+| startedAt | DateTime? | — | When the call was accepted |
+| endedAt | DateTime? | — | When the call ended |
+| duration | Int? | — | Call length in seconds |
+| createdAt | DateTime | Default now() | — |
+
+**Indexes:** `[callerId]`, `[receiverId]`, `[callerId, receiverId, createdAt DESC]`
+
+**Relations:** `User.callsMade` (CallsMade), `User.callsReceived` (CallsReceived)
+
+---
+
 ## Migrations
 
 Migrations are managed by Prisma and stored in `backend/prisma/migrations/`. To apply pending migrations:

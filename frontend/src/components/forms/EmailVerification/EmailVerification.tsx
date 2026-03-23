@@ -7,6 +7,9 @@ import { useToast } from '@/contexts/ToastContext';
 import { usePanels } from '@/contexts/PanelContext';
 import { saveAuthToken } from '@/lib/authUtils';
 import styles from './EmailVerification.module.css';
+import { getApiBase } from '@/lib/api';
+
+const API = getApiBase();
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -36,7 +39,7 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
     if (resendCooldown > 0) return;
     setResendCooldown(60);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-verification`, {
+      const res = await fetch(`${API}/api/auth/resend-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, type: verificationType === 'login' ? 'login' : 'email' }),
@@ -164,7 +167,7 @@ export function EmailVerificationContent({ userId, email, verificationCode, veri
         requestBody = { userId, code: fullCode };
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
+      const response = await fetch(`${API}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),

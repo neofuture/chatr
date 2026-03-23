@@ -437,20 +437,18 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
       });
     }
 
-    // Find user by email OR username
+    // Find user by email OR username (case-insensitive)
+    const input = email.trim().toLowerCase();
     let user;
 
-    // Check if input looks like an email (contains @ and .)
-    if (email.includes('@') && email.includes('.')) {
-      // Login with email
-      user = await prisma.user.findUnique({
-        where: { email }
+    if (input.includes('@') && input.includes('.')) {
+      user = await prisma.user.findFirst({
+        where: { email: { equals: input, mode: 'insensitive' } }
       });
     } else {
-      // Login with username
-      const usernameWithAt = email.startsWith('@') ? email : `@${email}`;
-      user = await prisma.user.findUnique({
-        where: { username: usernameWithAt }
+      const usernameWithAt = input.startsWith('@') ? input : `@${input}`;
+      user = await prisma.user.findFirst({
+        where: { username: { equals: usernameWithAt, mode: 'insensitive' } }
       });
     }
 

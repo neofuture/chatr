@@ -8,8 +8,9 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { getProfileImageURL } from '@/lib/profileImageService';
 import styles from './BottomNav.module.css';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 export default function BottomNav() {
   const { theme: themeMode } = useTheme();

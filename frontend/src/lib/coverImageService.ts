@@ -1,4 +1,6 @@
 import { db, CoverImage } from './db';
+import { getApiBase } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/imageUrl';
 
 /**
  * Cover Image Service
@@ -94,7 +96,7 @@ export async function uploadCoverImageToServer(
 
   // Upload to server
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/users/cover-image`,
+    `${API}/api/users/cover-image`,
     {
       method: 'POST',
       headers: {
@@ -143,7 +145,7 @@ export async function deleteCoverImage(
 
   // 2. Delete from server
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/users/cover-image`,
+    `${API}/api/users/cover-image`,
     {
       method: 'DELETE',
       headers: {
@@ -188,14 +190,14 @@ export async function syncCoverImages(token: string): Promise<void> {
  * Pass the relative server URL (e.g. /uploads/covers/xxx.jpg) directly.
  */
 export async function syncCoverImageFromServer(userId: string, serverUrl?: string | null): Promise<void> {
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const API = getApiBase();
   if (!serverUrl) return;
 
   try {
     const local = await db.coverImages.get(userId);
     if (local?.synced && local.url === serverUrl) return;
 
-    const fullUrl = serverUrl.startsWith('http') ? serverUrl : `${API}${serverUrl}`;
+    const fullUrl = resolveAssetUrl(serverUrl) || serverUrl;
     console.log('🔄 Syncing cover image from:', fullUrl);
     const imgRes = await fetch(fullUrl);
     if (!imgRes.ok) { console.warn('Cover image fetch failed:', imgRes.status); return; }

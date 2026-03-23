@@ -439,8 +439,7 @@ router.post('/upload', authenticateToken as any, widgetUpload.single('file') as 
       const key = `uploads/messages/widget-${Date.now()}${ext}`;
       fileUrl = await uploadToS3(req.file.buffer, key, req.file.mimetype);
     } else {
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-      fileUrl = `${backendUrl}/uploads/messages/${req.file.filename}`;
+      fileUrl = `/uploads/messages/${req.file.filename}`;
     }
 
     const isImage = req.file.mimetype.startsWith('image/');

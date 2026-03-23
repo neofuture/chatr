@@ -1,9 +1,10 @@
 .bottomNav {
-  height: 80px;
+  height: calc(80px + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding: 0 16px;
+  padding-bottom: env(safe-area-inset-bottom);
   flex-shrink: 0;
   z-index: 100;
 }

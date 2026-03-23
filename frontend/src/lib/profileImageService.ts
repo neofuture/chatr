@@ -1,4 +1,6 @@
 import { db, ProfileImage } from './db';
+import { getApiBase } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/imageUrl';
 
 /**
  * Profile Image Service
@@ -102,7 +104,7 @@ export async function uploadProfileImageToServer(
 
   // Upload to server
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/users/profile-image`,
+    `${API}/api/users/profile-image`,
     {
       method: 'POST',
       headers: {
@@ -140,7 +142,7 @@ export async function deleteProfileImage(
 
   // 2. Delete from server
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/users/profile-image`,
+    `${API}/api/users/profile-image`,
     {
       method: 'DELETE',
       headers: {
@@ -159,14 +161,14 @@ export async function deleteProfileImage(
  * Pass the relative server URL (e.g. /uploads/profiles/xxx.jpg) directly.
  */
 export async function syncProfileImageFromServer(userId: string, serverUrl?: string | null): Promise<void> {
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const API = getApiBase();
   if (!serverUrl) return;
 
   try {
     const local = await db.profileImages.get(userId);
     if (local?.synced && local.url === serverUrl) return;
 
-    const fullUrl = serverUrl.startsWith('http') ? serverUrl : `${API}${serverUrl}`;
+    const fullUrl = resolveAssetUrl(serverUrl) || serverUrl;
     console.log('🔄 Syncing profile image from:', fullUrl);
     const imgRes = await fetch(fullUrl);
     if (!imgRes.ok) { console.warn('Profile image fetch failed:', imgRes.status); return; }

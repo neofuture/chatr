@@ -1,4 +1,7 @@
 import { db, OfflineMessage } from './db';
+import { getApiBase } from '@/lib/api';
+
+const API = getApiBase();
 
 // Save message to IndexedDB when offline
 export async function saveMessageOffline(message: OfflineMessage) {
@@ -37,7 +40,7 @@ export async function syncOfflineMessages(token: string) {
   for (const message of unsyncedMessages) {
     try {
       // Send to server via API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/messages`, {
+      const response = await fetch(`${API}/api/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

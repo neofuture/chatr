@@ -4,6 +4,22 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.24 — 2026-03-23
+
+**Commit:** `a360001` — feat: add WebRTC P2P voice calling with HTTPS dev setup
+
+- WebRTC 1-to-1 voice calls with Socket.IO signaling and full-screen call overlay
+- HTTPS dev environment using mkcert for iOS microphone access (getUserMedia)
+- Backend serves HTTP:3001 (internal proxy) + HTTPS:3002 (browser connections)
+- Dynamic API URL resolution via getApiBase() for LAN/remote device testing
+- Asset URL normalization to relative paths, fixing mixed-content and cross-device issues
+- iOS PWA safe area insets for SiteNav, BottomNav, toasts, and panel headers
+- Case-insensitive login with autoCapitalize disabled for mobile keyboards
+- CallProvider decoupled from WebSocketContext via CallSocketBridge to prevent Chrome flickering
+- Documentation for voice calls, socket events, database model, and frontend context
+
+---
+
 ## v0.1.23 — 2026-03-23
 
 **Commit:** `6d6d32d` — fix: disable runtime image optimization in production to prevent broken screenshots

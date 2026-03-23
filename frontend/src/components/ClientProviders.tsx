@@ -10,9 +10,11 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { PanelProvider } from '@/contexts/PanelContext';
 import { ConfirmationProvider } from '@/contexts/ConfirmationContext';
 import { FriendsProvider } from '@/contexts/FriendsContext';
+import { CallProvider } from '@/contexts/CallContext';
 import PanelContainer from '@/components/panels/PanelContainer/PanelContainer';
 import ToastContainer from '@/components/ToastContainer/ToastContainer';
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog/ConfirmationDialog';
+import CallOverlay from '@/components/CallOverlay/CallOverlay';
 import RoutePreloader from '@/components/RoutePreloader';
 
 const TRANSIENT_PATTERNS = [
@@ -71,11 +73,14 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
           <PanelProvider>
             <ConfirmationProvider>
               <FriendsProvider>
+              <CallProvider>
                 <RoutePreloader />
                 {children}
                 <PanelContainer />
                 <ToastContainer />
                 <ConfirmationDialog />
+                <CallOverlay />
+              </CallProvider>
               </FriendsProvider>
             </ConfirmationProvider>
           </PanelProvider>

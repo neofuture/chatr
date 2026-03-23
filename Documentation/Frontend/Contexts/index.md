@@ -11,7 +11,8 @@ graph TD
     WebSocketProvider --> PresenceProvider
     PresenceProvider --> UserSettingsProvider
     UserSettingsProvider --> LogProvider
-    LogProvider --> PageContent
+    LogProvider --> CallProvider
+    CallProvider --> PageContent
 ```
 
 ---
@@ -201,8 +202,33 @@ const { settings, setSetting } = useUserSettings();
 
 ---
 
+## CallContext
+
+Manages voice call state, WebRTC peer connections, and microphone access. Mounted via `CallProvider` in `ClientProviders.tsx`. See [Voice Calls](../../Features/VOICE_CALLS.md) for the full feature overview.
+
+```typescript
+const { status, peer, isMuted, duration, endReason, initiateCall, acceptCall, rejectCall, hangup, toggleMute } = useCall();
+```
+
+| Value | Type | Description |
+|-------|------|-------------|
+| `status` | `CallStatus` | `idle` \| `ringing-outbound` \| `ringing-inbound` \| `connecting` \| `active` \| `ended` |
+| `peer` | `CallPeer \| null` | Remote user info |
+| `isMuted` | `boolean` | Local mic muted |
+| `duration` | `number` | Seconds elapsed |
+| `initiateCall` | `(receiverId, info?) => Promise<void>` | Start an outbound call |
+| `acceptCall` | `() => void` | Accept incoming call |
+| `rejectCall` | `() => void` | Decline incoming call |
+| `hangup` | `() => void` | End active call |
+| `toggleMute` | `() => void` | Toggle microphone |
+
+`CallProvider` does not consume `WebSocketContext` directly. An invisible `<CallSocketBridge>` child handles socket subscriptions in isolation to prevent re-render cascading.
+
+---
+
 ## See Also
 
 - [Frontend Overview](../index.md)
+- [Voice Calls](../../Features/VOICE_CALLS.md)
 - [WebSocket Events](../../WebSocket/Events.md)
 - [PanelContainer component](../Components/Panels/PanelContainer/index.md)

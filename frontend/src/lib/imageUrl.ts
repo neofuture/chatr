@@ -19,14 +19,32 @@ const SUFFIX_MAP: Record<ImageSize, string> = {
 
 const IMG_EXT_RE = /\.(jpe?g|png|webp)(\?.*)?$/i;
 
+/**
+ * Normalise asset URLs so they resolve correctly on any device.
+ *
+ * Strips hardcoded `http(s)://localhost:300x` origins to relative paths.
+ * Next.js rewrites proxy `/uploads/*` to the backend, so relative paths
+ * work on localhost (HTTPS) and LAN devices alike — no mixed-content issues.
+ * Relative paths, blob/data URLs, and external URLs are returned unchanged.
+ */
+export function resolveAssetUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+
+  const stripped = url.replace(/^https?:\/\/localhost:300[0-9]/, '');
+  if (stripped !== url) return stripped;
+
+  return url;
+}
+
 export function imageUrl(url: string | null | undefined, size: ImageSize = 'full'): string | null {
   if (!url) return null;
+  const resolved = resolveAssetUrl(url)!;
   const suffix = SUFFIX_MAP[size];
-  if (!suffix) return url;
-  // Only transform uploaded images — leave static assets, defaults, and blob URLs alone
-  if (!url.includes('/uploads/')) return url;
-  if (!IMG_EXT_RE.test(url)) return url;
-  return url.replace(IMG_EXT_RE, `${suffix}.jpg$2`);
+  if (!suffix) return resolved;
+  if (!resolved.includes('/uploads/')) return resolved;
+  if (!IMG_EXT_RE.test(resolved)) return resolved;
+  return resolved.replace(IMG_EXT_RE, `${suffix}.jpg$2`);
 }
 
 export function profileUrl(url: string | null | undefined, size: ImageSize = 'full'): string | null {

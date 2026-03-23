@@ -19,8 +19,8 @@ import { useConfirmation } from "@/contexts/ConfirmationContext";
 import { useFriends } from "@/hooks/useFriends";
 import { useMessageToast } from "@/hooks/useMessageToast";
 import { useOpenUserProfile } from "@/hooks/useOpenUserProfile";
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { getApiBase } from '@/lib/api';
+const API = getApiBase();
 
 
 export default function AppPage() {
@@ -232,13 +232,33 @@ export default function AppPage() {
       },
     });
 
-    // Always return the ellipsis button — even if only block is present
-    return [{
+    const icons: ActionIcon[] = [];
+
+    // Voice call button — only for non-bot, non-guest, accepted conversations
+    if (!isGuest && !snap?.isBot && snap?.conversationStatus === 'accepted') {
+      icons.push({
+        icon: 'fas fa-phone',
+        label: 'Voice call',
+        onClick: () => {
+          const live = conversationsRef.current.find(u => u.id === userId);
+          window.dispatchEvent(new CustomEvent('chatr:call', { detail: {
+            userId,
+            displayName: live?.displayName || snap?.displayName || snap?.username || undefined,
+            username: live?.username || snap?.username || undefined,
+            profileImage: live?.profileImage || snap?.profileImage || undefined,
+          }}));
+        },
+      });
+    }
+
+    icons.push({
       icon: 'fas fa-ellipsis-vertical',
       label: 'More options',
       onClick: () => {},
       submenu: items,
-    }];
+    });
+
+    return icons;
   }, [socket, showToast, showConfirmation, refresh, blockUser, removeFriend, unblockUser, closePanel]);
 
   /**
@@ -254,7 +274,7 @@ export default function AppPage() {
       const user = conversations.find(u => u.id === userId);
       if (!user) continue;
 
-      const key = `${user.isFriend ? 1 : 0}|${user.friendshipId ?? ''}|${user.isBlocked ? 1 : 0}|${user.blockedByMe ? 1 : 0}|${user.friendship?.status ?? ''}`;
+      const key = `${user.isFriend ? 1 : 0}|${user.friendshipId ?? ''}|${user.isBlocked ? 1 : 0}|${user.blockedByMe ? 1 : 0}|${user.friendship?.status ?? ''}|${user.conversationStatus ?? ''}`;
       if (panelStatusKeyRef.current[userId] === key) continue;
       panelStatusKeyRef.current[userId] = key;
 

@@ -8,8 +8,9 @@ import { useWebSocket } from '@/contexts/WebSocketContext';
 import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import { imageUrl } from '@/lib/imageUrl';
 import styles from './UserProfilePanel.module.css';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 interface UserProfile {
   id: string;

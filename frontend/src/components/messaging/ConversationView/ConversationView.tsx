@@ -13,8 +13,9 @@ import { clearCachedConversation } from '@/lib/messageCache';
 import BlockedUsersPanel from '@/components/settings/BlockedUsersPanel';
 import { useOpenUserProfile } from '@/hooks/useOpenUserProfile';
 import { isAIBot } from '@/lib/aiBot';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 export interface ConversationViewProps {
   recipientId: string;

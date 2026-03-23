@@ -38,6 +38,7 @@ jest.mock('@/lib/api', () => ({
       login: (...args: any[]) => mockLogin(...args),
     },
   },
+  getApiBase: () => 'http://localhost:3001',
 }));
 
 const defaultProps = {

@@ -8,8 +8,10 @@ import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 import AuthPanel from '@/components/panels/AuthPanel/AuthPanel';
 import BackgroundBlobs from '@/components/BackgroundBlobs/BackgroundBlobs';
 import s from './SiteNav.module.css';
+import { getApiBase } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/imageUrl';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 const LINKS = [
   { href: '/', label: 'Home' },
@@ -95,8 +97,37 @@ export default function SiteNav() {
     setOpen(false);
   };
 
-  const hasProfileImage = !!user?.profileImage;
-  const avatarSrc = user?.profileImage?.startsWith('http') ? user.profileImage : `${API}${user?.profileImage}`;
+  const [liveProfileImage, setLiveProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) { setLiveProfileImage(null); return; }
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    let cancelled = false;
+    fetch(`${API}/api/users/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        if (r.status === 401 || r.status === 403) {
+          if (!cancelled) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+            setLiveProfileImage(null);
+          }
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      })
+      .then(data => {
+        if (cancelled || !data) return;
+        const img = data.profileImage;
+        if (img) setLiveProfileImage(resolveAssetUrl(img) || img);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const hasProfileImage = !!liveProfileImage;
+  const avatarSrc = liveProfileImage || '';
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {

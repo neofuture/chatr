@@ -5,6 +5,7 @@ import { useWebSocket } from '@/contexts/WebSocketContext';
 import { syncProfileImageFromServer } from '@/lib/profileImageService';
 import { syncCoverImageFromServer } from '@/lib/coverImageService';
 import { socketFirst } from '@/lib/socketRPC';
+import { getApiBase } from '@/lib/api';
 
 export type PrivacyLevel = 'everyone' | 'friends' | 'nobody';
 
@@ -29,7 +30,7 @@ const DEFAULTS: UserSettings = {
 };
 
 const STORAGE_KEY = 'chatr_user_settings';
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 const PRIVACY_KEYS: (keyof UserSettings)[] = [
   'privacyOnlineStatus', 'privacyPhone', 'privacyEmail',

@@ -16,8 +16,9 @@ import { imageUrl } from '@/lib/imageUrl';
 import { socketFirst } from '@/lib/socketRPC';
 import AddGroupMembersPanel from './AddGroupMembersPanel';
 import styles from './GroupProfilePanel.module.css';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 interface GroupMember {
   id: string;

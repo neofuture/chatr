@@ -4,10 +4,11 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import MessageAudioPlayer from '@/components/MessageAudioPlayer/MessageAudioPlayer';
 import { isAIBot } from '@/lib/aiBot';
-import { imageUrl } from '@/lib/imageUrl';
+import { imageUrl, resolveAssetUrl } from '@/lib/imageUrl';
 import CodeBlock, { parseCodeBlocks } from './CodeBlock';
 import LinkPreviewCard from '@/components/LinkPreviewCard/LinkPreviewCard';
 import styles from './MessageBubble.module.css';
+import { getApiBase } from '@/lib/api';
 
 /** Mounts children, animates in on show, animates height+opacity out before unmounting */
 function AnimatedIndicator({ visible, children }: { visible: boolean; children: React.ReactNode }) {
@@ -337,7 +338,7 @@ function MessageContextMenu({
               <i className={`fas fa-microphone ${styles.clonedVoiceIcon}`} /> Voice message
             </div>
           ) : message.type === 'image' && message.fileUrl ? (
-            <img src={message.fileUrl} alt={message.fileName || 'Image'}
+            <img src={resolveAssetUrl(message.fileUrl) || message.fileUrl} alt={message.fileName || 'Image'}
               className={styles.clonedImage} />
           ) : message.type === 'video' && message.fileUrl ? (
             <div className={styles.clonedVoice}>
@@ -858,8 +859,8 @@ export default function MessageBubble({
                         {msg.content && msg.content !== msg.fileName && (
                           <div style={{ padding: '6px 4px 4px', fontSize: '0.9rem', lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
                         )}
-                        <img src={msg.fileUrl} alt={msg.fileName || 'Shared image'} className={styles.messageImage}
-                          onClick={() => { if (onImageClick) onImageClick(msg.fileUrl!, msg.fileName || ''); }} />
+                        <img src={resolveAssetUrl(msg.fileUrl) || msg.fileUrl} alt={msg.fileName || 'Shared image'} className={styles.messageImage}
+                          onClick={() => { if (onImageClick) onImageClick(resolveAssetUrl(msg.fileUrl) || msg.fileUrl!, msg.fileName || ''); }} />
                         {msg.fileName && <div className={styles.imageFileName}><i className="fas fa-camera" aria-hidden="true" /> {msg.fileName}</div>}
                       </div>
                     )}
@@ -870,7 +871,7 @@ export default function MessageBubble({
                           <div style={{ padding: '6px 4px 4px', fontSize: '0.9rem', lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</div>
                         )}
                         <video
-                          src={msg.fileUrl + '#t=0.1'}
+                          src={(resolveAssetUrl(msg.fileUrl) || msg.fileUrl) + '#t=0.1'}
                           controls
                           playsInline
                           preload="metadata"
@@ -883,7 +884,7 @@ export default function MessageBubble({
                     {/* Audio */}
                     {(msg.type === 'audio' || (msg.type === 'file' && msg.fileType?.startsWith('audio/'))) && msg.fileUrl && (
                       <MessageAudioPlayer
-                        audioUrl={msg.fileUrl} duration={msg.duration || 0} waveformData={msg.waveformData || []}
+                        audioUrl={resolveAssetUrl(msg.fileUrl) || msg.fileUrl} duration={msg.duration || 0} waveformData={msg.waveformData || []}
                         timestamp={msg.timestamp} isSent={isSent} messageId={msg.id} senderId={msg.senderId}
                         messageType={msg.type}
                         onPlayStatusChange={onAudioPlayStatusChange} status={msg.status}
@@ -924,9 +925,9 @@ export default function MessageBubble({
                       // Previewable in browser — open in new tab without forcing download
                       const canPreview = kind === 'pdf' || kind === 'video' || kind === 'audio';
                       const sizeKb = msg.fileSize ? `${(msg.fileSize / 1024).toFixed(1)} KB` : null;
-                      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                      const API = getApiBase();
                       const downloadHref = canPreview
-                        ? (msg.fileUrl || '')
+                        ? (resolveAssetUrl(msg.fileUrl) || msg.fileUrl || '')
                         : `${API}/api/messages/download/${msg.id}`;
 
                       return (

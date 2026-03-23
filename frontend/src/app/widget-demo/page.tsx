@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import styles from './WidgetDemo.module.css';
+import { getApiBase } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = getApiBase();
 
 type WidgetTheme = 'auto' | 'dark' | 'light';
 

@@ -1,6 +1,5 @@
 import { db } from './db';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { resolveAssetUrl } from '@/lib/imageUrl';
 
 /**
  * Get a cached audio blob URL for a voice note, or null if not cached.
@@ -25,7 +24,7 @@ export async function cacheAudio(
   duration: number,
 ): Promise<string | null> {
   try {
-    const fullUrl = serverUrl.startsWith('http') ? serverUrl : `${API}${serverUrl}`;
+    const fullUrl = resolveAssetUrl(serverUrl) || serverUrl;
     const res = await fetch(fullUrl);
     if (!res.ok) return null;
 
@@ -63,6 +62,6 @@ export async function getOrCacheAudio(
   if (freshUrl) return { url: freshUrl, fromCache: false };
 
   // Fallback to server URL directly
-  const fullUrl = serverUrl.startsWith('http') ? serverUrl : `${API}${serverUrl}`;
+  const fullUrl = resolveAssetUrl(serverUrl) || serverUrl;
   return { url: fullUrl, fromCache: false };
 }

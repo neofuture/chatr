@@ -6,8 +6,9 @@ import SiteNav from '@/components/site/SiteNav';
 import SiteFooter from '@/components/site/SiteFooter';
 import { useBodyScroll } from '@/components/site/useBodyScroll';
 import s from '@/components/site/Site.module.css';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 export default function ContactPage() {
   useBodyScroll();

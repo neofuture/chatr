@@ -1,6 +1,6 @@
 # Chatr — Technical Documentation
 
-Chatr is a real-time messaging platform built on a Node.js/Express backend and Next.js frontend, communicating over REST and WebSocket (Socket.io). It supports direct messaging with message requests, friend management, presence tracking, file/image/audio/video uploads, an embeddable support chat widget, and offline message queuing.
+Chatr is a real-time messaging platform built on a Node.js/Express backend and Next.js frontend, communicating over REST and WebSocket (Socket.io). It supports direct messaging with message requests, friend management, presence tracking, file/image/audio/video uploads, voice calling, an embeddable support chat widget, and offline message queuing.
 
 ## Documentation Structure
 
@@ -13,8 +13,9 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | [Database](./Database/Schema.md) | Prisma schema, models, indexes, migrations |
 | [Widget](./Widget/index.md) | Embeddable support chat widget — config, build, icons, API |
 | [Features](./Features/MESSAGING.md) | Messaging, message requests, presence, friends |
+| [Voice Calls](./Features/VOICE_CALLS.md) | WebRTC P2P voice calls — architecture, signaling, HTTPS setup |
 | [Frontend](./Frontend/index.md) | Next.js structure, contexts, components |
-| [Contexts](./Frontend/Contexts/index.md) | WebSocket, Theme, Toast, Confirmation, Panel, Presence |
+| [Contexts](./Frontend/Contexts/index.md) | WebSocket, Theme, Toast, Confirmation, Panel, Presence, Call |
 | [Hooks](./Frontend/Hooks/index.md) | `useAuth`, `useConversationList`, `useFriends`, `useConversation`, `useGroupMessageInput` |
 | [Lib](./Frontend/Lib/index.md) | api.ts, db.ts, offline.ts, auth helpers, image services, messageCache |
 | [Types](./Frontend/Types/index.md) | Shared TypeScript interfaces |
@@ -35,19 +36,38 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 
 ## Quick Reference
 
-- **Frontend**: `http://localhost:3000`
-- **Dashboard**: `http://localhost:3000/dashboard`
-- **Backend API**: `http://localhost:3001`
-- **WebSocket**: `ws://localhost:3001`
+- **Frontend**: `https://localhost:3000`
+- **Dashboard**: `https://localhost:3000/dashboard`
+- **Backend API**: `http://localhost:3001` (internal) / `https://localhost:3002` (browser)
+- **WebSocket**: `ws://localhost:3001` / `wss://localhost:3002`
 - **Swagger UI**: `http://localhost:3001/api/docs`
 - **Health Check**: `http://localhost:3001/api/health`
+- **Prisma Studio**: `http://127.0.0.1:5555`
 - **Database**: PostgreSQL via Prisma ORM
 - **Cache/Presence**: Redis
 - **File Storage**: Local (`/uploads`) → S3 in production (50MB limit)
 - **Widget**: `http://localhost:3001/widget/chatr.js`
 
+## Voice Calls *(not production ready)*
+
+1-to-1 WebRTC P2P voice calling over Socket.IO signaling. Audio travels directly between peers — the server only handles call setup.
+
+| | |
+|---|---|
+| **Full documentation** | [Features → Voice Calls](./Features/VOICE_CALLS.md) |
+| **Socket events** | [WebSocket → Voice Call Events](./WebSocket/EVENTS.md#voice-call-events) |
+| **Database model** | [Database → Call](./Database/SCHEMA.md#call) |
+| **Frontend context** | [Contexts → CallContext](./Frontend/Contexts/index.md#callcontext) |
+
+**How it works:** Caller taps the phone icon → `call:initiate` → receiver sees full-screen overlay → `call:accept` → WebRTC peer connection established → P2P audio streams. Calls auto-miss after 30s. Disconnects are cleaned up server-side.
+
+**Key files:** `CallContext.tsx` (state + WebRTC), `CallOverlay.tsx` (UI), `handlers.ts` (signaling), `schema.prisma` (Call model)
+
+**Requires HTTPS** for microphone access. Dev setup uses mkcert certificates — see the [HTTPS section](./Features/VOICE_CALLS.md#https-requirement) for details.
+
 ## Recent Additions
 
+- **Voice Calls** *(not production ready)*: 1-to-1 WebRTC P2P voice calling with Socket.IO signaling, full-screen call overlay, mute toggle, call history persistence, and HTTPS dev setup for iOS microphone access
 - **Auth Panel Login/Register**: Dedicated `/login` and `/register` routes removed; all authentication now uses the `AuthPanel` slide-in panel from the SiteNav avatar dropdown
 - **Profile Management Overhaul**: Profile panel fetches fresh data on every view (multi-device support), uses direct HTTP instead of socketFirst, and shows save status indicators
 - **socketFirst Reliability**: All contexts and hooks now gate WebSocket RPC calls on `connected` state, eliminating timeout cascades

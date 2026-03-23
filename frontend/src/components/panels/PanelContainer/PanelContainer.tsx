@@ -9,6 +9,7 @@ import PresenceLabel from '@/components/PresenceLabel/PresenceLabel';
 import PresenceAvatar from '@/components/PresenceAvatar/PresenceAvatar';
 import PanelFooter from '@/components/PanelFooter/PanelFooter';
 import { isAIBot } from '@/lib/aiBot';
+import { resolveAssetUrl } from '@/lib/imageUrl';
 import styles from './PanelContainer.module.css';
 
 /** True when we have no real presence data (suppress "last seen a while ago") */
@@ -26,7 +27,7 @@ function PresenceAvatarForPanel({ panelId, profileImage, title, isGuest }: { pan
     return <PresenceAvatar displayName={title} profileImage={profileImage ?? null} info={{ status: 'offline', lastSeen: null }} size={36} showDot={false} isGroup />;
   }
 
-  if (!userId) return profileImage ? <img src={profileImage} alt={title} /> : null;
+  if (!userId) return profileImage ? <img src={resolveAssetUrl(profileImage) || profileImage} alt={title} /> : null;
   const bot = isAIBot(userId);
   const info = getPresence(userId);
   // When presence is unknown/hidden, render avatar without status dot

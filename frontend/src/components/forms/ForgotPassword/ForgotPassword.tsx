@@ -5,6 +5,9 @@ import Image from 'next/image';
 import { usePanels } from '@/contexts/PanelContext';
 import { useToast } from '@/contexts/ToastContext';
 import styles from './ForgotPassword.module.css';
+import { getApiBase } from '@/lib/api';
+
+const API = getApiBase();
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -39,7 +42,7 @@ export function ForgotPasswordContent() {
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`, {
+      const response = await fetch(`${API}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

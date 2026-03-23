@@ -8,8 +8,8 @@ import { useWebSocket } from "@/contexts/WebSocketContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useConfirmation } from "@/contexts/ConfirmationContext";
 import { useFriends } from "@/hooks/useFriends";
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { getApiBase } from '@/lib/api';
+const API = getApiBase();
 
 export default function FriendsPage() {
   const { theme } = useTheme();
@@ -97,12 +97,24 @@ export default function FriendsPage() {
       },
     });
 
-    const actionIcons: ActionIcon[] = [{
+    const actionIcons: ActionIcon[] = [];
+
+    if (isFriend) {
+      actionIcons.push({
+        icon: 'fas fa-phone',
+        label: 'Voice call',
+        onClick: () => {
+          window.dispatchEvent(new CustomEvent('chatr:call', { detail: { userId, displayName, profileImage } }));
+        },
+      });
+    }
+
+    actionIcons.push({
       icon: 'fas fa-ellipsis-vertical',
       label: 'More options',
       onClick: () => {},
       submenu: submenuItems,
-    }];
+    });
 
     openPanel(
       `chat-${userId}`,

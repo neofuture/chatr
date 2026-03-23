@@ -5,8 +5,9 @@ import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useToast } from '@/contexts/ToastContext';
 import { socketFirst } from '@/lib/socketRPC';
 import type { FriendEntry, FriendRequest, FriendUser, AvailableUser } from '@/types/types';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 interface FriendsContextValue {
   friends: FriendEntry[];

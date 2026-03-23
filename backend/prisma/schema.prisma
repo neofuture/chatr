@@ -55,6 +55,8 @@ model User {
   friendRequestsRcvd Friendship[]         @relation("FriendAddressees")
   conversationsAsA   Conversation[]       @relation("ConversationUserA")
   conversationsAsB   Conversation[]       @relation("ConversationUserB")
+  callsMade          Call[]               @relation("CallsMade")
+  callsReceived      Call[]               @relation("CallsReceived")
 }
 
 model Message {
@@ -226,6 +228,23 @@ model ContactSubmission {
 
   @@index([createdAt(sort: Desc)])
   @@index([email])
+}
+
+model Call {
+  id         String    @id @default(uuid())
+  callerId   String
+  caller     User      @relation("CallsMade", fields: [callerId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User      @relation("CallsReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  status     String    @default("ringing") // "ringing" | "active" | "ended" | "missed" | "rejected" | "busy"
+  startedAt  DateTime?
+  endedAt    DateTime?
+  duration   Int?      // seconds
+  createdAt  DateTime  @default(now())
+
+  @@index([callerId])
+  @@index([receiverId])
+  @@index([callerId, receiverId, createdAt(sort: Desc)])
 }
 
 model Friendship {

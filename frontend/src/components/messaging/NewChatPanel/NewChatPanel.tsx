@@ -5,8 +5,9 @@ import type { PresenceInfo } from '@/types/types';
 import { usePresence } from '@/contexts/PresenceContext';
 import PaneSearchBox, { type PaneSearchBoxHandle } from '@/components/common/PaneSearchBox/PaneSearchBox';
 import UserRow from '@/components/common/UserRow/UserRow';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 interface UserSearchResult {
   id: string;

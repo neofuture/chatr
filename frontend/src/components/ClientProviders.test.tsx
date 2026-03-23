@@ -28,6 +28,9 @@ jest.mock('@/contexts/ConfirmationContext', () => ({
 jest.mock('@/contexts/FriendsContext', () => ({
   FriendsProvider: ({ children }: any) => <div data-testid="friends-provider">{children}</div>,
 }));
+jest.mock('@/contexts/CallContext', () => ({
+  CallProvider: ({ children }: any) => <div data-testid="call-provider">{children}</div>,
+}));
 jest.mock('@/components/panels/PanelContainer/PanelContainer', () => ({
   __esModule: true,
   default: () => <div data-testid="panel-container" />,
@@ -43,6 +46,10 @@ jest.mock('@/components/dialogs/ConfirmationDialog/ConfirmationDialog', () => ({
 jest.mock('@/components/RoutePreloader', () => ({
   __esModule: true,
   default: () => <div data-testid="route-preloader" />,
+}));
+jest.mock('@/components/CallOverlay/CallOverlay', () => ({
+  __esModule: true,
+  default: () => <div data-testid="call-overlay" />,
 }));
 
 describe('ClientProviders', () => {
@@ -71,6 +78,7 @@ describe('ClientProviders', () => {
     expect(screen.getByTestId('panel-provider')).toBeInTheDocument();
     expect(screen.getByTestId('confirmation-provider')).toBeInTheDocument();
     expect(screen.getByTestId('friends-provider')).toBeInTheDocument();
+    expect(screen.getByTestId('call-provider')).toBeInTheDocument();
   });
 
   it('renders companion components', () => {
@@ -83,6 +91,7 @@ describe('ClientProviders', () => {
     expect(screen.getByTestId('toast-container')).toBeInTheDocument();
     expect(screen.getByTestId('confirmation-dialog')).toBeInTheDocument();
     expect(screen.getByTestId('route-preloader')).toBeInTheDocument();
+    expect(screen.getByTestId('call-overlay')).toBeInTheDocument();
   });
 
   it('nests providers in the correct order (ThemeProvider outermost)', () => {

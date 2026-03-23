@@ -42,6 +42,7 @@ global.URL.createObjectURL = mockCreateObjectURL;
 const OriginalImage = global.Image;
 beforeAll(() => {
   process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3001';
+  (globalThis as any).API = 'http://localhost:3001';
 
   (global as any).Image = class MockImage {
     width = 800;
@@ -75,6 +76,7 @@ beforeAll(() => {
 afterAll(() => {
   global.Image = OriginalImage;
   (document.createElement as jest.Mock).mockRestore?.();
+  delete (globalThis as any).API;
 });
 
 beforeEach(() => {
@@ -465,7 +467,7 @@ describe('profileImageService', () => {
 
       await syncProfileImageFromServer('u1', '/uploads/profiles/abc.jpg');
 
-      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3001/uploads/profiles/abc.jpg');
+      expect(mockFetch).toHaveBeenCalledWith('/uploads/profiles/abc.jpg');
       expect(mockPut).toHaveBeenCalledTimes(1);
       const saved = mockPut.mock.calls[0][0];
       expect(saved.userId).toBe('u1');

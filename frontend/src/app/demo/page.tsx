@@ -14,9 +14,10 @@ import DatePicker from '@/components/form-controls/DatePicker/DatePicker';
 
 import { version } from '@/version';
 import heroStyles from '../Hero.module.css';
+import { getApiBase } from '@/lib/api';
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = getApiBase();
 
 export default function DemoPage() {
   const { openPanel } = usePanels();
@@ -173,8 +174,8 @@ export default function DemoPage() {
           border: '1px solid rgba(59,130,246,0.15)',
         }}>
           {[
-            { label: 'API URL', value: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001' },
-            { label: 'WS URL',  value: process.env.NEXT_PUBLIC_WS_URL  || 'http://localhost:3001' },
+            { label: 'API URL', value: getApiBase() },
+            { label: 'WS URL',  value: getApiBase() },
             { label: 'App',     value: process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr' },
             { label: 'Version', value: version },
             { label: 'Env',     value: process.env.NODE_ENV || 'unknown' },

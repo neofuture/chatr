@@ -472,3 +472,106 @@ Emitted to the client when a socket operation fails.
   "message": "Error description"
 }
 ```
+
+---
+
+## Voice Call Events
+
+See [Voice Calls](../Features/VOICE_CALLS.md) for the full feature overview and sequence diagram.
+
+### Client → Server
+
+#### `call:initiate`
+Start an outbound call. Server creates a `Call` record and notifies the receiver.
+
+```json
+{ "receiverId": "uuid" }
+```
+
+Acknowledgement returns `{ "callId": "uuid" }` on success or `{ "error": "reason" }` on failure (user offline, blocked, already in a call).
+
+#### `call:accept`
+Receiver accepts an incoming call. Server updates the call to `active` and notifies the caller.
+
+```json
+{ "callId": "uuid" }
+```
+
+#### `call:reject`
+Receiver declines an incoming call. Server updates the call to `rejected`.
+
+```json
+{ "callId": "uuid" }
+```
+
+#### `call:hangup`
+Either party ends an active or ringing call.
+
+```json
+{ "callId": "uuid" }
+```
+
+#### `call:offer`
+Relay an SDP offer to the target user (WebRTC signaling).
+
+```json
+{ "callId": "uuid", "targetUserId": "uuid", "sdp": { "type": "offer", "sdp": "..." } }
+```
+
+#### `call:answer`
+Relay an SDP answer to the target user (WebRTC signaling).
+
+```json
+{ "callId": "uuid", "targetUserId": "uuid", "sdp": { "type": "answer", "sdp": "..." } }
+```
+
+#### `call:ice-candidate`
+Relay an ICE candidate to the target user (WebRTC connectivity).
+
+```json
+{ "callId": "uuid", "targetUserId": "uuid", "candidate": { "candidate": "...", "sdpMid": "...", "sdpMLineIndex": 0 } }
+```
+
+### Server → Client
+
+#### `call:incoming`
+Sent to the receiver when someone initiates a call.
+
+```json
+{ "callId": "uuid", "caller": { "id": "uuid", "username": "@alice", "displayName": "Alice", "profileImage": "/uploads/profiles/..." } }
+```
+
+#### `call:accepted`
+Sent to the caller when the receiver accepts.
+
+```json
+{ "callId": "uuid" }
+```
+
+#### `call:offer`
+Relayed SDP offer from the caller.
+
+```json
+{ "callId": "uuid", "fromUserId": "uuid", "sdp": { "type": "offer", "sdp": "..." } }
+```
+
+#### `call:answer`
+Relayed SDP answer from the receiver.
+
+```json
+{ "callId": "uuid", "fromUserId": "uuid", "sdp": { "type": "answer", "sdp": "..." } }
+```
+
+#### `call:ice-candidate`
+Relayed ICE candidate from the other party.
+
+```json
+{ "callId": "uuid", "fromUserId": "uuid", "candidate": { "candidate": "...", "sdpMid": "...", "sdpMLineIndex": 0 } }
+```
+
+#### `call:ended`
+Sent to both parties when a call ends for any reason.
+
+```json
+{ "callId": "uuid", "reason": "hangup | rejected | no_answer | missed | disconnect", "duration": 42 }
+```

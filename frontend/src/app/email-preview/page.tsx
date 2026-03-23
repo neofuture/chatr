@@ -7,8 +7,9 @@ import Input from '@/components/form-controls/Input/Input';
 import Select from '@/components/form-controls/Select/Select';
 import ThemeToggle from '@/components/ThemeToggle/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
+import { getApiBase } from '@/lib/api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = getApiBase();
 
 export default function EmailPreviewPage() {
   const { theme } = useTheme();

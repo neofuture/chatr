@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { useLog } from './LogContext';
+import { getApiBase } from '@/lib/api';
 
 interface WebSocketContextType {
   socket: Socket | null;
@@ -68,7 +69,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       setConnecting(true);
 
       // Connect to WebSocket server
-      const newSocket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
+      const newSocket = io(getApiBase(), {
         auth: { token },
         reconnection: true,
         reconnectionDelay: 1000,

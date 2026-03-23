@@ -6,8 +6,9 @@ import SiteNav from '@/components/site/SiteNav';
 import { useBodyScroll } from '@/components/site/useBodyScroll';
 import { version } from '@/version';
 import { usePanels } from '@/contexts/PanelContext';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 const REFRESH_INTERVAL = 15_000;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

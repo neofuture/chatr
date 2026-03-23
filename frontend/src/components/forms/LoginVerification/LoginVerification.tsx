@@ -5,6 +5,9 @@ import { useState, useEffect, useCallback, FormEvent, useRef, KeyboardEvent } fr
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useToast } from '@/contexts/ToastContext';
+import { getApiBase } from '@/lib/api';
+
+const API = getApiBase();
 
 const PRODUCT_NAME = process.env.NEXT_PUBLIC_PRODUCT_NAME || 'Chatr';
 
@@ -33,7 +36,7 @@ export function LoginVerificationContent({ userId, email, password }: LoginVerif
     if (resendCooldown > 0) return;
     setResendCooldown(60);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-verification`, {
+      const res = await fetch(`${API}/api/auth/resend-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, type: 'login' }),
@@ -105,7 +108,7 @@ export function LoginVerificationContent({ userId, email, password }: LoginVerif
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+      const response = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

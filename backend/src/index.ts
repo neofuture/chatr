@@ -1,5 +1,7 @@
 import express from 'express';
 import { createServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
+import { readFileSync, existsSync } from 'fs';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -41,14 +43,27 @@ import { setGroupsSocketIO } from './routes/groups';
 dotenv.config();
 
 const app = express();
+
+const certDir = path.join(__dirname, '../../certs');
+const keyPath = path.join(certDir, 'key.pem');
+const certPath = path.join(certDir, 'cert.pem');
+const useHttps = process.env.NODE_ENV !== 'production' && existsSync(keyPath) && existsSync(certPath);
+
+// HTTPS server for browser connections; plain HTTP server for Next.js rewrite proxy
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
+const httpsServer = useHttps
+  ? createHttpsServer({ key: readFileSync(keyPath), cert: readFileSync(certPath) }, app)
+  : null;
+const socketOpts = {
   cors: {
-    origin: (origin, callback) => callback(null, true), // allow widget from any origin
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => callback(null, true),
     methods: ['GET', 'POST'],
     credentials: false,
   },
-});
+};
+const io = new Server(socketOpts);
+io.attach(httpServer);
+if (httpsServer) io.attach(httpsServer);
 
 // Middleware
 app.use(helmet({
@@ -68,6 +83,7 @@ const allowedOrigins = [
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production') return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
@@ -214,6 +230,23 @@ async function start() {
     console.log(`📚 API Docs: http://localhost:${PORT}/api/docs`);
     console.log(`📡 WebSocket: ws://localhost:${PORT}`);
   });
+
+  if (httpsServer) {
+    const HTTPS_PORT = Number(PORT) + 1; // 3002
+    httpsServer.keepAliveTimeout = 30_000;
+    httpsServer.headersTimeout = 35_000;
+    httpsServer.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`⚠️  HTTPS port ${HTTPS_PORT} already in use — HTTPS disabled this run`);
+      } else {
+        console.error('⚠️  HTTPS server error:', err.message);
+      }
+    });
+    httpsServer.listen(HTTPS_PORT, () => {
+      console.log(`🔒 HTTPS: https://localhost:${HTTPS_PORT}`);
+      console.log(`🔒 WebSocket: wss://localhost:${HTTPS_PORT}`);
+    });
+  }
 }
 
 start().catch(err => {
@@ -239,6 +272,7 @@ const gracefulShutdown = async () => {
     console.error('⚠️  Error disconnecting Redis:', e);
   }
 
+  if (httpsServer) httpsServer.close();
   httpServer.close(() => {
     console.log('✅ Server closed');
     process.exit(0);

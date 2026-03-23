@@ -6,8 +6,9 @@ import { useWebSocket } from '@/contexts/WebSocketContext';
 import ProfileImageUploader from '@/components/image-manip/ProfileImageUploader/ProfileImageUploader';
 import CoverImageUploader from '@/components/image-manip/CoverImageUploader/CoverImageUploader';
 import styles from './MyProfilePanel.module.css';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 function getToken() {
   return localStorage.getItem('token') || '';

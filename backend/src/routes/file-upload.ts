@@ -226,9 +226,8 @@ router.post('/upload',
       console.log(`✅ S3 upload complete: ${fileUrl}`);
     } else {
       // Local dev — file already on disk via diskStorage
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
       localFilePath = req.file.path;
-      fileUrl = `${backendUrl}/uploads/${subfolder}/${req.file.filename}`;
+      fileUrl = `/uploads/${subfolder}/${req.file.filename}`;
     }
 
     // Use provided waveform (voice recorder) or placeholder (MP3 upload)

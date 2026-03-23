@@ -1,4 +1,5 @@
 import type { Socket } from 'socket.io-client';
+import { getApiBase } from '@/lib/api';
 
 const DEFAULT_TIMEOUT = 4000;
 
@@ -21,10 +22,6 @@ export function socketRPC<T = any>(
       resolve(res as T);
     });
   });
-}
-
-function getApiBase() {
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 }
 
 function getToken() {

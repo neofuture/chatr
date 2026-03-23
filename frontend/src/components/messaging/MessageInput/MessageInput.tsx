@@ -7,8 +7,9 @@ import LinkPreviewCard, { type LinkPreviewData } from '@/components/LinkPreviewC
 import { useMessageInput } from '@/hooks/useMessageInput';
 import { useGroupMessageInput } from '@/hooks/useGroupMessageInput';
 import type { Message } from '@/components/MessageBubble';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 const URL_RE = /https?:\/\/[^\s<>"']+/gi;
 
 export interface MessageInputProps {

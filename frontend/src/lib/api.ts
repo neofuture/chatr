@@ -1,4 +1,20 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+/**
+ * Resolves the backend URL dynamically so the app works on localhost AND
+ * any LAN/network IP without changing env vars or restarting.
+ * SSR falls back to the env var / localhost.
+ */
+export function getApiBase(): string {
+  if (typeof window !== 'undefined') {
+    const env = process.env.NEXT_PUBLIC_API_URL;
+    if (env && !env.includes('localhost')) return env;
+    // HTTPS uses port 3002, HTTP uses port 3001
+    const port = window.location.protocol === 'https:' ? 3002 : 3001;
+    return `${window.location.protocol}//${window.location.hostname}:${port}`;
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+}
+
+const API_URL = getApiBase();
 
 export const api = {
   auth: {

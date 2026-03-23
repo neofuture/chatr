@@ -14,6 +14,8 @@ import {
 import CoverImageCropper from '@/components/image-manip/CoverImageCropper/CoverImageCropper';
 import BottomSheet from '@/components/dialogs/BottomSheet/BottomSheet';
 import styles from './CoverImageUploader.module.css';
+import { getApiBase } from '@/lib/api';
+import { resolveAssetUrl } from '@/lib/imageUrl';
 
 interface CoverImageUploaderProps {
   userId: string;
@@ -38,7 +40,7 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
 
   const loadCoverImage = async () => {
     if (!userId || userId === 'N/A' || userId === 'Invalid data') return;
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const API = getApiBase();
     console.log('[CoverImg] Loading for', userId, 'API=', API);
 
     try {
@@ -56,7 +58,7 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         console.log('[CoverImg] localStorage coverImage:', user.coverImage || 'NOT SET');
         if (user.coverImage) {
-          const src = user.coverImage.startsWith('/') ? `${API}${user.coverImage}` : user.coverImage;
+          const src = resolveAssetUrl(user.coverImage) || user.coverImage;
           console.log('[CoverImg] Using localStorage URL:', src);
           setImageLoaded(false);
           setImageUrl(src);
@@ -69,7 +71,7 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
       const { socketFirst } = await import('@/lib/socketRPC');
       const data = await socketFirst(socket, 'users:me', {}, 'GET', '/api/users/me') as any;
       if (data?.coverImage) {
-        const src = data.coverImage.startsWith('/') ? `${API}${data.coverImage}` : data.coverImage;
+        const src = resolveAssetUrl(data.coverImage) || data.coverImage;
         setImageLoaded(false);
         setImageUrl(src);
       }

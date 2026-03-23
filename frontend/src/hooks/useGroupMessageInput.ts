@@ -7,8 +7,9 @@ import { extractWaveformFromFile } from '@/utils/extractWaveform';
 import { getAudioDurationFromBlob } from '@/utils/audio';
 import { enqueue, loadAllQueued } from '@/lib/outboundQueue';
 import type { Message } from '@/components/MessageBubble';
+import { getApiBase } from '@/lib/api';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API = getApiBase();
 
 interface UseGroupMessageInputOptions {
   groupId: string;
