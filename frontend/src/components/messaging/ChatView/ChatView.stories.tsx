@@ -76,10 +76,9 @@ const baseArgs = {
   onReaction: (id: string, emoji: string) => console.log('React', id, emoji),
   onUnsend: (id: string) => console.log('Unsend', id),
   onReply: (msg: Message) => console.log('Reply', msg),
-  clearReply: () => {},
   onImageClick: (url: string, name: string) => console.log('Image', url, name),
   onAudioPlayStatusChange: () => {},
-  onStartEdit: (msg: Message) => console.log('Edit', msg),
+  onEdit: (msg: Message) => console.log('Edit', msg),
 };
 
 export const Default: Story = { args: baseArgs };

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import BottomNav from './BottomNav';
 
 const meta: Meta<typeof BottomNav> = {
@@ -18,10 +19,12 @@ const meta: Meta<typeof BottomNav> = {
   decorators: [
     (Story) => (
       <ThemeProvider>
-        <div style={{ height: '100vh', background: '#0f172a', position: 'relative' }}>
-          <div style={{ flex: 1 }} />
-          <Story />
-        </div>
+        <WebSocketProvider>
+          <div style={{ height: '100vh', background: '#0f172a', position: 'relative' }}>
+            <div style={{ flex: 1 }} />
+            <Story />
+          </div>
+        </WebSocketProvider>
       </ThemeProvider>
     ),
   ],
@@ -36,9 +39,11 @@ export const Light: Story = {
   decorators: [
     (Story) => (
       <ThemeProvider>
-        <div style={{ height: '100vh', background: '#f8fafc', position: 'relative' }}>
-          <Story />
-        </div>
+        <WebSocketProvider>
+          <div style={{ height: '100vh', background: '#f8fafc', position: 'relative' }}>
+            <Story />
+          </div>
+        </WebSocketProvider>
       </ThemeProvider>
     ),
   ],

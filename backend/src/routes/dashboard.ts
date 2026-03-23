@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { execSync, spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import { setTestMode } from '../lib/testMode';
+import { isTestMode, setTestMode } from '../lib/testMode';
 
 const router = Router();
 const ROOT = path.resolve(__dirname, '../../../');
@@ -612,9 +612,10 @@ function buildDashboard(): object {
     }
   }
   const isTest = process.env.NODE_ENV === 'test';
+  const skipExpensive = isTest || isTestMode();
   const auditEmpty: AuditSummary = { critical: 0, high: 0, moderate: 0, low: 0, info: 0, total: 0, details: [] };
-  const auditFrontend = isTest ? auditEmpty : npmAudit(path.join(ROOT, 'frontend'));
-  const auditBackend = isTest ? auditEmpty : npmAudit(path.join(ROOT, 'backend'));
+  const auditFrontend = skipExpensive ? auditEmpty : npmAudit(path.join(ROOT, 'frontend'));
+  const auditBackend = skipExpensive ? auditEmpty : npmAudit(path.join(ROOT, 'backend'));
 
   // ── Build health (TypeScript compilation check) ──────────────────────
   type BuildCheck = { area: string; ok: boolean; errors: number; errorSample: string[] };
@@ -629,8 +630,9 @@ function buildDashboard(): object {
       return { area, ok: false, errors: errLines.length, errorSample: errLines.slice(0, 10) };
     }
   }
-  const buildChecks = isTest
-    ? [{ area: 'backend', ok: true, errors: 0, errorSample: [] }, { area: 'frontend', ok: true, errors: 0, errorSample: [] }]
+  const buildEmpty: BuildCheck = { area: '', ok: true, errors: 0, errorSample: [] };
+  const buildChecks = skipExpensive
+    ? [{ ...buildEmpty, area: 'backend' }, { ...buildEmpty, area: 'frontend' }]
     : [tscCheck(path.join(ROOT, 'backend'), 'backend'), tscCheck(path.join(ROOT, 'frontend'), 'frontend')];
 
   // ── Git branches with staleness ──────────────────────────────────────
@@ -661,7 +663,7 @@ function buildDashboard(): object {
         .sort()
         .reverse();
       const appliedMigrations = new Set<string>();
-      if (isTest) {
+      if (skipExpensive) {
         migDirs.forEach(m => appliedMigrations.add(m));
       } else /* istanbul ignore next -- skipped in test mode */ {
         try {
@@ -1210,7 +1212,26 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-/** POST /invalidate — Rebuild the dashboard cache (called by manual refresh) */
+/**
+ * @swagger
+ * /api/dashboard/invalidate:
+ *   post:
+ *     summary: Rebuild the dashboard cache
+ *     description: Invalidates the server-side dashboard cache so the next GET rebuilds it from scratch.
+ *     tags: [Dashboard]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Cache invalidated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ */
 router.post('/invalidate', (_req: Request, res: Response) => {
   cache = null;
   res.json({ ok: true });
@@ -1235,7 +1256,22 @@ function loadTestReport(area: string): TestReport | null {
   } catch { return null; }
 }
 
-/** GET /tests/e2e — Return live results while running, or final report */
+/**
+ * @swagger
+ * /api/dashboard/tests/e2e:
+ *   get:
+ *     summary: Get E2E test results
+ *     description: Returns live results while a run is in progress, or the final report from the last completed run.
+ *     tags: [Dashboard]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Test report or live progress
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
 router.get('/tests/e2e', (_req: Request, res: Response) => {
   try {
     // Crash recovery: if backend restarted while Playwright was running,
@@ -1340,7 +1376,26 @@ function loadFreshE2eReport(): TestReport | null {
   return best;
 }
 
-/** POST /tests/e2e/run — Kick off an async E2E run with real-time result streaming */
+/**
+ * @swagger
+ * /api/dashboard/tests/e2e/run:
+ *   post:
+ *     summary: Start an E2E test run
+ *     description: Kicks off an async Playwright E2E run with real-time result streaming.
+ *     tags: [Dashboard]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Run started
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ */
 router.post('/tests/e2e/run', async (_req: Request, res: Response) => {
   if (requireTestPassword(_req, res)) return;
   if (liveRuns.e2e?.status === 'running') {
@@ -1549,7 +1604,27 @@ router.post('/tests/e2e/run', async (_req: Request, res: Response) => {
   res.json({ status: 'started' });
 });
 
-/** POST /tests/e2e/stop — Stop a running E2E test */
+/**
+ * @swagger
+ * /api/dashboard/tests/e2e/stop:
+ *   post:
+ *     summary: Stop a running E2E test
+ *     description: Sends SIGTERM to the running Playwright process and marks the run as stopped.
+ *     tags: [Dashboard]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Stopped or error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                 error:
+ *                   type: string
+ */
 router.post('/tests/e2e/stop', (_req: Request, res: Response) => {
   if (requireTestPassword(_req, res)) return;
 
@@ -1576,7 +1651,26 @@ router.post('/tests/e2e/stop', (_req: Request, res: Response) => {
   }
 });
 
-/** POST /tests/e2e/clear — Flush all cached E2E results (memory + disk) */
+/**
+ * @swagger
+ * /api/dashboard/tests/e2e/clear:
+ *   post:
+ *     summary: Clear cached E2E results
+ *     description: Flushes all cached E2E results from memory and disk.
+ *     tags: [Dashboard]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Cache cleared
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ */
 router.post('/tests/e2e/clear', (_req: Request, res: Response) => {
   delete liveRuns.e2e;
   delete testCache.tests_e2e;
@@ -1587,7 +1681,30 @@ router.post('/tests/e2e/clear', (_req: Request, res: Response) => {
   return res.json({ status: 'cleared' });
 });
 
-/** GET /tests/:area — Return cached results, live progress, or 'none' */
+/**
+ * @swagger
+ * /api/dashboard/tests/{area}:
+ *   get:
+ *     summary: Get test results for a given area
+ *     description: Returns cached test results, live progress while running, or `{ status: 'none' }` if no results exist.
+ *     tags: [Dashboard]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: area
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [backend, frontend]
+ *         description: Test area (backend-unit or frontend-unit)
+ *     responses:
+ *       200:
+ *         description: Test report, live progress, or none
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
 router.get('/tests/:area', (req: Request, res: Response) => {
   const area = req.params.area as 'backend' | 'frontend';
   if (area !== 'backend' && area !== 'frontend') {
@@ -1629,7 +1746,34 @@ router.get('/tests/:area', (req: Request, res: Response) => {
   return res.json({ status: 'none' });
 });
 
-/** POST /tests/:area/run — Start an async test run with live result streaming */
+/**
+ * @swagger
+ * /api/dashboard/tests/{area}/run:
+ *   post:
+ *     summary: Start a test run for a given area
+ *     description: Kicks off an async unit-test run with live result streaming for the specified area.
+ *     tags: [Dashboard]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: area
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [backend, frontend]
+ *         description: Test area to run
+ *     responses:
+ *       200:
+ *         description: Run started
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ */
 router.post('/tests/:area/run', (req: Request, res: Response) => {
   if (requireTestPassword(req, res)) return;
   const area = req.params.area as 'backend' | 'frontend';

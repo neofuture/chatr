@@ -79,6 +79,38 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/users/search:
+ *   get:
+ *     summary: Search users by username or display name
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search query (matches username, displayName, firstName, lastName)
+ *     responses:
+ *       200:
+ *         description: Matching users with friendship info, friends sorted first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
 // GET /api/users/search?q=query - Search users by username/displayName
 // Returns friendship info and sorts friends first
 router.get('/search', authenticateToken as any, async (req: any, res: any) => {
@@ -149,6 +181,31 @@ router.get('/search', authenticateToken as any, async (req: any, res: any) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/users/conversations:
+ *   get:
+ *     summary: Get conversations with last message and unread count
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of conversations with metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversations:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
 // GET /api/users/conversations - Users we have actual conversations with, plus last message + unread count
 // Includes conversationId, conversationStatus, isInitiator, isFriend per entry
 // Cached in Redis for 30s — invalidated on new message/edit/unsend via socket handlers
@@ -351,6 +408,38 @@ router.get('/suggest-username', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/users/by-id/{userId}:
+ *   get:
+ *     summary: Get user profile by ID
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user's ID
+ *     responses:
+ *       200:
+ *         description: User profile (privacy-filtered based on friendship)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 // GET /api/users/by-id/:userId - Get user profile by ID
 router.get('/by-id/:userId', authenticateToken as any, async (req: any, res: any) => {
   try {
@@ -488,6 +577,44 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/users/me:
+ *   put:
+ *     summary: Update own profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               displayName:
+ *                 type: string
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, non-binary, prefer-not-to-say]
+ *     responses:
+ *       200:
+ *         description: Updated user profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Invalid gender value
+ *       401:
+ *         description: Authentication required
+ *       500:
+ *         description: Internal server error
+ */
 // PUT /api/users/me - Update profile (displayName etc.)
 router.put('/me', authenticateToken as any, async (req: any, res: any) => {
   try {
@@ -547,6 +674,56 @@ router.put('/me', authenticateToken as any, async (req: any, res: any) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/users/me/settings:
+ *   put:
+ *     summary: Save privacy and behaviour settings
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               privacyOnlineStatus:
+ *                 type: string
+ *                 enum: [everyone, friends, nobody]
+ *               privacyPhone:
+ *                 type: string
+ *                 enum: [everyone, friends, nobody]
+ *               privacyEmail:
+ *                 type: string
+ *                 enum: [everyone, friends, nobody]
+ *               privacyFullName:
+ *                 type: string
+ *                 enum: [everyone, friends, nobody]
+ *               privacyGender:
+ *                 type: string
+ *                 enum: [everyone, friends, nobody]
+ *               privacyJoinedDate:
+ *                 type: string
+ *                 enum: [everyone, friends, nobody]
+ *     responses:
+ *       200:
+ *         description: Settings saved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *       400:
+ *         description: No valid settings provided
+ *       401:
+ *         description: Authentication required
+ *       500:
+ *         description: Internal server error
+ */
 // PUT /api/users/me/settings - Save privacy / behaviour settings immediately
 router.put('/me/settings', authenticateToken as any, async (req: any, res: any) => {
   try {
@@ -576,6 +753,38 @@ router.put('/me/settings', authenticateToken as any, async (req: any, res: any) 
   }
 });
 
+/**
+ * @swagger
+ * /api/users/{username}:
+ *   get:
+ *     summary: Get user profile by username
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: username
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Username with @ prefix (e.g. @johndoe)
+ *     responses:
+ *       200:
+ *         description: User profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
 // GET /api/users/:username - Get user profile by username
 // MUST be after all named /me, /search, /conversations etc. routes
 router.get('/:username', authenticateToken as any, async (req: any, res: any) => {

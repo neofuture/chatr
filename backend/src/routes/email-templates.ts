@@ -8,7 +8,53 @@ const MAIL_FROM_NAME = process.env.PRODUCT_NAME || 'Chatr';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 /**
- * GET /api/email-preview?type=verification&code=123456&email=test@example.com&username=@testuser
+ * @swagger
+ * /api/email-preview:
+ *   get:
+ *     summary: Preview email templates
+ *     tags: [Email]
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [verification, login, reset]
+ *         description: Email template type
+ *       - in: query
+ *         name: code
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: email
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: username
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: theme
+ *         schema:
+ *           type: string
+ *           enum: [light, dark]
+ *       - in: query
+ *         name: simulateDark
+ *         schema:
+ *           type: string
+ *           enum: ['0', '1']
+ *     responses:
+ *       200:
+ *         description: Rendered HTML email
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid email type
  */
 router.get('/email-preview', (req: Request, res: Response) => {
   const { type = 'verification', code = '123456', email = 'user@example.com', username = '@testuser', userId = 'test123', theme = 'light', simulateDark = '0' } = req.query;

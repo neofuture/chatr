@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useToast } from '@/contexts/ToastContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import {
@@ -195,14 +196,15 @@ export default function ProfileImageUploader({ userId, isDark }: ProfileImageUpl
 
   return (
     <>
-      {/* Image Cropper Modal */}
-      {showCropper && selectedFile && (
+      {/* Image Cropper Modal — portalled to body so position:fixed works */}
+      {showCropper && selectedFile && createPortal(
         <ProfileImageCropper
           imageFile={selectedFile}
           onCropComplete={handleCropComplete}
           onCancel={handleCropCancel}
           isDark={isDark}
-        />
+        />,
+        document.body,
       )}
 
       <div

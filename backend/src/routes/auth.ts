@@ -58,10 +58,15 @@ function rateLimit(prefix: string, maxAttempts: number, windowSeconds: number) {
  *               - email
  *               - username
  *               - password
+ *               - firstName
+ *               - lastName
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
+ *               phoneNumber:
+ *                 type: string
+ *                 description: UK mobile number (e.g. +447940123456)
  *               username:
  *                 type: string
  *                 minLength: 3
@@ -70,6 +75,13 @@ function rateLimit(prefix: string, maxAttempts: number, windowSeconds: number) {
  *                 type: string
  *                 minLength: 8
  *                 description: Must include at least one capital letter and one special character
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, non-binary, prefer-not-to-say]
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -82,7 +94,7 @@ function rateLimit(prefix: string, maxAttempts: number, windowSeconds: number) {
  *                   type: string
  *                 userId:
  *                   type: string
- *                 requiresTwoFactorSetup:
+ *                 requiresEmailVerification:
  *                   type: boolean
  *       400:
  *         description: Invalid input
@@ -364,21 +376,43 @@ router.post('/register', rateLimit('register', 5, 900), async (req: Request, res
  *                 example: user@example.com or @johndoe or johndoe
  *               password:
  *                 type: string
- *               twoFactorCode:
+ *               loginVerificationCode:
  *                 type: string
- *                 description: 6-digit TOTP code (required if 2FA enabled)
+ *                 description: 6-digit OTP code (sent via email or SMS on login)
+ *               verificationMethod:
+ *                 type: string
+ *                 enum: [email, sms]
+ *                 description: Preferred method for receiving the login verification code
  *     responses:
  *       200:
- *         description: Login successful or 2FA required
+ *         description: Login successful, verification required, or token returned
  *         content:
  *           application/json:
  *             schema:
  *               oneOf:
  *                 - type: object
  *                   properties:
- *                     requiresTwoFactor:
+ *                     requiresEmailVerification:
  *                       type: boolean
  *                     message:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                 - type: object
+ *                   properties:
+ *                     requiresPhoneVerification:
+ *                       type: boolean
+ *                     message:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                 - type: object
+ *                   properties:
+ *                     requiresLoginVerification:
+ *                       type: boolean
+ *                     message:
+ *                       type: string
+ *                     userId:
  *                       type: string
  *                 - type: object
  *                   properties:
@@ -389,7 +423,7 @@ router.post('/register', rateLimit('register', 5, 900), async (req: Request, res
  *                     user:
  *                       type: object
  *       401:
- *         description: Invalid credentials or 2FA code
+ *         description: Invalid credentials or verification code
  */
 // POST /api/auth/login - User login (10 attempts per 15 min per IP)
 router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Response) => {
@@ -617,6 +651,39 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/resend-verification:
+ *   post:
+ *     summary: Resend a verification code
+ *     description: Rate limited to 3 requests per 300 seconds per IP.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [userId, type]
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *                 enum: [email, login]
+ *     responses:
+ *       200:
+ *         description: Verification code resent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: User not found
+ */
 // POST /api/auth/resend-verification — resend a verification code
 router.post('/resend-verification', rateLimit('resend', 3, 300), async (req: Request, res: Response) => {
   try {
@@ -677,17 +744,8 @@ router.post('/resend-verification', rateLimit('resend', 3, 300), async (req: Req
  *   post:
  *     summary: Generate 2FA secret and QR code
  *     tags: [2FA]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - userId
- *             properties:
- *               userId:
- *                 type: string
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: 2FA setup data generated
@@ -758,6 +816,8 @@ router.post('/2fa/setup', authenticateToken as any, async (req: Request, res: Re
  *   post:
  *     summary: Verify 2FA code and enable 2FA
  *     tags: [2FA]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -765,14 +825,11 @@ router.post('/2fa/setup', authenticateToken as any, async (req: Request, res: Re
  *           schema:
  *             type: object
  *             required:
- *               - userId
  *               - code
  *             properties:
- *               userId:
- *                 type: string
  *               code:
  *                 type: string
- *                 description: 6-digit TOTP code
+ *                 description: 6-digit TOTP code from authenticator app
  *     responses:
  *       200:
  *         description: 2FA enabled successfully
@@ -856,6 +913,26 @@ router.post('/2fa/verify', authenticateToken as any, async (req: Request, res: R
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Logout (blacklist JWT in Redis)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged out
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Logged out successfully
+ */
 // POST /api/auth/logout - User logout (blacklist the JWT in Redis)
 router.post('/logout', authenticateToken, async (req: Request, res: Response) => {
   try {
@@ -1061,7 +1138,7 @@ router.post('/verify-email', async (req: Request, res: Response) => {
  *                   type: string
  *                 token:
  *                   type: string
- *                   description: JWT token (valid for 7 days)
+ *                   description: JWT token (valid for 365 days)
  *                 user:
  *                   type: object
  *                   properties:

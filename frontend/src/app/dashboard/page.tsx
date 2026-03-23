@@ -2292,6 +2292,17 @@ export default function DashboardPage() {
     }
   };
 
+  // Keep open test/e2e panels in sync with live state changes
+  useEffect(() => {
+    if (panels.some(p => p.id === 'dash-tests' && !p.isClosing)) openPanel('tests');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feReport, beReport, feRunning, beRunning, feLive, beLive, unitFilter]);
+
+  useEffect(() => {
+    if (panels.some(p => p.id === 'dash-e2e' && !p.isClosing)) openPanel('e2e');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e2eReport, e2eRunning, e2eLive, e2eFilter]);
+
   const LS_DASH_KEY = 'chatr_dash_metrics';
 
   const fetchData = useCallback(() => {
@@ -2524,6 +2535,7 @@ export default function DashboardPage() {
           if (area === 'e2e' && d.startedAt) runStartedAtRef.current = d.startedAt;
         }
         else if (d.status === 'none') {
+          setReport(null);
           try { localStorage.removeItem(LS_KEY_PREFIX + area); } catch { /* ignore */ }
         }
       }).catch(() => {});

@@ -44,9 +44,8 @@ export default function ProfileImageCropper({ imageFile, onCropComplete, onCance
       height: img.naturalHeight,
     });
 
-    // Calculate scale to fill the circular crop area
-    // The circle radius is 45% of container, so diameter is 90%
-    const circleDiameter = containerSize * 0.9;
+    // The container IS the circle (border-radius: 50%), so fill it fully
+    const circleDiameter = containerSize;
 
     const scaleX = circleDiameter / img.naturalWidth;
     const scaleY = circleDiameter / img.naturalHeight;
@@ -207,8 +206,8 @@ export default function ProfileImageCropper({ imageFile, onCropComplete, onCance
     const centerX = containerSize / 2;
     const centerY = containerSize / 2;
 
-    // Circle diameter is 90% of container (radius is 45%)
-    const circleRadius = containerSize * 0.45;
+    // Container IS the circle, radius = half container
+    const circleRadius = containerSize * 0.5;
     const circleDiameter = circleRadius * 2;
 
     // Calculate what point in the original image is at the container center
@@ -252,7 +251,13 @@ export default function ProfileImageCropper({ imageFile, onCropComplete, onCance
   };
 
   return (
-    <div className={styles.overlay}>
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)',
+      WebkitBackdropFilter: 'blur(4px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      zIndex: 99999, padding: 20,
+    }}>
       <h2 className={styles.title}>
         Adjust Your Profile Image
       </h2>
@@ -263,6 +268,7 @@ export default function ProfileImageCropper({ imageFile, onCropComplete, onCance
         style={{
           width: `${containerSize}px`,
           height: `${containerSize}px`,
+          borderRadius: '50%',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -287,29 +293,12 @@ export default function ProfileImageCropper({ imageFile, onCropComplete, onCance
           />
         )}
 
-        {/* Circular overlay */}
-        <svg>
-          <defs>
-            <mask id="circleMask">
-              <rect width="100%" height="100%" fill="white" />
-              <circle cx="50%" cy="50%" r="45%" fill="black" />
-            </mask>
-          </defs>
-          <rect
-            width="100%"
-            height="100%"
-            fill="rgba(0, 0, 0, 0.6)"
-            mask="url(#circleMask)"
-          />
-          <circle
-            cx="50%"
-            cy="50%"
-            r="45%"
-            fill="none"
-            stroke="white"
-            strokeWidth="3"
-          />
-        </svg>
+        {/* Circle border */}
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          border: `3px solid ${isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.2)'}`,
+          pointerEvents: 'none', zIndex: 1,
+        }} />
       </div>
 
       {/* Zoom controls */}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useToast } from '@/contexts/ToastContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import {
@@ -177,14 +178,14 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
 
   return (
     <>
-      {/* Image Cropper Modal */}
-      {showCropper && selectedFile && (
+      {showCropper && selectedFile && createPortal(
         <CoverImageCropper
           imageFile={selectedFile}
           onCropComplete={handleCropComplete}
           onCancel={handleCropCancel}
           isDark={isDark}
-        />
+        />,
+        document.body,
       )}
 
       <div
@@ -297,4 +298,3 @@ export default function CoverImageUploader({ userId, isDark }: CoverImageUploade
     </>
   );
 }
-

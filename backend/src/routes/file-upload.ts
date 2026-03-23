@@ -341,6 +341,32 @@ router.post('/upload',
   }
 });
 
+/**
+ * @swagger
+ * /api/messages/download/{messageId}:
+ *   get:
+ *     summary: Download a file attachment by message ID
+ *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the message containing the file
+ *     responses:
+ *       200:
+ *         description: File returned as attachment
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: File not found
+ */
 // ── GET /api/messages/download/:messageId ─────────────────────────────────────
 // Proxies the file through the backend so Content-Disposition: attachment
 // with the original filename works in all environments, including S3.

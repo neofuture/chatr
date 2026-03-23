@@ -52,7 +52,7 @@ JWT_SECRET=your-secret-min-32-chars
 
 ```bash
 cd frontend
-cp .env.local.example .env.local   # or create manually
+cp .env.example .env.local   # or create manually
 npm install
 npm run dev
 ```
@@ -112,7 +112,7 @@ The project uses a `post-commit` hook to auto-increment the frontend version (`f
 If hooks stop working (e.g. after re-initialising git), run:
 
 ```bash
-bash setup-Hooks.sh
+bash setup-hooks.sh
 ```
 
 Or simply:
@@ -127,6 +127,4 @@ npm install
 cd backend
 npx prisma migrate reset    # Drops all data and re-runs migrations
 ```
-
-
 

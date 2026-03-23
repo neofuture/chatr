@@ -27,8 +27,10 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | [File Upload](./Backend/File_Upload.md) | Multer config, upload flow, waveform strategy |
 | [Middleware](./Backend/Middleware.md) | JWT auth middleware detail |
 | [Deployment](./Getting-Started/Deployment.md) | AWS infrastructure, deploy script |
+| [AWS Setup Guide](./Getting-Started/DEPLOY_AWS.md) | Step-by-step beginner walkthrough for provisioning AWS |
 | [Getting Started](./Getting-Started/Local_Setup.md) | Local development setup |
 | [Testing](./Testing/index.md) | Test suite, Jest config, coverage |
+| [Presentation](./PRESENTATION.md) | Product narrative, architecture overview, and feature showcase |
 | [Version History](./VERSION.md) | Version history and release notes |
 
 ## Quick Reference

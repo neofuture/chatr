@@ -106,6 +106,145 @@ function deleteLocalFile(filePath: string): void {
 let _io: Server | null = null;
 export function setGroupsSocketIO(io: Server) { _io = io; }
 
+/**
+ * @swagger
+ * tags:
+ *   - name: Groups
+ *     description: |
+ *       Group management — 23 endpoints covering CRUD, membership, roles,
+ *       invites, images, messages, file uploads, and ownership transfer.
+ *
+ *       All endpoints require Bearer auth unless noted otherwise.
+ *
+ *       **Endpoints:**
+ *       - `POST   /api/groups`                          — Create group
+ *       - `GET    /api/groups`                           — List my groups
+ *       - `GET    /api/groups/invites`                   — Pending invites
+ *       - `POST   /api/groups/:id/accept`                — Accept invite
+ *       - `POST   /api/groups/:id/decline`               — Decline invite
+ *       - `GET    /api/groups/:id`                       — Get group details
+ *       - `PATCH  /api/groups/:id`                       — Update name/description
+ *       - `DELETE /api/groups/:id`                       — Delete group (owner)
+ *       - `GET    /api/groups/:id/messages`              — Message history
+ *       - `POST   /api/groups/:id/members`               — Add member
+ *       - `DELETE /api/groups/:id/members/:memberId`     — Remove member
+ *       - `POST   /api/groups/:id/join`                  — Join group
+ *       - `POST   /api/groups/:id/leave`                 — Leave group
+ *       - `PATCH  /api/groups/:id/members/:mid/promote`  — Promote to admin
+ *       - `PATCH  /api/groups/:id/members/:mid/demote`   — Demote to member
+ *       - `POST   /api/groups/:id/transfer-ownership`    — Transfer ownership
+ *       - `POST   /api/groups/:id/step-down`             — Owner steps down
+ *       - `POST   /api/groups/:id/upload`                — Upload file/voice
+ *       - `POST   /api/groups/:id/profile-image`         — Upload group avatar
+ *       - `POST   /api/groups/:id/cover-image`           — Upload group cover
+ *       - `DELETE /api/groups/:id/profile-image`          — Delete group avatar
+ *       - `DELETE /api/groups/:id/cover-image`            — Delete group cover
+ *       - `PATCH  /api/groups/:id/messages/:msgId/waveform` — Set audio waveform
+ */
+
+/**
+ * @swagger
+ * /api/groups:
+ *   post:
+ *     summary: Create a new group
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               memberIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       201:
+ *         description: Group created
+ *       400:
+ *         description: Group name required
+ *   get:
+ *     summary: List groups the current user belongs to
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of groups with member counts and latest message
+ */
+
+/**
+ * @swagger
+ * /api/groups/{id}:
+ *   get:
+ *     summary: Get group details with members
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Group details with full member list
+ *       403:
+ *         description: Not a member
+ *       404:
+ *         description: Group not found
+ *   patch:
+ *     summary: Update group name or description (admin/owner only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Group updated
+ *       403:
+ *         description: Not an admin
+ *   delete:
+ *     summary: Delete group and all data (owner only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Group deleted
+ *       403:
+ *         description: Not the owner
+ */
 
 // ── Create group ──────────────────────────────────────────────────────────────
 router.post('/', authenticateToken as any, async (req: any, res: Response) => {
@@ -195,6 +334,18 @@ router.get('/', authenticateToken as any, async (req: any, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/invites:
+ *   get:
+ *     summary: List pending group invites for the current user
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of pending invites
+ */
 // ── List pending group invites ────────────────────────────────────────────────
 router.get('/invites', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -241,6 +392,28 @@ router.get('/invites', authenticateToken as any, async (req: any, res: Response)
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/accept:
+ *   post:
+ *     summary: Accept a pending group invite
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Invite accepted, returns full group object
+ *       400:
+ *         description: Already a member
+ *       404:
+ *         description: Invite not found
+ */
 // ── Accept group invite ───────────────────────────────────────────────────────
 router.post('/:id/accept', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -302,6 +475,28 @@ router.post('/:id/accept', authenticateToken as any, async (req: any, res: Respo
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/decline:
+ *   post:
+ *     summary: Decline a pending group invite
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Invite declined
+ *       400:
+ *         description: Already a member — use leave instead
+ *       404:
+ *         description: Invite not found
+ */
 // ── Decline group invite ──────────────────────────────────────────────────────
 router.post('/:id/decline', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -359,6 +554,38 @@ router.get('/:id', authenticateToken as any, async (req: any, res: Response) => 
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/messages:
+ *   get:
+ *     summary: Get group message history
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           maximum: 100
+ *           default: 50
+ *       - in: query
+ *         name: before
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: ISO date cursor for pagination
+ *     responses:
+ *       200:
+ *         description: Array of messages
+ *       403:
+ *         description: Not a member or invite not accepted
+ */
 // ── Get group messages ────────────────────────────────────────────────────────
 router.get('/:id/messages', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -394,6 +621,40 @@ router.get('/:id/messages', authenticateToken as any, async (req: any, res: Resp
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/members:
+ *   post:
+ *     summary: Add a member to the group (admin only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [memberId]
+ *             properties:
+ *               memberId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Member added (pending invite), returns updated group
+ *       403:
+ *         description: Only admins can add members
+ *       404:
+ *         description: Group not found
+ *       409:
+ *         description: User is already a member
+ */
 // ── Add member ────────────────────────────────────────────────────────────────
 router.post('/:id/members', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -461,6 +722,33 @@ async function sendSystemMessage(groupId: string, content: string) {
   }
 }
 
+/**
+ * @swagger
+ * /api/groups/{id}/members/{memberId}:
+ *   delete:
+ *     summary: Remove a member from the group or leave (self)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member removed
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Group or member not found
+ */
 // ── Remove member / leave ─────────────────────────────────────────────────────
 router.delete('/:id/members/:memberId', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -621,6 +909,26 @@ router.delete('/:id', authenticateToken as any, async (req: any, res: Response) 
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/join:
+ *   post:
+ *     summary: Join a group
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Joined successfully
+ *       404:
+ *         description: Group not found
+ */
 // ── Join group ────────────────────────────────────────────────────────────────
 router.post('/:id/join', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -661,6 +969,26 @@ router.post('/:id/join', authenticateToken as any, async (req: any, res: Respons
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/leave:
+ *   post:
+ *     summary: Leave a group (deletes group if last member)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Left successfully — deleted flag indicates if group was removed
+ *       404:
+ *         description: Group not found
+ */
 // ── Leave group ───────────────────────────────────────────────────────────────
 // If the owner leaves: promote another member to owner and stay in the group for others.
 // If the last member leaves: delete the group.
@@ -722,6 +1050,33 @@ router.post('/:id/leave', authenticateToken as any, async (req: any, res: Respon
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/members/{memberId}/promote:
+ *   patch:
+ *     summary: Promote a member to admin (admin/owner only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member promoted to admin
+ *       403:
+ *         description: Only admins can promote members
+ *       404:
+ *         description: Member not found
+ */
 // ── Promote member to admin ───────────────────────────────────────────────────
 router.patch('/:id/members/:memberId/promote', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -761,6 +1116,35 @@ router.patch('/:id/members/:memberId/promote', authenticateToken as any, async (
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/members/{memberId}/demote:
+ *   patch:
+ *     summary: Demote an admin to member (owner only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Admin demoted to member
+ *       400:
+ *         description: Cannot demote an owner
+ *       403:
+ *         description: Only owners can demote admins
+ *       404:
+ *         description: Member not found
+ */
 // ── Demote admin to member ────────────────────────────────────────────────────
 router.patch('/:id/members/:memberId/demote', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -796,6 +1180,40 @@ router.patch('/:id/members/:memberId/demote', authenticateToken as any, async (r
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/transfer-ownership:
+ *   post:
+ *     summary: Transfer group ownership to an admin (owner only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [newOwnerId]
+ *             properties:
+ *               newOwnerId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Ownership transferred
+ *       400:
+ *         description: Target is already owner or not an admin
+ *       403:
+ *         description: Only owners can transfer ownership
+ *       404:
+ *         description: Member not found
+ */
 // ── Transfer ownership to an admin ────────────────────────────────────────────
 router.post('/:id/transfer-ownership', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -830,6 +1248,28 @@ router.post('/:id/transfer-ownership', authenticateToken as any, async (req: any
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/step-down:
+ *   post:
+ *     summary: Owner steps down to admin role
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Stepped down to admin
+ *       400:
+ *         description: Only owner — promote another member first
+ *       403:
+ *         description: Only owners can step down
+ */
 // ── Owner step-down (becomes admin) ──────────────────────────────────────────
 router.post('/:id/step-down', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -865,6 +1305,49 @@ router.post('/:id/step-down', authenticateToken as any, async (req: any, res: Re
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/upload:
+ *   post:
+ *     summary: Upload a file or voice message to a group
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [file]
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               type:
+ *                 type: string
+ *                 enum: [image, file]
+ *               waveform:
+ *                 type: string
+ *                 description: JSON array of waveform amplitudes
+ *               duration:
+ *                 type: number
+ *               caption:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: File uploaded, returns message details
+ *       400:
+ *         description: No file uploaded
+ *       403:
+ *         description: Not a member or invite not accepted
+ */
 // ── Upload file / voice to group ──────────────────────────────────────────────
 router.post('/:id/upload', authenticateToken as any, upload.single('file') as any, async (req: any, res: Response) => {
   try {
@@ -992,6 +1475,39 @@ router.post('/:id/upload', authenticateToken as any, upload.single('file') as an
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/profile-image:
+ *   post:
+ *     summary: Upload group avatar image (admin only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [profileImage]
+ *             properties:
+ *               profileImage:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Avatar updated, returns URL
+ *       400:
+ *         description: No file uploaded
+ *       403:
+ *         description: Only admins can change the group avatar
+ */
 // ── Upload group profile image (admin only) ──────────────────────────────────
 router.post('/:id/profile-image', authenticateToken as any, imageUpload.single('profileImage') as any, async (req: any, res: Response) => {
   try {
@@ -1028,6 +1544,39 @@ router.post('/:id/profile-image', authenticateToken as any, imageUpload.single('
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/cover-image:
+ *   post:
+ *     summary: Upload group cover image (admin only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [coverImage]
+ *             properties:
+ *               coverImage:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Cover image updated, returns URL
+ *       400:
+ *         description: No file uploaded
+ *       403:
+ *         description: Only admins can change the group cover image
+ */
 // ── Upload group cover image (admin only) ────────────────────────────────────
 router.post('/:id/cover-image', authenticateToken as any, imageUpload.single('coverImage') as any, async (req: any, res: Response) => {
   try {
@@ -1064,6 +1613,26 @@ router.post('/:id/cover-image', authenticateToken as any, imageUpload.single('co
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/profile-image:
+ *   delete:
+ *     summary: Delete group avatar image (admin only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Avatar removed
+ *       403:
+ *         description: Only admins can change the group avatar
+ */
 // ── Delete group profile image (admin only) ──────────────────────────────────
 router.delete('/:id/profile-image', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -1096,6 +1665,26 @@ router.delete('/:id/profile-image', authenticateToken as any, async (req: any, r
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/cover-image:
+ *   delete:
+ *     summary: Delete group cover image (admin only)
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cover image removed
+ *       403:
+ *         description: Only admins can change the group cover image
+ */
 // ── Delete group cover image (admin only) ────────────────────────────────────
 router.delete('/:id/cover-image', authenticateToken as any, async (req: any, res: Response) => {
   try {
@@ -1127,6 +1716,44 @@ router.delete('/:id/cover-image', authenticateToken as any, async (req: any, res
   }
 });
 
+/**
+ * @swagger
+ * /api/groups/{id}/messages/{msgId}/waveform:
+ *   patch:
+ *     summary: Set audio waveform data for a group message
+ *     tags: [Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: msgId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               waveform:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *               duration:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Waveform updated
+ *       403:
+ *         description: Not a member
+ */
 // ── Patch waveform for a group message ───────────────────────────────────────
 router.patch('/:id/messages/:msgId/waveform', authenticateToken as any, async (req: any, res: Response) => {
   try {

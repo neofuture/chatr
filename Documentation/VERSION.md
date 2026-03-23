@@ -4,6 +4,21 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.17 — 2026-03-23
+
+**Commit:** `9b893c0` — fix: Storybook stories and image cropper scaling/theming
+
+- Fix next/navigation mocks for Storybook (usePathname, useRouter)
+- Add missing context providers to story decorators (Friends, WebSocket, Toast, etc.)
+- Fix image cropper scaling: use full container size instead of 90% inset
+- Add themed borders and overlays to profile/cover image croppers
+- Use createPortal for cropper modals to escape parent transforms
+- Add canvas-generated test images for cropper stories
+- New Storybook stories for multiple components
+- Documentation restructure and backend route updates
+
+---
+
 ## v0.1.16 — 2026-03-22
 
 **Commit:** `d57f005` — fix: docs footer overlap, remove version from docs home, add back-to-top button
@@ -244,22 +259,6 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 - Move settings to the burger menu for easier access and navigation.
 - Introduce a compact theme toggle for enhanced user customization.
 - Update the changelog to include full version history for better tracking of changes.
-
----
-
-## v0.0.150 — 2026-03-19
-
-**Commit:** `6720fd4` — docs: add changelog, update docs for auth panel, profile, E2E, and socketFirst changes
-
-- Create Documentation/Versions/CHANGELOG.md with full version history
-- Update main index with changelog link and recent additions
-- Update AuthPanel docs for panel-based auth flow (no dedicated routes)
-- Update Authentication docs for email-first verification and AuthPanel integration
-- Update Routes docs with test cleanup endpoints and contact route
-- Update Testing docs with comprehensive E2E test section and Playwright details
-- Update Architecture diagram with contact and test-cleanup routes
-- Update Frontend index to remove 2FA from settings description
-- Add socketRPC and messageCache docs to Frontend Lib index
 
 ---
 

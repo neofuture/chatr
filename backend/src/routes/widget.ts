@@ -86,6 +86,33 @@ export async function cleanupStaleGuests(): Promise<void> {
   }
 }
 
+/**
+ * @swagger
+ * /api/widget/support-agent:
+ *   get:
+ *     summary: Get active support agent public info
+ *     tags: [Widget]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Support agent info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 displayName:
+ *                   type: string
+ *                 username:
+ *                   type: string
+ *                 profileImage:
+ *                   type: string
+ *                   nullable: true
+ *       404:
+ *         description: No support agent configured
+ */
 // ── GET /api/widget/support-agent ─────────────────────────────────────────────
 // Returns the active support agent's public info so the widget can display it
 router.get('/support-agent', async (_req: Request, res: Response) => {
@@ -116,6 +143,45 @@ router.get('/support-agent', async (_req: Request, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/widget/guest-session:
+ *   post:
+ *     summary: Create or resume a guest chat session
+ *     tags: [Widget]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [guestName]
+ *             properties:
+ *               guestName:
+ *                 type: string
+ *               guestId:
+ *                 type: string
+ *                 description: Provide to resume an existing session
+ *     responses:
+ *       200:
+ *         description: Session created or resumed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                 guestId:
+ *                   type: string
+ *                 guestName:
+ *                   type: string
+ *                 supportAgentId:
+ *                   type: string
+ *       503:
+ *         description: No support agent available
+ */
 // ── POST /api/widget/guest-session ────────────────────────────────────────────
 // Creates (or resumes) a guest user and returns a short-lived JWT
 router.post('/guest-session', async (req: Request, res: Response) => {
@@ -193,6 +259,30 @@ router.post('/guest-session', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/widget/history:
+ *   get:
+ *     summary: Get message history for a resumed guest session
+ *     description: Returns the last 100 messages for the authenticated guest.
+ *     tags: [Widget]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Message history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       403:
+ *         description: Not a guest session
+ */
 // ── GET /api/widget/history ───────────────────────────────────────────────────
 // Returns message history for a resumed guest session (last 100 messages)
 router.get('/history', authenticateToken as any, async (req: any, res: Response) => {
@@ -245,6 +335,40 @@ router.get('/history', authenticateToken as any, async (req: any, res: Response)
   }
 });
 
+/**
+ * @swagger
+ * /api/widget/upload:
+ *   post:
+ *     summary: Upload a file from a guest widget session
+ *     tags: [Widget]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: File to upload (50 MB max)
+ *     responses:
+ *       200:
+ *         description: File uploaded and message created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: object
+ *       403:
+ *         description: Not a guest session
+ *       503:
+ *         description: No support agent available
+ */
 // ── POST /api/widget/upload ───────────────────────────────────────────────────
 // Allows guest users to upload file attachments
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -348,6 +472,27 @@ router.post('/upload', authenticateToken as any, widgetUpload.single('file') as 
   }
 });
 
+/**
+ * @swagger
+ * /api/widget/end-chat:
+ *   post:
+ *     summary: End a widget chat session
+ *     tags: [Widget]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Chat ended
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       403:
+ *         description: Not a guest session
+ */
 // ── POST /api/widget/end-chat ─────────────────────────────────────────────────
 // Also disconnects cleanly — does NOT delete the user (agent may still want to review).
 

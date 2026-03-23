@@ -199,7 +199,7 @@ The **Modify** button on ElastiCache is often greyed out. Don't use it — inste
 If your code isn't in GitHub yet:
 ```bash
 # On your Mac:
-cd /Users/F7905607/Dropbox/Projects/chatr
+cd /path/to/chatr
 git init  # if not already a repo
 git add .
 git commit -m "Initial commit"
@@ -363,7 +363,7 @@ pm2 logs chatr-backend --lines 50
 
 **Database connection error**
 - Check RDS security group allows port 5432 from EC2 security group
-- Verify `DATABASE_URL` in `~/chatrr/backend/.env`
+- Verify `DATABASE_URL` in `~/chatr/backend/.env`
 
 **WebSocket not connecting**
 - Nginx must proxy WebSocket `Upgrade` headers — the config in this script handles it
@@ -378,8 +378,6 @@ sudo mkswap /swapfile
 sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
-
-
 
 
 

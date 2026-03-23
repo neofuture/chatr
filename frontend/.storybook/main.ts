@@ -26,6 +26,20 @@ const config: StorybookConfig = {
           'next/font/google': path.resolve(__dirname, './mocks/next-font.ts'),
         },
       },
+      define: {
+        'process.env.NEXT_PUBLIC_API_URL': JSON.stringify('http://localhost:3001'),
+        'process.env.NEXT_PUBLIC_WS_URL': JSON.stringify('http://localhost:3001'),
+        'process.env.NEXT_PUBLIC_PRODUCT_NAME': JSON.stringify('Chatr'),
+        'process.env.NEXT_PUBLIC_SITE_URL': JSON.stringify('http://localhost:3000'),
+        'process.env.NEXT_PUBLIC_AI_BOT_USER_ID': JSON.stringify(''),
+      },
+      optimizeDeps: {
+        include: [
+          'framer-motion',
+          'socket.io-client',
+          'dexie',
+        ],
+      },
     });
   },
 };

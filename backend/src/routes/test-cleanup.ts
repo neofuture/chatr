@@ -40,9 +40,36 @@ const E2E_DM_CONTENT_PREFIXES = [
 const E2E_FILE_NAMES = ['test-image.png', 'test-audio.wav', 'test-file.txt'];
 
 /**
- * POST /api/test/mode
- * Body: { enabled: boolean }
- * Toggles E2E test mode at runtime. No auth required (but blocked in production).
+ * @swagger
+ * /api/test/mode:
+ *   post:
+ *     summary: Toggle E2E test mode
+ *     description: Enable or disable test mode at runtime. Blocked in production (404).
+ *     tags: [Testing]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [enabled]
+ *             properties:
+ *               enabled:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Test mode toggled
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                 testMode:
+ *                   type: boolean
+ *       404:
+ *         description: Not available in production
  */
 router.post('/mode', async (req: Request, res: Response) => {
   if (process.env.NODE_ENV === 'production') {
@@ -195,9 +222,28 @@ router.post('/cleanup', authenticateToken as any, async (req: Request, res: Resp
 });
 
 /**
- * POST /api/test/cleanup-all
- * Aggressive cleanup of ALL test groups (by name prefix) without requiring recipientId.
- * Does not require authentication - just test mode.
+ * @swagger
+ * /api/test/cleanup-all:
+ *   post:
+ *     summary: Aggressive cleanup of ALL test groups
+ *     description: Deletes all groups matching E2E name prefixes and their messages. No auth required — test mode only.
+ *     tags: [Testing]
+ *     responses:
+ *       200:
+ *         description: Cleanup completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                 groupsDeleted:
+ *                   type: integer
+ *                 messagesDeleted:
+ *                   type: integer
+ *       404:
+ *         description: Test mode is not active
  */
 router.post('/cleanup-all', async (_req: Request, res: Response) => {
   if (!isTestMode()) {
@@ -236,9 +282,39 @@ router.post('/cleanup-all', async (_req: Request, res: Response) => {
 });
 
 /**
- * POST /api/test/restore-images
- * Restore profileImage and/or coverImage to their pre-test values.
- * Body: { profileImage?: string | null, coverImage?: string | null }
+ * @swagger
+ * /api/test/restore-images:
+ *   post:
+ *     summary: Restore profile/cover images to pre-test values
+ *     description: Resets profileImage and/or coverImage for the authenticated user. Test mode only.
+ *     tags: [Testing]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               profileImage:
+ *                 type: string
+ *                 nullable: true
+ *               coverImage:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Images restored
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *       404:
+ *         description: Test mode is not active
  */
 router.post('/restore-images', authenticateToken as any, async (req: Request, res: Response) => {
   if (!isTestMode()) {
@@ -264,8 +340,31 @@ router.post('/restore-images', authenticateToken as any, async (req: Request, re
 });
 
 /**
- * DELETE /api/test/user/:userId
- * Delete a test user and all related data. Test mode only.
+ * @swagger
+ * /api/test/user/{userId}:
+ *   delete:
+ *     summary: Delete a test user and all related data
+ *     description: Removes the user and cascading data (messages, memberships, friendships, conversations). Test mode only.
+ *     tags: [Testing]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the test user to delete
+ *     responses:
+ *       200:
+ *         description: User deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *       404:
+ *         description: Test mode is not active
  */
 router.delete('/user/:userId', async (req: Request, res: Response) => {
   if (!isTestMode()) {

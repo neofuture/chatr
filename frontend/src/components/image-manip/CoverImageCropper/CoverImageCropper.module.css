@@ -4,7 +4,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -25,7 +27,6 @@
   border-radius: 12px;
   margin-bottom: 20px;
   touch-action: none;
-  background-color: #000;
 }
 
 .cropperContainer.grabbing {
@@ -51,9 +52,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  border: 3px solid white;
   pointer-events: none;
-  box-shadow: 0 0 0 9999px var(--overlay-black-60);
+  z-index: 1;
+  border: none;
 }
 
 .zoomControls {

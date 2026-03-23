@@ -24,7 +24,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
 
 export async function getMe(request: APIRequestContext, token: string) {
   return withRetry(async () => {
-    const res = await request.get(`${API}/api/users/me`, { headers: headers(token) });
+    const res = await request.get(`${API}/api/users/me`, { headers: headers(token), timeout: 30_000 });
     return res.json();
   });
 }

@@ -78,7 +78,7 @@ The `deployAWS.sh` script (gitignored — contains secrets) runs the full 7-step
 
 This means you never need to SSH manually — just run the script from your Mac.
 
-> ⚠️  `deployAWS.sh`, `aws.sh`, and `Chatr-key.pem` are listed in `.gitignore` and must **never** be committed.
+> ⚠️  `deployAWS.sh` and `aws.sh` are committed to the repo (they contain no secrets). All secrets live in `.env.deploy` which is gitignored. Never commit `.env.deploy` or `Chatr-key.pem`.
 
 ### Quick start
 

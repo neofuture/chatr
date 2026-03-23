@@ -2,7 +2,7 @@
 
 ## The Pitch
 
-Chatr is a **full-stack, production-grade real-time messaging platform** — built from the ground up as a single-developer effort. It covers direct messaging, group chat, friend management, voice messaging, file sharing, embeddable support widgets, AI-powered features, and a developer analytics dashboard — all wrapped in a mobile-first, accessible UI with 2,700+ automated tests.
+Chatr is a **full-stack, production-grade real-time messaging platform** — built from the ground up as a single-developer effort. It covers direct messaging, group chat, friend management, voice messaging, file sharing, embeddable support widgets, AI-powered features, and a developer analytics dashboard — all wrapped in a mobile-first, accessible UI with 2,800+ automated tests.
 
 This isn't a tutorial project. This is a **deployable product** with the architecture, testing rigour, and operational tooling that enterprise teams ship.
 
@@ -200,23 +200,25 @@ chatr/
 
 ### API Surface
 
-The backend exposes **70+ REST endpoints** across 9 route modules:
+The backend exposes **85+ REST endpoints** across 13 route modules:
 
 | Module | Endpoints | Covers |
 |--------|-----------|--------|
 | Auth | 9 | Register, login, verification, 2FA, logout, password reset |
-| Users | 12 | Search, profile, images, settings, username |
-| Messages | 5 | History, upload, download, edit history, waveform |
-| Groups | 19 | CRUD, members, roles, invites, images, messages |
-| Friends | 10 | Requests, accept/decline, block/unblock, search |
+| Users | 14 | Search, profile, images, settings, username, conversations |
+| Messages | 3 | History, upload, waveform |
+| Groups | 23 | CRUD, members, roles, invites, images, messages |
+| Friends | 12 | Requests, accept/decline, block/unblock, search |
 | Conversations | 4 | Accept, decline, nuke |
 | Widget | 5 | Guest session, history, upload, end chat |
-| Dashboard | 6 | Metrics, test results, test runs |
-| Other | 3 | Health check, link preview, email preview |
+| Dashboard | 8 | Metrics, test results, test runs, live streaming |
+| File Upload | 2 | Upload, serve |
+| Test Cleanup | 5 | Test mode, cleanup, restore |
+| Other | 3 | Health check, link preview, contact form |
 
 ### Real-Time Events (Socket.IO)
 
-**40+ bidirectional events** covering:
+**85+ bidirectional events** covering:
 
 | Category | Events |
 |----------|--------|
@@ -270,8 +272,8 @@ PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis ada
 | Frontend unit tests | **1,475** | 134 files |
 | Backend unit tests | **1,133** | 27 files |
 | Widget unit tests | **54** | 1 file |
-| E2E tests (Playwright) | **85** | 14 spec files × 2 browsers |
-| **Total** | **2,700+** | — |
+| E2E tests (Playwright) | **168** | 14 spec files × 2 browsers (Desktop Chrome + iPhone 14) |
+| **Total** | **2,800+** | — |
 
 ### What's Tested
 
@@ -279,7 +281,7 @@ PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis ada
 
 **Backend (1,133 tests):** Auth flows, all CRUD operations, socket event handlers, email/SMS services, Redis operations, AI integration, file uploads, the dashboard API, and the summary engine.
 
-**E2E (13 spec files × Desktop Chrome + iPhone 14):**
+**E2E (14 spec files × Desktop Chrome + iPhone 14):**
 
 | Spec | What It Proves |
 |------|---------------|
@@ -295,6 +297,7 @@ PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis ada
 | group-profile | Edit name, upload/delete avatar and cover image |
 | settings | Dark mode toggle, privacy controls |
 | profile | Display name, profile image, cover image, gender |
+| registration | Full registration flow via API and browser UI, email/phone verification |
 | sockets | 10+ REST endpoint validations (users, friends, groups, conversations) |
 
 **E2E Infrastructure:**
@@ -307,9 +310,9 @@ PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis ada
 
 Test results persist to `.test-cache/` as JSON, surviving backend restarts, page refreshes, and IDE reloads:
 
-- `.test-cache/frontend.json` — 855 tests, all suites, coverage data
-- `.test-cache/backend.json` — ~305 tests, all suites, coverage data
-- `.test-cache/e2e.json` — All E2E results with per-browser breakdown
+- `.test-cache/frontend.json` — Frontend test results, all suites, coverage data
+- `.test-cache/backend.json` — Backend test results, all suites, coverage data
+- `.test-cache/e2e.json` — E2E results with per-browser breakdown (chromium + mobile)
 
 Written automatically by:
 - Jest runs (via dashboard API)
@@ -385,7 +388,7 @@ Chatr version, Git SHA, Node.js version, npm version, Git version, Next.js versi
 
 1. **Solo-built, production-grade** — One developer built the entire stack: frontend, backend, real-time, AI, widget, deployment, testing, and tooling.
 
-2. **2,700+ automated tests** — Not just unit tests. Full E2E flows across desktop and mobile browsers with proper setup/teardown, test isolation, and result caching.
+2. **2,800+ automated tests** — Not just unit tests. Full E2E flows across desktop and mobile browsers with proper setup/teardown, test isolation, and result caching.
 
 3. **Real-time everything** — WebSockets with Redis adapter for multi-instance support. Presence, typing, ghost typing, reactions, read receipts — all live.
 
@@ -409,10 +412,10 @@ Chatr version, Git SHA, Node.js version, npm version, Git version, Next.js versi
 
 | Metric | Value |
 |--------|-------|
-| Total automated tests | **2,700+** |
+| Total automated tests | **2,800+** |
 | E2E browser coverage | Desktop Chrome + iPhone 14 |
-| REST API endpoints | **85+** |
-| Socket.IO events | **100+** |
+| REST API endpoints | **88** |
+| Socket.IO events | **85+** |
 | Frontend components | **60+** |
 | Custom hooks | **15+** |
 | React contexts | **9** |

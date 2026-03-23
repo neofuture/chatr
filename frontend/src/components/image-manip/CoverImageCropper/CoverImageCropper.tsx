@@ -229,7 +229,13 @@ export default function CoverImageCropper({ imageFile, onCropComplete, onCancel,
 
 
   return (
-    <div className={styles.overlay}>
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.50)', backdropFilter: 'blur(4px)',
+      WebkitBackdropFilter: 'blur(4px)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      zIndex: 99999, padding: 20,
+    }}>
       <h2 className={styles.title}>
         Adjust Your Cover Image
       </h2>
@@ -240,6 +246,7 @@ export default function CoverImageCropper({ imageFile, onCropComplete, onCancel,
         style={{
           width: `${containerWidth}px`,
           height: `${containerHeight}px`,
+          backgroundColor: isDark ? '#1e293b' : '#ffffff',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -264,8 +271,13 @@ export default function CoverImageCropper({ imageFile, onCropComplete, onCancel,
           />
         )}
 
-        {/* Rectangle overlay border */}
-        <div className={styles.rectOverlay} />
+        {/* Rectangle overlay */}
+        <div className={styles.rectOverlay} style={{
+          boxShadow: `0 0 0 9999px ${isDark ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.7)'}`,
+          borderRadius: 12,
+          border: `3px solid ${isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.2)'}`,
+          outline: 'none',
+        }} />
       </div>
 
       {/* Zoom controls */}

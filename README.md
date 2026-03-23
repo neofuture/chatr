@@ -35,7 +35,7 @@ chatr/
 ├── Documentation/     # Complete documentation
 ├── .husky/            # Git hooks (automated testing)
 ├── dev.sh             # Development startup script
-├── deployAWS.sh       # AWS deployment (gitignored)
+├── deployAWS.sh       # AWS deployment (secrets in .env.deploy, gitignored)
 └── package.json       # Monorepo scripts
 ```
 
@@ -58,12 +58,12 @@ chatr/
 
 - **[Getting Started](./Documentation/GETTING_STARTED.md)** — Full setup guide with Mailtrap, SMS, OpenAI, and AWS configuration
 - [Documentation Index](./Documentation/index.md)
-- [Local Setup (quick)](./Documentation/Getting-Started/LOCAL_SETUP.md)
+- [Local Setup (quick)](./Documentation/Getting-Started/Local_Setup.md)
 - [Architecture](./Documentation/Architecture/index.md)
 - [Testing](./Documentation/Testing/index.md)
 - [API Reference](./Documentation/API/REST_API.md)
 - [Widget](./Documentation/Widget/index.md)
-- [Deployment](./Documentation/Getting-Started/DEPLOYMENT.md)
+- [Deployment](./Documentation/Getting-Started/Deployment.md)
 
 ## Development
 
@@ -114,11 +114,13 @@ Disable: `git commit --no-verify`
 
 ## Testing
 
-- **Frontend**: 1,475 tests (React Testing Library)
-- **Backend**: 1,133 tests (Supertest)
+- **Frontend**: ~1,475 tests (React Testing Library)
+- **Backend**: ~1,133 tests (Supertest)
 - **Widget**: 54 tests (Node.js, build pipeline)
-- **E2E**: 85 tests (Playwright)
-- **Total**: 2,747 tests
+- **E2E**: 168 tests (Playwright — 14 spec files × Desktop Chrome + iPhone 14)
+- **Total**: 2,800+ tests
+
+Run `npm test` to see current counts, or visit `/dashboard` for live results.
 
 ## License
 

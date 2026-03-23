@@ -112,7 +112,7 @@ test.describe('User Registration', () => {
     await usernameInput.fill(uiUser.username);
 
     // Wait for the username availability check to finish (spinner gone, check visible)
-    const usernameCheck = page.locator('i.fa-check');
+    const usernameCheck = usernameInput.locator('xpath=ancestor::div[contains(@class,"input-wrapper")]').locator('i.fa-check');
     await expect(usernameCheck).toBeVisible({ timeout: 20_000 });
 
     const signUpBtn = page.getByRole('button', { name: /Sign Up/i });

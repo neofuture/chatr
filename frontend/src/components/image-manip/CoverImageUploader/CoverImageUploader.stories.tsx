@@ -2,6 +2,7 @@ import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import CoverImageUploader from './CoverImageUploader';
 
 const meta: Meta<typeof CoverImageUploader> = {
@@ -20,9 +21,9 @@ const meta: Meta<typeof CoverImageUploader> = {
     (Story) => (
       <ThemeProvider>
         <ToastProvider>
-          <div style={{ width: 640, padding: 24, background: '#1e293b', borderRadius: 12 }}>
+          <WebSocketProvider>
             <Story />
-          </div>
+          </WebSocketProvider>
         </ToastProvider>
       </ThemeProvider>
     ),
@@ -34,20 +35,22 @@ type Story = StoryObj<typeof CoverImageUploader>;
 
 export const Dark: Story = {
   args: { userId: 'story-user-123', isDark: true },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 640, padding: 24, background: '#0f172a', borderRadius: 12 }}>
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export const Light: Story = {
   args: { userId: 'story-user-123', isDark: false },
   decorators: [
     (Story) => (
-      <ThemeProvider>
-        <ToastProvider>
-          <div style={{ width: 640, padding: 24, background: '#f1f5f9', borderRadius: 12 }}>
-            <Story />
-          </div>
-        </ToastProvider>
-      </ThemeProvider>
+      <div style={{ width: 640, padding: 24, background: '#ffffff', borderRadius: 12 }}>
+        <Story />
+      </div>
     ),
   ],
 };
-

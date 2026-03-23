@@ -89,6 +89,10 @@ const defaultArgs = {
   search: '',
   onSearchChange: () => {},
   loading: false,
+  groups: [],
+  groupsLoading: false,
+  selectedGroupId: '',
+  onSelectGroup: () => {},
 };
 
 export const WithTabs: Story = {
