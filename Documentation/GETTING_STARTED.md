@@ -296,9 +296,9 @@ bash aws.sh frontend   # rebuild & restart frontend only
 bash aws.sh docs       # sync Documentation folder only
 ```
 
-### Auto-deploy on commit
+### Deploying
 
-If `.env.deploy` exists, every `git commit` automatically triggers `bash aws.sh` in the background. Deployment progress is logged to `deploy.log`. If `.env.deploy` is missing, the deploy step is silently skipped.
+Deployment is manual. Run `bash aws.sh` from the project root whenever you're ready to ship. Deployment progress is logged to `deploy.log`.
 
 ---
 

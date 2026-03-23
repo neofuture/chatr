@@ -233,30 +233,19 @@ The backend exposes **85+ REST endpoints** across 13 route modules:
 
 ### Infrastructure
 
-```
-                   ┌──────────────┐
-    Browser ──────►│   Nginx      │
-                   │  (reverse    │
-    Widget  ──────►│   proxy)     │
-                   └──────┬───────┘
-                          │
-              ┌───────────┼───────────┐
-              ▼                       ▼
-     ┌────────────────┐    ┌─────────────────┐
-     │  Next.js 16    │    │  Express +       │
-     │  (port 3000)   │    │  Socket.IO       │
-     │  React 19 SSR  │    │  (port 3001)     │
-     └────────────────┘    └────────┬─────────┘
-                                    │
-                    ┌───────────────┼───────────────┐
-                    ▼               ▼               ▼
-             ┌──────────┐   ┌──────────┐    ┌──────────┐
-             │PostgreSQL │   │  Redis   │    │  AWS S3  │
-             │  16       │   │  7       │    │ (files)  │
-             │ (Prisma)  │   │ (pub/sub │    └──────────┘
-             └──────────┘   │  presence │
-                            │  sessions)│
-                            └──────────┘
+```mermaid
+graph TD
+    Browser([Browser]) --> Nginx[Nginx<br/>reverse proxy]
+    Widget([Widget]) --> Nginx
+
+    Nginx --> NextJS[Next.js 16<br/>port 3000<br/>React 19 SSR]
+    Nginx --> Express[Express + Socket.IO<br/>port 3001]
+
+    Express --> PostgreSQL[(PostgreSQL 16<br/>Prisma ORM)]
+    Express --> Redis[(Redis 7<br/>pub/sub · presence<br/>sessions · rate limits)]
+    Express --> S3[(AWS S3<br/>file storage)]
+
+    NextJS --> Express
 ```
 
 PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis adapter enabling Socket.IO to broadcast across all worker processes.

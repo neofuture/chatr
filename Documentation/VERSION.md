@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.18 — 2026-03-23
+
+**Commit:** `67150e9` — docs: replace infrastructure ASCII art with Mermaid graph, fix auto-deploy references
+
+- Replace ASCII infrastructure diagram with Mermaid graph in PRESENTATION.md
+- Correct docs to state deployment is manual via bash aws.sh (no auto-deploy)
+- Remove false auto-deploy claim from technology page
+
+---
+
 ## v0.1.17 — 2026-03-23
 
 **Commit:** `9b893c0` — fix: Storybook stories and image cropper scaling/theming

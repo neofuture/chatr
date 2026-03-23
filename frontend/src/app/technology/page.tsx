@@ -410,7 +410,7 @@ socket.on("user:typing", ({ userId }) => {
               <div className={s.cardTitle}>AWS (Production)</div>
               <div className={s.cardText}>
                 <code style={{ fontSize: '0.82rem' }}>bash aws.sh</code> — Deploys to EC2 with RDS, ElastiCache, S3, Nginx,
-                SSL, and PM2 cluster mode. Auto-deploys on every commit.
+                SSL, and PM2 cluster mode.
               </div>
             </div>
             <div className={s.card} style={{ textAlign: 'center' }}>
