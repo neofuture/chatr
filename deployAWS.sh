@@ -82,29 +82,35 @@ maintenance_on() {
     sudo cp /tmp/_chatr_maintenance.html /var/www/maintenance/index.html
   fi
 
-  # Detect existing SSL certs (Let's Encrypt) — keep using them during maintenance
+  # Detect existing SSL certs from the current Nginx config (certbot-managed)
   SSL_CERT=""; SSL_KEY=""
-  for d in /etc/letsencrypt/live/*/; do
-    if [ -f "${d}fullchain.pem" ] && [ -f "${d}privkey.pem" ]; then
-      SSL_CERT="${d}fullchain.pem"
-      SSL_KEY="${d}privkey.pem"
-      break
-    fi
-  done
-
-  # Only generate self-signed as a last resort if no real certs exist
-  if [ -z "$SSL_CERT" ]; then
-    if [ ! -f /etc/nginx/ssl-fallback.crt ]; then
-      sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-        -keyout /etc/nginx/ssl-fallback.key \
-        -out /etc/nginx/ssl-fallback.crt \
-        -subj "/CN=maintenance" 2>/dev/null
-    fi
-    SSL_CERT="/etc/nginx/ssl-fallback.crt"
-    SSL_KEY="/etc/nginx/ssl-fallback.key"
-    detail "No Let's Encrypt certs found — using self-signed fallback"
-  else
+  if [ -f /etc/nginx/sites-available/chatr ]; then
+    SSL_CERT=$(sudo grep -m1 'ssl_certificate ' /etc/nginx/sites-available/chatr | awk '{print $2}' | tr -d ';')
+    SSL_KEY=$(sudo grep -m1 'ssl_certificate_key ' /etc/nginx/sites-available/chatr | awk '{print $2}' | tr -d ';')
+  fi
+  # Verify the detected certs actually exist
+  if [ -n "$SSL_CERT" ] && sudo test -f "$SSL_CERT" && [ -n "$SSL_KEY" ] && sudo test -f "$SSL_KEY"; then
     detail "Reusing existing SSL cert: $SSL_CERT"
+  else
+    # Fallback: scan letsencrypt directory (needs sudo — root-owned)
+    SSL_CERT=""; SSL_KEY=""
+    LIVE_DIR=$(sudo find /etc/letsencrypt/live -maxdepth 1 -mindepth 1 -type d 2>/dev/null | head -1)
+    if [ -n "$LIVE_DIR" ] && sudo test -f "${LIVE_DIR}/fullchain.pem"; then
+      SSL_CERT="${LIVE_DIR}/fullchain.pem"
+      SSL_KEY="${LIVE_DIR}/privkey.pem"
+      detail "Found Let's Encrypt cert: $SSL_CERT"
+    else
+      # Last resort — generate self-signed
+      if ! sudo test -f /etc/nginx/ssl-fallback.crt; then
+        sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+          -keyout /etc/nginx/ssl-fallback.key \
+          -out /etc/nginx/ssl-fallback.crt \
+          -subj "/CN=maintenance" 2>/dev/null
+      fi
+      SSL_CERT="/etc/nginx/ssl-fallback.crt"
+      SSL_KEY="/etc/nginx/ssl-fallback.key"
+      detail "No SSL certs found — using self-signed fallback"
+    fi
   fi
 
   sudo tee /etc/nginx/sites-available/chatr-maintenance > /dev/null <<MAINT

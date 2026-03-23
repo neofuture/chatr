@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.22 — 2026-03-23
+
+**Commit:** `49488b9` — fix: use sudo for SSL cert detection during maintenance mode
+
+---
+
 ## v0.1.21 — 2026-03-23
 
 **Commit:** `ca83a5a` — fix: preserve SSL certs during maintenance mode, fix Storybook 500
