@@ -173,6 +173,7 @@
   border-radius: 0.5rem;
   padding: 1rem;
   overflow-x: auto;
+  overflow-y: hidden;
   margin-bottom: 1rem;
 }
 
@@ -242,9 +243,10 @@
 .markdown-content :global(.mermaid-diagram) {
   background: var(--overlay-slate-900-50);
   padding: 2rem;
-  borderRadius: 0.5rem;
+  border-radius: 0.5rem;
   margin: 2rem 0;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid var(--overlay-blue-30);
 }
 
@@ -255,10 +257,9 @@
   margin: 0 auto;
 }
 
-/* Improve Mermaid text readability */
+/* Mermaid text color */
 .markdown-content :global(.mermaid-diagram) text {
   fill: var(--color-sky-100) !important;
-  font-family: ui-monospace, monospace !important;
 }
 
 .markdown-content :global(.mermaid-diagram .node) rect,
@@ -266,8 +267,43 @@
 .markdown-content :global(.mermaid-diagram .node) ellipse,
 .markdown-content :global(.mermaid-diagram .node) polygon {
   fill: #1e3a5f !important;
-  stroke: var(--color-blue-500) !important;
+  stroke: #3b82f6 !important;
   stroke-width: 2px !important;
+}
+
+/* Sequence diagram participant boxes: match inner + outer rects */
+.markdown-content :global(.mermaid-diagram) :global(.actor) {
+  fill: #1e3a5f !important;
+  stroke: #3b82f6 !important;
+  stroke-width: 2px !important;
+}
+
+/* Notes + edge labels: orange bg, dark orange border, black text */
+.markdown-content :global(.mermaid-diagram) :global(.note) rect {
+  fill: #f97316 !important;
+  stroke: #c2410c !important;
+  stroke-width: 2px !important;
+}
+
+.markdown-content :global(.mermaid-diagram) :global(.note) text,
+.markdown-content :global(.mermaid-diagram) :global(.noteText) {
+  fill: #000 !important;
+}
+
+.markdown-content :global(.mermaid-diagram) :global(.edgeLabel) span {
+  color: #e0f2fe !important;
+}
+
+.markdown-content :global(.mermaid-diagram) :global(.edgeLabel) text {
+  fill: #e0f2fe !important;
+}
+
+/* Sequence diagram activation bars */
+.markdown-content :global(.mermaid-diagram) :global(.activation0),
+.markdown-content :global(.mermaid-diagram) :global(.activation1),
+.markdown-content :global(.mermaid-diagram) :global(.activation2) {
+  fill: #334155 !important;
+  stroke: #3b82f6 !important;
 }
 
 .markdown-content :global(.mermaid-diagram .edgePath .path) {
@@ -322,4 +358,68 @@
 [data-theme='light'] .markdown-content :global(.mermaid-diagram) {
   background: rgba(0, 0, 0, 0.03);
   border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* ── Glossary term highlights ── */
+.glossary-term {
+  color: #f97316;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: rgba(249, 115, 22, 0.4);
+  text-underline-offset: 2px;
+  cursor: help;
+  position: relative;
+}
+
+.glossary-term:hover {
+  text-decoration-color: #f97316;
+}
+
+.glossary-term .glossary-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  width: max-content;
+  max-width: 360px;
+  z-index: 2147483647;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  white-space: normal;
+  font-weight: 400;
+  font-style: normal;
+  text-decoration: none;
+}
+
+.glossary-term .glossary-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+}
+
+.glossary-term:hover .glossary-tooltip {
+  display: block;
+}
+
+[data-theme='light'] .glossary-term .glossary-tooltip {
+  background: #ffffff;
+  color: #334155;
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme='light'] .glossary-term .glossary-tooltip::after {
+  border-top-color: #ffffff;
 }

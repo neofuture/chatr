@@ -264,7 +264,7 @@ For iOS PWA testing, the mkcert root CA must be installed and trusted on the dev
 
 - **Voice only** — no video calls yet
 - **1-to-1 only** — no group/conference calls
-- **No TURN server** — calls may fail behind symmetric NATs
+- **No TURN server** — calls may fail behind symmetric NATs (see [Factory: TURN Server](../Factory/TURN_SERVER.md) for setup guide)
 - **No call history UI** — call records are persisted but not yet displayed
 - **No push notifications** — incoming calls only work when the app is open
 - **No ringtone audio** — incoming calls show a visual overlay but play no sound

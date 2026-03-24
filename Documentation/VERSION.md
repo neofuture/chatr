@@ -4,6 +4,22 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.27 — 2026-03-24
+
+**Commit:** `c8f6640` — docs: fix Mermaid diagram styling, glossary highlights, and Chrome scroll
+
+- Fix Mermaid text overflow by removing monospace font override that
+  caused mismatched box/text sizing
+- Add DOM post-processing for rounded corners on note and node rects
+- Add glossary term highlighting with orange tooltips across all docs
+- Fix Chrome scroll trapping caused by overflow-x:auto on code blocks
+- Add TURN server setup guide in Documentation/Factory
+- Expand glossary to 130+ terms with alphabetical ordering
+- Style sequence diagram notes with orange bg and dark orange border
+- Add edge label and activation bar theming for sequence diagrams
+
+---
+
 ## v0.1.26 — 2026-03-23
 
 **Commit:** `9aa2c2d` — docs: add ICE/STUN/TURN layman explanations, glossary, and fix mermaid errors

@@ -3,7 +3,8 @@
   padding: 2rem;
   border-radius: 0.5rem;
   margin: 2rem 0;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 

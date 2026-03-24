@@ -34,6 +34,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | [Presentation](./PRESENTATION.md) | Product narrative, architecture overview, and feature showcase |
 | [Version History](./VERSION.md) | Version history and release notes |
 | [Glossary](./GLOSSARY.md) | Definitions of technical terms used throughout the docs |
+| [Factory: TURN Server](./Factory/TURN_SERVER.md) | Step-by-step guide to provisioning a Coturn TURN server on AWS |
 
 ## Quick Reference
 

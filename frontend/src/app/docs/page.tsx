@@ -15,6 +15,97 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import SiteNav from '@/components/site/SiteNav';
 import docStyles from './Docs.module.css';
 
+// ── Glossary term highlighting ────────────────────────────────────────────────
+
+interface GlossaryEntry { term: string; definition: string }
+
+function parseGlossaryMarkdown(md: string): GlossaryEntry[] {
+  const entries: GlossaryEntry[] = [];
+  const rows = md.split('\n');
+  for (const row of rows) {
+    const m = row.match(/^\|\s*\*\*(.+?)\*\*\s*\|\s*(.+?)\s*\|$/);
+    if (!m) continue;
+    const term = m[1].trim();
+    const definition = m[2]
+      .replace(/\*In plain terms:\*/g, '')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .trim();
+    if (term === 'Term' || !definition) continue;
+    entries.push({ term, definition });
+  }
+  entries.sort((a, b) => b.term.length - a.term.length);
+  return entries;
+}
+
+function buildGlossaryRegex(entries: GlossaryEntry[]): RegExp | null {
+  if (!entries.length) return null;
+  const escaped = entries.map(e =>
+    e.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  );
+  return new RegExp(`\\b(${escaped.join('|')})\\b`, 'gi');
+}
+
+function highlightGlossaryInText(
+  text: string,
+  regex: RegExp,
+  lookup: Map<string, string>,
+  seen: Set<string>,
+): (string | React.ReactElement)[] {
+  regex.lastIndex = 0;
+  const parts: (string | React.ReactElement)[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    const matchedText = match[0];
+    const key = matchedText.toLowerCase();
+    if (seen.has(key)) continue;
+
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    seen.add(key);
+    const def = lookup.get(key) || '';
+    parts.push(
+      <span key={`g-${match.index}`} className={docStyles['glossary-term']}>
+        {matchedText}
+        <span className={docStyles['glossary-tooltip']}>{def}</span>
+      </span>
+    );
+    lastIndex = match.index + matchedText.length;
+  }
+
+  if (lastIndex === 0) return [text];
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
+function highlightGlossaryChildren(
+  children: React.ReactNode,
+  regex: RegExp | null,
+  lookup: Map<string, string>,
+  seen: Set<string>,
+): React.ReactNode {
+  if (!regex) return children;
+  if (typeof children === 'string') {
+    const result = highlightGlossaryInText(children, regex, lookup, seen);
+    return result.length === 1 && typeof result[0] === 'string' ? result[0] : <>{result}</>;
+  }
+  if (Array.isArray(children)) {
+    return children.map((child, i) => {
+      if (typeof child === 'string') {
+        const result = highlightGlossaryInText(child, regex, lookup, seen);
+        return result.length === 1 && typeof result[0] === 'string'
+          ? result[0]
+          : <span key={`hg-${i}`}>{result}</span>;
+      }
+      return child;
+    });
+  }
+  return children;
+}
+
 // Mermaid is browser-only — load with ssr:false so webpack never bundles it for the server
 const MermaidDiagram = dynamic(
   () => import('@/components/MermaidDiagram/MermaidDiagram'),
@@ -151,6 +242,25 @@ export default function DocsPage() {
   const sidebarScrollTop = useRef(0);
   const pendingHash = useRef<string | null>(null);
 
+  const [glossaryEntries, setGlossaryEntries] = useState<GlossaryEntry[]>([]);
+  const [glossaryLookup, setGlossaryLookup] = useState<Map<string, string>>(new Map());
+  const [glossaryRegex, setGlossaryRegex] = useState<RegExp | null>(null);
+
+  useEffect(() => {
+    fetch('/api/docs?file=GLOSSARY.md')
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.content) return;
+        const entries = parseGlossaryMarkdown(data.content);
+        setGlossaryEntries(entries);
+        const lookup = new Map<string, string>();
+        for (const e of entries) lookup.set(e.term.toLowerCase(), e.definition);
+        setGlossaryLookup(lookup);
+        setGlossaryRegex(buildGlossaryRegex(entries));
+      })
+      .catch(() => {});
+  }, []);
+
 
   // Custom syntax-highlighted code block
   const CodeBlock = ({ language, code }: { language: string; code: string }) => {
@@ -216,6 +326,7 @@ export default function DocsPage() {
             fontSize: '13px',
             lineHeight: '1.6',
             padding: '1rem 1.25rem',
+            overflowY: 'hidden',
           }}
           codeTagProps={{ style: { fontFamily: 'ui-monospace, "Fira Code", monospace' } }}
           showLineNumbers={code.split('\n').length > 5}
@@ -390,6 +501,8 @@ export default function DocsPage() {
         restoreSidebarScroll();
         if (pendingHash.current) {
           scrollToHash(pendingHash.current);
+        } else {
+          window.scrollTo(0, 0);
         }
       });
     }
@@ -520,9 +633,25 @@ export default function DocsPage() {
   // Set mounted flag after first render to prevent SSR/client mismatch
   useEffect(() => {
     setMounted(true);
-    // Enable transitions after a brief delay to prevent initial animation
     setTimeout(() => setHasInteracted(true), 50);
   }, []);
+
+  // Chrome traps wheel events inside elements with overflow-x:auto (code blocks).
+  // Capture-phase handler ensures the page always scrolls vertically.
+  const wheelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = wheelRef.current;
+    if (!el) return;
+
+    const handler = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      if ((e.target as HTMLElement)?.closest?.('textarea, [contenteditable]')) return;
+      window.scrollBy(0, e.deltaY);
+    };
+
+    el.addEventListener('wheel', handler, { capture: true, passive: true });
+    return () => el.removeEventListener('wheel', handler, { capture: true });
+  }, [mounted]);
 
   // Save sidebar width to localStorage whenever it changes
   useEffect(() => {
@@ -680,15 +809,12 @@ export default function DocsPage() {
   return (
     <div style={{
       position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
       minHeight: '100vh',
       background: 'var(--bg-primary)',
       color: 'var(--text-primary)',
-      overflow: 'hidden',
     }}>
       <SiteNav />
-      <main id="main-content" style={{ display: 'flex', flex: 1, paddingTop: 64 }}>
+      <main id="main-content" style={{ paddingTop: 64 }}>
       {/* Show loading screen until mounted and width is loaded */}
       {!mounted ? (
         <div style={{
@@ -894,12 +1020,10 @@ export default function DocsPage() {
       </div>
 
       {/* Main Content */}
-      <div style={{
-        flex: 1,
+      <div ref={wheelRef} style={{
         position: 'relative',
         marginLeft: sidebarOpen ? `${sidebarWidth}px` : '0',
         transition: (isDragging || !hasInteracted) ? 'none' : 'margin-left 0.3s ease-in-out',
-        willChange: 'margin-left',
       }}>
         {/* Fixed Toggle Button */}
         <button
@@ -1013,6 +1137,7 @@ export default function DocsPage() {
                         { label: 'Testing', file: 'Testing/index.md', icon: 'fa-flask' },
                         { label: 'Deployment', file: 'Getting-Started/DEPLOYMENT.md', icon: 'fa-cloud-upload' },
                         { label: 'Glossary', file: 'GLOSSARY.md', icon: 'fa-book' },
+                        { label: 'Factory: TURN Server', file: 'Factory/TURN_SERVER.md', icon: 'fa-industry' },
                       ].map(link => (
                         <li key={link.file}>
                           <a
@@ -1045,8 +1170,13 @@ export default function DocsPage() {
 
               {content && (() => {
                 const isChangelog = selectedFile === 'VERSION.md';
+                const isGlossary = selectedFile === 'GLOSSARY.md';
                 const paginated = isChangelog ? paginateChangelog(content) : null;
                 const displayContent = paginated ? paginated.content : content;
+                const gSeen = new Set<string>();
+                const gRegex = isGlossary ? null : glossaryRegex;
+                const gHighlight = (children: React.ReactNode) =>
+                  highlightGlossaryChildren(children, gRegex, glossaryLookup, gSeen);
 
                 return (
                 <div ref={isChangelog ? contentRef : undefined}>
@@ -1129,8 +1259,14 @@ export default function DocsPage() {
                         if (containsBlockElement(children)) {
                           return <>{children}</>;
                         }
-                        return <p {...props}>{children}</p>;
+                        return <p {...props}>{gHighlight(children)}</p>;
                       },
+                      li: ({ children, ...props }) => (
+                        <li {...props}>{gHighlight(children)}</li>
+                      ),
+                      td: ({ children, ...props }) => (
+                        <td {...props}>{gHighlight(children)}</td>
+                      ),
                       pre: ({ children }: any) => {
                         const child = Array.isArray(children) ? children[0] : children;
                         const className = child?.props?.className || '';
