@@ -4,6 +4,20 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.28 — 2026-03-24
+
+**Commit:** `653d459` — docs: expand PRESENTATION.md to mirror all website content, add docs breadcrumbs
+
+- Rewrite PRESENTATION.md from ~416 to ~1,300 lines covering all 22 sections
+  mirroring content from Home, Features, Pricing, Technology, Product, Widget,
+  and Contact pages (commercial pitch, pricing tiers, competitor comparison,
+  widget deep-dive, use cases, ROI analysis, revenue models, build-vs-buy)
+- Replace large sidebar toggle button with compact breadcrumb navigation bar
+  showing: toggle icon | < Documentation — Folder — Page Name
+- Breadcrumb folder segments are clickable, linking to folder index pages
+
+---
+
 ## v0.1.27 — 2026-03-24
 
 **Commit:** `c8f6640` — docs: fix Mermaid diagram styling, glossary highlights, and Chrome scroll

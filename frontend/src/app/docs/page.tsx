@@ -1025,39 +1025,105 @@ export default function DocsPage() {
         marginLeft: sidebarOpen ? `${sidebarWidth}px` : '0',
         transition: (isDragging || !hasInteracted) ? 'none' : 'margin-left 0.3s ease-in-out',
       }}>
-        {/* Fixed Toggle Button */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className={docStyles.toggleBtn}
-          style={{
-            position: 'fixed',
-            top: 'calc(64px + 0.5rem)',
-            left: sidebarOpen ? `${sidebarWidth + 8}px` : '8px',
-            zIndex: 1001,
-            padding: '0.5rem',
-            borderRadius: '0.5rem',
-            cursor: 'pointer',
-            fontSize: '1.25rem',
-            fontWeight: '600',
-            transition: hasInteracted ? 'left 0.3s ease-in-out, opacity 0.2s' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '2.5rem',
-            height: '2.5rem',
-            lineHeight: '1',
-            willChange: 'left',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = '0.8';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = '1';
-          }}
-          title={sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
-        >
-          {sidebarOpen ? '◀' : '▶'}
-        </button>
+        {/* Breadcrumb bar with sidebar toggle */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.5rem 1.5rem',
+          fontSize: '0.85rem',
+          color: 'var(--blue-300)',
+          borderBottom: '1px solid rgba(59, 130, 246, 0.15)',
+          position: 'sticky',
+          top: 64,
+          zIndex: 1001,
+          background: 'var(--bg-primary)',
+        }}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={docStyles.toggleBtn}
+            style={{
+              padding: '0.25rem',
+              borderRadius: '0.25rem',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '1.5rem',
+              height: '1.5rem',
+              lineHeight: '1',
+              flexShrink: 0,
+            }}
+            title={sidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
+          >
+            {sidebarOpen ? '«' : '»'}
+          </button>
+          <span style={{ color: 'rgba(59, 130, 246, 0.3)', userSelect: 'none' }}>|</span>
+          <a
+            href="/docs"
+            onClick={(e) => {
+              e.preventDefault();
+              setShowHome(true);
+              setSelectedFile(null);
+              setContent('');
+              window.history.pushState({}, '', '/docs');
+              window.scrollTo(0, 0);
+            }}
+            style={{
+              color: 'var(--blue-300)',
+              textDecoration: 'none',
+              transition: 'color 0.15s',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#f97316'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--blue-300)'}
+          >
+            &lt; Documentation
+          </a>
+          {selectedFile && !showHome && (() => {
+            const parts = selectedFile.split('/');
+            const folders = parts.slice(0, -1);
+            const file = parts[parts.length - 1];
+            return (
+              <>
+                {folders.map((folder, i) => {
+                  const folderPath = folders.slice(0, i + 1).join('/');
+                  const indexPath = `${folderPath}/index.md`;
+                  return (
+                    <span key={folderPath} style={{ display: 'contents' }}>
+                      <span style={{ color: 'rgba(59, 130, 246, 0.3)', userSelect: 'none' }}>—</span>
+                      <a
+                        href={`/docs?file=${encodeURIComponent(indexPath)}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          loadFile(indexPath);
+                        }}
+                        style={{
+                          color: 'var(--blue-300)',
+                          textDecoration: 'none',
+                          transition: 'color 0.15s',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = '#f97316'}
+                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--blue-300)'}
+                      >
+                        {folder.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                      </a>
+                    </span>
+                  );
+                })}
+                <span style={{ color: 'rgba(59, 130, 246, 0.3)', userSelect: 'none' }}>—</span>
+                <span style={{ color: 'var(--blue-100)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {formatFileName(file)}
+                </span>
+              </>
+            );
+          })()}
+        </div>
 
         <div style={{
           maxWidth: '100%',
