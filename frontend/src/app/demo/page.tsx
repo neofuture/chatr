@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePanels } from '@/contexts/PanelContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -23,6 +23,22 @@ export default function DemoPage() {
   const { openPanel } = usePanels();
   const { showToast } = useToast();
   const { showConfirmation } = useConfirmation();
+
+  // Chrome wheel scroll fix - Chrome traps wheel events inside overflow containers
+  const wheelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = wheelRef.current;
+    if (!el) return;
+
+    const handler = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      if ((e.target as HTMLElement)?.closest?.('textarea, [contenteditable]')) return;
+      window.scrollBy(0, e.deltaY);
+    };
+
+    el.addEventListener('wheel', handler, { capture: true, passive: true });
+    return () => el.removeEventListener('wheel', handler, { capture: true });
+  }, []);
 
   // DatePicker states
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -150,7 +166,7 @@ export default function DemoPage() {
   };
 
   return (
-    <div className={heroStyles['hero-container']}>
+    <div ref={wheelRef} className={heroStyles['hero-container']}>
       <BackgroundBlobs />
 
       <div className={heroStyles['hero-content']}>

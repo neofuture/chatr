@@ -249,6 +249,14 @@ async function start() {
   }
 }
 
+process.on('uncaughtException', (err) => {
+  console.error('⚠️  Uncaught exception (process kept alive):', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('⚠️  Unhandled rejection (process kept alive):', reason);
+});
+
 start().catch(err => {
   console.error('❌ Failed to start server:', err);
   process.exit(1);

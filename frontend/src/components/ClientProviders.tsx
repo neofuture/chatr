@@ -39,6 +39,14 @@ function isTransientNetworkError(...args: unknown[]): boolean {
 
 export default function ClientProviders({ children }: { children: ReactNode }) {
   useEffect(() => {
+    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+    if (isChrome) {
+      
+      document.documentElement.classList.add('is-chrome');var s=document.createElement('style');s.textContent='html.is-chrome *,html.is-chrome *::before,html.is-chrome *::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}';document.head.appendChild(s);
+    }
+  }, []);
+
+  useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return;
 
     const origError = console.error;

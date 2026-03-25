@@ -4,6 +4,20 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.29 — 2026-03-25
+
+**Commit:** `ec519a8` — fix: Chrome backdrop-filter flicker, scroll issues, and backend stability
+
+- Disable backdrop-filter in Chrome to prevent GPU compositor flicker
+- Add solid background fallbacks for toasts in Chrome
+- Fix Chrome wheel scroll on demo page (same fix as docs)
+- Add try/catch to socket handlers to prevent backend crashes
+- Add global uncaughtException/unhandledRejection handlers
+- Fix PostgreSQL healthcheck in docker-compose
+- Fix React key warning in ReactionBadge component
+
+---
+
 ## v0.1.28 — 2026-03-24
 
 **Commit:** `653d459` — docs: expand PRESENTATION.md to mirror all website content, add docs breadcrumbs

@@ -224,13 +224,14 @@ function ReactionBadge({ reactions, isSent, currentUserId }: {
       onClick={e => { e.stopPropagation(); setShowTip(v => !v); }}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setShowTip(v => !v); } }}
     >
-      {groups.map(g => (
-        <span key={g.emoji} className={styles.reactionEmoji} aria-hidden="true">
+      {groups.map((g, i) => (
+        <span key={`${g.emoji}-${i}`} className={styles.reactionEmoji} aria-hidden="true">
           {g.emoji}{g.count > 1 && <span className={styles.reactionCount}>{g.count}</span>}
         </span>
       ))}
       {showTip && (
         <div
+          key="tooltip"
           role="tooltip"
           className={`${styles.reactionTooltip} ${isSent ? styles.reactionTooltipSent : styles.reactionTooltipReceived}`}
         >

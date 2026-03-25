@@ -985,3 +985,28 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+
+/* Chrome backdrop-filter bug workaround - disable all blurs in Chrome */
+html.is-chrome *,
+html.is-chrome *::before,
+html.is-chrome *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Chrome toast solid backgrounds */
+html.is-chrome .toast-success {
+  background: rgba(22, 101, 52, 0.95) !important;
+}
+html.is-chrome .toast-error {
+  background: rgba(153, 27, 27, 0.95) !important;
+}
+html.is-chrome .toast-info {
+  background: rgba(30, 64, 175, 0.95) !important;
+}
+html.is-chrome .toast-warning {
+  background: rgba(180, 83, 9, 0.95) !important;
+}
+html.is-chrome .toast-newmessage {
+  background: rgba(22, 101, 52, 0.95) !important;
+}

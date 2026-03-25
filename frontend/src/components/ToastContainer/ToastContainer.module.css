@@ -202,3 +202,20 @@
     max-width: none;
   }
 }
+
+/* Chrome solid backgrounds */
+:global(html.is-chrome) .toast-success {
+  background: rgba(19, 58, 52, 0.97) !important;
+}
+:global(html.is-chrome) .toast-error {
+  background: rgba(60, 32, 47, 0.97) !important;
+}
+:global(html.is-chrome) .toast-info {
+  background: rgba(24, 44, 83, 0.97) !important;
+}
+:global(html.is-chrome) .toast-warning {
+  background: rgba(62, 41, 38, 0.97) !important;
+}
+:global(html.is-chrome) .toast-newmessage {
+  background: rgba(19, 58, 52, 0.97) !important;
+}

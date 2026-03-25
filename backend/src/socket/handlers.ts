@@ -951,15 +951,19 @@ export function setupSocketHandlers(io: Server) {
     // ==================== AUDIO STATUS ====================
 
     socket.on('audio:recording', async (data: { recipientId: string; isRecording: boolean }) => {
-      if (data.recipientId) {
-        const convo = await findConversation(userId, data.recipientId);
-        if (convo?.status === 'pending') return;
-        io.to(`user:${data.recipientId}`).emit('audio:recording', {
-          userId,
-          username,
-          isRecording: data.isRecording,
-        });
-        console.log(`🎙️ ${username} is ${data.isRecording ? 'recording' : 'stopped recording'} voice note`);
+      try {
+        if (data.recipientId) {
+          const convo = await findConversation(userId, data.recipientId);
+          if (convo?.status === 'pending') return;
+          io.to(`user:${data.recipientId}`).emit('audio:recording', {
+            userId,
+            username,
+            isRecording: data.isRecording,
+          });
+          console.log(`🎙️ ${username} is ${data.isRecording ? 'recording' : 'stopped recording'} voice note`);
+        }
+      } catch (err) {
+        console.error('❌ audio:recording error:', err);
       }
     });
 
@@ -1000,84 +1004,95 @@ export function setupSocketHandlers(io: Server) {
     // ==================== GHOST TYPING ====================
 
     socket.on('ghost:typing', async (data: { recipientId?: string; text: string }) => {
-      if (data.recipientId) {
-        const convo = await findConversation(userId, data.recipientId);
-        if (convo?.status === 'pending') return;
-        io.to(`user:${data.recipientId}`).emit('ghost:typing', {
-          userId,
-          username,
-          text: data.text,
-          type: 'direct'
-        });
+      try {
+        if (data.recipientId) {
+          const convo = await findConversation(userId, data.recipientId);
+          if (convo?.status === 'pending') return;
+          io.to(`user:${data.recipientId}`).emit('ghost:typing', {
+            userId,
+            username,
+            text: data.text,
+            type: 'direct'
+          });
+        }
+      } catch (err) {
+        console.error('❌ ghost:typing error:', err);
       }
     });
 
     // ==================== USER PRESENCE ====================
 
     socket.on('presence:update', async (status: 'online' | 'away') => {
-      const presence = await getPresence(userId);
-      if (presence) {
-        await setPresence({
-          ...presence,
-          status,
-          lastSeen: new Date().toISOString(),
-        });
+      try {
+        const presence = await getPresence(userId);
+        if (presence) {
+          await setPresence({
+            ...presence,
+            status,
+            lastSeen: new Date().toISOString(),
+          });
 
-        if (!presence.hideOnlineStatus) {
-          const { all: connected, pendingInitiatedByMe: pendingByMe } = await getConnectedUserIds(userId);
-          for (const cid of connected) {
-            if (pendingByMe.has(cid)) continue; // don't reveal status to pending request recipients
-            io.to(`user:${cid}`).emit('user:status', {
-              userId,
-              username,
-              status,
-              timestamp: new Date()
-            });
+          if (!presence.hideOnlineStatus) {
+            const { all: connected, pendingInitiatedByMe: pendingByMe } = await getConnectedUserIds(userId);
+            for (const cid of connected) {
+              if (pendingByMe.has(cid)) continue;
+              io.to(`user:${cid}`).emit('user:status', {
+                userId,
+                username,
+                status,
+                timestamp: new Date()
+              });
+            }
           }
         }
+      } catch (err) {
+        console.error('❌ presence:update error:', err);
       }
     });
 
     socket.on('presence:request', async (userIds: string[]) => {
-      const { all: connected, pendingInitiatedByMe } = await getConnectedUserIds(userId);
+      try {
+        const { all: connected, pendingInitiatedByMe } = await getConnectedUserIds(userId);
 
-      const presences = await getMultiplePresences(userIds);
+        const presences = await getMultiplePresences(userIds);
 
-      // For visible users not in Redis (offline / never connected), fall back to DB lastSeen
-      const visibleIds = userIds.filter(id => connected.has(id) && !pendingInitiatedByMe.has(id));
-      const missingIds = visibleIds.filter((id) => {
-        const idx = userIds.indexOf(id);
-        return !presences[idx];
-      });
-      let dbLastSeen: Record<string, Date | null> = {};
-      if (missingIds.length > 0) {
-        try {
-          const rows = await prisma.user.findMany({
-            where: { id: { in: missingIds } },
-            select: { id: true, lastSeen: true },
-          });
-          rows.forEach(r => { dbLastSeen[r.id] = r.lastSeen; });
-        } catch (e) {
-          console.error('❌ Error fetching lastSeen from DB:', e);
+        // For visible users not in Redis (offline / never connected), fall back to DB lastSeen
+        const visibleIds = userIds.filter(id => connected.has(id) && !pendingInitiatedByMe.has(id));
+        const missingIds = visibleIds.filter((id) => {
+          const idx = userIds.indexOf(id);
+          return !presences[idx];
+        });
+        let dbLastSeen: Record<string, Date | null> = {};
+        if (missingIds.length > 0) {
+          try {
+            const rows = await prisma.user.findMany({
+              where: { id: { in: missingIds } },
+              select: { id: true, lastSeen: true },
+            });
+            rows.forEach(r => { dbLastSeen[r.id] = r.lastSeen; });
+          } catch (e) {
+            console.error('❌ Error fetching lastSeen from DB:', e);
+          }
         }
+
+        const presenceData = userIds.map((id, i) => {
+          if (!connected.has(id) || pendingInitiatedByMe.has(id)) {
+            return { userId: id, status: 'offline', lastSeen: null, hidden: true };
+          }
+          const p = presences[i];
+          const hidden = p?.hideOnlineStatus ?? false;
+          return {
+            userId: id,
+            status: hidden ? 'offline' : (p?.status || 'offline'),
+            lastSeen: p?.lastSeen || dbLastSeen[id]?.toISOString() || null,
+            hidden,
+          };
+        });
+
+        socket.emit('presence:response', presenceData);
+      } catch (err) {
+        console.error('❌ presence:request error:', err);
       }
-
-      const presenceData = userIds.map((id, i) => {
-        // Not connected at all, or pending outgoing (sender can't see recipient)
-        if (!connected.has(id) || pendingInitiatedByMe.has(id)) {
-          return { userId: id, status: 'offline', lastSeen: null, hidden: true };
-        }
-        const p = presences[i];
-        const hidden = p?.hideOnlineStatus ?? false;
-        return {
-          userId: id,
-          status: hidden ? 'offline' : (p?.status || 'offline'),
-          lastSeen: p?.lastSeen || dbLastSeen[id]?.toISOString() || null,
-          hidden,
-        };
-      });
-
-      socket.emit('presence:response', presenceData);
     });
 
     // Fetch another user's profile with tiered privacy filtering
@@ -1191,35 +1206,39 @@ export function setupSocketHandlers(io: Server) {
 
     // Update user settings that affect socket behaviour
     socket.on('settings:update', async (data: { privacyOnlineStatus?: string }) => {
-      if (typeof data.privacyOnlineStatus === 'string' && ['everyone', 'friends', 'nobody'].includes(data.privacyOnlineStatus)) {
-        const hide = data.privacyOnlineStatus === 'nobody';
-        const presence = await getPresence(userId);
-        if (presence) {
-          await setPresence({ ...presence, hideOnlineStatus: hide });
-        }
+      try {
+        if (typeof data.privacyOnlineStatus === 'string' && ['everyone', 'friends', 'nobody'].includes(data.privacyOnlineStatus)) {
+          const hide = data.privacyOnlineStatus === 'nobody';
+          const presence = await getPresence(userId);
+          if (presence) {
+            await setPresence({ ...presence, hideOnlineStatus: hide });
+          }
 
-        try {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { privacyOnlineStatus: data.privacyOnlineStatus },
-          });
-        } catch (e) {
-          console.error('❌ Error updating privacyOnlineStatus:', e);
-        }
+          try {
+            await prisma.user.update({
+              where: { id: userId },
+              data: { privacyOnlineStatus: data.privacyOnlineStatus },
+            });
+          } catch (e) {
+            console.error('❌ Error updating privacyOnlineStatus:', e);
+          }
 
-        const effectiveStatus = hide ? 'offline' : (presence?.status || 'online');
-        const { all: settingsConnected, pendingInitiatedByMe: settingsPending } = await getConnectedUserIds(userId);
-        for (const cid of settingsConnected) {
-          if (settingsPending.has(cid)) continue;
-          io.to(`user:${cid}`).emit('user:status', {
-            userId,
-            username,
-            status: effectiveStatus,
-            hidden: hide,
-            lastSeen: hide ? new Date() : null,
-            timestamp: new Date(),
-          });
+          const effectiveStatus = hide ? 'offline' : (presence?.status || 'online');
+          const { all: settingsConnected, pendingInitiatedByMe: settingsPending } = await getConnectedUserIds(userId);
+          for (const cid of settingsConnected) {
+            if (settingsPending.has(cid)) continue;
+            io.to(`user:${cid}`).emit('user:status', {
+              userId,
+              username,
+              status: effectiveStatus,
+              hidden: hide,
+              lastSeen: hide ? new Date() : null,
+              timestamp: new Date(),
+            });
+          }
         }
+      } catch (err) {
+        console.error('❌ settings:update error:', err);
       }
     });
 
@@ -1387,72 +1406,76 @@ export function setupSocketHandlers(io: Server) {
     socket.on('disconnect', async () => {
       console.log(`🔌 User disconnected: ${username} (${socket.id})`);
 
-      // End any active/ringing calls for this user
       try {
-        const activeCalls = await prisma.call.findMany({
-          where: {
-            status: { in: ['ringing', 'active'] },
-            OR: [{ callerId: userId }, { receiverId: userId }],
-          },
-        });
-        for (const call of activeCalls) {
-          const duration = call.startedAt
-            ? Math.round((Date.now() - call.startedAt.getTime()) / 1000)
-            : null;
-          await prisma.call.update({
-            where: { id: call.id },
-            data: {
-              status: call.status === 'ringing' ? 'missed' : 'ended',
-              endedAt: new Date(),
-              duration,
+        // End any active/ringing calls for this user
+        try {
+          const activeCalls = await prisma.call.findMany({
+            where: {
+              status: { in: ['ringing', 'active'] },
+              OR: [{ callerId: userId }, { receiverId: userId }],
             },
           });
-          const otherUserId = call.callerId === userId ? call.receiverId : call.callerId;
-          io.to(`user:${otherUserId}`).emit('call:ended', {
-            callId: call.id,
-            reason: 'disconnect',
-            duration,
-          });
+          for (const call of activeCalls) {
+            const duration = call.startedAt
+              ? Math.round((Date.now() - call.startedAt.getTime()) / 1000)
+              : null;
+            await prisma.call.update({
+              where: { id: call.id },
+              data: {
+                status: call.status === 'ringing' ? 'missed' : 'ended',
+                endedAt: new Date(),
+                duration,
+              },
+            });
+            const otherUserId = call.callerId === userId ? call.receiverId : call.callerId;
+            io.to(`user:${otherUserId}`).emit('call:ended', {
+              callId: call.id,
+              reason: 'disconnect',
+              duration,
+            });
+          }
+        } catch (e) {
+          console.error('❌ Error ending calls on disconnect:', e);
         }
-      } catch (e) {
-        console.error('❌ Error ending calls on disconnect:', e);
-      }
 
-      const presence = await getPresence(userId);
+        const presence = await getPresence(userId);
 
-      // Update presence to offline in Redis, then remove
-      if (presence) {
-        await setPresence({
-          ...presence,
-          status: 'offline',
-          lastSeen: new Date().toISOString(),
-        });
-      }
-      await removeSocketMapping(userId);
-      await removePresence(userId);
-
-      // Broadcast offline only to connected users (excluding pending request recipients)
-      if (!presence?.hideOnlineStatus) {
-        const { all: disconnConnected, pendingInitiatedByMe: disconnPending } = await getConnectedUserIds(userId);
-        for (const cid of disconnConnected) {
-          if (disconnPending.has(cid)) continue; // don't reveal offline status to pending request recipients
-          io.to(`user:${cid}`).emit('user:status', {
-            userId,
-            username,
+        // Update presence to offline in Redis, then remove
+        if (presence) {
+          await setPresence({
+            ...presence,
             status: 'offline',
-            lastSeen: new Date()
+            lastSeen: new Date().toISOString(),
           });
         }
-      }
+        await removeSocketMapping(userId);
+        await removePresence(userId);
 
-      // Persist lastSeen to database
-      try {
-        await prisma.user.update({
-          where: { id: userId },
-          data: { lastSeen: new Date() }
-        });
-      } catch (error) {
-        console.error('❌ Error updating last seen:', error);
+        // Broadcast offline only to connected users (excluding pending request recipients)
+        if (!presence?.hideOnlineStatus) {
+          const { all: disconnConnected, pendingInitiatedByMe: disconnPending } = await getConnectedUserIds(userId);
+          for (const cid of disconnConnected) {
+            if (disconnPending.has(cid)) continue;
+            io.to(`user:${cid}`).emit('user:status', {
+              userId,
+              username,
+              status: 'offline',
+              lastSeen: new Date()
+            });
+          }
+        }
+
+        // Persist lastSeen to database
+        try {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { lastSeen: new Date() }
+          });
+        } catch (error) {
+          console.error('❌ Error updating last seen:', error);
+        }
+      } catch (err) {
+        console.error('❌ disconnect handler error:', err);
       }
     });
 
