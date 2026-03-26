@@ -1,1 +1,0 @@
-import{f as e}from"./index-aA1Q6uWB.js";const r=e().mockReturnValue(Promise.resolve()),n=e(),o=e(),s=e(),t=e(),c=e();function u(){return{push:n,replace:o,back:s,forward:t,refresh:c,prefetch:r}}function f(){return"/"}e();e();export{f as a,u};
