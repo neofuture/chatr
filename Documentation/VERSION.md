@@ -4,6 +4,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.30 — 2026-03-26
+
+**Commit:** `6f8e6f7` — fix: dashboard cards transparency and background blobs full viewport coverage
+
+- Add backdrop-filter blur to dashboard CARD style for glass effect
+- Change BackgroundBlobs from absolute to fixed positioning so blobs
+  cover full viewport when scrolling long pages
+- Update Playwright config to use HTTPS and ignore certificate errors
+
+---
+
 ## v0.1.29 — 2026-03-25
 
 **Commit:** `ec519a8` — fix: Chrome backdrop-filter flicker, scroll issues, and backend stability

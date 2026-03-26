@@ -17,10 +17,11 @@
 }
 
 .bg-effects {
-  position: absolute;
+  position: fixed;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+  z-index: 0;
 }
 
 .bg-blob {
@@ -28,7 +29,6 @@
   border-radius: 50%;
   opacity: 0.3;
   filter: blur(80px);
-  will-change: transform;
 }
 
 .bg-blob-1 {

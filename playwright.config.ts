@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const FRONTEND_URL = process.env.E2E_FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.E2E_FRONTEND_URL || 'https://localhost:3000';
 const BACKEND_URL = process.env.E2E_BACKEND_URL || 'http://localhost:3001';
 const IS_CI = !!process.env.CI;
 const RUN_MOBILE = true;
@@ -22,6 +22,7 @@ export default defineConfig({
     video: 'off',
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
+    ignoreHTTPSErrors: true,
   },
 
   projects: [
@@ -57,6 +58,7 @@ export default defineConfig({
     {
       command: 'cd frontend && npm run dev',
       url: FRONTEND_URL,
+      ignoreHTTPSErrors: true,
       reuseExistingServer: true,
       timeout: 60_000,
     },
