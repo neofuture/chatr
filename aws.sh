@@ -109,6 +109,25 @@ if [ "$TARGET" = "storybook" ]; then
 fi
 
 
+# ── Pre-build Storybook locally (runs for full deploy) ────────────────────
+info "Building Storybook locally into public/storybook/..."
+(cd frontend && npm run build-storybook -- -o public/storybook) \
+  || error "Storybook build failed"
+SB_FILES=$(find frontend/public/storybook -type f 2>/dev/null | wc -l | tr -d " ")
+success "Storybook built ($SB_FILES files)"
+
+# Commit and push if storybook files changed
+if ! git diff --quiet frontend/public/storybook/ 2>/dev/null || [ -n "$(git ls-files --others --exclude-standard frontend/public/storybook/)" ]; then
+  info "Storybook files changed — committing..."
+  git add frontend/public/storybook/
+  SKIP_POST_COMMIT=1 git commit --no-verify -m "chore: rebuild storybook"
+  info "Pushing to remote..."
+  git push || error "Git push failed"
+  success "Storybook committed and pushed"
+else
+  success "Storybook unchanged — no commit needed"
+fi
+
 # ── Copy deploy script + secrets to server ────────────────────────────────────
 info "Copying deployAWS.sh + .env.deploy + maintenance.html to server..."
 scp $SSH_OPTS "$SCRIPT" "$SERVER:~/deployAWS.sh" \
