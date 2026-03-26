@@ -399,7 +399,7 @@ EOF
   if [ -f "public/storybook/index.html" ]; then
     success "Storybook ready ($(find public/storybook -type f | wc -l) files)"
   else
-    warn "Storybook files missing from public/storybook/ — rebuild locally with: cd frontend && npm run build-storybook -- -o public/storybook"
+    warn "Storybook files missing from public/storybook/ — rebuild locally with: cd frontend && npm run build-storybook && rm -rf public/storybook && mv storybook-static public/storybook"
   fi
 
   info "Building Next.js production bundle (this may take a while)..."

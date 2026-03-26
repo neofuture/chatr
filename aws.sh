@@ -91,8 +91,8 @@ fi
 
 # ── For storybook, build locally into public/storybook/ and rsync ──────────────
 if [ "$TARGET" = "storybook" ]; then
-  info "Building Storybook locally into public/storybook/..."
-  (cd frontend && npm run build-storybook -- -o public/storybook) \
+  info "Building Storybook locally..."
+  (cd frontend && npm run build-storybook && rm -rf public/storybook && mv storybook-static public/storybook) \
     || error "Storybook build failed"
   success "Storybook built ($(find frontend/public/storybook -type f | wc -l) files)"
 
@@ -110,8 +110,8 @@ fi
 
 
 # ── Pre-build Storybook locally (runs for full deploy) ────────────────────
-info "Building Storybook locally into public/storybook/..."
-(cd frontend && npm run build-storybook -- -o public/storybook) \
+info "Building Storybook locally..."
+(cd frontend && npm run build-storybook && rm -rf public/storybook && mv storybook-static public/storybook) \
   || error "Storybook build failed"
 SB_FILES=$(find frontend/public/storybook -type f 2>/dev/null | wc -l | tr -d " ")
 success "Storybook built ($SB_FILES files)"
