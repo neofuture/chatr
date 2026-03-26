@@ -16,7 +16,7 @@
     "version:increment": "node scripts/increment-version.js",
     "prepare": "husky",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build --quiet"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.28.0",

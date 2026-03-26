@@ -1,5 +1,6 @@
 import type { StorybookConfig } from '@storybook/react-vite';
 import * as path from 'path';
+import { createLogger } from 'vite';
 
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.@(js|jsx|ts|tsx)'],
@@ -16,7 +17,18 @@ const config: StorybookConfig = {
   staticDirs: ['../public'],
   viteFinal: async (config) => {
     const { mergeConfig } = await import('vite');
+
+    const logger = createLogger();
+    const originalWarn = logger.warn.bind(logger);
+    logger.warn = (msg, options) => {
+      if (msg.includes('"use client"')) return;
+      if (msg.includes('use client')) return;
+      if (msg.includes('resolve original location')) return;
+      originalWarn(msg, options);
+    };
+
     return mergeConfig(config, {
+      customLogger: logger,
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '../src'),
@@ -39,6 +51,17 @@ const config: StorybookConfig = {
           'socket.io-client',
           'dexie',
         ],
+      },
+      build: {
+        rollupOptions: {
+          onwarn(warning, warn) {
+            if (warning.code === 'MODULE_LEVEL_DIRECTIVE') return;
+            if (warning.code === 'SOURCEMAP_ERROR') return;
+            if (warning.code === 'EVAL') return;
+            warn(warning);
+          },
+        },
+        chunkSizeWarningLimit: 1000,
       },
     });
   },
