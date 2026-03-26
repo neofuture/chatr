@@ -4,6 +4,19 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.32 — 2026-03-26
+
+**Commit:** `d9e534a` — feat: display all dashboard metrics inline on main page
+
+- Add all detailed sections inline below summary tiles
+- Includes: Code Health, Security, Heatmap, Charts, Languages,
+  Architecture, Components, Endpoints, Branches, Contributors,
+  Dependencies, Largest Files, Test Coverage, TODOs, Recent Commits
+- Clicking tiles still opens focused panel overlay
+- Fix largestFiles data path reference
+
+---
+
 ## v0.1.31 — 2026-03-26
 
 **Commit:** `e72d8d5` — fix: resolve all high-severity security vulnerabilities

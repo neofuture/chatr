@@ -2719,6 +2719,421 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* ═══════════════════════════════════════════════════════════════
+              FULL METRICS — All dashboard data displayed inline
+              ═══════════════════════════════════════════════════════════════ */}
+
+          {/* ── Code Health ────────────────────────────────────────────── */}
+          <div id="sec-health-inline" style={{ ...CARD, marginBottom: '1.5rem' }}>
+            <h2 style={H2}><Ico>fad fa-heartbeat</Ico> Code Health</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '1rem' }}>
+              <HealthGauge label="Avg File Size" value={data.health.avgFileSize} max={300} unit=" loc" color="#3b82f6" />
+              <HealthGauge label="Backend Coverage" value={data.backendModules?.length ? +((data.backendTestedCount / data.backendModules.length) * 100).toFixed(0) : 0} max={100} unit="%" color="#10b981" />
+              <HealthGauge label="Frontend Coverage" value={data.frontendModules?.length ? +(((data.frontendTestedCount ?? 0) / data.frontendModules.length) * 100).toFixed(0) : 0} max={100} unit="%" color="#f59e0b" />
+              <HealthGauge label="Commits/Day" value={data.health.commitsPerDay} max={10} unit="" color="#8b5cf6" />
+              <HealthGauge label="Largest File" value={data.health.largestFile?.lines || 0} max={1000} unit=" loc" color="#ec4899" />
+            </div>
+            {data.linesChanged && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#10b981' }}>+{data.linesChanged.added.toLocaleString()}</div>
+                  <div style={SUB}>added</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ef4444' }}>-{data.linesChanged.deleted.toLocaleString()}</div>
+                  <div style={SUB}>deleted</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: data.linesChanged.net >= 0 ? '#3b82f6' : '#f59e0b' }}>{data.linesChanged.net >= 0 ? '+' : ''}{data.linesChanged.net.toLocaleString()}</div>
+                  <div style={SUB}>net</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Security & Build ───────────────────────────────────────── */}
+          <div className="db-grid2" style={GRID2}>
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-shield-exclamation</Ico> Dependency Security</h2>
+              {data.audit && (data.audit.backend?.critical + data.audit.backend?.high + data.audit.backend?.moderate + data.audit.backend?.low + data.audit.frontend?.critical + data.audit.frontend?.high + data.audit.frontend?.moderate + data.audit.frontend?.low) === 0 ? (
+                <EmptyState message="No vulnerabilities — all clear!" />
+              ) : (
+                <>
+                {(['backend', 'frontend'] as const).map(area => {
+                  const a = data.audit?.[area];
+                  if (!a) return null;
+                  const total = a.critical + a.high + a.moderate + a.low;
+                  if (total === 0) return null;
+                  const statusColor = a.critical > 0 ? '#ef4444' : a.high > 0 ? '#f59e0b' : '#3b82f6';
+                  return (
+                    <div key={area} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: 'var(--overlay-subtle)', borderRadius: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize' }}>{area}</span>
+                        <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 4, background: statusColor + '18', color: statusColor, fontWeight: 700 }}>{a.critical > 0 ? 'CRITICAL' : a.high > 0 ? 'HIGH' : 'LOW'}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.7rem' }}>
+                        {a.critical > 0 && <span style={{ color: '#ef4444' }}>Critical: {a.critical}</span>}
+                        {a.high > 0 && <span style={{ color: '#f97316' }}>High: {a.high}</span>}
+                        {a.moderate > 0 && <span style={{ color: '#f59e0b' }}>Moderate: {a.moderate}</span>}
+                        {a.low > 0 && <span style={{ color: '#3b82f6' }}>Low: {a.low}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+                </>
+              )}
+            </div>
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-hammer</Ico> Build Health</h2>
+              {(data.buildChecks || []).every((bc: D) => bc.ok) ? (
+                <EmptyState message="All builds compile cleanly!" />
+              ) : (
+                (data.buildChecks || []).filter((bc: D) => !bc.ok).map((bc: D) => (
+                  <div key={bc.area} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: 'rgba(239,68,68,0.1)', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                      <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{bc.area}</span>
+                      <span style={{ color: '#ef4444' }}>{bc.errors} errors</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* ── Contribution Heatmap ───────────────────────────────────── */}
+          <div style={{ ...CARD, marginBottom: '1.5rem', marginTop: '1.5rem', overflow: 'auto' }}>
+            <h2 style={H2}><Ico>fad fa-fire</Ico> Contribution Activity (Last 52 Weeks)</h2>
+            <Heatmap data={data.heatmap} />
+          </div>
+
+          {/* ── Daily + Weekly Charts ──────────────────────────────────── */}
+          <div className="db-grid2" style={GRID2}>
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-chart-bar</Ico> Daily Commits</h2>
+              <BarChart data={data.dailyCommits.map((d: D) => ({ label: fmtDate(d.date), value: d.count }))} />
+            </div>
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-chart-line</Ico> Weekly Trend</h2>
+              <BarChart data={data.weeklyCommits.map((d: D) => ({ label: d.week, value: d.count }))} color="linear-gradient(to top,#10b981,#34d399)" />
+            </div>
+          </div>
+
+          {/* ── Commit Types ───────────────────────────────────────────── */}
+          {data.commitTypes?.length > 0 && (
+            <div style={{ ...CARD, marginTop: '1.5rem' }}>
+              <h2 style={H2}><Ico>fad fa-tags</Ico> Commit Types</h2>
+              {(() => {
+                const total = data.commitTypes.reduce((s: number, t: D) => s + t.count, 0);
+                const typeColors: Record<string, string> = { feat: '#10b981', fix: '#ef4444', chore: '#6b7280', test: '#3b82f6', refactor: '#8b5cf6', docs: '#06b6d4', style: '#ec4899', perf: '#f59e0b' };
+                return (
+                  <div>
+                    <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: '0.75rem' }}>
+                      {data.commitTypes.map((t: D) => (
+                        <div key={t.type} title={t.type + ': ' + t.count} style={{ width: (t.count / total) * 100 + '%', background: typeColors[t.type] || '#475569' }} />
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                      {data.commitTypes.map((t: D) => (
+                        <div key={t.type} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: 2, background: typeColors[t.type] || '#475569' }} />
+                          <span style={{ fontWeight: 600, color: typeColors[t.type] || '#94a3b8' }}>{t.type}</span>
+                          <span style={{ color: 'var(--text-secondary)' }}>{t.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* ── Language Breakdown ─────────────────────────────────────── */}
+          <div className="db-grid3" style={{ ...GRID3, marginTop: '1.5rem' }}>
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-globe</Ico> Language Breakdown</h2>
+              <LangBar loc={data.loc} />
+            </div>
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-folder-open</Ico> LOC by Area</h2>
+              <Donut label="lines" segments={[
+                { label: 'Frontend', value: data.locByArea.frontend, color: '#3b82f6' },
+                { label: 'Backend', value: data.locByArea.backend, color: '#10b981' },
+                { label: 'Widget', value: data.locByArea.widget, color: '#f59e0b' },
+              ]} />
+            </div>
+            <div style={CARD}>
+              <h2 style={H2}><Ico>fad fa-file-lines</Ico> File Types</h2>
+              <Donut label="files" segments={[
+                { label: '.tsx', value: data.fileTypes.tsx, color: '#3178c6' },
+                { label: '.ts', value: data.fileTypes.ts, color: '#60a5fa' },
+                { label: '.css', value: (data.fileTypes.moduleCss || 0) + (data.fileTypes.plainCss || 0), color: '#563d7c' },
+                { label: '.js', value: data.fileTypes.js, color: '#f7df1e' },
+              ]} size={110} />
+            </div>
+          </div>
+
+          {/* ── Architecture Overview ──────────────────────────────────── */}
+          <div style={{ ...CARD, marginTop: '1.5rem' }}>
+            <h2 style={H2}><Ico>fad fa-building</Ico> Architecture Overview</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+              {[
+                { label: 'Components', value: data.architecture.components, icon: 'fad fa-puzzle-piece' },
+                { label: 'Hooks', value: data.architecture.hooks, icon: 'fad fa-link' },
+                { label: 'Contexts', value: data.architecture.contexts, icon: 'fad fa-sync-alt' },
+                { label: 'API Routes', value: data.architecture.apiRoutes, icon: 'fad fa-route' },
+                { label: 'Middleware', value: data.architecture.middleware, icon: 'fad fa-shield' },
+                { label: 'Utilities', value: data.architecture.utils, icon: 'fad fa-wrench' },
+                { label: 'Pages', value: data.architecture.pages, icon: 'fad fa-file-lines' },
+                { label: 'DB Models', value: data.architecture.dbModels, icon: 'fad fa-database' },
+                { label: 'Migrations', value: data.architecture.dbMigrations, icon: 'fad fa-clipboard-list' },
+                { label: 'Socket Lines', value: data.architecture.socketHandlerLines, icon: 'fad fa-plug' },
+              ].map(item => (
+                <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Ico>{item.icon}</Ico>
+                  <span style={{ fontWeight: 700, minWidth: 24 }}>{item.value}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Components List ────────────────────────────────────────── */}
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1.5rem' }}>
+            <div style={{ ...CARD, maxHeight: 400, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              <h2 style={H2}><Ico>fad fa-puzzle-piece</Ico> Components ({data.components.length})</h2>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {data.components.slice(0, 30).map((c: D) => (
+                  <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: '0.78rem' }}>
+                    <code style={{ color: '#60a5fa', minWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</code>
+                    <ProgressBar value={c.lines} max={data.components[0]?.lines || 1} />
+                    <span style={{ ...SUB, minWidth: 40, textAlign: 'right' }}>{c.lines}</span>
+                    <span style={{ display: 'flex', gap: 3 }}>
+                      {c.hasTest && <Badge color="#10b981">test</Badge>}
+                      {c.hasStory && <Badge color="#f59e0b">story</Badge>}
+                    </span>
+                  </div>
+                ))}
+                {data.components.length > 30 && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', padding: '4px 0' }}>+{data.components.length - 30} more...</div>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <Section title={'Hooks (' + data.hooks.length + ')'} icon="fad fa-link" style={{ flex: 1 }}>
+                <div style={{ ...SCROLLBOX, maxHeight: 150 }}>
+                  {data.hooks.slice(0, 15).map((h: D) => (
+                    <div key={h.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}>
+                      <code style={{ color: '#c084fc', flex: 1 }}>{h.name}</code>
+                      <span style={SUB}>{h.lines}</span>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+              <Section title={'Contexts (' + data.contexts.length + ')'} icon="fad fa-sync-alt" style={{ flex: 1 }}>
+                <div style={{ ...SCROLLBOX, maxHeight: 150 }}>
+                  {data.contexts.map((c: D) => (
+                    <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem' }}>
+                      <code style={{ color: '#fbbf24', flex: 1 }}>{c.name}</code>
+                      <span style={SUB}>{c.lines}</span>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            </div>
+          </div>
+
+          {/* ── API Endpoints + Socket Events ──────────────────────────── */}
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1.5rem' }}>
+            <Section title={'API Endpoints (' + data.endpoints.length + ')'} icon="fad fa-network-wired">
+              <div style={{ ...SCROLLBOX, maxHeight: 300 }}>
+                {data.endpoints.map((ep: D, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '2px 0' }}>
+                    <MethodBadge method={ep.method} />
+                    <code style={{ color: '#6ee7b7', flex: 1 }}>{ep.path}</code>
+                    <span style={SUB}>{ep.file.split('/').pop()}</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+            <Section title={'Socket Events (' + data.socketEvents.length + ')'} icon="fad fa-plug">
+              <div style={{ ...SCROLLBOX, maxHeight: 300 }}>
+                {data.socketEvents.map((ev: D, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '2px 0' }}>
+                    <Badge color={ev.direction === 'emit' ? '#3b82f6' : '#10b981'}>{ev.direction}</Badge>
+                    <code style={{ color: ev.direction === 'emit' ? '#93c5fd' : '#6ee7b7', flex: 1 }}>{ev.event}</code>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+
+          {/* ── Git Branches + Migrations ──────────────────────────────── */}
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1.5rem' }}>
+            <Section title={'Git Branches (' + (data.branches?.length || 0) + ')'} icon="fad fa-code-branch">
+              <div style={{ ...SCROLLBOX, maxHeight: 200 }}>
+                {(data.branches || []).map((b: D) => (
+                  <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '3px 0' }}>
+                    {b.isCurrent && <i className="fas fa-circle" style={{ color: '#10b981', fontSize: '0.4rem' }} />}
+                    <code style={{ color: b.isCurrent ? '#6ee7b7' : '#93c5fd', flex: 1 }}>{b.name}</code>
+                    <span style={SUB}>{b.daysAgo === 0 ? 'today' : b.daysAgo + 'd ago'}</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+            <Section title={'Prisma Migrations (' + (data.migrationStatus?.applied || 0) + ' applied)'} icon="fad fa-database">
+              {data.migrationStatus?.pending > 0 ? (
+                <div style={{ fontSize: '0.75rem', padding: '4px 8px', marginBottom: 8, borderRadius: 4, background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }}>
+                  <i className="fas fa-exclamation-triangle" style={{ marginRight: 4 }} />{data.migrationStatus.pending} pending
+                </div>
+              ) : (
+                <EmptyState message="All migrations applied!" />
+              )}
+              <div style={{ ...SCROLLBOX, maxHeight: 150 }}>
+                {(data.migrationStatus?.migrations || []).slice(0, 10).map((m: D) => (
+                  <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem', padding: '2px 0' }}>
+                    <i className={'fas fa-' + (m.applied ? 'check-circle' : 'clock')} style={{ color: m.applied ? '#10b981' : '#f59e0b', fontSize: '0.55rem' }} />
+                    <code style={{ color: m.applied ? '#94a3b8' : '#fca5a5' }}>{m.name}</code>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+
+          {/* ── Contributors ───────────────────────────────────────────── */}
+          <Section title={'Contributors (' + data.contributors.length + ')'} icon="fad fa-users" defaultOpen={true} style={{ marginTop: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {data.contributors.map((c: D, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.contributors.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>{i + 1}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, flex: 1 }}>{c.name || c.email}</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981' }}>{c.commits}</span>
+                  <span style={SUB}>commits</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* ── Dependencies + Largest Files ───────────────────────────── */}
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1.5rem' }}>
+            <Section title={'Dependencies (' + data.dependencies.total + ')'} icon="fad fa-box-open">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                {(['frontend', 'backend'] as const).map(area => (
+                  <div key={area} style={{ background: 'var(--overlay-subtle)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize', marginBottom: 4 }}>{area}</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.7rem' }}>
+                      <span><span style={{ color: '#10b981', fontWeight: 600 }}>{data.dependencies[area].prod}</span> prod</span>
+                      <span><span style={{ color: '#3b82f6', fontWeight: 600 }}>{data.dependencies[area].dev}</span> dev</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Section>
+            <Section title="Largest Files" icon="fad fa-ruler-vertical">
+              <div style={{ ...SCROLLBOX, maxHeight: 200 }}>
+                {(data.largestFiles || []).slice(0, 15).map((f: D, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '2px 0' }}>
+                    <span style={{ fontWeight: 700, color: i < 3 ? '#f59e0b' : 'var(--text-secondary)', width: 20 }}>{i + 1}</span>
+                    <code style={{ color: '#93c5fd', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.path}</code>
+                    <span style={{ fontWeight: 600 }}>{f.lines}</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+
+          {/* ── Test Coverage ──────────────────────────────────────────── */}
+          <div className="db-grid2" style={{ ...GRID2, marginTop: '1.5rem' }}>
+            <Section title={'Backend Coverage (' + data.backendTestedCount + '/' + (data.backendModules?.length || 0) + ')'} icon="fad fa-shield-check">
+              {data.backendModules?.length > 0 && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ height: 8, borderRadius: 4, background: 'var(--overlay-subtle)', overflow: 'hidden' }}>
+                    <div style={{ width: (data.backendTestedCount / data.backendModules.length) * 100 + '%', height: '100%', background: '#10b981', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 4 }}>{Math.round((data.backendTestedCount / data.backendModules.length) * 100)}% covered</div>
+                </div>
+              )}
+              <div style={{ ...SCROLLBOX, maxHeight: 150 }}>
+                {(data.backendModules || []).slice(0, 20).map((m: D, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem', padding: '2px 0' }}>
+                    <i className={'fas fa-' + (m.tested ? 'check-circle' : 'circle')} style={{ color: m.tested ? '#10b981' : 'var(--text-secondary)', fontSize: '0.55rem' }} />
+                    <code style={{ color: m.tested ? '#94a3b8' : '#fca5a5', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</code>
+                  </div>
+                ))}
+              </div>
+            </Section>
+            <Section title={'Frontend Coverage (' + (data.frontendTestedCount ?? 0) + '/' + (data.frontendModules?.length || 0) + ')'} icon="fad fa-shield-check">
+              {data.frontendModules?.length > 0 && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ height: 8, borderRadius: 4, background: 'var(--overlay-subtle)', overflow: 'hidden' }}>
+                    <div style={{ width: ((data.frontendTestedCount ?? 0) / data.frontendModules.length) * 100 + '%', height: '100%', background: '#f59e0b', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 4 }}>{Math.round(((data.frontendTestedCount ?? 0) / data.frontendModules.length) * 100)}% covered</div>
+                </div>
+              )}
+              <div style={{ ...SCROLLBOX, maxHeight: 150 }}>
+                {(data.frontendModules || []).slice(0, 20).map((m: D, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.72rem', padding: '2px 0' }}>
+                    <i className={'fas fa-' + (m.tested ? 'check-circle' : 'circle')} style={{ color: m.tested ? '#f59e0b' : 'var(--text-secondary)', fontSize: '0.55rem' }} />
+                    <code style={{ color: m.tested ? '#94a3b8' : '#fca5a5', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</code>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+
+          {/* ── TODOs & FIXMEs ──────────────────────────────────────────── */}
+          <Section title={'TODOs & FIXMEs (' + (data.todos?.length || 0) + ')'} icon="fad fa-thumbtack" style={{ marginTop: '1.5rem' }}>
+            {!data.todos?.length ? (
+              <EmptyState message="No TODOs or FIXMEs — nice work!" />
+            ) : (
+              <div style={{ ...SCROLLBOX, maxHeight: 250 }}>
+                {data.todos.map((t: D, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '3px 0', borderBottom: i < data.todos.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <Badge color={TODO_COLORS[t.type] || '#94a3b8'}>{t.type}</Badge>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.text}</span>
+                    <code style={{ ...SUB, flexShrink: 0 }}>{t.file.split('/').pop()}:{t.line}</code>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          {/* ── Recent Commits ─────────────────────────────────────────── */}
+          <Section title={'Recent Commits (' + data.recentCommits.length + ')'} icon="fad fa-history" style={{ marginTop: '1.5rem' }}>
+            <div style={{ ...SCROLLBOX, maxHeight: 300 }}>
+              {data.recentCommits.map((c: D, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: i < data.recentCommits.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <code style={{ fontSize: '0.7rem', color: '#60a5fa', flexShrink: 0 }}>{c.hash}</code>
+                  <span title={c.message} style={{ fontSize: '0.82rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.message}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#34d399', flexShrink: 0 }}>+{(c.added || 0).toLocaleString()}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#f87171', flexShrink: 0 }}>-{(c.deleted || 0).toLocaleString()}</span>
+                  <span style={{ ...SUB, flexShrink: 0 }}>{fmtDate(c.date)}</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* ── Environment Info ───────────────────────────────────────── */}
+          <div style={{ ...CARD, marginTop: '1.5rem' }}>
+            <h2 style={H2}><Ico>fad fa-cog</Ico> Environment</h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+              {[
+                { label: 'Chatr', value: 'v' + version },
+                { label: 'SHA', value: data.overview.latestHash },
+                { label: 'Node.js', value: data.env.nodeVersion },
+                { label: 'npm', value: data.env.npmVersion },
+                { label: 'Git', value: data.env.gitVersion },
+                { label: 'Next.js', value: data.env.nextVersion },
+                { label: 'Prisma', value: data.env.prismaVersion },
+                { label: 'TypeScript', value: data.env.typescriptVersion },
+                { label: 'OS', value: data.env.os },
+              ].filter(e => e.value).map(e => (
+                <div key={e.label} style={{ fontSize: '0.8rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{e.label} </span>
+                  <code style={{ color: '#60a5fa', fontWeight: 600 }}>{e.value}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </>)}
       </div>
 
