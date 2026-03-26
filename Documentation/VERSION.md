@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.38 — 2026-03-26
+
+**Commit:** `0f857bc` — fix: update aws.sh storybook target to use public/storybook/ path
+
+- Fixes the storybook target in aws.sh to use the public/storybook/ path.  
+- Updates local deploy helper to align with the new storybook build approach.  
+- Ensures rsync transfers storybook to the correct server path.
+
+---
+
 ## v0.1.37 — 2026-03-26
 
 **Commit:** `e18afd0` — fix: skip storybook build on server — use pre-built version from repo

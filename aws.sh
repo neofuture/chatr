@@ -89,24 +89,25 @@ if [ "$TARGET" = "docs" ]; then
   exit 0
 fi
 
-# ── For storybook, build locally and rsync static output ──────────────────────
+# ── For storybook, build locally into public/storybook/ and rsync ──────────────
 if [ "$TARGET" = "storybook" ]; then
-  info "Building Storybook locally..."
-  (cd frontend && npm run build-storybook) \
+  info "Building Storybook locally into public/storybook/..."
+  (cd frontend && npm run build-storybook -- -o public/storybook) \
     || error "Storybook build failed"
-  success "Storybook built"
+  success "Storybook built ($(find frontend/public/storybook -type f | wc -l) files)"
 
-  info "Syncing storybook-static/ to server..."
+  info "Syncing public/storybook/ to server..."
   rsync -az --delete --progress \
     -e "ssh $SSH_OPTS" \
-    ./frontend/storybook-static/ \
-    "$SERVER:/home/ubuntu/chatr/frontend/storybook-static/" \
+    ./frontend/public/storybook/ \
+    "$SERVER:/home/ubuntu/chatr/frontend/public/storybook/" \
     || error "rsync failed"
-  success "Storybook synced"
+  success "Storybook synced to server"
   echo ""
-  success "Storybook deploy complete! Available at /storybook"
+  success "Storybook deploy complete! Available at https://chatr-app.online/storybook/"
   exit 0
 fi
+
 
 # ── Copy deploy script + secrets to server ────────────────────────────────────
 info "Copying deployAWS.sh + .env.deploy + maintenance.html to server..."
