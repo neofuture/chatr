@@ -4,6 +4,24 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.34 — 2026-03-26
+
+**Commit:** `0974583` — feat: expand deploy banner with all service URLs, move logs to app dir
+
+- Deploy success message now shows App, API, Swagger, Storybook, Health
+  and Logs URLs instead of just App/API/Logs
+- Moved log directory into $APP_DIR/logs — no sudo needed,
+  self-contained, avoids IDE sandbox path restrictions
+- Added LOG_DIR variable to deploy script config
+- Storybook build now reports failures instead of silently continuing
+- Added Storybook static files health check to deploy step 7
+- Added storybook-static/ to frontend .gitignore
+- Updated Deployment.md, AWS.md, and PRESENTATION.md to reflect all
+  service URLs and new log paths
+- Chrome-specific solid nav background for SiteNav (backdrop-filter fix)
+
+---
+
 ## v0.1.33 — 2026-03-26
 
 **Commit:** `2da9ea9` — fix: dashboard mobile overflow — cards constrain content properly

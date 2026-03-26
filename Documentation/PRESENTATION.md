@@ -755,6 +755,17 @@ PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis ada
 - **AWS (Production)** — `bash aws.sh` — Deploys to EC2 with RDS, ElastiCache, S3, Nginx, SSL, and PM2 cluster mode.
 - **Any Cloud** — Standard Node.js + PostgreSQL + Redis. Works on DigitalOcean, Hetzner, Railway, Render, Azure, GCP — anywhere that runs Docker or Node.js.
 
+### 16.11 Live URLs
+
+| Service | URL |
+|---------|-----|
+| App | https://chatr-app.online |
+| API | https://api.chatr-app.online |
+| Swagger (API docs) | https://api.chatr-app.online/api/docs |
+| Storybook (UI library) | https://chatr-app.online/storybook/ |
+| Prisma Studio (DB admin) | https://db.chatr-app.online |
+| Health check | https://api.chatr-app.online/api/health |
+
 ---
 
 ## 17. Testing Strategy

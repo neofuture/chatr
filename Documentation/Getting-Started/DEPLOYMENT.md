@@ -19,6 +19,7 @@
 | Frontend | https://chatr-app.online |
 | Backend API | https://api.chatr-app.online |
 | Swagger UI | https://api.chatr-app.online/api/docs |
+| Storybook | https://chatr-app.online/storybook/ |
 | Prisma Studio | https://db.chatr-app.online |
 | Health check | https://api.chatr-app.online/api/health |
 
@@ -281,7 +282,7 @@ step5_pm2() {
   pm2 delete chatr-frontend 2>/dev/null || true
   pm2 delete chatr-prisma   2>/dev/null || true
 
-  sudo mkdir -p /var/log/chatr && sudo chown ubuntu:ubuntu /var/log/chatr
+  mkdir -p /home/ubuntu/chatr/logs
 
   cat > "$APP_DIR/ecosystem.config.js" <<EOF
 module.exports = {
@@ -293,8 +294,8 @@ module.exports = {
       args: 'dist/index.js',
       instances: 1,
       exec_mode: 'fork',
-      error_file: '/var/log/chatr/backend-error.log',
-      out_file:   '/var/log/chatr/backend-out.log',
+      error_file: '/home/ubuntu/chatr/logs/backend-error.log',
+      out_file:   '/home/ubuntu/chatr/logs/backend-out.log',
       time: true,
     },
     {
@@ -304,8 +305,8 @@ module.exports = {
       args: 'start -p 3000',
       instances: 1,
       exec_mode: 'fork',
-      error_file: '/var/log/chatr/frontend-error.log',
-      out_file:   '/var/log/chatr/frontend-out.log',
+      error_file: '/home/ubuntu/chatr/logs/frontend-error.log',
+      out_file:   '/home/ubuntu/chatr/logs/frontend-out.log',
       time: true,
     },
     {
@@ -315,8 +316,8 @@ module.exports = {
       args: 'studio --port 5555 --browser none',
       instances: 1,
       exec_mode: 'fork',
-      error_file: '/var/log/chatr/prisma-error.log',
-      out_file:   '/var/log/chatr/prisma-out.log',
+      error_file: '/home/ubuntu/chatr/logs/prisma-error.log',
+      out_file:   '/home/ubuntu/chatr/logs/prisma-out.log',
       time: true,
     }
   ]
@@ -424,14 +425,16 @@ step7_check() {
   pm2 status
 
   echo ""
-  echo "════════════════════════════════════════════"
+  echo "══════════════════════════════════════════════════"
   echo "  ✅  Chatr deployed successfully!"
-  echo "────────────────────────────────────────────"
-  echo "  App  : ${FRONTEND_URL}"
-  echo "  API  : ${BACKEND_URL}"
-  echo "  DB   : ${DB_URL}"
-  echo "  Logs : /var/log/chatr/"
-  echo "════════════════════════════════════════════"
+  echo "──────────────────────────────────────────────────"
+  echo "  App       : ${FRONTEND_URL}"
+  echo "  API       : ${BACKEND_URL}"
+  echo "  Swagger   : ${BACKEND_URL}/api/docs"
+  echo "  Storybook : ${FRONTEND_URL}/storybook/"
+  echo "  Health    : ${BACKEND_URL}/api/health"
+  echo "  Logs      : /home/ubuntu/chatr/logs/"
+  echo "══════════════════════════════════════════════════"
 }
 
 # =============================================================================
@@ -469,8 +472,8 @@ pm2 logs chatr-prisma         # Prisma Studio logs
 pm2 restart all               # Restart everything
 pm2 restart chatr-backend     # Restart backend only
 pm2 monit                     # Real-time dashboard
-sudo tail -f /var/log/chatr/backend-error.log
-sudo tail -f /var/log/chatr/frontend-error.log
+tail -f /home/ubuntu/chatr/logs/backend-error.log
+tail -f /home/ubuntu/chatr/logs/frontend-error.log
 ```
 
 ## Updating the Application

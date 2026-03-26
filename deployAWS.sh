@@ -156,6 +156,7 @@ fi
 # ── Config (all read from .env.deploy) ───────────────────────────────────────
 DOMAIN="${DEPLOY_DOMAIN:-}"
 APP_DIR="/home/ubuntu/chatr"
+LOG_DIR="${APP_DIR}/logs"
 REPO_URL="https://github.com/neofuture/chatr"
 
 DB_HOST="${DB_HOST:?DB_HOST not set in .env.deploy}"
@@ -400,8 +401,11 @@ EOF
   detail "Build output: $(du -sh .next 2>/dev/null | cut -f1) in .next/"
 
   info "Building Storybook static site..."
-  npm run build-storybook 2>&1 | tail -5
-  success "Storybook built"
+  if npm run build-storybook 2>&1 | tee /tmp/sb-build.log | tail -5; then
+    success "Storybook built"
+  else
+    warn "Storybook build failed — check /tmp/sb-build.log"
+  fi
   detail "Storybook output: $(du -sh storybook-static 2>/dev/null | cut -f1) in storybook-static/"
 }
 
@@ -414,9 +418,8 @@ step5_pm2() {
   info "Stopping all existing PM2 processes..."
   pm2 delete all 2>/dev/null && detail "All PM2 processes stopped" || detail "No PM2 processes were running"
 
-  info "Creating log directory /var/log/chatr..."
-  sudo mkdir -p /var/log/chatr
-  sudo chown ubuntu:ubuntu /var/log/chatr
+  info "Creating log directory ${LOG_DIR}..."
+  mkdir -p "${LOG_DIR}"
   success "Log directory ready"
 
   info "Writing PM2 ecosystem config..."
@@ -434,8 +437,8 @@ module.exports = {
         NODE_ENV: 'production',
         NODE_PATH: '${APP_DIR}/backend/node_modules',
       },
-      error_file: '/var/log/chatr/backend-error.log',
-      out_file:   '/var/log/chatr/backend-out.log',
+      error_file: '${LOG_DIR}/backend-error.log',
+      out_file:   '${LOG_DIR}/backend-out.log',
       time: true,
     },
     {
@@ -446,8 +449,8 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       env: { NODE_ENV: 'production' },
-      error_file: '/var/log/chatr/frontend-error.log',
-      out_file:   '/var/log/chatr/frontend-out.log',
+      error_file: '${LOG_DIR}/frontend-error.log',
+      out_file:   '${LOG_DIR}/frontend-out.log',
       time: true,
     },
   ]
@@ -600,18 +603,28 @@ step7_check() {
     warn "Frontend not yet responding (may still be starting) — check: pm2 logs chatr-frontend"
   fi
 
+  info "Checking Storybook static files..."
+  if [ -f "$APP_DIR/frontend/storybook-static/index.html" ]; then
+    success "Storybook built — $(ls $APP_DIR/frontend/storybook-static/ | wc -l) files in storybook-static/"
+  else
+    warn "Storybook static files missing — build may have failed"
+  fi
+
   echo ""
   info "PM2 process status:"
   pm2 status
 
   echo ""
-  echo -e "${GREEN}${BOLD}════════════════════════════════════════════════${NC}"
+  echo -e "${GREEN}${BOLD}══════════════════════════════════════════════════${NC}"
   echo -e "${GREEN}${BOLD}  ✅  Chatr deployed successfully!${NC}"
-  echo -e "${GREEN}${BOLD}────────────────────────────────────────────────${NC}"
-  echo -e "${GREEN}  App : ${FRONTEND_URL}${NC}"
-  echo -e "${GREEN}  API : ${BACKEND_URL}${NC}"
-  echo -e "${GREEN}  Logs: /var/log/chatr/${NC}"
-  echo -e "${GREEN}${BOLD}════════════════════════════════════════════════${NC}"
+  echo -e "${GREEN}${BOLD}──────────────────────────────────────────────────${NC}"
+  echo -e "${GREEN}  App       : ${FRONTEND_URL}${NC}"
+  echo -e "${GREEN}  API       : ${BACKEND_URL}${NC}"
+  echo -e "${GREEN}  Swagger   : ${BACKEND_URL}/api/docs${NC}"
+  echo -e "${GREEN}  Storybook : ${FRONTEND_URL}/storybook/${NC}"
+  echo -e "${GREEN}  Health    : ${BACKEND_URL}/api/health${NC}"
+  echo -e "${GREEN}  Logs      : ${LOG_DIR}/${NC}"
+  echo -e "${GREEN}${BOLD}══════════════════════════════════════════════════${NC}"
   echo ""
   echo "Useful commands:"
   echo "  pm2 status                — process overview"
@@ -619,8 +632,8 @@ step7_check() {
   echo "  pm2 logs chatr-backend    — backend logs only"
   echo "  pm2 logs chatr-frontend   — frontend logs only"
   echo "  pm2 restart all           — restart everything"
-  echo "  sudo tail -f /var/log/chatr/backend-error.log"
-  echo "  sudo tail -f /var/log/chatr/frontend-error.log"
+  echo "  tail -f ${LOG_DIR}/backend-error.log"
+  echo "  tail -f ${LOG_DIR}/frontend-error.log"
 }
 
 # =============================================================================

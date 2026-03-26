@@ -52,12 +52,15 @@ graph TD
 
 ## Nginx Routing
 
-| Domain | Proxies to | Notes |
-|--------|-----------|-------|
+| Domain / Path | Proxies to | Notes |
+|--------------|-----------|-------|
 | `chatr-app.online` | `:3000` | Next.js frontend |
 | `www.chatr-app.online` | `:3000` | www redirect |
 | `api.chatr-app.online` | `:3001` | Express API + WebSocket |
+| `api.chatr-app.online/api/docs` | `:3001` | Swagger UI — basic auth in production |
+| `chatr-app.online/storybook/` | static files | Storybook — built during deploy |
 | `db.chatr-app.online` | `:5555` | Prisma Studio — basic auth required |
+| `api.chatr-app.online/api/health` | `:3001` | Health check endpoint |
 
 All domains terminate SSL at Nginx via Let's Encrypt certificates. HTTP (port 80) is auto-redirected to HTTPS (port 443) by Certbot.
 
@@ -79,7 +82,7 @@ proxy_read_timeout 86400;
 | Public IP | `16.60.35.172` |
 | Region | eu-west-2 (London) |
 | App directory | `/home/ubuntu/chatr` |
-| Log directory | `/var/log/chatr/` |
+| Log directory | `/home/ubuntu/chatr/logs/` |
 | Process manager | PM2 |
 
 ### PM2 Processes
@@ -94,8 +97,8 @@ pm2 reload chatr-backend           # zero-downtime reload
 
 | Name | Script | Mode | Instances | Port | Logs |
 |------|--------|------|-----------|------|------|
-| `chatr-backend` | `node dist/index.js` | cluster | `max` (= vCPUs) | `3001` | `/var/log/chatr/backend-out.log` |
-| `chatr-frontend` | `next start` | fork | 1 | `3000` | `/var/log/chatr/frontend-out.log` |
+| `chatr-backend` | `node dist/index.js` | cluster | `max` (= vCPUs) | `3001` | `/home/ubuntu/chatr/logs/backend-out.log` |
+| `chatr-frontend` | `next start` | fork | 1 | `3000` | `/home/ubuntu/chatr/logs/frontend-out.log` |
 
 > **Why cluster mode for the backend?** Socket.io + the Redis adapter already handles sticky sessions across processes. Each cluster worker gets its own Prisma connection pool, multiplying throughput. On a t3.small (2 vCPU) you get 2 workers × 20 connections = 40 DB connections and double the request handling capacity.
 
