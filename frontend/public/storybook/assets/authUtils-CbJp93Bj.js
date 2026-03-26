@@ -1,0 +1,1 @@
+function o(e,t){localStorage.setItem("token",e),localStorage.setItem("user",JSON.stringify(t)),window.dispatchEvent(new Event("userLoggedIn")),console.log("✅ Auth token saved, WebSocket will reconnect")}export{o as s};

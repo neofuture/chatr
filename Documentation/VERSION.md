@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.36 — 2026-03-26
+
+**Commit:** `f624781` — fix: serve storybook via Next.js public dir instead of nginx static alias
+
+- Fix serving of Storybook by using Next.js public directory instead of nginx static alias.  
+- Pre-build Storybook into public/storybook/ before the Next.js build process.  
+- Remove unnecessary nginx configuration for serving Storybook.
+
+---
+
 ## v0.1.35 — 2026-03-26
 
 **Commit:** `60d22b6` — fix: nginx HTTPS config — write full 443 blocks instead of relying on certbot

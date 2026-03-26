@@ -395,18 +395,17 @@ EOF
   detail "API URL : $BACKEND_URL"
   detail "WS URL  : $BACKEND_URL"
 
+  info "Building Storybook into public/storybook/..."
+  if npm run build-storybook -- -o public/storybook 2>&1 | tail -5; then
+    success "Storybook built ($(find public/storybook -type f | wc -l) files)"
+  else
+    warn "Storybook build failed — using pre-built version from repo"
+  fi
+
   info "Building Next.js production bundle (this may take a while)..."
   npm run build
   success "Frontend built"
   detail "Build output: $(du -sh .next 2>/dev/null | cut -f1) in .next/"
-
-  info "Building Storybook static site..."
-  if npm run build-storybook 2>&1 | tee /tmp/sb-build.log | tail -5; then
-    success "Storybook built"
-  else
-    warn "Storybook build failed — check /tmp/sb-build.log"
-  fi
-  detail "Storybook output: $(du -sh storybook-static 2>/dev/null | cut -f1) in storybook-static/"
 }
 
 # =============================================================================
@@ -478,7 +477,6 @@ step6_nginx() {
   step "STEP 6 — Nginx & SSL"
 
   CERT_DIR="/etc/letsencrypt/live/${DOMAIN}"
-  STORYBOOK_ROOT="${APP_DIR}/frontend/storybook-static"
 
   # — Generate / renew certificates (certonly — does NOT touch nginx) —————————
   if [ -d "$CERT_DIR" ]; then
@@ -515,14 +513,6 @@ server {
     ssl_certificate_key ${CERT_DIR}/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-
-    location /storybook/ {
-        alias ${STORYBOOK_ROOT}/;
-        index index.html;
-        try_files \$uri \$uri/ =404;
-        expires 1d;
-        add_header Cache-Control "public, immutable";
-    }
 
     location / {
         proxy_pass http://localhost:3000;
@@ -634,11 +624,11 @@ step7_check() {
     warn "Frontend not yet responding (may still be starting) — check: pm2 logs chatr-frontend"
   fi
 
-  info "Checking Storybook static files..."
-  if [ -f "$APP_DIR/frontend/storybook-static/index.html" ]; then
-    success "Storybook built — $(ls $APP_DIR/frontend/storybook-static/ | wc -l) files in storybook-static/"
+  info "Checking Storybook..."
+  if [ -f "$APP_DIR/frontend/public/storybook/index.html" ]; then
+    success "Storybook available at ${FRONTEND_URL}/storybook/"
   else
-    warn "Storybook static files missing — build may have failed"
+    warn "Storybook files missing from public/storybook/"
   fi
 
   echo ""
