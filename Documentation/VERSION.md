@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.35 — 2026-03-26
+
+**Commit:** `60d22b6` — fix: nginx HTTPS config — write full 443 blocks instead of relying on certbot
+
+- Fix nginx HTTPS configuration to write complete 443 blocks directly in the deploy script.  
+- Ensure storybook and proxy settings persist across redeploys without relying on Certbot.  
+- Update documentation to clarify the new nginx config process and Certbot's role.
+
+---
+
 ## v0.1.34 — 2026-03-26
 
 **Commit:** `0974583` — feat: expand deploy banner with all service URLs, move logs to app dir

@@ -477,23 +477,47 @@ EOF
 step6_nginx() {
   step "STEP 6 — Nginx & SSL"
 
-  info "Writing Nginx site config..."
-  cat > /tmp/chatr-nginx.conf <<ENDOFNGINX
-# Redirect www → non-www so there is only one origin for CORS
+  CERT_DIR="/etc/letsencrypt/live/${DOMAIN}"
+  STORYBOOK_ROOT="${APP_DIR}/frontend/storybook-static"
+
+  # — Generate / renew certificates (certonly — does NOT touch nginx) —————————
+  if [ -d "$CERT_DIR" ]; then
+    info "SSL certificates already exist at ${CERT_DIR}"
+    detail "Skipping certbot — certs are auto-renewed by systemd timer"
+  else
+    info "Requesting SSL certificates via Certbot (certonly)..."
+    sudo certbot certonly --nginx \
+      -d "${DOMAIN}" \
+      -d "www.${DOMAIN}" \
+      -d "api.${DOMAIN}" \
+      --non-interactive --agree-tos -m "admin@${DOMAIN}" \
+      && success "SSL certificates installed" \
+      || warn "Certbot failed — DNS may not be pointed yet. Run manually: sudo certbot certonly --nginx"
+  fi
+
+  # —— Write full Nginx config (HTTP redirect + HTTPS) ————————————————————
+  info "Writing Nginx site config (HTTP + HTTPS)..."
+  cat > /tmp/chatr-nginx <<ENDOFNGINX
+# ── HTTP: redirect everything to HTTPS ───────────────────────────────────────────
 server {
     listen 80;
-    server_name www.${DOMAIN};
-    return 301 https://${DOMAIN}\$request_uri;
+    server_name ${DOMAIN} www.${DOMAIN} api.${DOMAIN};
+    return 301 https://\$host\$request_uri;
 }
 
-# Frontend
+# ── HTTPS: Frontend ———————————————————————————————————————————————————————
 server {
-    listen 80;
+    listen 443 ssl http2;
     server_name ${DOMAIN};
     client_max_body_size 55M;
 
+    ssl_certificate     ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
     location /storybook/ {
-        alias /home/ubuntu/chatr/frontend/storybook-static/;
+        alias ${STORYBOOK_ROOT}/;
         index index.html;
         try_files \$uri \$uri/ =404;
         expires 1d;
@@ -513,11 +537,29 @@ server {
     }
 }
 
-# API backend
+# ── HTTPS: www redirect ───────────────────────────────────────────────────
 server {
-    listen 80;
+    listen 443 ssl http2;
+    server_name www.${DOMAIN};
+
+    ssl_certificate     ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    return 301 https://${DOMAIN}\$request_uri;
+}
+
+# ── HTTPS: API backend ────────────────────────────────────────────────────
+server {
+    listen 443 ssl http2;
     server_name api.${DOMAIN};
     client_max_body_size 55M;
+
+    ssl_certificate     ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     location / {
         proxy_pass http://localhost:3001;
@@ -535,7 +577,7 @@ server {
 }
 ENDOFNGINX
 
-  sudo cp /tmp/chatr-nginx.conf /etc/nginx/sites-available/chatr
+  sudo cp /tmp/chatr-nginx /etc/nginx/sites-available/chatr
   detail "Config written to /etc/nginx/sites-available/chatr"
 
   sudo ln -sf /etc/nginx/sites-available/chatr /etc/nginx/sites-enabled/chatr
@@ -551,17 +593,6 @@ ENDOFNGINX
   info "Reloading Nginx..."
   sudo systemctl reload nginx
   success "Nginx reloaded"
-
-  info "Requesting SSL certificates via Certbot..."
-  detail "Domains: ${DOMAIN}, www.${DOMAIN}, api.${DOMAIN}"
-  sudo certbot --nginx \
-    --expand \
-    -d "${DOMAIN}" \
-    -d "www.${DOMAIN}" \
-    -d "api.${DOMAIN}" \
-    --non-interactive --agree-tos -m "admin@${DOMAIN}" \
-    && success "SSL certificates installed and Nginx updated" \
-    || warn "Certbot failed — DNS may not be pointed yet. Run manually: sudo certbot --nginx"
 }
 
 # =============================================================================

@@ -459,7 +459,9 @@ step7_check
 
 ## Nginx Configuration
 
-SSL is added automatically by Certbot, which adds port 443 blocks and HTTP → HTTPS redirects to the config above.
+The deploy script writes the **complete** nginx config including both HTTP (port 80 redirect) and HTTPS (port 443) server blocks with SSL certificate paths. Certbot is only used for initial certificate generation (`certonly`) and automatic renewal via systemd timer — it does **not** modify the nginx config.
+
+This ensures the Storybook static location, proxy settings, and SSL directives survive every redeploy without relying on Certbot to recreate them.
 
 ## PM2 Process Management
 
