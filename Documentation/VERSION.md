@@ -4,6 +4,15 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.37 — 2026-03-26
+
+**Commit:** `e18afd0` — fix: skip storybook build on server — use pre-built version from repo
+
+  cd frontend && npm run build-storybook -- -o public/storybook
+  git add frontend/public/storybook && git commit && git push
+
+---
+
 ## v0.1.36 — 2026-03-26
 
 **Commit:** `f624781` — fix: serve storybook via Next.js public dir instead of nginx static alias

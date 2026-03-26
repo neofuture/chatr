@@ -395,11 +395,11 @@ EOF
   detail "API URL : $BACKEND_URL"
   detail "WS URL  : $BACKEND_URL"
 
-  info "Building Storybook into public/storybook/..."
-  if npm run build-storybook -- -o public/storybook 2>&1 | tail -5; then
-    success "Storybook built ($(find public/storybook -type f | wc -l) files)"
+  info "Storybook: using pre-built version from repo (public/storybook/)"
+  if [ -f "public/storybook/index.html" ]; then
+    success "Storybook ready ($(find public/storybook -type f | wc -l) files)"
   else
-    warn "Storybook build failed — using pre-built version from repo"
+    warn "Storybook files missing from public/storybook/ — rebuild locally with: cd frontend && npm run build-storybook -- -o public/storybook"
   fi
 
   info "Building Next.js production bundle (this may take a while)..."
