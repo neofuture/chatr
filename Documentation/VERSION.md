@@ -4,6 +4,18 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.33 — 2026-03-26
+
+**Commit:** `2da9ea9` — fix: dashboard mobile overflow — cards constrain content properly
+
+- Add minWidth: 0 and overflow: hidden to CARD base style
+- Prevents content from overflowing card boundaries on mobile
+- Heatmap wrapper uses minWidth: fit-content for horizontal scroll
+- Dependencies section stacks vertically on narrow screens
+- Largest Files line count no longer cut off (flexShrink: 0)
+
+---
+
 ## v0.1.32 — 2026-03-26
 
 **Commit:** `d9e534a` — feat: display all dashboard metrics inline on main page

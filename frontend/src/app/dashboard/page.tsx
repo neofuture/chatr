@@ -22,7 +22,7 @@ function fmtDate(d: string) {
 // ---------------------------------------------------------------------------
 // Shared styles
 // ---------------------------------------------------------------------------
-const CARD: React.CSSProperties = { background: 'var(--card-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem' };
+const CARD: React.CSSProperties = { background: 'var(--card-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem', minWidth: 0, overflow: 'hidden' };
 const H2: React.CSSProperties = { fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 1rem' };
 const GRID2: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1rem', marginBottom: '1.5rem' };
 const GRID3: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', gap: '1rem', marginBottom: '1.5rem' };
@@ -303,7 +303,7 @@ function Heatmap({ data }: { data: { date: string; count: number; level: number 
   });
 
   return (
-    <div>
+    <div style={{ minWidth: 'fit-content' }}>
       <div style={{ position: 'relative', height: 16, marginBottom: 2 }}>
         {months.map((m, i) => <span key={i} style={{ position: 'absolute', left: m.left, fontSize: '0.6rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{m.label}</span>)}
       </div>
@@ -311,7 +311,7 @@ function Heatmap({ data }: { data: { date: string; count: number; level: number 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.55rem', color: 'var(--text-secondary)', paddingTop: 2, minWidth: LABEL_W - 3 }}>
           {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((d, i) => <div key={i} style={{ height: 10, lineHeight: '10px' }}>{d}</div>)}
         </div>
-        <div style={{ display: 'flex', gap: 3, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 3, minWidth: 'fit-content' }}>
           {weeks.map((w, wi) => (
             <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {w[0] && w[0].dayOfWeek > 0 && wi === 0 && Array.from({ length: w[0].dayOfWeek }).map((_, pi) => <div key={`p-${pi}`} style={{ width: 10, height: 10 }} />)}
@@ -3014,7 +3014,7 @@ export default function DashboardPage() {
           {/* ── Dependencies + Largest Files ───────────────────────────── */}
           <div className="db-grid2" style={{ ...GRID2, marginTop: '1.5rem' }}>
             <Section title={'Dependencies (' + data.dependencies.total + ')'} icon="fad fa-box-open">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {(['frontend', 'backend'] as const).map(area => (
                   <div key={area} style={{ background: 'var(--overlay-subtle)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize', marginBottom: 4 }}>{area}</div>
@@ -3031,8 +3031,8 @@ export default function DashboardPage() {
                 {(data.largestFiles || []).slice(0, 15).map((f: D, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.75rem', padding: '2px 0' }}>
                     <span style={{ fontWeight: 700, color: i < 3 ? '#f59e0b' : 'var(--text-secondary)', width: 20 }}>{i + 1}</span>
-                    <code style={{ color: '#93c5fd', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.path}</code>
-                    <span style={{ fontWeight: 600 }}>{f.lines}</span>
+                    <code style={{ color: '#93c5fd', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.path}</code>
+                    <span style={{ fontWeight: 600, flexShrink: 0 }}>{f.lines}</span>
                   </div>
                 ))}
               </div>
