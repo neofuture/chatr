@@ -32,5 +32,11 @@
   ],
   "dependencies": {
     "framer-motion": "^12.34.1"
+  },
+  "overrides": {
+    "fast-xml-parser": "^5.5.9",
+    "flatted": "^3.4.2",
+    "picomatch": "^4.0.4",
+    "socket.io-parser": "^4.2.6"
   }
 }

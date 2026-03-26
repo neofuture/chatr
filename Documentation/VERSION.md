@@ -4,6 +4,21 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.31 — 2026-03-26
+
+**Commit:** `e72d8d5` — fix: resolve all high-severity security vulnerabilities
+
+- fast-xml-parser: 5.4.1 → 5.5.9 (entity expansion bypass CVE-2026-26278)
+- flatted: 3.4.1 → 3.4.2 (prototype pollution via parse())
+- picomatch: 2.3.1 → 4.0.4 (ReDoS + method injection in POSIX classes)
+- socket.io-parser: 4.2.5 → 4.2.6 (unbounded binary attachments)
+- music-metadata: 11.12.1 → 11.12.3 (infinite loop in ASF parser)
+- next: 16.1.6 → 16.2.1 (HTTP smuggling, DoS, CSRF bypasses)
+- socket.io: 4.7.2 → 4.8.3
+- socket.io-client: 4.7.2 → 4.8.3
+
+---
+
 ## v0.1.30 — 2026-03-26
 
 **Commit:** `6f8e6f7` — fix: dashboard cards transparency and background blobs full viewport coverage

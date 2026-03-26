@@ -25,7 +25,7 @@
     "dexie": "^4.3.0",
     "framer-motion": "^12.34.3",
     "github-slugger": "^2.0.0",
-    "next": "^16.1.6",
+    "next": "^16.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
@@ -34,7 +34,7 @@
     "rehype-raw": "^7.0.0",
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.1",
-    "socket.io-client": "^4.7.2",
+    "socket.io-client": "^4.8.3",
     "typescript": "^5.3.3",
     "zustand": "^4.4.1"
   },
