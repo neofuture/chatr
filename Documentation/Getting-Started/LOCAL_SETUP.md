@@ -57,7 +57,7 @@ npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:3000`
+Frontend runs at `https://localhost:3000` (HTTPS via `--experimental-https`)
 
 **`.env.local` minimum config:**
 ```
@@ -68,9 +68,9 @@ NEXT_PUBLIC_PRODUCT_NAME=Chatr
 
 ## 5. Verify
 
-- Open `http://localhost:3000` — landing page should load
+- Open `https://localhost:3000` — login page should load (unauthenticated users redirect to `/login`)
 - Open `http://localhost:3001/api/health` — should return `{ "status": "ok" }`
-- Open `http://localhost:3000/app/test` (after logging in) — developer test lab
+- Open `https://localhost:3000/app/test` (after logging in) — developer test lab
 
 ## Development Scripts
 

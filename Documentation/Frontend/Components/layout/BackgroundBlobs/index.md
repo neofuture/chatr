@@ -2,7 +2,7 @@
 
 **File:** `src/components/BackgroundBlobs/BackgroundBlobs.tsx`
 
-Renders three decorative animated blobs used on the landing page background. No props.
+Renders three decorative animated blobs used on the login page background. No props.
 
 ## Props
 

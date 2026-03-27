@@ -216,8 +216,8 @@ npx playwright test --ui
 
 | File | Description |
 |------|-------------|
-| `auth.spec.ts` | Login and authentication via AuthPanel |
-| `registration.spec.ts` | User registration (API + browser UI panel) |
+| `auth.spec.ts` | Login and authentication via `/login` page |
+| `registration.spec.ts` | User registration (API + browser UI via `/login` page) |
 | `profile.spec.ts` | Profile management — display name, names, gender, avatar, cover image, data persistence |
 | `dm-messaging.spec.ts` | Direct message send and receive |
 | `messaging.spec.ts` | Real-time messaging — user search, message delivery |
@@ -235,7 +235,7 @@ npx playwright test --ui
 
 | Helper | File | Description |
 |--------|------|-------------|
-| `browserLogin` | `e2e/helpers/auth.ts` | Log in via the AuthPanel UI with bypass OTP |
+| `browserLogin` | `e2e/helpers/auth.ts` | Log in via the `/login` page UI with bypass OTP |
 | `registerUser` | `e2e/helpers/api.ts` | Register a user via the API |
 | `verifyEmail` | `e2e/helpers/api.ts` | Verify email with bypass OTP code |
 | `deleteUser` | `e2e/helpers/api.ts` | Delete a test user and all related data |

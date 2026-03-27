@@ -170,7 +170,7 @@ Phone numbers are stored in E.164 format (e.g. `+447911123456`). The `validatePh
 
 ## Frontend Authentication Flow
 
-There are no dedicated `/login` or `/register` routes. All authentication is handled by the `AuthPanel` slide-in panel, accessible from the `SiteNav` avatar dropdown or via the `chatr:open-auth` custom event.
+Authentication is handled via a dedicated `/login` page that renders the `AuthPanel` component with both login and registration forms.
 
 The default login verification method is **email** (changed from SMS). Users can toggle between email and SMS verification in the login form.
 
@@ -183,7 +183,7 @@ localStorage.setItem('token', token);
 localStorage.setItem('user', JSON.stringify(user));
 ```
 
-On successful login, the `AuthPanel` dispatches a `chatr:auth-changed` custom event so that `SiteNav` and other components update their UI immediately without requiring a page reload.
+On successful login, the `AuthPanel` dispatches a `chatr:auth-changed` custom event and redirects the user to `/app`.
 
 `AppLayout` enforces the presence of both `token` and `user` in `localStorage` before rendering protected `/app/*` routes.
 

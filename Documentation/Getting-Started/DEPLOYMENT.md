@@ -16,10 +16,11 @@
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://chatr-app.online |
+| App (Frontend) | https://app.chatr-app.online |
+| Marketing Website | https://chatr-app.online |
 | Backend API | https://api.chatr-app.online |
 | Swagger UI | https://api.chatr-app.online/api/docs |
-| Storybook | https://chatr-app.online/storybook/ |
+| Storybook | https://app.chatr-app.online/storybook/ |
 | Prisma Studio | https://db.chatr-app.online |
 | Health check | https://api.chatr-app.online/api/health |
 
@@ -30,13 +31,14 @@ Internet
     │
     ▼
 Route 53 / DNS
-    ├── chatr-app.online      → EC2 → Nginx → :3000 (Next.js)
-    └── api.chatr-app.online  → EC2 → Nginx → :3001 (Express)
-                                              │
-                              ┌───────────────┼──────────────┐
-                              ▼               ▼              ▼
-                           RDS           ElastiCache        S3
-                        PostgreSQL          Redis          Uploads
+    ├── chatr-app.online          → EC2 → Nginx → :3002 (Website — Next.js)
+    ├── app.chatr-app.online      → EC2 → Nginx → :3000 (App — Next.js)
+    └── api.chatr-app.online      → EC2 → Nginx → :3001 (Express)
+                                                  │
+                                  ┌───────────────┼──────────────┐
+                                  ▼               ▼              ▼
+                               RDS           ElastiCache        S3
+                            PostgreSQL          Redis          Uploads
 ```
 
 ## Environment Variables
@@ -159,15 +161,15 @@ EC2_PUBLIC_IP=$(curl -s --connect-timeout 3 \
   http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || hostname -I | awk '{print $1}')
 
 BACKEND_URL="https://api.${DOMAIN}"
-FRONTEND_URL="https://${DOMAIN}"
+FRONTEND_URL="https://app.${DOMAIN}"
 DB_URL="https://db.${DOMAIN}"
 
 echo ""
 echo -e "${BOLD}  Chatr Deployment${NC}"
 echo -e "  Server IP : ${EC2_PUBLIC_IP}"
-echo -e "  Frontend  : ${FRONTEND_URL}"
-echo -e "  Backend   : ${BACKEND_URL}"
-echo -e "  DB Studio : ${DB_URL}"
+  echo -e "  App       : ${FRONTEND_URL}"
+  echo -e "  Backend   : ${BACKEND_URL}"
+  echo -e "  DB Studio : ${DB_URL}"
 echo -e "  App Dir   : ${APP_DIR}"
 echo ""
 
@@ -343,10 +345,24 @@ step6_nginx() {
   cat > /tmp/chatr-nginx.conf << 'ENDOFNGINX'
 server {
     listen 80;
-    server_name chatr-app.online www.chatr-app.online;
+    server_name app.chatr-app.online;
     client_max_body_size 55M;
     location / {
         proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection upgrade;
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+server {
+    listen 80;
+    server_name chatr-app.online www.chatr-app.online;
+    client_max_body_size 55M;
+    location / {
+        proxy_pass http://localhost:3002;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection upgrade;
@@ -394,6 +410,7 @@ ENDOFNGINX
 
   # SSL — will silently skip if DNS not yet pointed
   sudo certbot --nginx --expand \
+    -d app.chatr-app.online \
     -d chatr-app.online \
     -d www.chatr-app.online \
     -d api.chatr-app.online \
@@ -428,10 +445,11 @@ step7_check() {
   echo "══════════════════════════════════════════════════"
   echo "  ✅  Chatr deployed successfully!"
   echo "──────────────────────────────────────────────────"
-  echo "  App       : ${FRONTEND_URL}"
+  echo "  App       : https://app.${DOMAIN}"
+  echo "  Website   : https://${DOMAIN}"
   echo "  API       : ${BACKEND_URL}"
   echo "  Swagger   : ${BACKEND_URL}/api/docs"
-  echo "  Storybook : ${FRONTEND_URL}/storybook/"
+  echo "  Storybook : https://app.${DOMAIN}/storybook/"
   echo "  Health    : ${BACKEND_URL}/api/health"
   echo "  Logs      : /home/ubuntu/chatr/logs/"
   echo "══════════════════════════════════════════════════"
@@ -506,9 +524,10 @@ pm2 restart all
 
 ## DNS Records
 
-| Type | Name | Value |
-|------|------|-------|
-| A | `@` | EC2 public IP |
-| A | `www` | EC2 public IP |
-| A | `api` | EC2 public IP |
-| A | `db` | EC2 public IP |
+| Type | Name | Value | Purpose |
+|------|------|-------|---------|
+| A | `@` | EC2 public IP | Marketing website |
+| A | `www` | EC2 public IP | www redirect |
+| A | `app` | EC2 public IP | Chat application |
+| A | `api` | EC2 public IP | Backend API |
+| A | `db` | EC2 public IP | Prisma Studio |

@@ -34,7 +34,7 @@
 
 ## 1. Executive Summary
 
-Chatr is a **fully functional, production-deployed, real-time messaging platform** that demonstrates the breadth of a funded engineering team — delivered by a single developer in 30 days. It is not a prototype or proof of concept. It is a working product with 50+ user-facing features, 2,800+ automated tests, and a deployment running on AWS infrastructure.
+Chatr is a **fully functional, production-deployed, real-time messaging platform** that demonstrates the breadth of a funded engineering team — delivered by a single developer in 30 days. It is not a prototype or proof of concept. It is a working product with 50+ user-facing features, 3,000+ automated tests, and a deployment running on AWS infrastructure.
 
 **For a commercial audience**, Chatr shows what a complete product looks like when messaging, AI, and customer support converge into a single platform. Its embeddable chat widget allows any business to add real-time customer support to their website with a single line of code — competing directly with tools like Intercom (£39–£99/seat/month) at zero recurring cost.
 
@@ -80,8 +80,8 @@ The market for live chat software is dominated by expensive SaaS products:
 |--------|-------|
 | Open Source | 100% — MIT Licensed |
 | Features | 50+ |
-| Automated Tests | 2,800+ |
-| Lines of Code | 82,000+ |
+| Automated Tests | 3,000+ |
+| Lines of Code | 120,000+ |
 | Source Files | 432 |
 | REST API Endpoints | 88 |
 | WebSocket Events | 85+ |
@@ -130,7 +130,7 @@ Offer live chat as a white-label service to your clients. Deploy unique instance
 A complete full-stack reference implementation. TypeScript, React 19, Node.js, PostgreSQL, Redis, WebSockets, AI — all production-grade.
 
 ### Acquirers & Investors
-A tested, documented, deployed product with 82,000+ lines of code and 2,800+ tests. Ready to integrate, resell, or build upon.
+A tested, documented, deployed product with 120,000+ lines of code and 3,000+ tests. Ready to integrate, resell, or build upon.
 
 ---
 
@@ -759,10 +759,11 @@ PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis ada
 
 | Service | URL |
 |---------|-----|
-| App | https://chatr-app.online |
+| App | https://app.chatr-app.online |
+| Marketing Website | https://chatr-app.online |
 | API | https://api.chatr-app.online |
 | Swagger (API docs) | https://api.chatr-app.online/api/docs |
-| Storybook (UI library) | https://chatr-app.online/storybook/ |
+| Storybook (UI library) | https://app.chatr-app.online/storybook/ |
 | Prisma Studio (DB admin) | https://db.chatr-app.online |
 | Health check | https://api.chatr-app.online/api/health |
 
@@ -777,8 +778,9 @@ PM2 runs the backend in **cluster mode** (`instances: 'max'`) with the Redis ada
 | Frontend unit tests | **1,475** | 134 files |
 | Backend unit tests | **1,133** | 27 files |
 | Widget unit tests | **54** | 1 file |
+| Website tests | **233** | 33 files |
 | E2E tests (Playwright) | **168** | 14 spec files × 2 browsers (Desktop Chrome + iPhone 14) |
-| **Total** | **2,800+** | — |
+| **Total** | **3,000+** | — |
 
 ### What's Tested
 
@@ -897,7 +899,7 @@ Run `bash dev.sh` — Docker spins up PostgreSQL and Redis, migrations run, all 
 Every file — frontend, backend, and widget — is strict TypeScript. No implicit any, full type inference, and Prisma-generated types for the database.
 
 ### Three-Tier Testing
-2,800+ tests across Jest (unit/integration) and Playwright (E2E). 99% frontend coverage. Tests run in parallel and complete in under 30 seconds.
+3,000+ tests across Jest (unit/integration) and Playwright (E2E). 99% frontend coverage. Tests run in parallel and complete in under 30 seconds.
 
 ### Hot Reload Everything
 Frontend (Next.js Fast Refresh), backend (nodemon), and widget (esbuild watcher) — all live-reload on save. No manual restarts.
@@ -1104,8 +1106,8 @@ Feature-for-feature comparison with the biggest names in messaging and live chat
 | Metric | Value |
 |--------|-------|
 | User-facing features | **50+** |
-| Automated tests | **2,800+** |
-| Lines of code | **82,000+** |
+| Automated tests | **3,000+** |
+| Lines of code | **120,000+** |
 | Source files | **432** |
 | REST API endpoints | **88** |
 | WebSocket event types | **85+** |
@@ -1126,7 +1128,7 @@ Feature-for-feature comparison with the biggest names in messaging and live chat
 
 1. **Solo-built, production-grade** — One developer built the entire stack: frontend, backend, real-time, AI, widget, deployment, testing, and tooling.
 
-2. **2,800+ automated tests** — Not just unit tests. Full E2E flows across desktop and mobile browsers with proper setup/teardown, test isolation, and result caching.
+2. **3,000+ automated tests** — Not just unit tests. Full E2E flows across desktop and mobile browsers with proper setup/teardown, test isolation, and result caching.
 
 3. **Real-time everything** — WebSockets with Redis adapter for multi-instance support. Presence, typing, ghost typing, reactions, read receipts — all live.
 
@@ -1157,7 +1159,7 @@ Feature-for-feature comparison with the biggest names in messaging and live chat
 
 ### The Story
 
-> A complete, production-deployed messaging platform — with real-time WebSockets, AI integration, enterprise auth, an embeddable widget, and 2,800+ automated tests — designed, built, tested, documented, and deployed by a single developer in 30 days.
+> A complete, production-deployed messaging platform — with real-time WebSockets, AI integration, enterprise auth, an embeddable widget, and 3,000+ automated tests — designed, built, tested, documented, and deployed by a single developer in 30 days.
 >
 > — The kind of output that demonstrates what focused, senior-level engineering looks like.
 
@@ -1167,7 +1169,7 @@ Feature-for-feature comparison with the biggest names in messaging and live chat
 
 **It Generates Revenue** — The widget competes directly with Intercom (£39–£99/seat/month), Drift, and Zendesk Chat — at zero recurring cost. A 10-person team saves £4,700–£11,900/year.
 
-**It Is Tested Like Enterprise Software** — 2,800+ tests across three tiers. 99% frontend and 73% backend coverage. Custom dashboard visualises test results, code health, and security in real time.
+**It Is Tested Like Enterprise Software** — 3,000+ tests across three tiers. 99% frontend and 73% backend coverage. Custom dashboard visualises test results, code health, and security in real time.
 
 **It Is Built on Proven Technology** — React 19, Next.js 16, Node.js, PostgreSQL, Redis, AWS — the same stack trusted by Slack, Shopify, Netflix, and Uber. Any JavaScript developer can be productive on day one.
 
@@ -1182,9 +1184,9 @@ Feature-for-feature comparison with the biggest names in messaging and live chat
 Need expert support at £15/hour, interested in acquiring the platform, or want to discuss a partnership?
 
 - **Paid Support** — £15/hour pay-as-you-go, or monthly plans from £99/month
-- **Acquisition & Licensing** — Production-ready code, 2,800+ tests, full documentation
+- **Acquisition & Licensing** — Production-ready code, 3,000+ tests, full documentation
 - **Custom Development** — Bespoke features, integrations, or white-label deployments
 - **Quick Response** — Within 24 hours (Starter plan), same-day (Professional plan)
 
-**Website:** [/contact](/contact)
+**Website:** [chatr-app.online/contact](https://chatr-app.online/contact)
 **GitHub:** [github.com/neofuture/chatr](https://github.com/neofuture/chatr)

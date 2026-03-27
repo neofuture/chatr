@@ -2,7 +2,7 @@
 
 **File:** `src/components/panels/AuthPanel/AuthPanel.tsx`
 
-A combined login and registration sliding panel. This is the sole authentication entry point — there are no dedicated `/login` or `/register` routes. The panel is triggered from the `SiteNav` avatar dropdown or via the `chatr:open-auth` custom event.
+A combined login and registration panel. Rendered on the dedicated `/login` page as the sole authentication entry point for the app.
 
 ## Props
 
@@ -29,11 +29,9 @@ interface AuthPanelProps {
 
 ## Integration Points
 
-| Trigger | Location | Event |
-|---------|----------|-------|
-| SiteNav avatar dropdown | `SiteNav.tsx` | Direct state management — `openAuthPanel('login')` or `openAuthPanel('register')` |
-| Footer "Create Account" | `SiteFooter.tsx` | `chatr:open-auth` custom event with `{ view: 'register' }` |
-| Mobile menu | `SiteNav.tsx` | Direct state management via mobile auth section buttons |
+| Trigger | Location | Description |
+|---------|----------|-------------|
+| `/login` page | `src/app/login/page.tsx` | Renders the AuthPanel directly with login/register toggle |
 
 ## Auth State Synchronisation
 
@@ -43,7 +41,7 @@ On successful login, the panel:
 3. Shows a success toast
 4. Closes the panel
 
-The `SiteNav` component listens for both `storage` (cross-tab) and `chatr:auth-changed` (in-tab) events to update the avatar dropdown immediately.
+On successful login, the user is redirected to `/app`. On logout, the user is redirected back to `/login`.
 
 ## Transitions
 

@@ -13,7 +13,8 @@ graph TD
     Internet["Internet"]
 
     subgraph DNS["DNS — Namecheap"]
-        D1["chatr-app.online"]
+        D0["chatr-app.online (website)"]
+        D1["app.chatr-app.online (app)"]
         D2["api.chatr-app.online"]
         D3["db.chatr-app.online"]
     end
@@ -54,11 +55,12 @@ graph TD
 
 | Domain / Path | Proxies to | Notes |
 |--------------|-----------|-------|
-| `chatr-app.online` | `:3000` | Next.js frontend |
-| `www.chatr-app.online` | `:3000` | www redirect |
+| `app.chatr-app.online` | `:3000` | Next.js app (chat application) |
+| `chatr-app.online` | `:3002` | Next.js website (marketing) |
+| `www.chatr-app.online` | `:3002` | www redirect |
 | `api.chatr-app.online` | `:3001` | Express API + WebSocket |
 | `api.chatr-app.online/api/docs` | `:3001` | Swagger UI — basic auth in production |
-| `chatr-app.online/storybook/` | static files | Storybook — built during deploy |
+| `app.chatr-app.online/storybook/` | static files | Storybook — built during deploy |
 | `db.chatr-app.online` | `:5555` | Prisma Studio — basic auth required |
 | `api.chatr-app.online/api/health` | `:3001` | Health check endpoint |
 
@@ -178,7 +180,8 @@ With PM2 cluster mode, total connections = `instances × pool size`. RDS default
 Managed by Certbot with the Nginx plugin. Certificates are auto-renewed via a cron job installed by Certbot.
 
 ```
-Domains:  chatr-app.online
+Domains:  app.chatr-app.online
+          chatr-app.online
           www.chatr-app.online
           api.chatr-app.online
           db.chatr-app.online
@@ -201,7 +204,7 @@ sequenceDiagram
     participant RD as Redis :6379
     participant S3 as S3
 
-    U->>N: HTTPS GET chatr-app.online
+    U->>N: HTTPS GET app.chatr-app.online
     N->>FE: proxy :3000
     FE-->>U: HTML / JS / CSS
 

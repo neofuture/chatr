@@ -104,7 +104,7 @@ if [ "$TARGET" = "storybook" ]; then
     || error "rsync failed"
   success "Storybook synced to server"
   echo ""
-  success "Storybook deploy complete! Available at https://chatr-app.online/storybook/"
+  success "Storybook deploy complete! Available at https://app.chatr-app.online/storybook/"
   exit 0
 fi
 
@@ -147,3 +147,4 @@ ssh $SSH_OPTS -tt "$SERVER" \
 
 echo ""
 success "Deploy complete!"
+r

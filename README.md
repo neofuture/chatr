@@ -122,9 +122,10 @@ Disable: `git commit --no-verify`
 - **Backend**: ~1,133 tests (Supertest)
 - **Widget**: 54 tests (Node.js, build pipeline)
 - **E2E**: 168 tests (Playwright — 14 spec files × Desktop Chrome + iPhone 14)
-- **Total**: 2,800+ tests
+- **Website**: 233 tests (chatr-website repo)
+- **Total**: 3,000+ tests across both repos
 
-Run `npm test` for unit tests, `npm run test:e2e` for E2E. The dashboard at `chatr-app.online/dashboard` shows live results.
+Run `npm test` for unit tests, `npm run test:e2e` for E2E. The dashboard at [chatr-app.online/dashboard](https://chatr-app.online/dashboard) shows live results.
 
 ## License
 

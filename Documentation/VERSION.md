@@ -4,6 +4,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.45 — 2026-03-27
+
+**Commit:** `b5054f7` — docs: update documentation for split deployment and accurate stats
+
+- Update documentation to clarify split deployment details and improve accuracy of statistics.
+- Change authentication flow to include a dedicated `/login` page for user login and registration.
+- Adjust references to domains and paths in documentation to reflect new deployment structure.
+- Revise descriptions of components to specify their usage on the login page instead of the landing page.
+
+---
+
 ## v0.1.44 — 2026-03-27
 
 **Commit:** `74883c0` — chore: replace all emberlyn domain references
@@ -12,16 +23,6 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 - Change test user email domain to test.chatr-app.online for consistency in testing.  
 - Remove all references to the emberlyn domain throughout the codebase.  
 - Ensure documentation reflects the updated email addresses and domains.
-
----
-
-## v0.1.43 — 2026-03-27
-
-**Commit:** `534ae64` — chore: replace all emberlyn domain references
-
-- Update default mail sender address to noreply@chatr-app.online for improved branding.  
-- Change test user email domain to test.chatr-app.online for consistency in testing.  
-- Remove all references to the emberlyn domain across documentation and code.
 
 ---
 

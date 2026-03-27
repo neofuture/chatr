@@ -78,7 +78,7 @@ This single command handles everything:
 - Waits for databases to be healthy
 - Runs pending Prisma migrations
 - Starts the backend (`http://localhost:3001`)
-- Starts the frontend (`http://localhost:3000`)
+- Starts the frontend (`https://localhost:3000` — HTTPS via `--experimental-https`)
 - Starts Prisma Studio (`http://localhost:5555`)
 - Starts Storybook (`http://localhost:6006`)
 - Starts the widget file watcher
@@ -88,9 +88,8 @@ Press `Ctrl+C` to stop everything (including Docker containers).
 
 ### Verify
 
-- `http://localhost:3000` — Landing page
+- `https://localhost:3000` — Login page (unauthenticated users are redirected to `/login`)
 - `http://localhost:3001/api/health` — Should return `{ "status": "ok" }`
-- `http://localhost:3000/dashboard` — Developer dashboard
 
 ---
 
@@ -294,11 +293,14 @@ bash aws.sh
 bash aws.sh backend    # rebuild & restart backend only
 bash aws.sh frontend   # rebuild & restart frontend only
 bash aws.sh docs       # sync Documentation folder only
+bash aws.sh storybook  # build & sync Storybook only
 ```
+
+> **Note:** The marketing website is deployed separately from the `chatr-website` repository. A top-level `deploy.sh` in the project root orchestrates deploying both the app (`app.chatr-app.online`) and website (`chatr-app.online`).
 
 ### Deploying
 
-Deployment is manual. Run `bash aws.sh` from the project root whenever you're ready to ship. Deployment progress is logged to `deploy.log`.
+Deployment is manual. Run `bash aws.sh` from the project root whenever you're ready to ship.
 
 ---
 

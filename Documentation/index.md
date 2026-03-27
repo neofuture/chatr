@@ -8,11 +8,11 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 |---------|-------------|
 | [Architecture](./Architecture/index.md) | System design, component diagram, data flow |
 | [AWS Infrastructure](./Architecture/AWS.md) | EC2, RDS, Redis, S3, Nginx — ports and config |
-| [API Reference](./API/REST_API.md) | All REST endpoints, request/response schemas |
+| [API Reference](./API/Rest_Api.md) | All REST endpoints, request/response schemas |
 | [WebSocket](./WebSocket/Events.md) | Socket.io events, payloads, connection lifecycle |
 | [Database](./Database/Schema.md) | Prisma schema, models, indexes, migrations |
 | [Widget](./Widget/index.md) | Embeddable support chat widget — config, build, icons, API |
-| [Features](./Features/MESSAGING.md) | Messaging, message requests, presence, friends |
+| [Features](./Features/Messaging.md) | Messaging, message requests, presence, friends |
 | [Voice Calls](./Features/VOICE_CALLS.md) | WebRTC P2P voice calls — architecture, signaling, HTTPS setup |
 | [Frontend](./Frontend/index.md) | Next.js structure, contexts, components |
 | [Contexts](./Frontend/Contexts/index.md) | WebSocket, Theme, Toast, Confirmation, Panel, Presence, Call |
@@ -39,7 +39,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 ## Quick Reference
 
 - **Frontend**: `https://localhost:3000`
-- **Dashboard**: `https://localhost:3000/dashboard`
+- **Dashboard**: `https://localhost:3002/dashboard` (website — separate repo)
 - **Backend API**: `http://localhost:3001` (internal) / `https://localhost:3002` (browser)
 - **WebSocket**: `ws://localhost:3001` / `wss://localhost:3002`
 - **Swagger UI**: `http://localhost:3001/api/docs`
@@ -57,8 +57,8 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | | |
 |---|---|
 | **Full documentation** | [Features → Voice Calls](./Features/VOICE_CALLS.md) |
-| **Socket events** | [WebSocket → Voice Call Events](./WebSocket/EVENTS.md#voice-call-events) |
-| **Database model** | [Database → Call](./Database/SCHEMA.md#call) |
+| **Socket events** | [WebSocket → Voice Call Events](./WebSocket/Events.md#voice-call-events) |
+| **Database model** | [Database → Call](./Database/Schema.md#call) |
 | **Frontend context** | [Contexts → CallContext](./Frontend/Contexts/index.md#callcontext) |
 
 **How it works:** Caller taps the phone icon → `call:initiate` → receiver sees full-screen overlay → `call:accept` → WebRTC peer connection established → P2P audio streams. Calls auto-miss after 30s. Disconnects are cleaned up server-side.
@@ -70,7 +70,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 ## Recent Additions
 
 - **Voice Calls** *(not production ready)*: 1-to-1 WebRTC P2P voice calling with Socket.IO signaling, full-screen call overlay, mute toggle, call history persistence, and HTTPS dev setup for iOS microphone access
-- **Auth Panel Login/Register**: Dedicated `/login` and `/register` routes removed; all authentication now uses the `AuthPanel` slide-in panel from the SiteNav avatar dropdown
+- **Dedicated Login Page**: `/login` provides a standalone login and registration form with email/SMS verification — the app no longer includes marketing content (the website lives in a separate `chatr-website` repository)
 - **Profile Management Overhaul**: Profile panel fetches fresh data on every view (multi-device support), uses direct HTTP instead of socketFirst, and shows save status indicators
 - **socketFirst Reliability**: All contexts and hooks now gate WebSocket RPC calls on `connected` state, eliminating timeout cascades
 - **E2E Test Coverage**: New registration and profile E2E tests covering user creation, email verification, display name, gender, avatar/cover image uploads, and data persistence

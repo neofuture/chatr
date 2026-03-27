@@ -10,8 +10,8 @@ The frontend is a Next.js 16 application using the App Router with React 19 and 
 
 ```mermaid
 graph TD
-    root["/"] --> demo["/demo<br/>Component showcase"]
-    root --> docs["/docs<br/>Documentation viewer"]
+    root["/"] -->|"redirect"| login["/login<br/>Login + Register"]
+    root --> demo["/demo<br/>Component showcase"]
     root --> emailpreview["/email-preview"]
     root --> app["/app — requires auth"]
 
@@ -147,7 +147,7 @@ Manages user preference state such as `showOnlineStatus`. Reads from and persist
 ## Hooks
 
 ### `useAuth`
-Reads `token` and `user` from `localStorage`. Provides `login(token, user)` which stores credentials and redirects to `/app`, and `logout()` which clears credentials and redirects to `/`.
+Reads `token` and `user` from `localStorage`. Provides `login(token, user)` which stores credentials and redirects to `/app`, and `logout()` which clears credentials and redirects to `/login`.
 
 ```typescript
 const { user, loading, login, logout } = useAuth();
@@ -161,7 +161,7 @@ Monitors online/offline status. When the app comes back online, it processes the
 ## Key Components
 
 ### AppLayout
-Authentication guard component wrapping all `/app/*` pages. On mount it reads `localStorage` for `token` and `user`. If either is missing, the user is immediately redirected to `/`. Also renders the `BottomNav` navigation and a header with a "New Chat" button.
+Authentication guard component wrapping all `/app/*` pages. On mount it reads `localStorage` for `token` and `user`. If either is missing, the user is immediately redirected to `/login`. Also renders the `BottomNav` navigation and a header with a "New Chat" button.
 
 ### ConversationsList
 Scrollable list of conversations with tabbed views for "Chats" and "Message Requests". Supports local search by message content. Shows presence indicators, unread counts, friend badges, and "incoming request" markers. Dispatches `chatr:compose` custom events to open the New Chat panel. Unread conversations display a coloured left border (`borderLeft: 3px solid`) that is transparent for read conversations.
