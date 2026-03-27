@@ -66,7 +66,7 @@ export default function BurgerMenu({ isDark }: BurgerMenuProps) {
           </button>
 
           <button
-            onClick={() => { setIsOpen(false); router.push('/dashboard'); }}
+            onClick={() => { setIsOpen(false); window.open(process.env.NEXT_PUBLIC_WEBSITE_URL ? `${process.env.NEXT_PUBLIC_WEBSITE_URL}/dashboard` : 'https://chatr-app.online/dashboard', '_blank'); }}
             className={styles.menuItem}
             style={{ color: textColor }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}

@@ -18,10 +18,4 @@ describe('RootLayout', () => {
     expect(getByTestId('client-providers')).toBeInTheDocument();
     expect(getByText('test child')).toBeInTheDocument();
   });
-
-  it('includes JSON-LD structured data scripts', () => {
-    render(<RootLayout><span>child</span></RootLayout>, { container: document });
-    const scripts = document.querySelectorAll('script[type="application/ld+json"]');
-    expect(scripts.length).toBeGreaterThanOrEqual(3);
-  });
 });

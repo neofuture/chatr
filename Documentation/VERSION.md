@@ -4,6 +4,12 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.39 — 2026-03-27
+
+**Commit:** `47ce72b` — refactor: split website content out of app for separate deployment
+
+---
+
 ## v0.1.38 — 2026-03-26
 
 **Commit:** `0f857bc` — fix: update aws.sh storybook target to use public/storybook/ path

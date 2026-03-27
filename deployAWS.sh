@@ -726,6 +726,17 @@ case "$TARGET" in
     maintenance_off
     ;;
 
+  # ── Full deploy, skip nginx (called by parent deploy.sh) ────────────────────
+  no-nginx)
+    echo -e "\n${BOLD}${CYAN}  Mode: FULL DEPLOY (no nginx — managed by parent)${NC}\n"
+    step0_swap
+    step1_system
+    step2_code
+    step3_backend
+    step4_frontend
+    step5_pm2
+    ;;
+
   # ── Full deploy (no arg) ────────────────────────────────────────────────────
   "")
     echo -e "\n${BOLD}${CYAN}  Mode: FULL DEPLOY${NC}\n"
@@ -745,7 +756,7 @@ case "$TARGET" in
 
   # ── Unknown target ──────────────────────────────────────────────────────────
   *)
-    error "Unknown target '${TARGET}'. Valid options: backend, frontend"
+    error "Unknown target '${TARGET}'. Valid options: backend, frontend, no-nginx"
     ;;
 
 esac

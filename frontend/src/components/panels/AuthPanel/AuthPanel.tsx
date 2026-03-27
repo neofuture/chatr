@@ -367,7 +367,7 @@ export default function AuthPanel({ isOpen, onClose, initialView }: AuthPanelPro
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      // Notify SiteNav (storage event only fires cross-tab)
+      // Notify auth listeners (storage event only fires cross-tab)
       window.dispatchEvent(new Event('chatr:auth-changed'));
 
       showToast('Login successful!', 'success');
