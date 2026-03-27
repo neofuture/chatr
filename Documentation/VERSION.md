@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.40 — 2026-03-27
+
+**Commit:** `ddfd51a` — fix: add missing privacy columns migration and CORS for split domains
+
+- Add migration for missing privacy columns in the database schema.  
+- Update deployAWS.sh to allow URL environment overrides for subdomain configuration.  
+- Include WEBSITE_URL in the backend environment template for better configuration.
+
+---
+
 ## v0.1.39 — 2026-03-27
 
 **Commit:** `47ce72b` — refactor: split website content out of app for separate deployment

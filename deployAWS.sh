@@ -183,12 +183,12 @@ SUPPORT_AGENT_EMAIL="${SUPPORT_AGENT_EMAIL:-}"
 EC2_PUBLIC_IP=$(curl -s --connect-timeout 3 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || true)
 [ -z "$EC2_PUBLIC_IP" ] && EC2_PUBLIC_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "unknown")
 if [ -n "$DOMAIN" ]; then
-  BACKEND_URL="https://api.${DOMAIN}"
-  FRONTEND_URL="https://${DOMAIN}"
+  BACKEND_URL="${BACKEND_URL:-https://api.${DOMAIN}}"
+  FRONTEND_URL="${FRONTEND_URL:-https://${DOMAIN}}"
   info "Domain: $DOMAIN — make sure DNS A records point to $EC2_PUBLIC_IP"
 else
-  BACKEND_URL="http://${EC2_PUBLIC_IP}:3001"
-  FRONTEND_URL="http://${EC2_PUBLIC_IP}:3000"
+  BACKEND_URL="${BACKEND_URL:-http://${EC2_PUBLIC_IP}:3001}"
+  FRONTEND_URL="${FRONTEND_URL:-http://${EC2_PUBLIC_IP}:3000}"
   warn "No DOMAIN set — using raw IP. Fine for testing, use a domain for production."
 fi
 
@@ -333,6 +333,7 @@ NODE_ENV=production
 DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:5432/${DB_NAME}
 REDIS_URL=$( [ "$REDIS_TLS" = "true" ] && echo "rediss" || echo "redis" )://${REDIS_HOST}:6379
 FRONTEND_URL=${FRONTEND_URL}
+WEBSITE_URL=${WEBSITE_URL:-}
 BACKEND_URL=${BACKEND_URL}
 JWT_SECRET=${JWT_SECRET}
 AWS_REGION=${AWS_REGION}
