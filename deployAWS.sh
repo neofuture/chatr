@@ -28,7 +28,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
   # Resolve relative path
   [[ "$PEM_KEY" != /* ]] && PEM_KEY="$SCRIPT_DIR/$PEM_KEY"
   SERVER="${DEPLOY_SERVER}"
-  SSH_OPTS="-i $PEM_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+  SSH_OPTS=(-i "$PEM_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=10)
 
   echo ""
   echo -e "\033[1m  Chatr Remote Deploy\033[0m"
@@ -49,12 +49,12 @@ if [[ "$(uname)" == "Darwin" ]]; then
   chmod 600 "$PEM_KEY" 2>/dev/null || true
 
   echo -e "\033[0;34m[INFO]\033[0m Uploading deploy script + config to server..."
-  scp $SSH_OPTS "$0" "${SERVER}:/tmp/_chatr_deploy.sh"
-  scp $SSH_OPTS "$ENV_FILE" "${SERVER}:/tmp/_chatr_deploy.env"
+  scp "${SSH_OPTS[@]}" "$0" "${SERVER}:/tmp/_chatr_deploy.sh"
+  scp "${SSH_OPTS[@]}" "$ENV_FILE" "${SERVER}:/tmp/_chatr_deploy.env"
 
   echo -e "\033[0;34m[INFO]\033[0m Running deploy on server..."
   echo ""
-  ssh $SSH_OPTS -t "${SERVER}" \
+  ssh "${SSH_OPTS[@]}" -t "${SERVER}" \
     "chmod +x /tmp/_chatr_deploy.sh && /tmp/_chatr_deploy.sh $* ; rm -f /tmp/_chatr_deploy.sh /tmp/_chatr_deploy.env"
   exit $?
 fi

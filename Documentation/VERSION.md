@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.48 — 2026-03-27
+
+**Commit:** `d019680` — fix: admin screenshots at 600px wide with contacts list and conversation views
+
+- Capture 44-admin-empty at 600x450 @2x showing contacts list
+- Capture 45-admin-contacts at 600x450 @2x after clicking first contact
+- Fix deployAWS.sh SSH_OPTS to use bash array for paths with spaces
+
+---
+
 ## v0.1.47 — 2026-03-27
 
 **Commit:** `7c27bb3` — feat: admin panel improvements, widget icon fix, profile image sync

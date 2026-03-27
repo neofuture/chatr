@@ -659,10 +659,10 @@ async function main() {
   }
   await wCtx.close();
 
-  // ── ADMIN: contacts + conversation (after widget created guest) ─────
+  // ── ADMIN: contacts list, then click contact for conversation ───────
   console.log('\n[17] Admin contacts & conversation...');
   const admCtx = await browser.newContext({
-    storageState: AUTH_A, viewport: { width: 504, height: 378 }, deviceScaleFactor: 3,
+    storageState: AUTH_A, viewport: { width: 600, height: 450 }, deviceScaleFactor: 2,
     baseURL: FRONTEND, ignoreHTTPSErrors: true,
   });
   const adm = await admCtx.newPage();
@@ -670,7 +670,10 @@ async function main() {
   await adm.waitForSelector('text=Loading', { state: 'hidden', timeout: 10_000 }).catch(() => {});
   await adm.waitForTimeout(3000);
 
-  // Click the first contact to show conversation alongside the list
+  // Screenshot 1: contacts list (no contact selected)
+  await shot(adm, '44-admin-empty');
+
+  // Screenshot 2: click first contact to show the conversation
   const guestCard = adm.locator('[class*="card"]').first();
   if (await guestCard.isVisible({ timeout: 5000 }).catch(() => false)) {
     await guestCard.click();
