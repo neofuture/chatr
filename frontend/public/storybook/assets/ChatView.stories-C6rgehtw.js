@@ -1,0 +1,19 @@
+import{j as s}from"./jsx-runtime-D_zvdyIk.js";import{T as D}from"./ToastContext-CzD02iU9.js";import{T as w}from"./ThemeContext-VTc29vLE.js";import{C as I}from"./ChatView-B8LYnRr0.js";import"./index-CAPI2NOD.js";import"./_commonjsHelpers-Cpj98o6Y.js";import"./MessageBubble-BfuCcSgl.js";import"./index-DvGSVeov.js";import"./index-Qoh0vY4V.js";import"./MessageAudioPlayer-C2odKlyP.js";import"./db-0SialWBz.js";import"./imageUrl-CsZUsNgt.js";import"./aiBot-ZEtwtFF4.js";import"./CodeBlock-DmY3Wqj3.js";import"./LinkPreviewCard-L_kXFWLG.js";import"./api-BCYJxCpV.js";const T={current:null},b=[{id:"1",content:"Hey! How are you doing?",senderId:"user1",senderDisplayName:"Simon James",senderUsername:"@simonjames",recipientId:"me",direction:"received",type:"text",status:"delivered",timestamp:new Date(Date.now()-600*1e3),unsent:!1,edited:!1,reactions:[]},{id:"2",content:"Good thanks! Just working on some stuff 👍",senderId:"me",senderDisplayName:"Me",senderUsername:"@me",recipientId:"user1",direction:"sent",type:"text",status:"read",timestamp:new Date(Date.now()-540*1e3),unsent:!1,edited:!1,reactions:[]},{id:"3",content:"Nice! What are you building?",senderId:"user1",senderDisplayName:"Simon James",senderUsername:"@simonjames",recipientId:"me",direction:"received",type:"text",status:"delivered",timestamp:new Date(Date.now()-300*1e3),unsent:!1,edited:!1,reactions:[{emoji:"👍",userId:"me",username:"@me"}]},{id:"4",content:"A chat app 😄",senderId:"me",senderDisplayName:"Me",senderUsername:"@me",recipientId:"user1",direction:"sent",type:"text",status:"delivered",timestamp:new Date(Date.now()-120*1e3),unsent:!1,edited:!0,reactions:[]}],O={title:"Messaging/ChatView",component:I,parameters:{layout:"fullscreen",docs:{description:{component:"Scrollable message list with typing/recording indicators. Handles reactions, unsend, reply, edit, image lightbox, and audio playback."}}},tags:["autodocs"],decorators:[e=>s.jsx(w,{children:s.jsx(D,{children:s.jsx("div",{style:{width:"100%",height:500,background:"#0f172a",display:"flex",flexDirection:"column"},children:s.jsx(e,{})})})})]},a={messages:b,isDark:!0,messagesEndRef:T,isRecipientTyping:!1,isRecipientRecording:!1,recipientGhostText:"",listeningMessageIds:new Set,activeAudioMessageId:null,currentUserId:"me",onReaction:(e,o)=>console.log("React",e,o),onUnsend:e=>console.log("Unsend",e),onReply:e=>console.log("Reply",e),onImageClick:(e,o)=>console.log("Image",e,o),onAudioPlayStatusChange:()=>{},onEdit:e=>console.log("Edit",e)},t={args:a},n={args:{...a,isRecipientTyping:!0,recipientGhostText:"typing something..."}},r={args:{...a,isRecipientRecording:!0}},i={args:{...a,messages:[]}};var c,d,m;t.parameters={...t.parameters,docs:{...(c=t.parameters)==null?void 0:c.docs,source:{originalSource:`{
+  args: baseArgs
+}`,...(m=(d=t.parameters)==null?void 0:d.docs)==null?void 0:m.source}}};var p,l,g;n.parameters={...n.parameters,docs:{...(p=n.parameters)==null?void 0:p.docs,source:{originalSource:`{
+  args: {
+    ...baseArgs,
+    isRecipientTyping: true,
+    recipientGhostText: 'typing something...'
+  }
+}`,...(g=(l=n.parameters)==null?void 0:l.docs)==null?void 0:g.source}}};var u,y,f;r.parameters={...r.parameters,docs:{...(u=r.parameters)==null?void 0:u.docs,source:{originalSource:`{
+  args: {
+    ...baseArgs,
+    isRecipientRecording: true
+  }
+}`,...(f=(y=r.parameters)==null?void 0:y.docs)==null?void 0:f.source}}};var R,h,x;i.parameters={...i.parameters,docs:{...(R=i.parameters)==null?void 0:R.docs,source:{originalSource:`{
+  args: {
+    ...baseArgs,
+    messages: []
+  }
+}`,...(x=(h=i.parameters)==null?void 0:h.docs)==null?void 0:x.source}}};const W=["Default","RecipientTyping","RecipientRecording","Empty"];export{t as Default,i as Empty,r as RecipientRecording,n as RecipientTyping,W as __namedExportsOrder,O as default};
