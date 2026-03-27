@@ -343,6 +343,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   className="form-input"
+                  placeholder="First name"
                   value={firstName}
                   onChange={(e) => handleFirstNameChange(e.target.value)}
                   required
@@ -353,6 +354,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   className="form-input"
+                  placeholder="Last name"
                   value={lastName}
                   onChange={(e) => handleLastNameChange(e.target.value)}
                   required
@@ -408,6 +410,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   className="form-input input-with-icon input-with-status"
+                  placeholder="username"
                   value={username}
                   onChange={(e) => {
                     handleUsernameChange(e.target.value);

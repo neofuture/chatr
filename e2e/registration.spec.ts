@@ -62,19 +62,12 @@ test.describe('User Registration', () => {
     expect(me.emailVerified).toBe(true);
   });
 
-  test('register via browser UI panel', async ({ page }) => {
-    await page.goto('/');
+  test('register via browser UI', async ({ page }) => {
+    await page.goto('/login');
 
-    const userMenu = page.getByLabel('User menu');
-    if (await userMenu.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await userMenu.click();
-      await page.getByText('Register').click();
-    } else {
-      await page.locator('button[class*="hamburger"]').click();
-      await page.getByRole('button', { name: /Register/i }).click();
-    }
-
-    await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible({ timeout: 10_000 });
+    const createAccountLink = page.getByRole('button', { name: /Create account/i });
+    await expect(createAccountLink).toBeVisible({ timeout: 10_000 });
+    await createAccountLink.click();
 
     const ts2 = Date.now();
     const uiUser = {

@@ -68,6 +68,6 @@ test.describe('Smoke tests (authenticated)', () => {
     const signOutBtn = page.getByRole('button', { name: 'Sign out' });
     await expect(signOutBtn).toBeVisible({ timeout: 10_000 });
     await signOutBtn.click();
-    await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
   });
 });

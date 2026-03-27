@@ -4,6 +4,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.42 — 2026-03-27
+
+**Commit:** `b6a2f32` — fix: update E2E tests for split repo, track e2e.json
+
+- Fix E2E tests to navigate to the new dedicated login page after the website split.  
+- Update README to reflect changes in app structure and testing commands.  
+- Track E2E results in .test-cache/e2e.json for production dashboard visibility.  
+- Add placeholder attributes to the login page for improved test compatibility.
+
+---
+
 ## v0.1.41 — 2026-03-27
 
 **Commit:** `2127d3b` — fix: store phone verification code in Redis during login flow

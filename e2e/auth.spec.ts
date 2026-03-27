@@ -3,22 +3,8 @@ import { apiLogin, TEST_USERS } from './helpers/auth';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-async function openLoginPanel(page: Page) {
-  const userMenu = page.getByLabel('User menu');
-  if (await userMenu.isVisible({ timeout: 3_000 }).catch(() => false)) {
-    await userMenu.click();
-    const loginItem = page.getByText('Login').first();
-    await expect(loginItem).toBeVisible({ timeout: 3_000 });
-    await loginItem.click();
-  } else {
-    const hamburger = page.locator('button[class*="hamburger"]');
-    await expect(hamburger).toBeVisible({ timeout: 3_000 });
-    await hamburger.click();
-    const loginBtn = page.getByRole('button', { name: /Login/i });
-    await expect(loginBtn).toBeVisible({ timeout: 3_000 });
-    await loginBtn.click();
-  }
-
+async function navigateToLoginForm(page: Page) {
+  await page.goto('/login');
   await expect(page.getByPlaceholder(/email|username/i)).toBeVisible({ timeout: 10_000 });
 }
 
@@ -38,9 +24,8 @@ test.describe('Authentication', () => {
     expect(page.url()).not.toContain('/app');
   });
 
-  test('login panel opens from avatar dropdown', async ({ page }) => {
-    await page.goto('/');
-    await openLoginPanel(page);
+  test('login form is accessible at /login', async ({ page }) => {
+    await navigateToLoginForm(page);
 
     await expect(page.getByPlaceholder(/email|username/i)).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('input[type="password"]')).toBeVisible();
@@ -48,8 +33,7 @@ test.describe('Authentication', () => {
   });
 
   test('login with wrong password shows error', async ({ page }) => {
-    await page.goto('/');
-    await openLoginPanel(page);
+    await navigateToLoginForm(page);
 
     await page.getByPlaceholder(/email|username/i).fill(TEST_USERS.userA.email);
     await page.locator('input[type="password"]').fill('WrongPassword123!');

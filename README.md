@@ -1,8 +1,10 @@
-# Chatr - Real-time Messaging Platform
+# Chatr - Real-time Messaging App
 
 **Status**: Active Development | **License**: MIT
 
-A free, open source real-time messaging platform built with Next.js, Express, and PostgreSQL, featuring an embeddable support chat widget.
+The chat application for the Chatr platform — built with Next.js, Express, and PostgreSQL, featuring real-time messaging and an embeddable support chat widget. The marketing website lives in a separate `chatr-website` repository.
+
+> **Production**: `app.chatr-app.online` (this app) · `chatr-app.online` (marketing website)
 
 ## Quick Start
 
@@ -22,20 +24,22 @@ cd ..
 bash dev.sh
 ```
 
-Visit `http://localhost:3000` (dashboard: `http://localhost:3000/dashboard`)
+Visit `https://localhost:3000` — unauthenticated users are redirected to `/login`.
 
 ## Project Structure
 
 ```
 chatr/
-├── frontend/          # Next.js + React frontend
-├── backend/           # Express + PostgreSQL backend
+├── frontend/          # Next.js + React app (served at app.chatr-app.online)
+├── backend/           # Express + PostgreSQL API (api.chatr-app.online)
 ├── widget-src/        # Widget source + build script (not served)
 ├── widget/            # Minified widget + SVG icons (served at /widget/)
+├── e2e/               # Playwright E2E tests (168 tests)
 ├── Documentation/     # Complete documentation
 ├── .husky/            # Git hooks (automated testing)
 ├── dev.sh             # Development startup script
-├── deployAWS.sh       # AWS deployment (secrets in .env.deploy, gitignored)
+├── aws.sh             # Quick deploy (reads .env.deploy)
+├── deployAWS.sh       # Full AWS deployment script
 └── package.json       # Monorepo scripts
 ```
 
@@ -61,7 +65,7 @@ chatr/
 - [Local Setup (quick)](./Documentation/Getting-Started/Local_Setup.md)
 - [Architecture](./Documentation/Architecture/index.md)
 - [Testing](./Documentation/Testing/index.md)
-- [API Reference](./Documentation/API/REST_API.md)
+- [API Reference](./Documentation/API/Rest_Api.md)
 - [Widget](./Documentation/Widget/index.md)
 - [Deployment](./Documentation/Getting-Started/Deployment.md)
 
@@ -109,7 +113,7 @@ Disable: `git commit --no-verify`
 **Frontend**: Next.js, React 19, TypeScript, Socket.io Client, IndexedDB
 **Backend**: Node.js, Express, TypeScript, PostgreSQL, Prisma, Socket.io, Redis
 **Widget**: Vanilla JavaScript, Canvas API, Terser
-**Testing**: Jest, React Testing Library, Supertest
+**Testing**: Jest, React Testing Library, Supertest, Playwright
 **Infrastructure**: AWS (EC2, RDS, ElastiCache, S3), Nginx, PM2
 
 ## Testing
@@ -120,7 +124,7 @@ Disable: `git commit --no-verify`
 - **E2E**: 168 tests (Playwright — 14 spec files × Desktop Chrome + iPhone 14)
 - **Total**: 2,800+ tests
 
-Run `npm test` to see current counts, or visit `/dashboard` for live results.
+Run `npm test` for unit tests, `npm run test:e2e` for E2E. The dashboard at `chatr-app.online/dashboard` shows live results.
 
 ## License
 

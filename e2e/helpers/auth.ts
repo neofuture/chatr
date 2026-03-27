@@ -91,13 +91,9 @@ export async function apiLogin(request: APIRequestContext, user: TestUser, retri
  * Returns the page with the user fully authenticated.
  */
 export async function browserLogin(page: Page, user: TestUser) {
-  await page.goto('/');
+  await page.goto('/login');
 
-  // Open avatar dropdown and click Login
-  await page.getByLabel('User menu').click();
-  await page.getByText('Login').click();
-
-  // Fill credentials in auth panel
+  // Fill credentials on the login page
   await page.getByPlaceholder(/email|username/i).fill(user.email);
   await page.locator('input[type="password"]').fill(user.password);
   await page.getByRole('button', { name: /sign\s*in/i }).click();
