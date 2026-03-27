@@ -1351,10 +1351,9 @@ describe('conversation:nuke', () => {
     expect(ack).toHaveBeenCalledWith({ error: 'Not authorised or not found' });
   });
 
-  it('nukes conversation, emits events, and cleans up guests', async () => {
+  it('nukes conversation, emits events, preserves guest users', async () => {
     const result = { id: 'c1', participantA: 'u-a', participantB: 'u-b' };
     (nukeConversation as jest.Mock).mockResolvedValue(result);
-    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: 'u-b' }]);
     const ack = jest.fn();
     await handlers['conversation:nuke']({ conversationId: 'c1' }, ack);
     expect(invalidateConversationCache).toHaveBeenCalledWith('u-a');
@@ -1362,15 +1361,6 @@ describe('conversation:nuke', () => {
     expect(mockTo).toHaveBeenCalledWith('user:u-a');
     expect(mockTo).toHaveBeenCalledWith('user:u-b');
     expect(mockEmit).toHaveBeenCalledWith('conversation:declined', expect.objectContaining({ conversationId: 'c1' }));
-    expect(deleteGuestUser).toHaveBeenCalledWith('u-b');
-    expect(ack).toHaveBeenCalledWith({ success: true });
-  });
-
-  it('handles no guests', async () => {
-    (nukeConversation as jest.Mock).mockResolvedValue({ id: 'c1', participantA: 'u-a', participantB: 'u-b' });
-    (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
-    const ack = jest.fn();
-    await handlers['conversation:nuke']({ conversationId: 'c1' }, ack);
     expect(deleteGuestUser).not.toHaveBeenCalled();
     expect(ack).toHaveBeenCalledWith({ success: true });
   });
@@ -1384,10 +1374,9 @@ describe('conversation:nuke-by-user', () => {
     expect(ack).toHaveBeenCalledWith({ error: 'Failed to nuke' });
   });
 
-  it('nukes by user and cleans up guests', async () => {
+  it('nukes by user and preserves guest users', async () => {
     const result = { participantA: testUserId, participantB: 'u-other' };
     (nukeByParticipants as jest.Mock).mockResolvedValue(result);
-    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: 'u-other' }]);
     const ack = jest.fn();
     await handlers['conversation:nuke-by-user']({ recipientId: 'u-other' }, ack);
     expect(invalidateConversationCache).toHaveBeenCalledWith(testUserId);
@@ -1395,7 +1384,7 @@ describe('conversation:nuke-by-user', () => {
     expect(mockTo).toHaveBeenCalledWith(`user:${testUserId}`);
     expect(mockTo).toHaveBeenCalledWith('user:u-other');
     expect(mockEmit).toHaveBeenCalledWith('conversation:declined', expect.objectContaining({ conversationId: null }));
-    expect(deleteGuestUser).toHaveBeenCalledWith('u-other');
+    expect(deleteGuestUser).not.toHaveBeenCalled();
     expect(ack).toHaveBeenCalledWith({ success: true });
   });
 

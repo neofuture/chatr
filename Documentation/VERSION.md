@@ -4,6 +4,17 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.46 — 2026-03-27
+
+**Commit:** `25fc5bf` — feat: widget contact email, admin contacts page, preserve guest users
+
+- Add a new admin contacts page to manage contact emails.
+- Preserve guest users when conversations are nuked instead of deleting them.
+- Update tests to reflect the new behavior regarding guest users. 
+- Enhance the widget with new features and improvements.
+
+---
+
 ## v0.1.45 — 2026-03-27
 
 **Commit:** `b5054f7` — docs: update documentation for split deployment and accurate stats

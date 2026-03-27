@@ -694,6 +694,10 @@
           '<input class="chatr-input" id="chatr-w-name-input" type="text" placeholder="What should we call you?" autocomplete="given-name" maxlength="60"/>',
         '</div>',
         '<div class="chatr-field">',
+          '<label class="chatr-label" for="chatr-w-email-input">Email address</label>',
+          '<input class="chatr-input" id="chatr-w-email-input" type="email" placeholder="So we can follow up with you" autocomplete="email" maxlength="255"/>',
+        '</div>',
+        '<div class="chatr-field">',
           '<label class="chatr-label" for="chatr-w-first-msg">What can we help with?</label>',
           '<textarea class="chatr-input" id="chatr-w-first-msg" placeholder="Tell us what\'s on your mind…" rows="3" maxlength="1000"></textarea>',
         '</div>',
@@ -701,18 +705,21 @@
       '</div>',
     ].join('');
 
-    var nameInput = document.getElementById('chatr-w-name-input');
-    var msgInput  = document.getElementById('chatr-w-first-msg');
-    var startBtn  = document.getElementById('chatr-w-start-btn');
+    var nameInput  = document.getElementById('chatr-w-name-input');
+    var emailInput = document.getElementById('chatr-w-email-input');
+    var msgInput   = document.getElementById('chatr-w-first-msg');
+    var startBtn   = document.getElementById('chatr-w-start-btn');
 
     function tryStart() {
-      var name = nameInput.value.trim();
-      var msg  = msgInput.value.trim();
-      if (!name) { nameInput.focus(); return; }
-      if (!msg)  { msgInput.focus();  return; }
+      var name  = nameInput.value.trim();
+      var email = emailInput.value.trim();
+      var msg   = msgInput.value.trim();
+      if (!name)  { nameInput.focus(); return; }
+      if (!email) { emailInput.focus(); return; }
+      if (!msg)   { msgInput.focus();  return; }
       startBtn.disabled = true;
       startBtn.textContent = 'Connecting…';
-      startSession(name, msg);
+      startSession(name, msg, email);
     }
 
     startBtn.addEventListener('click', tryStart);
@@ -1156,11 +1163,13 @@
   }
 
   // ── Start a session: get guest JWT then connect socket ───────────────────────
-  function startSession(name, firstMessage) {
+  function startSession(name, firstMessage, contactEmail) {
+    var payload = { guestName: name, guestId: state.guestId };
+    if (contactEmail) payload.contactEmail = contactEmail;
     fetch(API_URL + '/api/widget/guest-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ guestName: name, guestId: state.guestId }),
+      body: JSON.stringify(payload),
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {

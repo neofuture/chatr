@@ -4,7 +4,6 @@ import { getConversations } from '../lib/getConversations';
 import { invalidateConversationCache, getSocketId } from '../lib/redis';
 import { getConnectedUserIds, acceptConversation, declineConversation, nukeConversation, nukeByParticipants } from '../lib/conversation';
 import { maybeRegenerateGroupSummary } from '../services/summaryEngine';
-import { deleteGuestUser } from '../routes/widget';
 import { isTestMode } from '../lib/testMode';
 
 type Ack = (res: any) => void;
@@ -741,8 +740,6 @@ export function registerRPCHandlers(socket: Socket, io: Server, userId: string) 
       await Promise.all([invalidateConversationCache(result.participantA), invalidateConversationCache(result.participantB)]);
       io.to(`user:${result.participantA}`).emit('conversation:declined', { conversationId: data.conversationId, declinedBy: userId, otherUserId: result.participantB });
       io.to(`user:${result.participantB}`).emit('conversation:declined', { conversationId: data.conversationId, declinedBy: userId, otherUserId: result.participantA });
-      const guests = await prisma.user.findMany({ where: { id: { in: [result.participantA, result.participantB] }, isGuest: true }, select: { id: true } });
-      for (const g of guests) await deleteGuestUser(g.id);
       ack?.({ success: true });
     } catch (e) { console.error('conversation:nuke error:', e); ack?.({ error: 'Internal error' }); }
   });
@@ -754,8 +751,6 @@ export function registerRPCHandlers(socket: Socket, io: Server, userId: string) 
       await Promise.all([invalidateConversationCache(result.participantA), invalidateConversationCache(result.participantB)]);
       io.to(`user:${result.participantA}`).emit('conversation:declined', { conversationId: null, declinedBy: userId, otherUserId: data.recipientId });
       io.to(`user:${result.participantB}`).emit('conversation:declined', { conversationId: null, declinedBy: userId, otherUserId: userId });
-      const guests = await prisma.user.findMany({ where: { id: { in: [userId, data.recipientId] }, isGuest: true }, select: { id: true } });
-      for (const g of guests) await deleteGuestUser(g.id);
       ack?.({ success: true });
     } catch (e) { console.error('conversation:nuke-by-user error:', e); ack?.({ error: 'Internal error' }); }
   });

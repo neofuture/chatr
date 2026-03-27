@@ -186,13 +186,18 @@ router.get('/support-agent', async (_req: Request, res: Response) => {
 // Creates (or resumes) a guest user and returns a short-lived JWT
 router.post('/guest-session', async (req: Request, res: Response) => {
   try {
-    const { guestName, guestId } = req.body as { guestName: string; guestId?: string };
+    const { guestName, guestId, contactEmail } = req.body as {
+      guestName: string;
+      guestId?: string;
+      contactEmail?: string;
+    };
 
     if (!guestName || !guestName.trim()) {
       return res.status(400).json({ error: 'guestName is required' });
     }
 
     const trimmedName = guestName.trim().slice(0, 60);
+    const trimmedEmail = contactEmail?.trim().slice(0, 255) || null;
 
     // Find support agent
     const agent = await prisma.user.findFirst({
@@ -224,6 +229,7 @@ router.post('/guest-session', async (req: Request, res: Response) => {
           username: slug,
           displayName: trimmedName,
           email: null,
+          contactEmail: trimmedEmail,
           password: hashedPassword,
           emailVerified: true,
           isGuest: true,
@@ -235,7 +241,10 @@ router.post('/guest-session', async (req: Request, res: Response) => {
       // Update display name in case it changed
       guestUser = await prisma.user.update({
         where: { id: guestUser.id },
-        data: { displayName: trimmedName },
+        data: {
+          displayName: trimmedName,
+          ...(trimmedEmail && { contactEmail: trimmedEmail }),
+        },
         select: { id: true, username: true, displayName: true },
       });
     }
