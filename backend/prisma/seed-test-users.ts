@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 const TEST_PASSWORD  = 'Vertinero2835!';
 const TEST_PHONE     = '+447940147138';
-const EMAIL_DOMAIN   = 'emberlynband.com';
+const EMAIL_DOMAIN   = 'test.chatr-app.online';
 
 interface UserSeed {
   username: string;

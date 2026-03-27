@@ -2,7 +2,7 @@ import { MailtrapClient } from 'mailtrap';
 import { LOGO_BASE64 } from './logo-base64-constant';
 import { isTestMode } from '../lib/testMode';
 const MAILTRAP_API_KEY = process.env.MAILTRAP_API_KEY || '';
-const MAIL_FROM_ADDRESS = process.env.MAIL_FROM_ADDRESS || 'noreply@emberlyn.co.uk';
+const MAIL_FROM_ADDRESS = process.env.MAIL_FROM_ADDRESS || 'noreply@chatr-app.online';
 const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Chatr';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 

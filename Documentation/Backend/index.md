@@ -105,7 +105,7 @@ app.use('/api/dashboard', dashboardRoutes) // Developer dashboard metrics
 | `FRONTEND_URL` | Yes | CORS origin + email links |
 | `BACKEND_URL` | Yes | Used in file URLs returned to clients |
 | `MAILTRAP_API_KEY` | No | Mailtrap sending API key |
-| `MAIL_FROM_ADDRESS` | No | From address (default `noreply@emberlyn.co.uk`) |
+| `MAIL_FROM_ADDRESS` | No | From address (default `noreply@chatr-app.online`) |
 | `MAIL_FROM_NAME` | No | From name (default `Chatr`) |
 | `SMS_WORKS_JWT` | No | SMS Works API JWT token |
 | `SMS_WORKS_SENDER` | No | SMS sender name (default: `PRODUCT_NAME`) |

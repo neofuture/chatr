@@ -4,6 +4,27 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.44 — 2026-03-27
+
+**Commit:** `74883c0` — chore: replace all emberlyn domain references
+
+- Update default mail sender address to noreply@chatr-app.online for improved branding.  
+- Change test user email domain to test.chatr-app.online for consistency in testing.  
+- Remove all references to the emberlyn domain throughout the codebase.  
+- Ensure documentation reflects the updated email addresses and domains.
+
+---
+
+## v0.1.43 — 2026-03-27
+
+**Commit:** `534ae64` — chore: replace all emberlyn domain references
+
+- Update default mail sender address to noreply@chatr-app.online for improved branding.  
+- Change test user email domain to test.chatr-app.online for consistency in testing.  
+- Remove all references to the emberlyn domain across documentation and code.
+
+---
+
 ## v0.1.42 — 2026-03-27
 
 **Commit:** `b6a2f32` — fix: update E2E tests for split repo, track e2e.json

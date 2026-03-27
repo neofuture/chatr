@@ -6,7 +6,7 @@ import { LOGO_BASE64 } from '../services/logo-base64-constant';
 const router = Router();
 const prisma = new PrismaClient();
 
-const MAIL_FROM_ADDRESS = process.env.MAIL_FROM_ADDRESS || 'noreply@emberlyn.co.uk';
+const MAIL_FROM_ADDRESS = process.env.MAIL_FROM_ADDRESS || 'noreply@chatr-app.online';
 const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Chatr';
 const CONTACT_TO_EMAIL = process.env.CONTACT_EMAIL || 'admin@localhost';
 

@@ -34,7 +34,7 @@ flowchart LR
 | Env Variable | Default | Description |
 |-------------|---------|-------------|
 | `MAILTRAP_API_KEY` | — | Mailtrap sending API key |
-| `MAIL_FROM_ADDRESS` | `noreply@emberlyn.co.uk` | Sender address |
+| `MAIL_FROM_ADDRESS` | `noreply@chatr-app.online` | Sender address |
 | `MAIL_FROM_NAME` | `Chatr` | Sender display name |
 | `FRONTEND_URL` | `http://localhost:3000` | Used to build verification links |
 
