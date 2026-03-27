@@ -189,6 +189,7 @@ export async function syncProfileImageFromServer(userId: string, serverUrl?: str
     });
     console.log('✅ Profile image synced from server');
     window.dispatchEvent(new CustomEvent('profileImageSynced', { detail: { userId } }));
+    window.dispatchEvent(new CustomEvent('profileImageUpdated', { detail: { userId } }));
   } catch (err) {
     console.warn('Profile image sync failed:', err);
   }

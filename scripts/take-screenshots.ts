@@ -117,6 +117,15 @@ async function main() {
   const api = await pwRequest.newContext({ baseURL: API });
   const browser = await chromium.launch({ headless: true });
 
+  // Ensure user A has isSupport=true for admin panel screenshots
+  try {
+    const tsx = path.join(__dirname, '..', 'backend', 'node_modules', '.bin', 'tsx');
+    const { execSync: es } = await import('child_process');
+    es(`${tsx} -e "const{prisma}=require('./src/lib/prisma');prisma.user.update({where:{id:'${userAId}'},data:{isSupport:true}}).then(()=>prisma.\\$disconnect())"`,
+      { cwd: path.join(__dirname, '..', 'backend'), stdio: 'inherit', timeout: 10000 });
+    console.log('  Set user A as support user');
+  } catch { console.log('  isSupport flag: may already be set'); }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // PHASE 0: CLEANUP — remove screenshot artifacts only, preserve real data
   // ═══════════════════════════════════════════════════════════════════════════
@@ -481,6 +490,20 @@ async function main() {
   await m.waitForTimeout(2500);
   await shot(m, '08-profile');
 
+  // ── Admin (empty state — before widget creates guests) ────────────────
+  console.log('\n[10b] Admin empty state...');
+  {
+    const admEmptyCtx = await browser.newContext({
+      storageState: AUTH_A, viewport: { width: 504, height: 378 }, deviceScaleFactor: 3,
+      baseURL: FRONTEND, ignoreHTTPSErrors: true,
+    });
+    const admEmpty = await admEmptyCtx.newPage();
+    await admEmpty.goto('/app/admin');
+    await admEmpty.waitForTimeout(4000);
+    await shot(admEmpty, '44-admin-empty');
+    await admEmptyCtx.close();
+  }
+
   // ── Luna AI ────────────────────────────────────────────────────────────
   console.log('\n[11] Luna AI...');
   await m.goto('/app');
@@ -635,6 +658,26 @@ async function main() {
     }
   }
   await wCtx.close();
+
+  // ── ADMIN: contacts + conversation (after widget created guest) ─────
+  console.log('\n[17] Admin contacts & conversation...');
+  const admCtx = await browser.newContext({
+    storageState: AUTH_A, viewport: { width: 504, height: 378 }, deviceScaleFactor: 3,
+    baseURL: FRONTEND, ignoreHTTPSErrors: true,
+  });
+  const adm = await admCtx.newPage();
+  await adm.goto('/app/admin');
+  await adm.waitForSelector('text=Loading', { state: 'hidden', timeout: 10_000 }).catch(() => {});
+  await adm.waitForTimeout(3000);
+
+  // Click the first contact to show conversation alongside the list
+  const guestCard = adm.locator('[class*="card"]').first();
+  if (await guestCard.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await guestCard.click();
+    await adm.waitForTimeout(3000);
+  }
+  await shot(adm, '45-admin-contacts');
+  await admCtx.close();
 
   await browser.close();
 

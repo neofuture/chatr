@@ -4,6 +4,21 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.47 — 2026-03-27
+
+**Commit:** `7c27bb3` — feat: admin panel improvements, widget icon fix, profile image sync
+
+- Refine admin panel with resizable split panes, back chevron, burger menu link
+- Fix backend 500 on empty contacts, return empty array instead
+- Add admin tests (backend + frontend) and documentation
+- Add Playwright admin screenshots and update website features page
+- Fix widget SVG data URIs with proper URL encoding for mask-image
+- Fix profile image sync event so BottomNav refreshes after server sync
+- Add UserSettingsContext fallback for profile image in BottomNav
+- Update test mocks for new context and fetch dependencies
+
+---
+
 ## v0.1.46 — 2026-03-27
 
 **Commit:** `25fc5bf` — feat: widget contact email, admin contacts page, preserve guest users

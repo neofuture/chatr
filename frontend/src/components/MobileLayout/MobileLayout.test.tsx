@@ -26,6 +26,16 @@ jest.mock('@/lib/profileImageService', () => ({
   getProfileImageURL: jest.fn().mockResolvedValue('/profile/test-user.jpg'),
 }));
 
+// Mock UserSettingsContext (used by BottomNav)
+jest.mock('@/contexts/UserSettingsContext', () => ({
+  useUserSettings: () => ({ settings: {}, setSetting: jest.fn(), profileImageUrl: null, coverImageUrl: null }),
+}));
+
+// Mock fetch (used by BurgerMenu for admin status check)
+global.fetch = jest.fn(() =>
+  Promise.resolve({ ok: true, json: () => Promise.resolve({ isSupport: false }) })
+) as any;
+
 // Mock localStorage
 const mockLocalStorage = (() => {
   let store: Record<string, string> = {};

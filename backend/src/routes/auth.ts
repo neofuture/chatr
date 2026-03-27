@@ -483,6 +483,7 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
             lastName: user.lastName,
             createdAt: user.createdAt,
             emailVerified: user.emailVerified,
+            isSupport: user.isSupport || false,
           },
         });
       }
@@ -594,6 +595,7 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
           lastName: user.lastName,
           createdAt: user.createdAt,
           emailVerified: user.emailVerified,
+          isSupport: user.isSupport || false,
         },
       });
     }
@@ -905,6 +907,7 @@ router.post('/2fa/verify', authenticateToken as any, async (req: Request, res: R
         username: user.username,
         createdAt: user.createdAt,
         twoFactorEnabled: true,
+        isSupport: user.isSupport || false,
       },
     });
   } catch (error) {
@@ -1066,6 +1069,7 @@ router.post('/verify-email', async (req: Request, res: Response) => {
           username: user.username,
           emailVerified: true,
           phoneVerified: true,
+          isSupport: user.isSupport || false,
         },
       });
     }
@@ -1235,6 +1239,7 @@ router.post('/verify-phone', async (req: Request, res: Response) => {
         username: user.username,
         emailVerified: true,
         phoneVerified: true,
+        isSupport: user.isSupport || false,
       },
     });
   } catch (error) {

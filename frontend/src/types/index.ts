@@ -3,6 +3,7 @@ export interface User {
   email: string;
   username: string;
   createdAt: string;
+  isSupport?: boolean;
 }
 
 export interface AuthResponse {

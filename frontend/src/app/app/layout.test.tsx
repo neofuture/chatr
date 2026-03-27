@@ -1,7 +1,10 @@
 import { render } from '@testing-library/react';
 
 let mockPathname = '/app';
-jest.mock('next/navigation', () => ({ usePathname: () => mockPathname }));
+jest.mock('next/navigation', () => ({
+  usePathname: () => mockPathname,
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+}));
 jest.mock('@/components/MobileLayout/MobileLayout', () => ({
   __esModule: true,
   default: ({ children, title }: { children: React.ReactNode; title: string }) => (

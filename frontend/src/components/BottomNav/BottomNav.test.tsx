@@ -7,6 +7,9 @@ jest.mock('@/contexts/ThemeContext', () => ({
 jest.mock('@/contexts/WebSocketContext', () => ({
   useWebSocket: () => ({ socket: null, connected: false }),
 }));
+jest.mock('@/contexts/UserSettingsContext', () => ({
+  useUserSettings: () => ({ settings: {}, setSetting: jest.fn(), profileImageUrl: null, coverImageUrl: null }),
+}));
 jest.mock('next/navigation', () => ({
   usePathname: () => '/app',
 }));

@@ -146,6 +146,14 @@ All widget API routes are defined in `backend/src/routes/widget.ts`.
 
 File uploads use the same MIME type whitelist as the main app (images, audio, video, documents, archives).
 
+## Contact Email
+
+The `POST /api/widget/guest-session` endpoint accepts an optional `contactEmail` field. When provided, the email is stored on the guest user record and displayed in the admin panel alongside the guest's display name. This allows support agents to follow up with visitors outside the chat.
+
+## Admin Panel
+
+Support users can review all widget contacts from the **Widget Contacts** admin page (`/app/admin`). The admin panel displays a list of all guest users, their contact emails, message counts, and conversation history. Contacts can be deleted (with cascade deletion of messages and conversations). See the [Admin documentation](../Admin/index.md) for full details.
+
 ## Session Lifecycle
 
 ```

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getApiBase } from '@/lib/api';
 import styles from './BurgerMenu.module.css';
 
 interface BurgerMenuProps {
@@ -10,7 +11,20 @@ interface BurgerMenuProps {
 
 export default function BurgerMenu({ isDark }: BurgerMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSupport, setIsSupport] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch(`${getApiBase()}/api/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.isSupport) setIsSupport(true); })
+      .catch(() => {});
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -75,6 +89,19 @@ export default function BurgerMenu({ isDark }: BurgerMenuProps) {
             <i className={`fad fa-chart-line ${styles.menuItemIcon}`}></i>
             <span>Dashboard</span>
           </button>
+
+          {isSupport && (
+            <button
+              onClick={() => { setIsOpen(false); router.push('/app/admin'); }}
+              className={styles.menuItem}
+              style={{ color: textColor }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverBg}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <i className={`fad fa-headset ${styles.menuItemIcon}`}></i>
+              <span>Widget Contacts</span>
+            </button>
+          )}
 
           <button
             onClick={() => { setIsOpen(false); router.push('/'); }}

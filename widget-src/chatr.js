@@ -119,8 +119,15 @@
   var DEFAULT_PROFILE = API_URL + '/assets/default-profile.jpg';
   var AVATAR_IMG_CSS = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
   var ICONS_URL = API_URL + '/widget/icons/';
+  var INLINE_ICONS = {
+    chat: "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z%27/%3E%3C/svg%3E",
+    send: "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27%23000%27 stroke=%27%23000%27 stroke-width=%271%27%3E%3Cpolygon points=%2722 2 15 22 11 13 2 9 22 2%27/%3E%3Cline x1=%2722%27 y1=%272%27 x2=%2711%27 y2=%2713%27/%3E%3C/svg%3E",
+    attach: "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23000%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48%27/%3E%3C/svg%3E",
+    play: "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27%23000%27%3E%3Cpolygon points=%275 3 19 12 5 21 5 3%27/%3E%3C/svg%3E",
+    pause: "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27%23000%27%3E%3Crect x=%276%27 y=%274%27 width=%274%27 height=%2716%27/%3E%3Crect x=%2714%27 y=%274%27 width=%274%27 height=%2716%27/%3E%3C/svg%3E"
+  };
   function ico(name, w, h) {
-    var u = 'url(' + ICONS_URL + name + '.svg)';
+    var u = "url('" + (INLINE_ICONS[name] || ICONS_URL + name + '.svg') + "')";
     return '<span class="chatr-ico" style="width:' + w + 'px;height:' + (h || w) + 'px;-webkit-mask-image:' + u + ';mask-image:' + u + '"></span>';
   }
   var ICO_COPY   = '\u29C9';

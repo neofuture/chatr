@@ -563,6 +563,7 @@ router.get('/me', authenticateToken, async (req, res) => {
         privacyGender: true,
         privacyJoinedDate: true,
         gender: true,
+        isSupport: true,
       },
     });
 

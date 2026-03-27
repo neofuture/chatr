@@ -21,9 +21,11 @@ interface MobileLayoutProps {
   children: React.ReactNode;
   title: string;
   headerAction?: HeaderAction | HeaderAction[];
+  hideBottomNav?: boolean;
+  onBack?: () => void;
 }
 
-export default function MobileLayout({ children, title, headerAction }: MobileLayoutProps) {
+export default function MobileLayout({ children, title, headerAction, hideBottomNav, onBack }: MobileLayoutProps) {
   const { theme: themeMode } = useTheme();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -107,9 +109,15 @@ export default function MobileLayout({ children, title, headerAction }: MobileLa
         className={styles.header}
         style={{ backgroundColor: theme.headerBg, borderBottom: `1px solid ${theme.border}` }}
       >
-        {/* Burger Menu on Left */}
+        {/* Left: back chevron or burger menu */}
         <div className={styles.headerLeft}>
-          <BurgerMenu isDark={isDark} />
+          {onBack ? (
+            <button onClick={onBack} className={styles.backBtn} style={{ color: theme.text }}>
+              <i className="fas fa-chevron-left" />
+            </button>
+          ) : (
+            <BurgerMenu isDark={isDark} />
+          )}
         </div>
 
         {/* Centered Title */}
@@ -170,7 +178,7 @@ export default function MobileLayout({ children, title, headerAction }: MobileLa
       </div>
 
       {/* Bottom Menu */}
-      <BottomNav />
+      {!hideBottomNav && <BottomNav />}
     </div>
   );
 }

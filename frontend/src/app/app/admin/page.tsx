@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getApiBase } from '@/lib/api';
 import styles from './admin.module.css';
 
@@ -32,30 +32,70 @@ export default function AdminPage() {
   const [messages, setMessages] = useState<MessageDetail[]>([]);
   const [guestInfo, setGuestInfo] = useState<{ displayName: string; contactEmail: string | null } | null>(null);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [listWidth, setListWidth] = useState(240);
+  const dragging = useRef(false);
+  const layoutRef = useRef<HTMLDivElement>(null);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  useEffect(() => {
+    setToken(localStorage.getItem('token'));
+  }, []);
+
+  const handleMouseDown = useCallback(() => {
+    dragging.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragging.current || !layoutRef.current) return;
+      const rect = layoutRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      setListWidth(Math.max(180, Math.min(x, rect.width - 200)));
+    };
+
+    const onMouseUp = () => {
+      dragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, []);
 
   const fetchContacts = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await fetch(`${getApiBase()}/api/admin/widget-contacts`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(res.status === 403 ? 'Support access required' : 'Failed to load contacts');
+      if (res.status === 403) {
+        setError('Support access required');
+        return;
+      }
+      if (!res.ok) {
+        setContacts([]);
+        return;
+      }
       const data = await res.json();
       setContacts(data);
       setError(null);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+    } catch {
+      setContacts([]);
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    fetchContacts();
-  }, [fetchContacts]);
+    if (token) fetchContacts();
+  }, [token, fetchContacts]);
 
   const loadMessages = async (guestId: string) => {
     if (!token) return;
@@ -105,19 +145,24 @@ export default function AdminPage() {
     );
   }
 
+  if (!loading && contacts.length === 0) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.emptyState}>
+          <i className="fas fa-inbox" />
+          <p className={styles.emptyTitle}>No widget contacts yet</p>
+          <p className={styles.emptySubtitle}>Contacts will appear here when visitors use the chat widget</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1><i className="fas fa-headset" /> Widget Contacts</h1>
-        <span className={styles.count}>{contacts.length} contact{contacts.length !== 1 ? 's' : ''}</span>
-      </div>
-
-      <div className={styles.layout}>
-        <div className={styles.list}>
+      <div className={styles.layout} ref={layoutRef}>
+        <div className={styles.list} style={{ width: listWidth, minWidth: listWidth, maxWidth: listWidth }}>
           {loading ? (
             <div className={styles.loading}>Loading contacts…</div>
-          ) : contacts.length === 0 ? (
-            <div className={styles.empty}>No widget contacts yet</div>
           ) : (
             contacts.map((c) => (
               <div
@@ -156,6 +201,8 @@ export default function AdminPage() {
           )}
         </div>
 
+        <div className={styles.divider} onMouseDown={handleMouseDown} />
+
         <div className={styles.detail}>
           {!selectedGuest ? (
             <div className={styles.placeholder}>
@@ -166,16 +213,26 @@ export default function AdminPage() {
             <div className={styles.loading}>Loading messages…</div>
           ) : (
             <>
-              {guestInfo && (
-                <div className={styles.detailHeader}>
-                  <h2>{guestInfo.displayName}</h2>
-                  {guestInfo.contactEmail && (
-                    <a href={`mailto:${guestInfo.contactEmail}`} className={styles.emailLink}>
-                      <i className="fas fa-envelope" /> {guestInfo.contactEmail}
-                    </a>
+              <div className={styles.detailHeader}>
+                <button
+                  className={styles.backBtn}
+                  onClick={() => { setSelectedGuest(null); setMessages([]); setGuestInfo(null); }}
+                >
+                  <i className="fas fa-arrow-left" />
+                </button>
+                <div>
+                  {guestInfo && (
+                    <>
+                      <h2>{guestInfo.displayName}</h2>
+                      {guestInfo.contactEmail && (
+                        <a href={`mailto:${guestInfo.contactEmail}`} className={styles.emailLink}>
+                          <i className="fas fa-envelope" /> {guestInfo.contactEmail}
+                        </a>
+                      )}
+                    </>
                   )}
                 </div>
-              )}
+              </div>
               <div className={styles.messageList}>
                 {messages.length === 0 ? (
                   <div className={styles.empty}>No messages</div>

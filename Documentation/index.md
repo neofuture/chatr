@@ -12,6 +12,7 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 | [WebSocket](./WebSocket/Events.md) | Socket.io events, payloads, connection lifecycle |
 | [Database](./Database/Schema.md) | Prisma schema, models, indexes, migrations |
 | [Widget](./Widget/index.md) | Embeddable support chat widget — config, build, icons, API |
+| [Admin](./Admin/index.md) | Widget contact management — admin panel, API endpoints, access control |
 | [Features](./Features/Messaging.md) | Messaging, message requests, presence, friends |
 | [Voice Calls](./Features/VOICE_CALLS.md) | WebRTC P2P voice calls — architecture, signaling, HTTPS setup |
 | [Frontend](./Frontend/index.md) | Next.js structure, contexts, components |

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 
 const router = Router();
 
@@ -17,6 +17,7 @@ async function requireSupport(req: Request, res: Response): Promise<boolean> {
 }
 
 router.get('/widget-contacts', authenticateToken, async (req: Request, res: Response) => {
+  try {
   if (!(await requireSupport(req, res))) return;
 
   const guests = await prisma.user.findMany({
@@ -26,30 +27,15 @@ router.get('/widget-contacts', authenticateToken, async (req: Request, res: Resp
       displayName: true,
       contactEmail: true,
       createdAt: true,
-      conversationsAsA: {
-        select: {
-          id: true,
-          participantB: true,
-          createdAt: true,
-          messages: {
-            select: { id: true, content: true, type: true, senderId: true, createdAt: true },
-            orderBy: { createdAt: 'asc' },
-            take: 1,
-          },
-          _count: { select: { messages: true } },
-        },
+      sentMessages: {
+        select: { id: true, content: true, type: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+        take: 1,
       },
-      conversationsAsB: {
+      _count: {
         select: {
-          id: true,
-          participantA: true,
-          createdAt: true,
-          messages: {
-            select: { id: true, content: true, type: true, senderId: true, createdAt: true },
-            orderBy: { createdAt: 'asc' },
-            take: 1,
-          },
-          _count: { select: { messages: true } },
+          sentMessages: true,
+          receivedMessages: true,
         },
       },
     },
@@ -57,17 +43,15 @@ router.get('/widget-contacts', authenticateToken, async (req: Request, res: Resp
   });
 
   const contacts = guests.map((g) => {
-    const convos = [...g.conversationsAsA, ...g.conversationsAsB];
-    const firstConvo = convos[0];
-    const firstMessage = firstConvo?.messages[0] || null;
-    const totalMessages = convos.reduce((sum, c) => sum + c._count.messages, 0);
+    const totalMessages = g._count.sentMessages + g._count.receivedMessages;
+    const firstMessage = g.sentMessages[0] || null;
 
     return {
       id: g.id,
       name: g.displayName,
       contactEmail: g.contactEmail,
       createdAt: g.createdAt,
-      hasConversation: convos.length > 0,
+      hasConversation: totalMessages > 0,
       totalMessages,
       firstMessage: firstMessage
         ? { content: firstMessage.content, createdAt: firstMessage.createdAt }
@@ -76,9 +60,14 @@ router.get('/widget-contacts', authenticateToken, async (req: Request, res: Resp
   });
 
   return res.json(contacts);
+  } catch (err) {
+    console.error('Admin widget-contacts error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.get('/widget-contacts/:guestId/messages', authenticateToken, async (req: Request, res: Response) => {
+  try {
   if (!(await requireSupport(req, res))) return;
 
   const { guestId } = req.params;
@@ -109,9 +98,14 @@ router.get('/widget-contacts/:guestId/messages', authenticateToken, async (req: 
   });
 
   return res.json({ guest, messages });
+  } catch (err) {
+    console.error('Admin widget-contacts messages error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 router.delete('/widget-contacts/:guestId', authenticateToken, async (req: Request, res: Response) => {
+  try {
   if (!(await requireSupport(req, res))) return;
 
   const { guestId } = req.params;
@@ -133,6 +127,10 @@ router.delete('/widget-contacts/:guestId', authenticateToken, async (req: Reques
   await prisma.user.delete({ where: { id: guestId } });
 
   return res.json({ success: true });
+  } catch (err) {
+    console.error('Admin delete widget-contact error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 export default router;

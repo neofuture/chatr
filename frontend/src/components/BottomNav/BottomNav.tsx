@@ -6,7 +6,9 @@ import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
+import { useUserSettings } from '@/contexts/UserSettingsContext';
 import { getProfileImageURL } from '@/lib/profileImageService';
+import { resolveAssetUrl } from '@/lib/imageUrl';
 import styles from './BottomNav.module.css';
 import { getApiBase } from '@/lib/api';
 
@@ -15,6 +17,7 @@ const API = getApiBase();
 export default function BottomNav() {
   const { theme: themeMode } = useTheme();
   const { socket, connected } = useWebSocket();
+  const { profileImageUrl: ctxProfileImage } = useUserSettings();
   const pathname = usePathname();
   const [profileImageUrl, setProfileImageUrl] = useState('/profile/default-profile.jpg');
   const [firstName, setFirstName] = useState('ME');
@@ -44,8 +47,10 @@ export default function BottomNav() {
           const url = await getProfileImageURL(user.id);
           if (url) {
             setProfileImageUrl(url);
+          } else if (ctxProfileImage) {
+            setProfileImageUrl(resolveAssetUrl(ctxProfileImage) || ctxProfileImage);
           } else if (user.profileImage) {
-            setProfileImageUrl(user.profileImage);
+            setProfileImageUrl(resolveAssetUrl(user.profileImage) || user.profileImage);
           }
           const name = user.firstName || user.displayName?.split(' ')[0] || user.username?.replace(/^@/, '') || 'ME';
           setFirstName(name.toUpperCase());
@@ -58,7 +63,7 @@ export default function BottomNav() {
     const handler = () => loadProfileImage();
     window.addEventListener('profileImageUpdated', handler);
     return () => window.removeEventListener('profileImageUpdated', handler);
-  }, []);
+  }, [ctxProfileImage]);
 
   // Fetch unread chat count when socket connects + poll
   useEffect(() => {

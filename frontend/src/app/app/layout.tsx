@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import MobileLayout from "@/components/MobileLayout/MobileLayout";
 
 export default function AppLayout({
@@ -9,12 +9,15 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Determine title and header action based on path
   let title = "Chats";
   let headerAction: { icon: string; onClick: () => void; title?: string; color?: string; badge?: string } | { icon: string; onClick: () => void; title?: string; color?: string; badge?: string }[] | undefined;
 
-  if (pathname === "/app/friends") {
+  if (pathname === "/app/admin") {
+    title = "Widget Contacts";
+  } else if (pathname === "/app/friends") {
     title = "Friends";
   } else if (pathname === "/app/groups") {
     title = "Groups";
@@ -51,10 +54,14 @@ export default function AppLayout({
     ];
   }
 
+  const isAdmin = pathname === "/app/admin";
+
   return (
     <MobileLayout
       title={title}
       headerAction={headerAction}
+      hideBottomNav={isAdmin}
+      onBack={isAdmin ? () => router.push('/app') : undefined}
     >
       {children}
     </MobileLayout>
