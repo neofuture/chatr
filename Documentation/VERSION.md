@@ -4,6 +4,16 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.41 — 2026-03-27
+
+**Commit:** `2127d3b` — fix: store phone verification code in Redis during login flow
+
+- Fix phone verification code storage by saving it in both Redis and the database during login.  
+- Ensure consistency with the email verification flow by matching code storage methods.  
+- Prevent code comparison failures caused by stale Redis entries from previous verifications.
+
+---
+
 ## v0.1.40 — 2026-03-27
 
 **Commit:** `ddfd51a` — fix: add missing privacy columns migration and CORS for split domains

@@ -517,6 +517,8 @@ router.post('/login', rateLimit('login', 10, 900), async (req: Request, res: Res
       const phoneCode = Math.floor(100000 + Math.random() * 900000).toString();
       const expiry = new Date(Date.now() + 15 * 60 * 1000);
 
+      // Store in both Redis (primary, auto-expires) and DB (fallback)
+      await storeVerificationCode('phone', user.id, phoneCode).catch(() => {});
       await prisma.user.update({
         where: { id: user.id },
         data: {
