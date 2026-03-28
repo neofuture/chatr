@@ -4,6 +4,27 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.52 — 2026-03-28
+
+**Commit:** `901cb2f` — feat: add admin reply, visitor context, and offline message form
+
+- Add admin reply functionality for support agents to respond to widget visitors.
+- Implement visitor context capturing metadata during widget sessions for enhanced support.
+- Introduce an offline message form for users when support agents are unavailable.
+
+---
+
+## v0.1.51 — 2026-03-28
+
+- **Admin Reply**: Support agents can reply to widget visitors from the admin panel via `POST /api/admin/widget-contacts/:guestId/reply`. Messages delivered in real time through Socket.IO.
+- **Visitor Context**: Widget captures page URL, title, referrer, UA, screen size, language, and timezone on session start. Stored as `widgetContext` JSON on the User model and displayed in the admin panel.
+- **Offline Message Form**: When the support agent is offline, the widget shows a contact form instead of live chat. Submissions create a guest, conversation, and message via `POST /api/widget/offline-message`.
+- **Agent Online Status**: `GET /api/widget/support-agent` now returns `online: boolean` derived from Redis presence.
+- **Website Promotion**: Added "Widget" to SiteNav, new "Business Tools" section on widget page, updated features page with Reply and Visitor Context cards.
+- **Database**: Added `widgetContext Json?` field to User model with migration `20260328000000_add_widget_context`.
+
+---
+
 ## v0.1.50 — 2026-03-28
 
 **Commit:** `3b2dead` — docs: update documentation and project specs for v0.1.49

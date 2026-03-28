@@ -30,7 +30,7 @@ import dashboardRoutes from './routes/dashboard';
 import linkPreviewRoutes from './routes/link-preview';
 import testCleanupRoutes from './routes/test-cleanup';
 import contactRoutes from './routes/contact';
-import adminRoutes from './routes/admin';
+import adminRoutes, { setAdminSocketIO } from './routes/admin';
 import { setWidgetSocketIO, cleanupStaleGuests } from './routes/widget';
 
 // Import Socket.io handlers
@@ -208,6 +208,7 @@ async function start() {
   setUsersSocketIO(io);
   setGroupsSocketIO(io);
   setWidgetSocketIO(io);
+  setAdminSocketIO(io);
 
   // Stale guest cleanup: run immediately on startup then every 30 minutes
   cleanupStaleGuests();

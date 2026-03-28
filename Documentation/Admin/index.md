@@ -1,6 +1,6 @@
 # Admin — Widget Contact Management
 
-The admin panel lets support users view, review, and manage widget chat contacts from within the Chatr app.
+The admin panel lets support users view, review, reply to, and manage widget chat contacts from within the Chatr app.
 
 ## Access Control
 
@@ -17,7 +17,8 @@ All routes are mounted at `/api/admin` and defined in `backend/src/routes/admin.
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/api/admin/widget-contacts` | JWT + Support | List all guest users with message counts and first message preview |
-| GET | `/api/admin/widget-contacts/:guestId/messages` | JWT + Support | Fetch full conversation for a specific guest |
+| GET | `/api/admin/widget-contacts/:guestId/messages` | JWT + Support | Fetch full conversation for a specific guest (includes `widgetContext`) |
+| POST | `/api/admin/widget-contacts/:guestId/reply` | JWT + Support | Send a reply message to a guest; creates conversation if needed; emits `message:received` via Socket.IO |
 | DELETE | `/api/admin/widget-contacts/:guestId` | JWT + Support | Delete a guest and cascade-delete all their messages and conversations |
 
 ### GET /widget-contacts
@@ -54,6 +55,31 @@ Returns the guest info and all messages (sent and received) ordered chronologica
   ]
 }
 ```
+
+### POST /widget-contacts/:guestId/reply
+
+Sends a reply message from the support agent to the guest.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content` | string | yes | The message text |
+
+**Behaviour:**
+1. Validates the guest exists and is a guest user
+2. Finds or creates a `Conversation` between the support user and guest
+3. Creates a `Message` from the support user to the guest
+4. Emits `message:received` via Socket.IO to the guest's room (real-time delivery to widget)
+5. Returns `{ "message": { id, senderId, recipientId, content, type, createdAt, sender } }`
+
+### Visitor Context
+
+When a guest starts a widget session, the widget captures metadata and sends it as a `context` object. This is stored on the `User` model as `widgetContext` (JSON column). The messages endpoint returns `widgetContext` as part of the guest object.
+
+Fields captured: `pageUrl`, `pageTitle`, `referrer`, `userAgent`, `screenWidth`, `screenHeight`, `language`, `timezone`.
+
+The admin panel displays this context in a collapsible info bar above the message list.
 
 ### DELETE /widget-contacts/:guestId
 

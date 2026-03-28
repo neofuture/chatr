@@ -30,12 +30,15 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedGuest, setSelectedGuest] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageDetail[]>([]);
-  const [guestInfo, setGuestInfo] = useState<{ displayName: string; contactEmail: string | null } | null>(null);
+  const [guestInfo, setGuestInfo] = useState<{ displayName: string; contactEmail: string | null; widgetContext?: Record<string, any> | null } | null>(null);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [listWidth, setListWidth] = useState(240);
   const dragging = useRef(false);
   const layoutRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setToken(localStorage.getItem('token'));
@@ -126,6 +129,26 @@ export default function AdminPage() {
       setSelectedGuest(null);
       setMessages([]);
       setGuestInfo(null);
+    }
+  };
+
+  const sendReply = async () => {
+    if (!token || !selectedGuest || !replyText.trim() || sending) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${getApiBase()}/api/admin/widget-contacts/${selectedGuest}/reply`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: replyText.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages((prev) => [...prev, data.message]);
+        setReplyText('');
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      }
+    } catch { /* ignore */ } finally {
+      setSending(false);
     }
   };
 
@@ -233,6 +256,41 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
+              {guestInfo?.widgetContext && (
+                <div className={styles.contextBar}>
+                  {guestInfo.widgetContext.pageUrl && (
+                    <div className={styles.contextItem}>
+                      <i className="fas fa-link" />
+                      <a href={guestInfo.widgetContext.pageUrl as string} target="_blank" rel="noopener noreferrer">
+                        {(guestInfo.widgetContext.pageTitle as string) || (guestInfo.widgetContext.pageUrl as string)}
+                      </a>
+                    </div>
+                  )}
+                  {guestInfo.widgetContext.referrer && (
+                    <div className={styles.contextItem}>
+                      <i className="fas fa-arrow-right-to-bracket" />
+                      <span>{guestInfo.widgetContext.referrer as string}</span>
+                    </div>
+                  )}
+                  <div className={styles.contextRow}>
+                    {guestInfo.widgetContext.language && (
+                      <span className={styles.contextTag}>
+                        <i className="fas fa-globe" /> {guestInfo.widgetContext.language as string}
+                      </span>
+                    )}
+                    {guestInfo.widgetContext.timezone && (
+                      <span className={styles.contextTag}>
+                        <i className="fas fa-clock" /> {guestInfo.widgetContext.timezone as string}
+                      </span>
+                    )}
+                    {guestInfo.widgetContext.screenWidth && (
+                      <span className={styles.contextTag}>
+                        <i className="fas fa-display" /> {guestInfo.widgetContext.screenWidth as string}x{guestInfo.widgetContext.screenHeight as string}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className={styles.messageList}>
                 {messages.length === 0 ? (
                   <div className={styles.empty}>No messages</div>
@@ -250,6 +308,26 @@ export default function AdminPage() {
                     </div>
                   ))
                 )}
+                <div ref={messagesEndRef} />
+              </div>
+              <div className={styles.replyBar}>
+                <input
+                  type="text"
+                  className={styles.replyInput}
+                  placeholder="Type a reply…"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
+                  disabled={sending}
+                />
+                <button
+                  className={styles.replyBtn}
+                  onClick={sendReply}
+                  disabled={sending || !replyText.trim()}
+                  title="Send reply"
+                >
+                  <i className="fas fa-paper-plane" />
+                </button>
               </div>
             </>
           )}

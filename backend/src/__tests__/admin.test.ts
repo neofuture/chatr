@@ -223,4 +223,99 @@ describe('Admin Routes', () => {
       expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: guestUserId } });
     });
   });
+
+  describe('POST /api/admin/widget-contacts/:guestId/reply', () => {
+    it('should return 401 without auth token', async () => {
+      const res = await request(app)
+        .post(`/api/admin/widget-contacts/${guestUserId}/reply`)
+        .send({ content: 'Hello' });
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 403 when user is not support', async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ isSupport: false });
+
+      const res = await request(app)
+        .post(`/api/admin/widget-contacts/${guestUserId}/reply`)
+        .set('Authorization', `Bearer ${regularToken}`)
+        .send({ content: 'Hello' });
+
+      expect(res.status).toBe(403);
+    });
+
+    it('should return 400 when content is empty', async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ isSupport: true });
+
+      const res = await request(app)
+        .post(`/api/admin/widget-contacts/${guestUserId}/reply`)
+        .set('Authorization', `Bearer ${supportToken}`)
+        .send({ content: '' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Message content is required');
+    });
+
+    it('should return 404 when guest does not exist', async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ isSupport: true });
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const res = await request(app)
+        .post('/api/admin/widget-contacts/nonexistent/reply')
+        .set('Authorization', `Bearer ${supportToken}`)
+        .send({ content: 'Hello there' });
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe('Guest not found');
+    });
+
+    it('should create message and return it on success', async () => {
+      const mockMessage = {
+        id: 'msg-reply-1',
+        senderId: supportUserId,
+        recipientId: guestUserId,
+        content: 'Hello, how can I help?',
+        type: 'text',
+        createdAt: new Date('2026-03-28T10:00:00Z'),
+        sender: { displayName: 'Support Agent', isGuest: false, isSupport: true },
+      };
+
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ isSupport: true });
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({ id: guestUserId, isGuest: true });
+      (prisma.conversation.findFirst as jest.Mock).mockResolvedValue({ id: 'conv-1' });
+      (prisma.message.create as jest.Mock).mockResolvedValue(mockMessage);
+
+      const res = await request(app)
+        .post(`/api/admin/widget-contacts/${guestUserId}/reply`)
+        .set('Authorization', `Bearer ${supportToken}`)
+        .send({ content: 'Hello, how can I help?' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toMatchObject({
+        id: 'msg-reply-1',
+        content: 'Hello, how can I help?',
+        senderId: supportUserId,
+        recipientId: guestUserId,
+      });
+    });
+
+    it('should create conversation if none exists', async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ isSupport: true });
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({ id: guestUserId, isGuest: true });
+      (prisma.conversation.findFirst as jest.Mock).mockResolvedValue(null);
+      (prisma.conversation.create as jest.Mock).mockResolvedValue({ id: 'new-conv' });
+      (prisma.message.create as jest.Mock).mockResolvedValue({
+        id: 'msg-new', senderId: supportUserId, recipientId: guestUserId,
+        content: 'Hi', type: 'text', createdAt: new Date(),
+        sender: { displayName: 'Agent', isGuest: false, isSupport: true },
+      });
+
+      const res = await request(app)
+        .post(`/api/admin/widget-contacts/${guestUserId}/reply`)
+        .set('Authorization', `Bearer ${supportToken}`)
+        .send({ content: 'Hi' });
+
+      expect(res.status).toBe(200);
+      expect(prisma.conversation.create).toHaveBeenCalled();
+    });
+  });
 });

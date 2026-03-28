@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { authenticateToken } from '../middleware/auth';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getPresence } from '../lib/redis';
 
 const router = Router();
 
@@ -131,11 +132,18 @@ router.get('/support-agent', async (_req: Request, res: Response) => {
       return res.status(404).json({ error: 'No support agent configured' });
     }
 
+    let online = false;
+    try {
+      const presence = await getPresence(agent.id);
+      online = presence?.status === 'online';
+    } catch { /* Redis unavailable — assume offline */ }
+
     return res.json({
       id: agent.id,
       displayName: agent.displayName || agent.username,
       username: agent.username,
       profileImage: agent.profileImage,
+      online,
     });
   } catch (err) {
     console.error('❌ widget/support-agent error:', err);
@@ -186,10 +194,11 @@ router.get('/support-agent', async (_req: Request, res: Response) => {
 // Creates (or resumes) a guest user and returns a short-lived JWT
 router.post('/guest-session', async (req: Request, res: Response) => {
   try {
-    const { guestName, guestId, contactEmail } = req.body as {
+    const { guestName, guestId, contactEmail, context } = req.body as {
       guestName: string;
       guestId?: string;
       contactEmail?: string;
+      context?: Record<string, any>;
     };
 
     if (!guestName || !guestName.trim()) {
@@ -234,16 +243,17 @@ router.post('/guest-session', async (req: Request, res: Response) => {
           emailVerified: true,
           isGuest: true,
           privacyOnlineStatus: 'nobody',
+          ...(context && { widgetContext: context }),
         },
         select: { id: true, username: true, displayName: true },
       });
     } else {
-      // Update display name in case it changed
       guestUser = await prisma.user.update({
         where: { id: guestUser.id },
         data: {
           displayName: trimmedName,
           ...(trimmedEmail && { contactEmail: trimmedEmail }),
+          ...(context && { widgetContext: context }),
         },
         select: { id: true, username: true, displayName: true },
       });
@@ -501,6 +511,76 @@ router.post('/upload', authenticateToken as any, widgetUpload.single('file') as 
  *       403:
  *         description: Not a guest session
  */
+// ── POST /api/widget/offline-message ───────────────────────────────────────────
+// Creates a guest session and stores an offline message when no agent is available
+router.post('/offline-message', async (req: Request, res: Response) => {
+  try {
+    const { guestName, contactEmail, message, context } = req.body as {
+      guestName: string;
+      contactEmail?: string;
+      message: string;
+      context?: Record<string, any>;
+    };
+
+    if (!guestName?.trim() || !message?.trim()) {
+      return res.status(400).json({ error: 'Name and message are required' });
+    }
+
+    const agent = await prisma.user.findFirst({
+      where: { isSupport: true, emailVerified: true },
+      select: { id: true },
+    });
+
+    if (!agent) {
+      return res.status(503).json({ error: 'Support is currently unavailable' });
+    }
+
+    const slug = `widget_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const hashedPassword = await bcrypt.hash(slug + '_guest', 10);
+
+    const guestUser = await prisma.user.create({
+      data: {
+        username: slug,
+        displayName: guestName.trim().slice(0, 60),
+        email: null,
+        contactEmail: contactEmail?.trim().slice(0, 255) || null,
+        password: hashedPassword,
+        emailVerified: true,
+        isGuest: true,
+        privacyOnlineStatus: 'nobody',
+        ...(context && { widgetContext: context }),
+      },
+    });
+
+    await prisma.conversation.create({
+      data: { participantA: guestUser.id, participantB: agent.id, initiatorId: guestUser.id, status: 'accepted' },
+    });
+
+    await prisma.message.create({
+      data: {
+        senderId: guestUser.id,
+        recipientId: agent.id,
+        content: message.trim(),
+        type: 'text',
+      },
+    });
+
+    if (_widgetIo) {
+      _widgetIo.to(`user:${agent.id}`).emit('widget:offline-message', {
+        guestId: guestUser.id,
+        guestName: guestUser.displayName,
+        contactEmail: guestUser.contactEmail,
+        message: message.trim(),
+      });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('❌ widget/offline-message error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── POST /api/widget/end-chat ─────────────────────────────────────────────────
 // Also disconnects cleanly — does NOT delete the user (agent may still want to review).
 

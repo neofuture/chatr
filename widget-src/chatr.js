@@ -184,6 +184,7 @@
     supportAgentId: null,
     supportName: 'Support',
     supportAvatar: null,
+    supportOnline: false,
     conversationId: null,
     messages: [],
     unread: 0,
@@ -693,6 +694,12 @@
   // ── Render intro form ────────────────────────────────────────────────────────
   function renderIntro() {
     elEndBtn.style.display = 'none';
+
+    if (!state.supportOnline) {
+      renderOfflineForm();
+      return;
+    }
+
     elBody.innerHTML = [
       '<div id="chatr-w-intro">',
         '<div id="chatr-w-greeting">' + escHtml(GREETING) + '</div>',
@@ -708,7 +715,7 @@
           '<label class="chatr-label" for="chatr-w-first-msg">What can we help with?</label>',
           '<textarea class="chatr-input" id="chatr-w-first-msg" placeholder="Tell us what\'s on your mind…" rows="3" maxlength="1000"></textarea>',
         '</div>',
-        '<button class="chatr-btn" id="chatr-w-start-btn">Start Chat →</button>',
+        '<button class="chatr-btn" id="chatr-w-start-btn">Start Chat &rarr;</button>',
       '</div>',
     ].join('');
 
@@ -732,6 +739,79 @@
     startBtn.addEventListener('click', tryStart);
     msgInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); tryStart(); }
+    });
+
+    if (nameInput) nameInput.focus();
+  }
+
+  // ── Render offline form (agent unavailable) ────────────────────────────────
+  function renderOfflineForm() {
+    elBody.innerHTML = [
+      '<div id="chatr-w-intro">',
+        '<div id="chatr-w-greeting" style="margin-bottom:0.25rem">' + firstName(state.supportName) + ' is away right now</div>',
+        '<div style="font-size:0.8rem;opacity:0.7;margin-bottom:1rem">Leave a message and we\'ll get back to you by email.</div>',
+        '<div class="chatr-field">',
+          '<label class="chatr-label" for="chatr-w-name-input">Your name</label>',
+          '<input class="chatr-input" id="chatr-w-name-input" type="text" placeholder="What should we call you?" autocomplete="given-name" maxlength="60"/>',
+        '</div>',
+        '<div class="chatr-field">',
+          '<label class="chatr-label" for="chatr-w-email-input">Email address</label>',
+          '<input class="chatr-input" id="chatr-w-email-input" type="email" placeholder="We\'ll reply to this address" autocomplete="email" maxlength="255"/>',
+        '</div>',
+        '<div class="chatr-field">',
+          '<label class="chatr-label" for="chatr-w-first-msg">Your message</label>',
+          '<textarea class="chatr-input" id="chatr-w-first-msg" placeholder="Tell us what you need help with…" rows="3" maxlength="1000"></textarea>',
+        '</div>',
+        '<button class="chatr-btn" id="chatr-w-start-btn">Send Message</button>',
+      '</div>',
+    ].join('');
+
+    var nameInput  = document.getElementById('chatr-w-name-input');
+    var emailInput = document.getElementById('chatr-w-email-input');
+    var msgInput   = document.getElementById('chatr-w-first-msg');
+    var sendBtn    = document.getElementById('chatr-w-start-btn');
+
+    function trySubmit() {
+      var name  = nameInput.value.trim();
+      var email = emailInput.value.trim();
+      var msg   = msgInput.value.trim();
+      if (!name)  { nameInput.focus(); return; }
+      if (!email) { emailInput.focus(); return; }
+      if (!msg)   { msgInput.focus();  return; }
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending…';
+
+      fetch(API_URL + '/api/widget/offline-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestName: name, contactEmail: email, message: msg, context: gatherVisitorContext() }),
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.success) {
+          elBody.innerHTML = [
+            '<div id="chatr-w-intro" style="text-align:center">',
+              '<div style="font-size:2rem;margin-bottom:0.75rem">&#x2709;</div>',
+              '<div id="chatr-w-greeting">Message sent!</div>',
+              '<div style="font-size:0.8rem;opacity:0.7;margin-top:0.5rem">We\'ll get back to you at <strong>' + escHtml(email) + '</strong></div>',
+            '</div>',
+          ].join('');
+        } else {
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send Message';
+          showSystemMsg(data.error || 'Something went wrong. Please try again.');
+        }
+      })
+      .catch(function () {
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send Message';
+        showSystemMsg('Could not send message. Please try again.');
+      });
+    }
+
+    sendBtn.addEventListener('click', trySubmit);
+    msgInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); trySubmit(); }
     });
 
     if (nameInput) nameInput.focus();
@@ -1170,8 +1250,23 @@
   }
 
   // ── Start a session: get guest JWT then connect socket ───────────────────────
+  function gatherVisitorContext() {
+    try {
+      return {
+        pageUrl: location.href,
+        pageTitle: document.title,
+        referrer: document.referrer || null,
+        userAgent: navigator.userAgent,
+        screenWidth: screen.width,
+        screenHeight: screen.height,
+        language: navigator.language,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+    } catch (e) { return {}; }
+  }
+
   function startSession(name, firstMessage, contactEmail) {
-    var payload = { guestName: name, guestId: state.guestId };
+    var payload = { guestName: name, guestId: state.guestId, context: gatherVisitorContext() };
     if (contactEmail) payload.contactEmail = contactEmail;
     fetch(API_URL + '/api/widget/guest-session', {
       method: 'POST',
@@ -1722,7 +1817,8 @@
         if (data.id) {
           state.supportAgentId = data.id;
           state.supportName    = data.displayName || data.username || 'Support';
-          state.supportAvatar  = null; // always use default — never reveal real profile image
+          state.supportAvatar  = null;
+          state.supportOnline  = !!data.online;
           elName.textContent   = firstName(state.supportName);
           var defaultImg = document.createElement('img');
           defaultImg.src = DEFAULT_PROFILE;
@@ -1730,13 +1826,17 @@
           defaultImg.onerror = function () { elAvatar.textContent = '?'; };
           elAvatar.innerHTML = '';
           elAvatar.appendChild(defaultImg);
-          elStatusTxt.textContent = 'Online';
+          elStatusTxt.textContent = data.online ? 'Online' : 'Away';
+          var dot = document.querySelector('.chatr-status-dot');
+          if (dot) dot.style.background = data.online ? '#4ade80' : '#94a3b8';
         } else {
+          state.supportOnline = false;
           elStatusTxt.textContent = 'Away';
         }
         if (cb) cb();
       })
       .catch(function () {
+        state.supportOnline = false;
         elStatusTxt.textContent = 'Away';
         if (cb) cb();
       });

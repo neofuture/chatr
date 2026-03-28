@@ -13,6 +13,9 @@ The widget is a self-contained vanilla JavaScript IIFE (~37 kB minified, ~12 kB 
 - Session persistence (24h TTL) via localStorage
 - Audio waveform visualization (Canvas API)
 - Inline SVG data URIs for core UI icons (chat, send, attach, play, pause) with external SVG fallback for file-type icons
+- Visitor context capture (page URL, referrer, user agent, screen size, language, timezone) sent on session start
+- Offline message form — when the support agent is offline, the intro panel is replaced by a contact form (name, email, message) that posts to `POST /api/widget/offline-message`
+- Agent online/offline status — `GET /api/widget/support-agent` now returns an `online` boolean derived from Redis presence
 
 ## Directory Structure
 

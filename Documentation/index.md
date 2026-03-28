@@ -70,6 +70,9 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 
 ## Recent Additions
 
+- **Admin Reply**: Support agents can now reply to widget visitors directly from the admin panel. Messages arrive in the visitor's widget in real time via WebSocket. A REST endpoint (`POST /api/admin/widget-contacts/:guestId/reply`) creates the message and emits `message:received` to the guest's socket room.
+- **Visitor Context**: The widget captures page URL, page title, referrer, user agent, screen size, language, and timezone on session start. This metadata is stored as JSON on the `User` model (`widgetContext` field) and displayed in a collapsible info bar in the admin panel.
+- **Offline Message Form**: When the support agent is offline, the widget replaces the live chat intro with a contact form (name, email, message). Submissions hit `POST /api/widget/offline-message`, which creates a guest user, conversation, and message for the agent to review on return.
 - **Admin Panel**: Resizable split-panel UI at `/app/admin` for managing widget chat contacts — view conversations, delete guests, role-gated via `isSupport` flag. Accessible from the burger menu for admin users. Backend returns empty arrays (not 500s) when no contacts exist. 13 backend + 8 frontend tests.
 - **Widget Icon Overhaul**: Core UI icons (chat, send, attach, play, pause) are now inline SVG `data:` URIs instead of external files, fixing Safari rendering failures on HTTPS pages with self-signed certificates
 - **Profile Image Sync**: `BottomNav` uses a three-tier fallback (IndexedDB → UserSettingsContext → localStorage) for the profile avatar, and `syncProfileImageFromServer` dispatches `profileImageUpdated` events so all listening components refresh immediately

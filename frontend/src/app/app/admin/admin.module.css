@@ -253,6 +253,67 @@
   font-size: 0.7rem;
 }
 
+/* Visitor context info bar */
+.contextBar {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--bg-container);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.contextItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.contextItem i {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  flex-shrink: 0;
+  width: 12px;
+  text-align: center;
+}
+
+.contextItem a {
+  color: var(--blue-500);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contextItem a:hover {
+  text-decoration: underline;
+}
+
+.contextRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.contextTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--bg-container);
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.65rem;
+}
+
+.contextTag i {
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+
 .messageList {
   flex: 1;
   overflow-y: auto;
@@ -299,6 +360,61 @@
   opacity: 0.5;
   margin-top: 0.15rem;
   text-align: right;
+}
+
+/* Reply input bar */
+.replyBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-top: 1px solid var(--bg-container);
+  flex-shrink: 0;
+}
+
+.replyInput {
+  flex: 1;
+  background: var(--bg-container);
+  border: 1px solid transparent;
+  border-radius: 1.25rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.replyInput:focus {
+  border-color: var(--blue-500);
+}
+
+.replyInput::placeholder {
+  color: var(--text-secondary);
+}
+
+.replyBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--blue-500);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.replyBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.replyBtn:not(:disabled):hover {
+  opacity: 0.85;
 }
 
 .placeholder {

@@ -4,6 +4,9 @@ import { prisma } from '../lib/prisma';
 
 const router = Router();
 
+let _adminIo: any = null;
+export function setAdminSocketIO(io: any) { _adminIo = io; }
+
 async function requireSupport(req: Request, res: Response): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.userId },
@@ -74,7 +77,7 @@ router.get('/widget-contacts/:guestId/messages', authenticateToken, async (req: 
 
   const guest = await prisma.user.findFirst({
     where: { id: guestId, isGuest: true },
-    select: { id: true, displayName: true, contactEmail: true },
+    select: { id: true, displayName: true, contactEmail: true, widgetContext: true },
   });
 
   if (!guest) {
@@ -129,6 +132,71 @@ router.delete('/widget-contacts/:guestId', authenticateToken, async (req: Reques
   return res.json({ success: true });
   } catch (err) {
     console.error('Admin delete widget-contact error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/widget-contacts/:guestId/reply', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!(await requireSupport(req, res))) return;
+
+    const { guestId } = req.params;
+    const { content } = req.body as { content?: string };
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Message content is required' });
+    }
+
+    const guest = await prisma.user.findFirst({
+      where: { id: guestId, isGuest: true },
+    });
+
+    if (!guest) {
+      return res.status(404).json({ error: 'Guest not found' });
+    }
+
+    const supportUserId = req.user!.userId;
+
+    let conversation = await prisma.conversation.findFirst({
+      where: {
+        OR: [
+          { participantA: supportUserId, participantB: guestId },
+          { participantA: guestId, participantB: supportUserId },
+        ],
+      },
+    });
+
+    if (!conversation) {
+      conversation = await prisma.conversation.create({
+        data: { participantA: supportUserId, participantB: guestId, initiatorId: supportUserId, status: 'accepted' },
+      });
+    }
+
+    const message = await prisma.message.create({
+      data: {
+        senderId: supportUserId,
+        recipientId: guestId,
+        content: content.trim(),
+        type: 'text',
+      },
+      select: {
+        id: true,
+        senderId: true,
+        recipientId: true,
+        content: true,
+        type: true,
+        createdAt: true,
+        sender: { select: { displayName: true, isGuest: true, isSupport: true } },
+      },
+    });
+
+    if (_adminIo) {
+      _adminIo.to(`user:${guestId}`).emit('message:received', message);
+    }
+
+    return res.json({ message });
+  } catch (err) {
+    console.error('Admin reply error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

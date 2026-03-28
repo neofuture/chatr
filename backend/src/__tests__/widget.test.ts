@@ -6,6 +6,7 @@ import { PrismaClient } from '@prisma/client';
 jest.mock('../lib/redis', () => ({
   checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 999, retryAfter: 0 }),
   isTokenBlacklisted: jest.fn().mockResolvedValue(false),
+  getPresence: jest.fn().mockResolvedValue(null),
 }));
 
 const mockS3Send = jest.fn().mockResolvedValue({});
@@ -61,6 +62,7 @@ describe('Widget Routes', () => {
         displayName: 'Support Agent',
         username: '@support',
         profileImage: 'https://example.com/img.png',
+        online: false,
       });
     });
 
@@ -910,6 +912,57 @@ describe('Widget Routes', () => {
 
       expect(response.body.message).toBeDefined();
       expect(mockS3Send).toHaveBeenCalled();
+    });
+  });
+
+  // ── POST /api/widget/offline-message ────────────────────────────────────────
+
+  describe('POST /api/widget/offline-message', () => {
+    it('should return 400 when name or message is missing', async () => {
+      const res = await request(app)
+        .post('/api/widget/offline-message')
+        .send({ guestName: '', message: '' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Name and message are required');
+    });
+
+    it('should return 503 when no support agent exists', async () => {
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const res = await request(app)
+        .post('/api/widget/offline-message')
+        .send({ guestName: 'Visitor', message: 'Help me please' });
+
+      expect(res.status).toBe(503);
+    });
+
+    it('should create guest, conversation, and message on success', async () => {
+      const newGuest = {
+        id: 'guest-offline-1',
+        displayName: 'Offline Visitor',
+        contactEmail: 'offline@example.com',
+      };
+
+      (prisma.user.findFirst as jest.Mock).mockResolvedValue({ id: supportAgentId });
+      (prisma.user.create as jest.Mock).mockResolvedValue(newGuest);
+      (prisma.conversation.create as jest.Mock).mockResolvedValue({ id: 'conv-offline' });
+      (prisma.message.create as jest.Mock).mockResolvedValue({ id: 'msg-offline' });
+
+      const res = await request(app)
+        .post('/api/widget/offline-message')
+        .send({
+          guestName: 'Offline Visitor',
+          contactEmail: 'offline@example.com',
+          message: 'I need help with pricing',
+          context: { pageUrl: 'https://example.com/pricing', language: 'en-US' },
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(prisma.user.create).toHaveBeenCalled();
+      expect(prisma.conversation.create).toHaveBeenCalled();
+      expect(prisma.message.create).toHaveBeenCalled();
     });
   });
 });
