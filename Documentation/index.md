@@ -70,6 +70,11 @@ Chatr is a real-time messaging platform built on a Node.js/Express backend and N
 
 ## Recent Additions
 
+- **Admin Panel**: Resizable split-panel UI at `/app/admin` for managing widget chat contacts — view conversations, delete guests, role-gated via `isSupport` flag. Accessible from the burger menu for admin users. Backend returns empty arrays (not 500s) when no contacts exist. 13 backend + 8 frontend tests.
+- **Widget Icon Overhaul**: Core UI icons (chat, send, attach, play, pause) are now inline SVG `data:` URIs instead of external files, fixing Safari rendering failures on HTTPS pages with self-signed certificates
+- **Profile Image Sync**: `BottomNav` uses a three-tier fallback (IndexedDB → UserSettingsContext → localStorage) for the profile avatar, and `syncProfileImageFromServer` dispatches `profileImageUpdated` events so all listening components refresh immediately
+- **Deploy Script Robustness**: `SSH_OPTS` in `deployAWS.sh` changed from a string to a bash array to correctly handle PEM key paths containing spaces
+- **Automated Admin Screenshots**: Playwright captures `44-admin-empty.png` and `45-admin-contacts.png` at 600×450 @2x for the marketing website's features page
 - **Voice Calls** *(not production ready)*: 1-to-1 WebRTC P2P voice calling with Socket.IO signaling, full-screen call overlay, mute toggle, call history persistence, and HTTPS dev setup for iOS microphone access
 - **Dedicated Login Page**: `/login` provides a standalone login and registration form with email/SMS verification — the app no longer includes marketing content (the website lives in a separate `chatr-website` repository)
 - **Profile Management Overhaul**: Profile panel fetches fresh data on every view (multi-device support), uses direct HTTP instead of socketFirst, and shows save status indicators

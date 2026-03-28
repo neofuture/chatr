@@ -39,8 +39,9 @@ Located in `frontend/src/**/*.test.tsx`. Tests use React Testing Library to rend
 ### Coverage areas
 - Form components (Input, Button, Select, Checkbox, Textarea, Radio, DatePicker, RangeSlider)
 - Auth forms (LoginForm, ForgotPassword, EmailVerification, LoginVerification)
-- Layout components (AppLayout, MobileLayout)
+- Layout components (AppLayout, MobileLayout, BottomNav)
 - Feature components (ProfileImageUploader, CoverImageUploader, BottomSheet)
+- Admin panel (AdminPage — empty/error/populated states, contact selection, message rendering, delete, resize divider)
 - Utility components (ThemeToggle, ToastContainer, Logo)
 
 ### Jest config (`frontend/jest.config.js`)
@@ -69,6 +70,7 @@ Located in `backend/src/__tests__/`. Tests use Supertest to make HTTP requests a
 | `messages.test.ts` | History, conversations |
 | `groups.test.ts` | CRUD, join, leave, messages |
 | `images.test.ts` | Profile/cover image upload endpoints |
+| `admin.test.ts` | Widget contacts list, messages, cascade delete, auth/403 |
 
 ### Prisma mock
 

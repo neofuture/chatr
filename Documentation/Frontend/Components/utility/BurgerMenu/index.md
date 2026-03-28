@@ -20,14 +20,17 @@ interface BurgerMenuProps {
 
 ## Menu Items
 
-| Label | Destination | Type |
-|-------|-------------|------|
-| Home | `/` | Link |
-| Demo Components | `/demo` | Link |
-| Panel Demo | — | Button → calls `onPanelDemo` |
-| Read Documentation | `/docs` | Link |
-| Database Console | `/console` | Link |
-| Sign Out | — | Button → clears `localStorage` + routes to `/` |
+| Label | Destination | Type | Condition |
+|-------|-------------|------|-----------|
+| Home | `/` | Link | Always |
+| Widget Contacts | `/app/admin` | Link | Only if user has `isSupport: true` |
+| Demo Components | `/demo` | Link | Always |
+| Panel Demo | — | Button → calls `onPanelDemo` | Always |
+| Read Documentation | `/docs` | Link | Always |
+| Database Console | `/console` | Link | Always |
+| Sign Out | — | Button → clears `localStorage` + routes to `/` | Always |
+
+The **Widget Contacts** link is conditionally shown based on the user's `isSupport` status, fetched from `GET /api/users/me` on mount. This provides admin users with quick access to the [Admin Panel](../../../../Admin/index.md).
 
 ## Usage
 

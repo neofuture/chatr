@@ -81,6 +81,8 @@ The `deployAWS.sh` script (gitignored — contains secrets) runs the full 7-step
 
 This means you never need to SSH manually — just run the script from your Mac.
 
+> **Path handling:** `SSH_OPTS` is declared as a bash array (`SSH_OPTS=(-i "$PEM_KEY" ...)`) and expanded with `"${SSH_OPTS[@]}"` in `scp` and `ssh` commands. This correctly handles PEM key paths containing spaces (e.g. `Project Chatr/Chatr-key.pem`).
+
 > ⚠️  `deployAWS.sh` and `aws.sh` are committed to the repo (they contain no secrets). All secrets live in `.env.deploy` which is gitignored. Never commit `.env.deploy` or `Chatr-key.pem`.
 
 ### Quick start

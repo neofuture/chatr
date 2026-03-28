@@ -4,6 +4,31 @@ All notable changes to Chatr are documented here. New entries are auto-generated
 
 ---
 
+## v0.1.50 — 2026-03-28
+
+**Commit:** `3b2dead` — docs: update documentation and project specs for v0.1.49
+
+- Update documentation and project specifications for version 0.1.49.
+- Add automated Playwright screenshots to the Admin documentation.
+- Enhance BottomNav component documentation with new profile image loading details.
+- Revise BurgerMenu documentation to include conditions for menu item visibility.
+
+---
+
+## v0.1.49 — 2026-03-28
+
+**Commit:** docs: update documentation and project specs
+
+- Update Admin/index.md with Playwright screenshot details and viewport info
+- Update Widget/index.md to document inline SVG data URI icon system
+- Update BottomNav/index.md with three-tier profile image fallback and UserSettingsContext
+- Update BurgerMenu/index.md with conditional "Widget Contacts" admin link
+- Update Testing/index.md with admin test coverage for backend and frontend
+- Update Deployment.md with SSH_OPTS bash array path handling note
+- Update main Documentation/index.md Recent Additions with admin, widget, profile sync, and deploy changes
+
+---
+
 ## v0.1.48 — 2026-03-27
 
 **Commit:** `d019680` — fix: admin screenshots at 600px wide with contacts list and conversation views

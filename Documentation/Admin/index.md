@@ -98,6 +98,17 @@ Each card displays:
 
 Messages are rendered as chat bubbles — guest messages aligned left, agent messages aligned right. Each bubble shows the sender name, content, and formatted timestamp.
 
+## Screenshots
+
+Automated Playwright screenshots are captured by `scripts/take-screenshots.ts` and used on the marketing website's features page.
+
+| File | Viewport | Content |
+|------|----------|---------|
+| `44-admin-empty.png` | 600×450 @2x | Empty contacts list — "No widget contacts yet" |
+| `45-admin-contacts.png` | 600×450 @2x | Contacts list with a guest selected and conversation visible |
+
+The script ensures `userA` has `isSupport: true` via a Prisma update before navigating to `/app/admin`. For `45-admin-contacts.png`, it clicks the first contact card to show the conversation panel.
+
 ## Testing
 
 ### Backend

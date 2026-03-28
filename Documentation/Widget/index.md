@@ -12,7 +12,7 @@ The widget is a self-contained vanilla JavaScript IIFE (~37 kB minified, ~12 kB 
 - Dark/light/auto theme support
 - Session persistence (24h TTL) via localStorage
 - Audio waveform visualization (Canvas API)
-- External SVG icons loaded on demand
+- Inline SVG data URIs for core UI icons (chat, send, attach, play, pause) with external SVG fallback for file-type icons
 
 ## Directory Structure
 
@@ -26,12 +26,7 @@ widget-src/                     # Source (not publicly served)
 
 widget/                         # Output (served at /widget/)
 ├── chatr.js                    # Minified widget (~37 kB, ~12 kB gz)
-└── icons/                      # SVG icons
-    ├── chat.svg                # Chat bubble (UI)
-    ├── send.svg                # Send button (UI)
-    ├── attach.svg              # Paperclip (UI)
-    ├── play.svg                # Play button (UI)
-    ├── pause.svg               # Pause button (UI)
+└── icons/                      # SVG icons (file-type only; UI icons are inlined)
     ├── file.svg                # Generic file type
     ├── img.svg                 # Image file type
     ├── audio.svg               # Audio file type
@@ -117,20 +112,26 @@ npm run widget:watch    # Watch mode (also started by dev.sh)
 
 ## Icon System
 
-UI icons (chat, send, attach, play, pause) use CSS `mask-image` for dynamic colouring:
+### UI Icons (inline data URIs)
+
+Core UI icons (chat, send, attach, play, pause) are embedded as `data:image/svg+xml` URIs directly in CSS `mask-image` declarations. This avoids external network requests and prevents rendering failures on HTTPS pages with self-signed certificates (e.g. Safari refusing to load cross-origin SVGs via `mask-image` over untrusted HTTPS).
 
 ```css
 .chatr-ico {
   display: inline-block;
   background: currentColor;
-  mask-image: url(/widget/icons/chat.svg);
+  mask-image: url('data:image/svg+xml,...');
   mask-size: contain;
 }
 ```
 
-File type icons (file, img, audio, video, pdf, doc, xls, zip) are coloured SVGs with baked-in MIME type labels, loaded as `<img>` elements.
+Single quotes within SVG attributes are URL-encoded as `%27` to prevent CSS `url()` parsing breakage.
 
-The widget has **no dependency on Font Awesome** — all icons are either external SVGs or Unicode characters.
+### File Type Icons (external SVGs)
+
+File type icons (file, img, audio, video, pdf, doc, xls, zip) are coloured SVGs with baked-in MIME type labels, loaded as `<img>` elements from `/widget/icons/`.
+
+The widget has **no dependency on Font Awesome** — all icons are either inline SVG data URIs or external SVG files.
 
 ## Widget API Routes
 
